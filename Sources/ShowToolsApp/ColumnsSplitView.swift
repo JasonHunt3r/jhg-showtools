@@ -15,9 +15,7 @@ import AppKit
 final class ColumnsSplitView: NSSplitView, @preconcurrency NSSplitViewDelegate {
     var mainMin: CGFloat = 420
     var listRange: ClosedRange<CGFloat> = 180...420
-    /// Its least is what the inspector's content needs (the Rotation pivot
-    /// pads side by side measured 316): narrower, it was cut off.
-    var inspectorRange: ClosedRange<CGFloat> = 320...440
+    var inspectorRange: ClosedRange<CGFloat> = 260...440
 
     /// Remembered between launches.
     private(set) var listWidth: CGFloat
@@ -87,11 +85,8 @@ final class ColumnsSplitView: NSSplitView, @preconcurrency NSSplitViewDelegate {
         arranging = true
         defer { arranging = false }
         let W = bounds.width, H = bounds.height, t = dividerThickness
-        // Remembered widths are held to their limits here, not only when a
-        // narrow window squeezes: a width saved under older limits (the
-        // inspector's 260) would otherwise come back as it was.
-        var listW = min(max(listWidth, listRange.lowerBound), listRange.upperBound)
-        var insW = inspectorShown ? min(max(inspectorWidth, inspectorRange.lowerBound), inspectorRange.upperBound) : 0
+        var listW = listWidth
+        var insW = inspectorShown ? inspectorWidth : 0
         // A narrow window squeezes the side columns before the main one
         // goes below its minimum.
         // One gap when the inspector is hidden (no line at the window edge).
