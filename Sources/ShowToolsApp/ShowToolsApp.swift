@@ -1,0 +1,114 @@
+import SwiftUI
+import ShowToolsCore
+
+@main
+struct ShowToolsApp: App {
+    @State private var model = AppModel()
+
+    var body: some Scene {
+        Window("ShowTools", id: "main") {
+            MainView()
+                .environment(model)
+                .frame(minWidth: 900, minHeight: 560)
+                .task { DevHooks.run(model) }
+        }
+        .defaultSize(width: 1320, height: 820)
+        .commands { AppCommands(model: model) }
+
+        Settings {
+            SettingsView()
+                .environment(model)
+        }
+    }
+}
+
+struct AppCommands: Commands {
+    let model: AppModel
+    @FocusedValue(\.activeShowID) private var activeShowID
+
+    var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Button("New Show") { model.newShow() }
+                .keyboardShortcut("n")
+            Button("Import…") { runImportPanel(model) }
+                .keyboardShortcut("i", modifiers: [.command, .shift])
+        }
+
+        CommandMenu("Show") {
+            Button("Play") { play(fullScreen: false) }
+                .keyboardShortcut("p", modifiers: [.command, .option, .shift])
+                .disabled(activeShow == nil)
+            Button("Play Full Screen") { play(fullScreen: true) }
+                .keyboardShortcut("p", modifiers: [.command, .option])
+                .disabled(activeShow == nil)
+        }
+    }
+
+    private var activeShow: Show? {
+        activeShowID.flatMap { model.show($0) }.flatMap { $0.slides.isEmpty ? nil : $0 }
+    }
+
+    @MainActor private func play(fullScreen: Bool) {
+        if let show = activeShow { Player.open(show: show, model: model, fullScreen: fullScreen) }
+    }
+}
+
+struct SettingsView: View {
+    @Environment(AppModel.self) private var model
+    @AppStorage(SlideRemovalNotice.suppressKey) private var suppressRemovalNotice = false
+
+    var body: some View {
+        Form {
+            Section("Library") {
+                LabeledContent("Location") {
+                    HStack {
+                        Text(model.library?.root.path(percentEncoded: false) ?? "—")
+                            .lineLimit(1).truncationMode(.middle)
+                            .textSelection(.enabled)
+                        Button("Show in Finder") {
+                            if let root = model.library?.root {
+                                NSWorkspace.shared.activateFileViewerSelecting([root])
+                            }
+                        }
+                    }
+                }
+                Toggle("Let Spotlight index the library", isOn: Binding(
+                    get: { !model.libraryHiddenFromSpotlight },
+                    set: { model.setSpotlightIndexing($0) }))
+                Text(model.libraryHiddenFromSpotlight
+                     ? "Hidden: the library folder ends in “.noindex”, so Spotlight skips its file names, image details and the text in pictures."
+                     : "Searchable: Spotlight can find library files by name, image details and the text in pictures.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Alerts") {
+                Toggle("Explain what removing a slide does", isOn: Binding(
+                    get: { !suppressRemovalNotice },
+                    set: { suppressRemovalNotice = !$0 }))
+                Text("The notice that a slide removed from a show isn't moved to the Trash.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 520)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Developer-only: lets a script open a show and start the player without
+/// clicking, so the app can be checked from the command line. Inert unless
+/// the environment variable is set.
+///
+///   SHOWTOOLS_DEV_PLAY="<showID>:<slideIndex>[:full]"
+@MainActor
+enum DevHooks {
+    static func run(_ model: AppModel) {
+        guard let spec = ProcessInfo.processInfo.environment["SHOWTOOLS_DEV_PLAY"] else { return }
+        let parts = spec.split(separator: ":")
+        guard let id = parts.first.flatMap({ Int64($0) }), let show = model.show(id) else { return }
+        model.sidebar = .show(id)
+        let index = parts.count > 1 ? Int(parts[1]) : nil
+        Player.open(show: show, model: model, fullScreen: parts.contains("full"), startAt: index)
+    }
+}

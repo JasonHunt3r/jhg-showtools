@@ -115,14 +115,24 @@ the music when a track is loaded and the system clock when it isn't.
 
 ## Phases
 
-### Phase 1: Library + player
+### Phase 1: Library + player — BUILT 2026-09-21
 - The library database, plus ingest: drag in files or folders of images,
-  animated GIFs and videos. Anything already in the library is recognised by
-  its hash and not added twice
-- Build a show from the library
-- Play it in a window or full screen, with per-slide lengths, transitions and Ken Burns
-- Keyboard controls: play/pause, next/previous, jump to a slide
-- Save and open the show as a document
+  animated GIFs and videos (from Finder, or from Photos via file promises).
+  Anything already in the library is recognised by its hash and not added twice
+- Build a show from the library (Add to Show, New Show from Selection, or
+  drop files onto a show)
+- Play in a window or full screen, with per-slide lengths, transitions and
+  Ken Burns (show default Off/Auto; per-slide Off/Auto)
+- Keyboard: space, ← →, Home/End, type a number + ↩ to jump, F, Esc
+- **Changed from the draft:** shows are stored in the library database, not
+  as separate document files. They save on every edit. They need to be in
+  one place anyway so that "random show" can find them all.
+- **Not yet:** ⌘Z undo (comes with the Phase 2 composer), a custom Ken Burns
+  frame editor, and a drag-and-drop from Photos tested by hand (the code
+  path exists, but no one has tried an actual drag from the Photos app)
+- **Transitions dropped:** Accordion. On this macOS, Core Image's accordion
+  fold renders as a plain dissolve. Page Curl renders flat, so it's offered
+  as "Page Turn" (darkened back, peels from the far edge)
 
 ### Phase 2: Composer
 - **Slide list panel (the output order):** thumbnails in play order, drag and

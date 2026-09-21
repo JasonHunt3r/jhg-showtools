@@ -1,0 +1,39 @@
+#!/bin/bash
+# Wrap the SwiftPM executable in a .app bundle.
+#
+# A bare SwiftPM binary has no Info.plist, so macOS gives it no Dock icon,
+# no proper menu bar and no ⌘Q. The bundle makes it behave like an app.
+# Same approach as CutSim (jhg-cutcheck/sim/make-app.sh).
+set -euo pipefail
+cd "$(dirname "$0")"
+
+CONFIG="${1:-release}"
+swift build -c "$CONFIG" --product ShowToolsApp
+
+APP="build/ShowTools.app"
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+
+cp ".build/$CONFIG/ShowToolsApp" "$APP/Contents/MacOS/ShowTools"
+
+cat > "$APP/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>               <string>ShowTools</string>
+    <key>CFBundleDisplayName</key>        <string>ShowTools</string>
+    <key>CFBundleExecutable</key>         <string>ShowTools</string>
+    <key>CFBundleIdentifier</key>         <string>com.jhg.showtools</string>
+    <key>CFBundlePackageType</key>        <string>APPL</string>
+    <key>CFBundleShortVersionString</key> <string>0.1</string>
+    <key>CFBundleVersion</key>            <string>1</string>
+    <key>LSMinimumSystemVersion</key>     <string>14.0</string>
+    <key>NSHighResolutionCapable</key>    <true/>
+    <key>NSSupportsAutomaticTermination</key> <false/>
+</dict>
+</plist>
+PLIST
+
+codesign --force --sign - "$APP" 2>/dev/null || true
+echo "built $APP"
