@@ -81,6 +81,11 @@ public struct Layer: Sendable {
                        span: motionSpan(frozen: r.freezeOnTransition))
     }
 
+    /// The Rotation effect's turn now, or nil when it's off.
+    public var spin: (angle: Double, pivot: ImagePoint)? {
+        slide.rotation == nil ? nil : (angle: rotationAngle, pivot: rotationPivot)
+    }
+
     public var rotationPivot: ImagePoint {
         guard let r = slide.rotation else { return .centre }
         return r.pivot(at: motionProgress(frozen: r.freezeOnTransition))

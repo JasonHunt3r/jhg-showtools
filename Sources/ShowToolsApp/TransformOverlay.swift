@@ -132,11 +132,9 @@ struct TransformOverlay: View {
         let W = CGFloat(layer.slide.item.pixelWidth), H = CGFloat(layer.slide.item.pixelHeight)
         guard W > 0, H > 0, frame.width > 0, frame.height > 0 else { return nil }
         let e = CGRect(x: 0, y: 0, width: W, height: H)
-        let spin = layer.slide.rotation == nil ? nil : (angle: layer.rotationAngle, pivot: layer.rotationPivot)
         guard let base = Compositor.placement(imageExtent: e, fit: layer.slide.fit, kb: layer.kenBurnsFrame,
                                               transform: .identity, spin: nil, outputSize: frame.size),
-              let full = Compositor.placement(imageExtent: e, fit: layer.slide.fit, kb: layer.kenBurnsFrame,
-                                              transform: layer.slide.transform, spin: spin, outputSize: frame.size)
+              let full = Compositor.placement(for: layer, imageExtent: e, outputSize: frame.size)
         else { return nil }
         return Geo(slideID: layer.slide.slide.id, frame: frame, W: W, H: H, base: base, full: full,
                    transform: layer.slide.transform)

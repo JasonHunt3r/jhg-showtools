@@ -5,8 +5,8 @@ import ShowToolsCore
 /// Every commit from these controls is logged, so a value that changes
 /// unexpectedly can be traced to the control that wrote it:
 ///   log show --last 1h --predicate 'subsystem == "com.jhg.showtools"'
-/// (On 2026-09-21 a slide's zoom was once found at the slider's floor with
-/// no one touching it, and four replays didn't reproduce it.)
+/// (Added 2026-09-21 after a change in testing that turned out to be Jason
+/// trying the app; kept because it answers "what wrote this?" at once.)
 let controlLog = Logger(subsystem: "com.jhg.showtools", category: "inspector")
 
 /// A slider plus a number field. The slider commits once, on release, so a

@@ -1,6 +1,7 @@
 import SwiftUI
 import MetalKit
 import CoreImage
+import CoreImage.CIFilterBuiltins
 import ShowToolsCore
 
 /// The show clock. Slides never keep their own timers: everything asks this
@@ -255,9 +256,9 @@ final class PlaybackEngine {
               let cb = queue.makeCommandBuffer() else { return }
         // Video follows the clock only at normal speed; otherwise it's seeked.
         let playing = clock.playing && clock.rate == 1
-        let image = Compositor.compose(state, size: size) { [media] layer in
-            media.image(for: layer, playing: playing)
-        }
+        let source: (Layer) -> CIImage? = { [media] layer in media.image(for: layer, playing: playing) }
+        let image = (view as? ShowCanvas)?.stage.map { stageImage(state, size: size, stage: $0, source: source) }
+            ?? Compositor.compose(state, size: size, source: source)
         let dest = CIRenderDestination(width: Int(size.width), height: Int(size.height),
                                        pixelFormat: view.colorPixelFormat, commandBuffer: cb) {
             drawable.texture
@@ -266,6 +267,65 @@ final class PlaybackEngine {
         _ = try? ci.startTask(toRender: image, to: dest)
         cb.present(drawable)
         cb.commit()
+    }
+
+    /// The Edit Show work area: the picture framed inside the view at the
+    /// stage's zoom. Wherever an image hangs past the frame it's drawn,
+    /// dimmed, outside the edge; with an image selected, the previous
+    /// slide's last frame lies over it, see-through (the onion skin).
+    private func stageImage(_ state: FrameState, size: CGSize, stage: ShowCanvas.Stage,
+                            source: (Layer) -> CIImage?) -> CIImage {
+        let whole = CGRect(origin: .zero, size: size)
+        // Centred, so the same in Core Image's y-up space as in the view's.
+        let frame = PreviewStage.pictureRect(in: size, zoom: stage.zoom)
+        guard frame.width >= 1, frame.height >= 1 else { return CIImage(color: .black).cropped(to: whole) }
+        let move = CGAffineTransform(translationX: frame.minX, y: frame.minY)
+
+        /// A layer's whole image where it sits, not cropped to the frame.
+        func uncropped(_ layer: Layer, opacity: Double) -> CIImage? {
+            guard let img = source(layer),
+                  let m = Compositor.placement(for: layer, imageExtent: img.extent, outputSize: frame.size)
+            else { return nil }
+            let f = CIFilter.colorMatrix()
+            f.inputImage = img.transformed(by: m.concatenating(move))
+            f.aVector = CIVector(x: 0, y: 0, z: 0, w: CGFloat(opacity))
+            return f.outputImage
+        }
+
+        var out = CIImage(color: .black).cropped(to: whole)
+        for layer in state.layers {
+            if let over = uncropped(layer, opacity: 0.35) { out = over.composited(over: out) }
+        }
+        out = Compositor.compose(state, size: frame.size, source: source)
+            .transformed(by: move).composited(over: out)
+        if stage.zoom < 1 {
+            // The frame's edge, so a black slide still shows where it ends.
+            let w: CGFloat = 2, grey = CIImage(color: CIColor(red: 0.45, green: 0.45, blue: 0.45))
+            for r in [CGRect(x: frame.minX - w, y: frame.minY - w, width: frame.width + 2 * w, height: w),
+                      CGRect(x: frame.minX - w, y: frame.maxY, width: frame.width + 2 * w, height: w),
+                      CGRect(x: frame.minX - w, y: frame.minY, width: w, height: frame.height),
+                      CGRect(x: frame.maxX, y: frame.minY, width: w, height: frame.height)] {
+                out = grey.cropped(to: r).composited(over: out)
+            }
+        }
+        if let id = stage.onionSlideID, stage.onionOpacity > 0, let before = lastFrame(before: id),
+           before.slide.item.kind != .video,        // seeking another video would disturb it
+           let onion = uncropped(before, opacity: stage.onionOpacity) {
+            out = onion.composited(over: out)
+        }
+        return out.cropped(to: whole)
+    }
+
+    /// The slide before `id` as it looks at the very end of its move: the
+    /// frame a match cut lines up against. Nil for the first slide of a show
+    /// that doesn't loop.
+    private func lastFrame(before id: Int64) -> Layer? {
+        guard let i = timeline.slides.firstIndex(where: { $0.slide.id == id }),
+              timeline.slides.count > 1, i > 0 || timeline.loops else { return nil }
+        let prev = timeline.slides[i > 0 ? i - 1 : timeline.slides.count - 1]
+        return Layer(slide: prev, localTime: prev.visibleSpan,
+                     transitionInPlays: prev.transitionIn.duration,
+                     transitionOutPlays: prev.visibleSpan - prev.length)
     }
 
     func makeView() -> ShowCanvas {
@@ -284,6 +344,18 @@ final class PlaybackEngine {
 /// An MTKView that draws whatever its engine says is on screen.
 final class ShowCanvas: MTKView, MTKViewDelegate {
     weak var engine: PlaybackEngine?
+    /// Set on the Edit Show preview only, making it a work area. Every other
+    /// canvas (pop-out, player) is the picture and nothing else.
+    var stage: Stage?
+
+    struct Stage: Equatable {
+        /// 1 fits the picture to the view; below 1 leaves room round it.
+        var zoom: CGFloat = 1
+        /// The selected image's slide: the onion skin shows the slide before it.
+        var onionSlideID: Int64?
+        var onionOpacity: Double = 0.5
+    }
+
     var onKey: ((NSEvent) -> Bool)?
     var onMouseMoved: (() -> Void)?
     var onDoubleClick: (() -> Void)?
@@ -319,9 +391,15 @@ final class ShowCanvas: MTKView, MTKViewDelegate {
 /// The engine's picture as a SwiftUI view.
 struct ShowCanvasView: NSViewRepresentable {
     let engine: PlaybackEngine
+    var stage: ShowCanvas.Stage? = nil
 
-    func makeNSView(context: Context) -> ShowCanvas { engine.makeView() }
+    func makeNSView(context: Context) -> ShowCanvas {
+        let v = engine.makeView()
+        v.stage = stage
+        return v
+    }
     func updateNSView(_ view: ShowCanvas, context: Context) {
         if view.engine !== engine { view.engine = engine; engine.touch() }
+        if view.stage != stage { view.stage = stage; engine.touch() }
     }
 }

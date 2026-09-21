@@ -46,6 +46,11 @@ screenshots:
   per zone, corner scaling with and without Option, Shift-snapped rotation,
   dragging the anchor, the arrow-key map, and ⌘Z undoing one drag or one
   run of nudges as a single step
+- **Work area and onion skin (2026-09-21):** checked by screenshot only.
+  Try the zoom menu (top left of the preview) and pinch; grabbing a handle
+  out in the margin; the onion toggle and its opacity slider. The onion
+  skin skips video slides for now (asking for another video's frame would
+  seek its player)
 
 ## Next: Phase 2a (framing, rotation, match cuts), then 2c Layers
 
@@ -88,14 +93,6 @@ open -n --env SHOWTOOLS_LIBRARY=/tmp/STTest/TestLib.noindex build/ShowTools.app
   Anything that needs a drag, Jason tests.
 
 ## Known issues / debts
-- **Unexplained write, 2026-09-21:** in the scratch library, a slide's
-  Transform zoom went from 0.5 to 0.1 (the Zoom slider's floor) with no one
-  touching it, between the first and third inspector test launches. Four
-  replays (collapsed sliders, inspector opened live, Rotation-first layout,
-  launch and quit) didn't reproduce it. Every inspector control now logs its
-  commits (`log show --last 1h --predicate 'subsystem == "com.jhg.showtools"'`)
-  and skips no-op commits. If a value changes by itself again, that log
-  names the control.
 - **CPU** is about 33–37% while a show plays (60 fps Core Image redraw of
   stills). Idle previews now stop drawing. This needs work before Phase 5's
   always-on desktop.

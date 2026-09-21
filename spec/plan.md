@@ -205,7 +205,7 @@ slide A so that the transition joins them seamlessly.
   state. Below it is everything time-based: the transition in, Ken Burns,
   and animated Rotation. Jason counts animated rotation in that camp. The
   on-image handles edit the Transform; they never switch a motion effect on
-- **Onion skin.** While you frame slide B, slide A's **last frame** is drawn
+- **Onion skin** (built 2026-09-21, not for video slides yet). While you frame slide B, slide A's **last frame** is drawn
   semi-transparent over it (an opacity slider and a toggle). It's an editing
   aid only and never renders into the show. It shows A's end frame exactly as
   it plays, including Ken Burns and rotation
@@ -275,7 +275,9 @@ slide A so that the transition joins them seamlessly.
 - **Presets** set several effects at once. They're a starting point, not a
   separate effect type. **Flush** is the first one: accelerating rotation
   plus zoom and pan, "down the hole"
-- **Zoomable work area.** The framing editor and the preview can zoom out
+- **Zoomable work area** (built 2026-09-21: a zoom menu and pinch on the
+  Edit Show preview; the image is dimmed where it hangs past the frame).
+  The framing editor and the preview can zoom out
   past the frame (a pasteboard around it), so an image that is rotated,
   shrunk or pushed off-centre can be seen hanging past the frame's edges,
   corners included. The frame edge stays marked

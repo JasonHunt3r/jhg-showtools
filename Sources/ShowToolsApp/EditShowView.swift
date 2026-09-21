@@ -106,21 +106,34 @@ struct PreviewStage: View {
     @State private var hovering = false
     /// The slide whose image is selected in the picture, for its handles.
     @State private var imageSlideID: Int64?
+    /// The work area's zoom: 1 fits the picture; below 1 leaves room round
+    /// it to see and grab an image that hangs past the frame.
+    @AppStorage("workZoom") private var workZoom: Double = 1
+    @State private var pinchStart: Double?
+    /// The previous slide's last frame over the selected image.
+    @AppStorage("onionSkin") private var onionOn = true
+    @AppStorage("onionOpacity") private var onionOpacity: Double = 0.5
+
+    private var stage: ShowCanvas.Stage {
+        ShowCanvas.Stage(zoom: CGFloat(workZoom), onionSlideID: onionOn ? imageSlideID : nil,
+                         onionOpacity: onionOpacity)
+    }
 
     var body: some View {
         ZStack {
             Color.black
-            ShowCanvasView(engine: engine)
-                .aspectRatio(outputAspect, contentMode: .fit)
-                .overlay(alignment: .bottom) { SlideProgress(engine: engine) }
+            // The canvas fills the stage: it draws the pasteboard round the
+            // picture itself (see PlaybackEngine.stageImage).
+            ShowCanvasView(engine: engine, stage: stage)
             // Over the whole stage, so handles past the picture's edge show.
             GeometryReader { g in
-                TransformOverlay(engine: engine, frame: Self.fitted(in: g.size),
+                TransformOverlay(engine: engine, frame: Self.pictureRect(in: g.size, zoom: CGFloat(workZoom)),
                                  imageSlideID: $imageSlideID, selection: $selection, mutate: mutate)
             }
             // The buttons sit above the handles so they stay clickable.
             Color.clear
                 .aspectRatio(outputAspect, contentMode: .fit)
+                .overlay(alignment: .bottom) { SlideProgress(engine: engine) }
                 .overlay(alignment: .bottomLeading) {
                     Button { engine.togglePlay() } label: {
                         HStack(spacing: 6) {
@@ -149,8 +162,21 @@ struct PreviewStage: View {
                     .opacity(hovering ? 1 : 0)
                     .help("Pop out the preview into its own window, e.g. for another screen")
                 }
+                .overlay(alignment: .topLeading) {
+                    workControls
+                        .padding(10)
+                        .opacity(hovering || imageSlideID != nil || workZoom < 1 ? 1 : 0)
+                        .animation(.easeInOut(duration: 0.25), value: hovering)
+                }
         }
         .onHover { hovering = $0 }
+        .simultaneousGesture(MagnifyGesture()
+            .onChanged { v in
+                let start = pinchStart ?? workZoom
+                pinchStart = start
+                workZoom = min(max(start * v.magnification, 0.2), 1)
+            }
+            .onEnded { _ in pinchStart = nil })
         .task {
             // Dev hook: SHOWTOOLS_DEV_IMAGE=1 selects the selected slide's
             // image at launch, so its handles can be screenshotted.
@@ -160,11 +186,47 @@ struct PreviewStage: View {
         }
     }
 
-    /// The picture's rect in a stage of `size`: the same aspect fit the
-    /// canvas gets.
-    static func fitted(in size: CGSize) -> CGRect {
+    /// Zoom (Fit, or smaller to see past the frame) and the onion skin.
+    private var workControls: some View {
+        HStack(spacing: 10) {
+            Menu {
+                Button("Fit") { workZoom = 1 }
+                ForEach([0.75, 0.5, 0.33, 0.25], id: \.self) { z in
+                    Button("\(Int(z * 100))%") { workZoom = z }
+                }
+            } label: {
+                Text(workZoom >= 1 ? "Fit" : "\(Int((workZoom * 100).rounded()))%")
+                    .monospacedDigit()
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .help("Zoom out to see and grab an image past the frame's edge (or pinch)")
+
+            Toggle(isOn: $onionOn) { Image(systemName: "square.on.square.dashed") }
+                .toggleStyle(.button)
+                .buttonStyle(.plain)
+                .foregroundStyle(onionOn ? .white : .white.opacity(0.45))
+                .help("Onion skin: with an image selected, show the previous slide's last frame over it")
+            if onionOn {
+                Slider(value: $onionOpacity, in: 0.1...0.9)
+                    .frame(width: 80)
+                    .help("Onion skin opacity")
+            }
+        }
+        .font(.caption.weight(.semibold))
+        .padding(.horizontal, 10).padding(.vertical, 5)
+        .background(.black.opacity(0.55), in: Capsule())
+        .foregroundStyle(.white)
+        .onChange(of: workZoom) { engine.touch() }
+    }
+
+    /// The picture's rect in a stage of `size`: fitted to it, then scaled
+    /// by the work area's zoom about the centre. The engine draws with the
+    /// same rect (in pixels), so the handles line up with the picture.
+    static func pictureRect(in size: CGSize, zoom: CGFloat) -> CGRect {
         guard size.width > 0, size.height > 0 else { return .zero }
-        let w = min(size.width, size.height * outputAspect)
+        let z = min(max(zoom, 0.05), 1)
+        let w = min(size.width, size.height * outputAspect) * z
         let h = w / outputAspect
         return CGRect(x: (size.width - w) / 2, y: (size.height - h) / 2, width: w, height: h)
     }

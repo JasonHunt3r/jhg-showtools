@@ -19,9 +19,8 @@ public enum Compositor {
             guard let img = source(layer) else { return black }
             let c = layer.slide.background
             let ground = CIImage(color: CIColor(red: c.red, green: c.green, blue: c.blue)).cropped(to: out)
-            let spin = layer.slide.rotation == nil ? nil : (angle: layer.rotationAngle, pivot: layer.rotationPivot)
             return placed(img, fit: layer.slide.fit, kb: layer.kenBurnsFrame,
-                          transform: layer.slide.transform, spin: spin, in: size)
+                          transform: layer.slide.transform, spin: layer.spin, in: size)
                 .composited(over: ground)
         }
 
@@ -95,6 +94,13 @@ public enum Compositor {
         else { return image }
         return image.transformed(by: m)
             .cropped(to: CGRect(origin: .zero, size: size))
+    }
+
+    /// A layer's placement now, for an image with this extent.
+    public static func placement(for layer: Layer, imageExtent: CGRect,
+                                 outputSize: CGSize) -> CGAffineTransform? {
+        placement(imageExtent: imageExtent, fit: layer.slide.fit, kb: layer.kenBurnsFrame,
+                  transform: layer.slide.transform, spin: layer.spin, outputSize: outputSize)
     }
 
     /// Image pixels (Core Image coordinates) → output pixels. Nil for an
