@@ -78,7 +78,11 @@ struct ImagesRow: View {
         .sheet(item: $placing) { request in
             LibraryPicker { item in
                 placing = nil
-                if let item { place([item.id], at: request.time) }
+                // Like a drop: a file from outside the show's collection
+                // joins it, after asking.
+                if let item, model.bringIntoCollection([item.id], forShow: show.id) {
+                    place([item.id], at: request.time)
+                }
             }
         }
         .help(timeline.overlays.isEmpty
@@ -98,11 +102,12 @@ struct ImagesRow: View {
         mutate(itemIDs.count == 1 ? "Place Image" : "Place Images") { s in
             var at = t
             for id in itemIDs {
-                guard model.itemsByID[id]?.kind != .video,          // no video in the lane yet
-                      var clip = OverlayPlacement.place(itemID: id, at: at, length: Self.newLength,
+                // No video in the lane yet: skip it, and place the rest.
+                guard model.itemsByID[id]?.kind != .video else { continue }
+                guard var clip = OverlayPlacement.place(itemID: id, at: at, length: Self.newLength,
                                                         in: s.overlays, duration: timeline.duration,
                                                         shortest: Self.shortest)
-                else { break }
+                else { break }                                      // no room left
                 // Half size, centred: visibly over the picture, and easy to grab.
                 clip.transform.scale = 0.5
                 s.overlays.append(clip)

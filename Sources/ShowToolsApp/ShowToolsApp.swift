@@ -46,7 +46,7 @@ struct AppCommands: Commands {
             Menu("Open Recent Library") {
                 ForEach(model.recentLibraries, id: \.self) { url in
                     Button(url.deletingPathExtension().lastPathComponent) {
-                        Task { await model.openLibrary(at: url) }
+                        Task { await model.openRecent(url) }
                     }
                 }
                 if !model.recentLibraries.isEmpty { Divider() }

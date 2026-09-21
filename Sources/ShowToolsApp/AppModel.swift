@@ -102,6 +102,22 @@ final class AppModel {
         switchTo(lib)
     }
 
+    /// Open Recent: only a library that's still there. Opening a path
+    /// creates a library at it, so a deleted or moved one would otherwise
+    /// come back empty; instead it says so and leaves the menu.
+    func openRecent(_ url: URL) async {
+        guard FileManager.default.fileExists(atPath: url.appendingPathComponent("Library.sqlite").path) else {
+            forgetRecent(url)
+            let alert = NSAlert()
+            alert.messageText = "“\(url.deletingPathExtension().lastPathComponent)” isn't there any more."
+            alert.informativeText = "It may have been moved, renamed or deleted: \(url.path). "
+                + "It's been taken off Open Recent. Use File ▸ Open Library… to find it."
+            alert.runModal()
+            return
+        }
+        await openLibrary(at: url)
+    }
+
     func unlock() async {
         guard let lib = locked, await DeviceOwner.confirm("open the private library “\(lib.name)”") else { return }
         switchTo(lib)
