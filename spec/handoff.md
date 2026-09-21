@@ -41,6 +41,24 @@ Built this session (2026-09-21, day two):
 - **Inspector:** the slide, then **Effects** with a display-only timeline of what acts when.
 - **Frame strip:** rendered frames of the finished picture under the picture, in the viewer column only, sized by a grabbable bar; follows the storyline or shows the whole show; ⌥⌘F.
 
+### Audit, 2026-09-21 (overnight, then fixed)
+
+A full audit ran while Jason slept: build and tests, a read of every file,
+dead code, real-library safety, and docs against code. Findings and fixes
+are in `spec/audit-2026-09-21.md`. Everything it found is fixed, in seven
+commits after `2cbfce3`:
+- **High:** undo steps replayed into another library after a switch (ids
+  restart at 1 in each); the grid kept the old library's thumbnails after a switch.
+- **Medium:** short slides let two transitions overlap (measured); imports
+  could run at once, and a failed one left a stray copy in `Media/`;
+  J/K/L/space/⇧Z could eat typing in text fields; the show name saved on
+  every keystroke.
+- **Safety:** a launch with a dev variable but no `SHOWTOOLS_LIBRARY` now
+  opens nothing; a library's database is backed up (`Library.sqlite.v<N>.bak`)
+  before any upgrade.
+- **Low:** nine edge cases, and `KenBurnsFrame`, `ImagePoint` and `SRGBColor`
+  now decode field by field. CLAUDE.md gained the rules that go with these.
+
 Library schema is now **version 5**: 2 ratings, 3 overlays, 4 collections, 5 library settings. Every upgrade is additive and tested by opening the previous version. The master library upgrades itself the first time this build opens it.
 
 ### Confirmed by Jason this session
@@ -53,6 +71,12 @@ Library schema is now **version 5**: 2 ratings, 3 overlays, 4 collections, 5 lib
 ### Built but not yet tried by hand
 Everything below has only been seen in screenshots, or not at all where it
 needs a mouse. Grouped so a test pass can go area by area:
+- **Audit fixes:** the short checks at the end of `spec/audit-2026-09-21.md`
+  (undo after switching libraries, thumbnails after switching, a second
+  drop during an import, typing "jelly" and a space into the browser's
+  Search, renaming a show, Open Recent on a moved library, Place Image
+  Here… from outside the collection, a drop with a video in it, the trim
+  cursor)
 - **Handles and keys:** the cursor for each zone, corner scale with and without Option, Shift-snapped rotation, dragging the anchor, the arrow keys, ⌘Z undoing one drag or one run of nudges
 - **Work area and onion skin:** the zoom menu and pinch, grabbing handles out in the margin, the onion toggle and its opacity
 - **Rotation mode:** the Transform/Rotation switch, dragging each arm (going round twice should give 720°), Speed mode's red arm, the pivots locked and unlocked
@@ -68,7 +92,7 @@ needs a mouse. Grouped so a test pass can go area by area:
 
 ## Next
 
-1. **Suggested: a hands-on pass with Jason's own photos**, in a separate library (File ▸ New Library…) so the master isn't touched. It works through the list above and sets up the parked stickiness question.
+1. **Suggested: a hands-on pass with Jason's own photos**, in a separate library (File ▸ New Library…) so the master isn't used. It works through the list above, audit checks first, and sets up the parked stickiness question.
 2. **The rest of 2b:**
    - Delete the Photos way (Delete asks, ⌘Delete trashes, ⌘Z restores)
    - Finder-style batch rename
@@ -80,7 +104,7 @@ needs a mouse. Grouped so a test pass can go area by area:
 ## How to work on it
 
 ```sh
-swift test                                  # 70 core tests
+swift test                                  # 77 core tests
 ./make-app.sh                               # → build/ShowTools.app
 tools/make-test-library.sh /tmp/STTest      # scratch library + generated media
 open -n --env SHOWTOOLS_LIBRARY=/tmp/STTest/TestLib.noindex build/ShowTools.app
