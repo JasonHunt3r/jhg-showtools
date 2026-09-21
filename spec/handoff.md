@@ -76,6 +76,12 @@ screenshots:
   (deleting a collection warns how many shows go with it); dropping files
   on a collection; in a grid, New Collection from Items, Add to
   Collection, Remove from Collection
+- **Collection Browser (2026-09-21):** checked by screenshot (bar, rows,
+  orange used-lines, stars). Try: the arrow opening and closing the
+  inspector; search; the filter menu (in / not in this show, minimum
+  stars); E, W and Q with files selected (append; insert at the nearest
+  join; place in the images row at the playhead) and their right-click
+  equivalents
 - **Soft-at-this-zoom warning (2026-09-21):** checked by screenshot; the
   flags on the test library are all correct for a 2560×1664 screen
 

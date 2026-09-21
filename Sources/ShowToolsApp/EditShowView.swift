@@ -31,9 +31,8 @@ struct EditShowView: View {
                         preview: PreviewStage(engine: engine, title: show.name,
                                               selection: $selection, selectedTransition: $selectedTransition,
                                               selectedOverlay: $selectedOverlay, mutate: mutate),
-                        list: OrderList(show: show, timeline: timeline, engine: engine,
-                                        selection: $selection, mutate: mutate,
-                                        toggleInspector: { inspectorShown.toggle() }),
+                        list: CollectionBrowser(show: show, timeline: timeline, engine: engine,
+                                                mutate: mutate, inspectorShown: $inspectorShown),
                         inspector: SlideInspector(show: show, timeline: timeline, selection: selection,
                                                   mutate: mutate))
                         .frame(minHeight: 220)
@@ -497,68 +496,3 @@ func formatClock(_ s: Double) -> String {
     return String(format: "%d:%04.1f", m, t - Double(m * 60))
 }
 
-// MARK: - Order list
-
-/// The same order as the storyline, as a list of names: drag to reorder.
-struct OrderList: View {
-    let show: Show
-    let timeline: ShowTimeline
-    let engine: PlaybackEngine
-    @Binding var selection: Set<Int64>
-    let mutate: ShowMutator
-    let toggleInspector: () -> Void
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        let resolved = Dictionary(timeline.slides.map { ($0.slide.id, $0) }, uniquingKeysWith: { a, _ in a })
-        let screen = outputPixelSize
-        List(selection: $selection) {
-            ForEach(Array(show.slides.enumerated()), id: \.element.id) { i, slide in
-                if let item = model.itemsByID[slide.itemID] {
-                    HStack(spacing: 8) {
-                        Text("\(i + 1)")
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .frame(width: 26, alignment: .trailing)
-                        // True proportions here too, in a fixed box.
-                        let aspect = CGFloat(item.pixelWidth) / CGFloat(max(item.pixelHeight, 1))
-                        ThumbnailView(item: item, url: model.url(for: item))
-                            .frame(width: aspect >= 1 ? 40 : 30 * aspect, height: aspect >= 1 ? 40 / aspect : 30)
-                            .clipShape(RoundedRectangle(cornerRadius: 2))
-                            .frame(width: 40, height: 30)
-                            // On the thumbnail, so it costs the name no width.
-                            .overlay(alignment: .topTrailing) {
-                                if let m = resolved[slide.id]?.peakMagnification(outputSize: screen),
-                                   m > ResolvedSlide.softAbove {
-                                    SoftBadge(magnification: m)
-                                        .font(.system(size: 9))
-                                        .shadow(color: .black.opacity(0.7), radius: 1)
-                                        .offset(x: 3, y: -3)
-                                }
-                            }
-                        Text(item.fileName)
-                            .lineLimit(1).truncationMode(.middle)
-                            .fontWeight(i == engine.currentIndex ? .semibold : .regular)
-                    }
-                    .tag(slide.id)
-                }
-            }
-            .onMove { from, to in
-                mutate("Move Slides") { $0.slides.move(fromOffsets: from, toOffset: to) }
-            }
-        }
-        .contextMenu(forSelectionType: Int64.self) { ids in
-            Button("Duplicate") { SlideActions.duplicate(ids, mutate: mutate) }
-            Button("Remove from Show") { SlideActions.remove(ids, selection: $selection, mutate: mutate) }
-        } primaryAction: { ids in
-            // Double-click: show it, and open the inspector — or close it
-            // if it's already open.
-            if let id = ids.first { engine.showSlide(id: id) }
-            toggleInspector()
-        }
-        .onChange(of: selection) { _, ids in
-            // Picking one slide in the list shows it in the preview.
-            if ids.count == 1, let id = ids.first, !engine.isPlaying { engine.showSlide(id: id) }
-        }
-    }
-}
