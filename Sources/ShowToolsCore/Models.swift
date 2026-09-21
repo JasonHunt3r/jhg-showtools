@@ -204,6 +204,9 @@ public struct SlideSettings: Codable, Hashable, Sendable {
     /// Seconds into a video (or animation) where this slide starts playing
     /// it — set by trimming the front of its block. Nil means the beginning.
     public var clipStart: Double?
+    /// The still placement on top of fit. Nil is the identity; there's no
+    /// show-wide default for it.
+    public var transform: Transform?
     /// What shows wherever the image doesn't cover the frame.
     public var background: RGBColor?
     /// Nil means no rotation. There's no show-wide default for it.
@@ -211,12 +214,14 @@ public struct SlideSettings: Codable, Hashable, Sendable {
 
     public init(length: SlideLength? = nil, transition: Transition? = nil,
                 kenBurns: KenBurnsSetting? = nil, fit: Fit? = nil, clipStart: Double? = nil,
-                background: RGBColor? = nil, rotation: Rotation? = nil) {
+                transform: Transform? = nil, background: RGBColor? = nil,
+                rotation: Rotation? = nil) {
         self.length = length
         self.transition = transition
         self.kenBurns = kenBurns
         self.fit = fit
         self.clipStart = clipStart
+        self.transform = transform
         self.background = background
         self.rotation = rotation
     }
@@ -229,6 +234,7 @@ public struct SlideSettings: Codable, Hashable, Sendable {
         kenBurns = (try? c.decodeIfPresent(KenBurnsSetting.self, forKey: .kenBurns)) ?? nil
         fit = (try? c.decodeIfPresent(Fit.self, forKey: .fit)) ?? nil
         clipStart = (try? c.decodeIfPresent(Double.self, forKey: .clipStart)) ?? nil
+        transform = (try? c.decodeIfPresent(Transform.self, forKey: .transform)) ?? nil
         background = (try? c.decodeIfPresent(RGBColor.self, forKey: .background)) ?? nil
         rotation = (try? c.decodeIfPresent(Rotation.self, forKey: .rotation)) ?? nil
     }
@@ -255,7 +261,9 @@ public struct ShowDefaults: Codable, Hashable, Sendable {
     public var transition: Transition = .defaultDissolve
     /// Only `.off` and `.auto` make sense as a show-wide default.
     public var kenBurns: KenBurnsSetting = .off
-    public var fit: Fit = .fill
+    /// New shows fit the whole image in (changed from fill 2026-09-21).
+    /// Shows saved earlier stored their own value, so they keep it.
+    public var fit: Fit = .fit
     public var background: RGBColor = .black
     /// Video slides play their whole clip unless given a length.
     public var videoUsesClipLength: Bool = true

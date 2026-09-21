@@ -97,7 +97,8 @@ keeps its own settings. Each **Slide** has:
 | length      | *inherit default*, or a specific value. Video can also be "clip length" |
 | transition  | style, duration and direction for the transition *into* this slide. *Inherit default* is allowed |
 | Ken Burns   | off, or a start frame and end frame (position and zoom), plus easing |
-| fit         | fill / fit / stretch |
+| fit         | fill / fit / stretch. New shows default to **fit** (changed from fill 2026-09-21) |
+| transform   | the still placement on top of fit: offset, scale, rotation, anchor (Final Cut's Transform). Always there; the identity leaves the image where fit puts it (added 2026-09-21) |
 
 Every field that can inherit does so until it's overridden. Changing the show's
 default updates every slide that hasn't been given its own value.
@@ -192,10 +193,13 @@ for ripping through slides and their details.
 The main reason for this phase is **match cuts**: lining slide B up against
 slide A so that the transition joins them seamlessly.
 
-- **Free framing.** Zoom can go below 1× (today it is held between 1× and 6×),
-  and the image can be moved past its own edges (today `clampCentre` stops
-  that). Wherever the image doesn't cover the frame, a **background colour**
-  set on the slide shows through
+- **Transform (always on, Final Cut's model; settled 2026-09-21).** Every
+  slide has a still placement on top of its fit: offset, scale, rotation,
+  and an anchor point. It's where a match-cut nudge or a rotated still lives,
+  so placing an image never depends on a motion effect being on. Scale can
+  go below 1× and the image can hang past the frame's edges. Wherever the
+  image doesn't cover the frame, a **background colour** set on the slide
+  shows through. Ken Burns and Rotation add motion on top of the Transform
 - **Onion skin.** While you frame slide B, slide A's **last frame** is drawn
   semi-transparent over it (an opacity slider and a toggle). It's an editing
   aid only and never renders into the show. It shows A's end frame exactly as

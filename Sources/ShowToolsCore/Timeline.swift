@@ -14,6 +14,7 @@ public struct ResolvedSlide: Sendable {
     public let transitionIn: Transition
     public let kenBurns: KenBurns?
     public let fit: Fit
+    public let transform: Transform
     /// Nil when the slide has no rotation or its checkbox is off.
     public let rotation: Rotation?
     public let background: RGBColor
@@ -154,6 +155,7 @@ public struct ShowTimeline: Sendable {
                 index: i, slide: slide, item: item, start: t, length: lengths[i],
                 transitionIn: transition, kenBurns: kb,
                 fit: slide.settings.fit ?? d.fit,
+                transform: slide.settings.transform ?? .identity,
                 rotation: slide.settings.rotation.flatMap { $0.enabled ? $0 : nil },
                 background: slide.settings.background ?? d.background,
                 clipStart: item.kind == .image ? 0 : max(slide.settings.clipStart ?? 0, 0),

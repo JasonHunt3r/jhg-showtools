@@ -217,3 +217,24 @@ extension EffectsTests {
         XCTAssertGreaterThan(l.rotationAngle, 0)   // moving, not held
     }
 }
+
+extension EffectsTests {
+    func testNewShowsFitButSavedShowsKeepTheirFit() throws {
+        XCTAssertEqual(ShowDefaults().fit, .fit)
+        // Every earlier save wrote its fit, and the old default was fill.
+        let old = try JSONDecoder().decode(ShowDefaults.self, from: Data(#"{"fit":"fill","length":5}"#.utf8))
+        XCTAssertEqual(old.fit, .fill)
+    }
+
+    func testTransformDefaultsToIdentityAndSurvivesABadField() throws {
+        let tl = twoSlides(SlideSettings(length: .seconds(4)))
+        guard case .still(let l) = tl.frame(at: 1) else { return XCTFail() }
+        XCTAssertEqual(l.slide.transform, .identity)
+
+        let t = try JSONDecoder().decode(Transform.self,
+            from: Data(#"{"offsetX":0.1,"scale":"big","rotation":12}"#.utf8))
+        XCTAssertEqual(t.offsetX, 0.1)
+        XCTAssertEqual(t.scale, 1)
+        XCTAssertEqual(t.rotation, 12)
+    }
+}

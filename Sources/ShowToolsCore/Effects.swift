@@ -44,6 +44,41 @@ public struct ImagePoint: Codable, Hashable, Sendable {
     public static let centre = ImagePoint(x: 0.5, y: 0.5)
 }
 
+/// Where a slide's image sits when nothing is moving it (Final Cut's
+/// Transform). Applied on top of the slide's fit; the motion effects add to
+/// it. The identity leaves the image exactly where fit puts it, so every
+/// slide has a placement without any effect switched on.
+public struct Transform: Codable, Hashable, Sendable {
+    /// Shift from where fit puts it, as a fraction of the frame's width and
+    /// height (0.1 = a tenth of the frame to the right / down).
+    public var offsetX: Double = 0
+    public var offsetY: Double = 0
+    /// 1 = as fitted. Below 1 the background shows round it.
+    public var scale: Double = 1
+    /// Degrees, clockwise.
+    public var rotation: Double = 0
+    /// What scale and rotation turn around, pinned to the image.
+    public var anchor: ImagePoint = .centre
+
+    public init() {}
+
+    public static let identity = Transform()
+
+    /// Field by field, for the same reason as `ShowDefaults`.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func get<T: Decodable>(_ k: CodingKeys, _ fallback: T) -> T {
+            ((try? c.decodeIfPresent(T.self, forKey: k)) ?? nil) ?? fallback
+        }
+        let d = Transform()
+        offsetX = get(.offsetX, d.offsetX)
+        offsetY = get(.offsetY, d.offsetY)
+        scale = get(.scale, d.scale)
+        rotation = get(.rotation, d.rotation)
+        anchor = get(.anchor, d.anchor)
+    }
+}
+
 /// A spin, with Ken Burns or on its own.
 public struct Rotation: Codable, Hashable, Sendable {
     public enum Mode: String, Codable, CaseIterable, Sendable {
