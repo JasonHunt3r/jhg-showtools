@@ -378,9 +378,22 @@ way Final Cut is (Library → Event → Project), with ShowTools' own names:
 The rest of 2b below (browsing, delete, rename, Info, relink) then applies
 to the Collection Browser and the library.
 
-Open (asked 2026-09-21): what the browser's expand arrow opens; and whether
-an alternate library replaces the open one (one at a time) or opens beside
-it.
+- **The browser's bar:** its arrow opens the **inspector column**; the bar
+  also holds the **search field and filtering tools** for the list.
+- **Libraries switch, one at a time** (as Photos does): File ▸ Open
+  Library…, New Library…, and **Open Recent**. The app always starts on the
+  master library.
+- **Private libraries:** a library can be marked private. A private library
+  is **left out of Open Recent**, is **never reopened automatically**, and
+  opening it asks for **Touch ID or the Mac's login password**
+  (LocalAuthentication's device-owner check). The mark lives in the library
+  itself, so it holds wherever the library is opened from. Turning it off
+  asks too. ShowTools must leave no copies or previews of a private
+  library's photos outside its folder (thumbnail caches included).
+  **Limit, told to Jason:** this guards the door in ShowTools only; the
+  files are still ordinary files to anyone using the Mac account. Real
+  locking means keeping that library in an encrypted disk image, with
+  ShowTools as a second lock.
 - Browse the whole library: thumbnail grid, sort and filter (type, date, size,
   "not in any show")
 - **Delete** follows the Photos convention:
