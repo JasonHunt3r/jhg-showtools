@@ -31,6 +31,21 @@ public struct Layer: Sendable {
     public let slide: ResolvedSlide
     /// Seconds since this slide's `start` (its transition in began).
     public let localTime: Double
+    /// Seconds of transition that actually play into and out of this slide
+    /// on this pass. They can be 0 where the slide's own settings say
+    /// otherwise: the first slide on the first pass has nothing to come in
+    /// from, a show that doesn't loop has nothing after its last slide, and
+    /// a one-slide show has no transitions at all.
+    public let transitionInPlays: Double
+    public let transitionOutPlays: Double
+
+    public init(slide: ResolvedSlide, localTime: Double,
+                transitionInPlays: Double, transitionOutPlays: Double) {
+        self.slide = slide
+        self.localTime = localTime
+        self.transitionInPlays = transitionInPlays
+        self.transitionOutPlays = transitionOutPlays
+    }
 
     /// 0…1 through the Ken Burns move, which spans everything visible.
     public var kenBurnsProgress: Double {
@@ -40,7 +55,7 @@ public struct Layer: Sendable {
     /// Seconds an effect moves for. Frozen, that's only the time the slide
     /// is on screen alone: after its transition in, before its transition out.
     public func motionSpan(frozen: Bool) -> Double {
-        frozen ? max(slide.length - slide.transitionIn.duration, 0) : slide.visibleSpan
+        frozen ? max(slide.visibleSpan - transitionInPlays - transitionOutPlays, 0) : slide.visibleSpan
     }
 
     /// 0…1 through an effect's move; see `motionSpan`. Frozen, it holds 0
@@ -48,7 +63,7 @@ public struct Layer: Sendable {
     public func motionProgress(frozen: Bool) -> Double {
         guard frozen else { return kenBurnsProgress }
         let span = motionSpan(frozen: true)
-        let t = localTime - slide.transitionIn.duration
+        let t = localTime - transitionInPlays
         guard span > 0 else { return t < 0 ? 0 : 1 }
         return min(max(t / span, 0), 1)
     }
@@ -198,12 +213,27 @@ public struct ShowTimeline: Sendable {
             // The previous slide's clock keeps running past its own end.
             let prevLocal = i > 0 ? local - prev.start : local + duration - prev.start
             return .transition(
-                from: Layer(slide: prev, localTime: prevLocal),
-                to: Layer(slide: cur, localTime: into),
+                from: layer(prevIndex, localTime: prevLocal, at: t),
+                to: layer(i, localTime: into, at: t),
                 style: cur.transitionIn,
                 progress: into / d)
         }
-        return .still(Layer(slide: cur, localTime: into))
+        return .still(layer(i, localTime: into, at: t))
+    }
+
+    /// Slide `i` at show time `t`, knowing which of its transitions play on
+    /// this pass (the rules `frame(at:)` draws by).
+    func layer(_ i: Int, localTime: Double, at t: Double) -> Layer {
+        let s = slides[i]
+        let multiple = slides.count > 1
+        // Into slide 0 only once the show has wrapped. `t` is still in the
+        // pass that ends with the wrap when i is the outgoing last slide, but
+        // slide 0 is never the outgoing one there, so this holds for both.
+        let inPlays = multiple && (i > 0 || (loops && t >= duration))
+        let outPlays = multiple && (i < slides.count - 1 || loops)
+        return Layer(slide: s, localTime: localTime,
+                     transitionInPlays: inPlays ? s.transitionIn.duration : 0,
+                     transitionOutPlays: outPlays ? s.visibleSpan - s.length : 0)
     }
 
     /// The time at which slide `i` is fully on screen (its transition done).

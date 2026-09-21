@@ -133,13 +133,14 @@ extension EffectsTests {
 }
 
 extension EffectsTests {
-    /// Two 4s slides joined by a 1s dissolve: B starts at 4 and the dissolve runs
-    /// 4…5. A is first in a show that doesn't loop, but still has its 1s
-    /// transition-in on the books, so frozen it moves 1…4.
-    func twoSlides(_ a: SlideSettings, _ b: SlideSettings = SlideSettings()) -> ShowTimeline {
+    /// Two 4s slides joined by a 1s dissolve: B starts at 4 and the dissolve
+    /// runs 4…5. A is first, so on the first pass nothing dissolves into it
+    /// and, frozen, it moves 0…4.
+    func twoSlides(_ a: SlideSettings, _ b: SlideSettings = SlideSettings(),
+                   loop: Bool = false) -> ShowTimeline {
         var show = Show(id: 1, name: "t")
         show.defaults.transition = Transition(style: .dissolve, duration: 1)
-        show.defaults.loop = false
+        show.defaults.loop = loop
         show.slides = [Slide(id: 1, itemID: 1, settings: a), Slide(id: 2, itemID: 2, settings: b)]
         let item = { (id: Int64) in MediaItem(id: id, relativePath: "\(id).jpg", hash: "h\(id)",
             kind: .image, pixelWidth: 100, pixelHeight: 100, duration: nil,
@@ -165,7 +166,7 @@ extension EffectsTests {
         XCTAssertEqual(outgoing(held, at: 4.0)!.rotationAngle, 90)
         XCTAssertEqual(outgoing(held, at: 4.5)!.rotationAngle, 90)
         // …and moving before it.
-        XCTAssertEqual(outgoing(held, at: 2.5)!.rotationAngle, 45, accuracy: 1e-9)
+        XCTAssertEqual(outgoing(held, at: 2.0)!.rotationAngle, 45, accuracy: 1e-9)
     }
 
     func testFreezeHoldsTheStartFrameThroughTheTransitionIn() {
@@ -178,5 +179,41 @@ extension EffectsTests {
         guard case .still(let b2) = tl.frame(at: 6.5) else { return XCTFail() }
         // B moves from 5 (dissolve over) to 8 (its own end; it's last, no transition out).
         XCTAssertEqual(b2.kenBurnsFrame.zoom, 1.5, accuracy: 1e-9)
+    }
+}
+
+extension EffectsTests {
+    func testFirstSlideOfALoopingShowStartsAtOnceThenHoldsAfterTheWrap() {
+        var r = Rotation(); r.endAngle = 90; r.freezeOnTransition = true
+        // Loops: A 0…4, B 4…8, then B dissolves back into A over 8…9.
+        let tl = twoSlides(SlideSettings(length: .seconds(4), rotation: r),
+                           SlideSettings(length: .seconds(4)), loop: true)
+        func a(at t: Double) -> Layer? {
+            switch tl.frame(at: t) {
+            case .still(let l): l.slide.index == 0 ? l : nil
+            case .transition(let from, let to, _, _): from.slide.index == 0 ? from : to.slide.index == 0 ? to : nil
+            case .empty: nil
+            }
+        }
+        // First pass: nothing comes in, so A turns from the very start.
+        // It holds its end over its dissolve out (4…5), so it moves 0…4.
+        XCTAssertEqual(a(at: 0)!.rotationAngle, 0)
+        XCTAssertEqual(a(at: 2)!.rotationAngle, 45, accuracy: 1e-9)
+        // After the wrap B dissolves into A (8…9): A holds its start…
+        XCTAssertEqual(a(at: 8.5)!.rotationAngle, 0)
+        // …then moves 9…12, so 10.5 is halfway.
+        XCTAssertEqual(a(at: 10.5)!.rotationAngle, 45, accuracy: 1e-9)
+    }
+
+    func testOneSlideShowHasNothingToFreezeFor() {
+        var r = Rotation(); r.endAngle = 90; r.freezeOnTransition = true
+        var show = Show(id: 1, name: "t")
+        show.defaults.transition = Transition(style: .dissolve, duration: 1)
+        show.slides = [Slide(id: 1, itemID: 1, settings: SlideSettings(length: .seconds(4), rotation: r))]
+        let item = MediaItem(id: 1, relativePath: "1.jpg", hash: "h", kind: .image, pixelWidth: 100,
+                             pixelHeight: 100, duration: nil, ingestedAt: Date(), sourcePath: "")
+        let tl = ShowTimeline(show: show, items: [1: item])
+        guard case .still(let l) = tl.frame(at: 0.5) else { return XCTFail() }
+        XCTAssertGreaterThan(l.rotationAngle, 0)   // moving, not held
     }
 }
