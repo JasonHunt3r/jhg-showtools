@@ -30,8 +30,14 @@ struct AppCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button("New Show") { model.newShow() }
                 .keyboardShortcut("n")
+                .disabled(model.collections.isEmpty)
+            Button("New Collection") { model.newCollection() }
+                .keyboardShortcut("n", modifiers: [.command, .option])
+            Divider()
             Button("Import…") { runImportPanel(model) }
                 .keyboardShortcut("i", modifiers: [.command, .shift])
+            Button("Add to Library…") { runImportPanel(model, intoCollection: false) }
+                .keyboardShortcut("i", modifiers: [.command, .shift, .option])
         }
 
         CommandMenu("Show") {

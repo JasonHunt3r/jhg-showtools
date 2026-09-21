@@ -374,6 +374,16 @@ way Final Cut is (Library → Event → Project), with ShowTools' own names:
   automatically"**, which is also where it's switched back off.
 - Existing shows (only the test show so far) go into one starting
   collection.
+- **Importing (Jason, 2026-09-21):** File ▸ **Import…** (⇧⌘I) puts files
+  into a collection: its panel has an "Import into:" menu (every
+  collection, New Collection, Library Only), starting on the collection
+  you're in. File ▸ **Add to Library…** (⌥⇧⌘I) imports into the library
+  only. File ▸ New Collection (⌥⌘N). Many files and whole folders at once.
+- **The Library view is a photo grid like Photos or Aperture:** a size
+  slider, a bar at the top with search, filters (kind, minimum stars, "Not
+  in Any Collection") and sort (date added, name, rating), Finder-style
+  multi-select, and selected files drag onto a collection or a show in the
+  sidebar. A collection's view is the same grid.
 
 The rest of 2b below (browsing, delete, rename, Info, relink) then applies
 to the Collection Browser and the library.

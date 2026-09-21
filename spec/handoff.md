@@ -94,6 +94,11 @@ screenshots:
   bringing up "…isn't in the collection … Add it?", its Cancel (nothing
   added), and "Always add without asking" switching on Settings ▸
   Collections ▸ "Add files to the collection automatically"
+- **Importing and the Library grid (2026-09-21):** checked by screenshot
+  (the bar). Try: File ▸ Import… with its "Import into:" menu (a
+  collection, New Collection, Library Only) and File ▸ Add to Library…;
+  the grid's search, filters (incl. Not in Any Collection) and sort;
+  dragging a multi-selection onto a collection and onto a show
 - **Soft-at-this-zoom warning (2026-09-21):** checked by screenshot; the
   flags on the test library are all correct for a 2560×1664 screen
 

@@ -207,23 +207,144 @@ struct ImportBanner: View {
 
 // MARK: - Library grid
 
-/// The library's files, or one collection's.
+/// The library's files, or one collection's, as a grid like Photos: a size
+/// slider in the toolbar, a bar at the top to search, filter and sort, and
+/// Finder-style selection. Selected files drag onto a collection or a show
+/// in the sidebar.
 struct LibraryGridView: View {
     /// Nil shows the whole library.
     var collectionID: Int64? = nil
     @Environment(AppModel.self) private var model
     @State private var selection: Set<Int64> = []
+    @State private var search = ""
+    @AppStorage("gridKind") private var kind: KindFilter = .all
+    @AppStorage("gridMinRating") private var minRating = 0
+    @AppStorage("gridUncollected") private var onlyUncollected = false
+    @AppStorage("gridSort") private var sort: SortOrder = .added
+
+    enum KindFilter: String, CaseIterable {
+        case all, stills, animations, videos
+        var title: String {
+            switch self {
+            case .all: "All Kinds"
+            case .stills: "Photos"
+            case .animations: "Animations"
+            case .videos: "Videos"
+            }
+        }
+        func matches(_ k: MediaKind) -> Bool {
+            switch self {
+            case .all: true
+            case .stills: k == .image
+            case .animations: k == .animatedImage
+            case .videos: k == .video
+            }
+        }
+    }
+
+    enum SortOrder: String, CaseIterable {
+        case added, addedNewest, name, rating
+        var title: String {
+            switch self {
+            case .added: "Date Added, Oldest First"
+            case .addedNewest: "Date Added, Newest First"
+            case .name: "Name"
+            case .rating: "Rating, Highest First"
+            }
+        }
+    }
     @State private var anchor: Int64?
     @State private var dropTargeted = false
     @AppStorage("gridTileSize") private var tileSize: Double = 150
 
     private var collection: MediaCollection? { collectionID.flatMap(model.collection) }
 
-    /// The files shown: the library's, or the collection's in the order they
-    /// were added.
-    private var visible: [MediaItem] {
+    /// Everything in view before the bar's search and filters: the library,
+    /// or the collection in the order its files were added.
+    private var all: [MediaItem] {
         guard let c = collection else { return model.items }
         return c.itemIDs.compactMap { model.itemsByID[$0] }
+    }
+
+    /// The files shown, searched, filtered and sorted.
+    private var visible: [MediaItem] {
+        let needle = search.trimmingCharacters(in: .whitespaces).lowercased()
+        let collected = onlyUncollected && collection == nil
+            ? Set(model.collections.flatMap(\.itemIDs)) : []
+        let shown = all.filter { item in
+            (needle.isEmpty || item.fileName.lowercased().contains(needle))
+                && kind.matches(item.kind)
+                && item.rating >= minRating
+                && !(onlyUncollected && collection == nil && collected.contains(item.id))
+        }
+        switch sort {
+        case .added: return shown
+        case .addedNewest: return shown.reversed()
+        case .name: return shown.sorted { $0.fileName.localizedStandardCompare($1.fileName) == .orderedAscending }
+        case .rating: return shown.sorted { $0.rating > $1.rating }
+        }
+    }
+
+    private var filtering: Bool {
+        kind != .all || minRating > 0 || (onlyUncollected && collection == nil)
+    }
+
+    /// Search, filters and sort, over the grid.
+    private var bar: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 4) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("Search", text: $search).textFieldStyle(.plain)
+                if !search.isEmpty {
+                    Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
+                        .buttonStyle(.borderless).foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 7).padding(.vertical, 4)
+            .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary.opacity(0.6)))
+            .frame(maxWidth: 260)
+
+            Menu {
+                Picker("Kind", selection: $kind) {
+                    ForEach(KindFilter.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.inline)
+                Picker("Rating", selection: $minRating) {
+                    Text("Any Rating").tag(0)
+                    ForEach(1...5, id: \.self) { n in
+                        Text(String(repeating: "★", count: n) + (n < 5 ? " or more" : "")).tag(n)
+                    }
+                }
+                .pickerStyle(.inline)
+                if collection == nil {
+                    Divider()
+                    Toggle("Not in Any Collection", isOn: $onlyUncollected)
+                }
+            } label: {
+                Label("Filter", systemImage: filtering ? "line.3.horizontal.decrease.circle.fill"
+                                                       : "line.3.horizontal.decrease.circle")
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .foregroundStyle(filtering ? Color.accentColor : .primary)
+
+            Menu {
+                Picker("Sort", selection: $sort) {
+                    ForEach(SortOrder.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.inline)
+            } label: {
+                Label("Sort", systemImage: "arrow.up.arrow.down")
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+
+            Spacer()
+            if visible.count != all.count {
+                Text("\(visible.count) of \(all.count)").foregroundStyle(.secondary).monospacedDigit()
+            }
+        }
+        .padding(.horizontal, 12).padding(.vertical, 8)
     }
 
     var body: some View {
@@ -243,7 +364,11 @@ struct LibraryGridView: View {
                     Button("Import…") { runImportPanel(model) }
                 }
             } else {
-                grid
+                VStack(spacing: 0) {
+                    bar
+                    Divider()
+                    grid
+                }
             }
         }
         .onDrop(of: droppableTypes, isTargeted: $dropTargeted) { providers in
@@ -303,6 +428,8 @@ struct LibraryGridView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { click(item.id) }
+        // A selected tile drags the whole selection; any other, just itself.
+        .onDrag { ItemDrag.provider(selection.contains(item.id) ? orderedSelection : [item.id]) }
         .contextMenu {
             let ids = selection.contains(item.id) ? orderedSelection : [item.id]
             Button("New Show from \(ids.count == 1 ? "Item" : "\(ids.count) Items")") {
@@ -375,17 +502,55 @@ struct LibraryGridView: View {
     }
 }
 
+/// File ▸ Import… (into a collection) and File ▸ Add to Library… (the
+/// library only). Many files and whole folders at once; folders are
+/// searched all the way down.
+///
+/// With `intoCollection`, the panel has an "Import into:" menu: every
+/// collection, New Collection, and Library Only, starting on the collection
+/// the sidebar is in (Library Only when the sidebar is on the Library).
 @MainActor
-func runImportPanel(_ model: AppModel) {
+func runImportPanel(_ model: AppModel, intoCollection: Bool = true) {
     let panel = NSOpenPanel()
     panel.allowsMultipleSelection = true
     panel.canChooseDirectories = true
     panel.canChooseFiles = true
     panel.allowedContentTypes = [.image, .movie, .folder]
-    panel.prompt = "Import"
+    panel.prompt = intoCollection ? "Import" : "Add to Library"
     panel.message = "Files are copied into the ShowTools library. Folders are searched for images and videos."
-    if panel.runModal() == .OK {
-        let urls = panel.urls
-        Task { await model.importFiles(urls) }
+
+    enum Target { static let newCollection = -1, libraryOnly = -2 }
+    var popup: NSPopUpButton?
+    if intoCollection {
+        let p = NSPopUpButton(frame: .zero, pullsDown: false)
+        for c in model.collections {
+            p.addItem(withTitle: c.name)
+            p.lastItem?.tag = Int(c.id)
+        }
+        p.menu?.addItem(.separator())
+        p.addItem(withTitle: "New Collection")
+        p.lastItem?.tag = Target.newCollection
+        p.addItem(withTitle: "Library Only")
+        p.lastItem?.tag = Target.libraryOnly
+        let start: Int = model.sidebar == .library ? Target.libraryOnly : Int(model.currentCollectionID ?? -2)
+        p.selectItem(withTag: start)
+        let label = NSTextField(labelWithString: "Import into:")
+        let stack = NSStackView(views: [label, p])
+        stack.edgeInsets = NSEdgeInsets(top: 10, left: 16, bottom: 10, right: 16)
+        panel.accessoryView = stack
+        panel.isAccessoryViewDisclosed = true
+        popup = p
+    }
+    guard panel.runModal() == .OK else { return }
+    let urls = panel.urls
+    let target = popup?.selectedTag() ?? Target.libraryOnly
+    Task {
+        let ids = await model.importFiles(urls)
+        guard !ids.isEmpty else { return }
+        switch target {
+        case Target.libraryOnly: break
+        case Target.newCollection: model.newCollection(itemIDs: ids)
+        default: model.addToCollection(ids, Int64(target))
+        }
     }
 }
