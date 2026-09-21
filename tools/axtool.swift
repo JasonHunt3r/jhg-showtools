@@ -10,6 +10,7 @@
 //   axtool menu <pid> <menu> <item>...   choose a menu item (by exact title;
 //                                        more titles walk into submenus)
 //   axtool menustate <pid> <menu> <item> an item's title and whether enabled
+//   axtool focused <pid>                 the element that has the keyboard
 //   axtool click <x> <y> [right|double]
 //   axtool drag <x1> <y1> <x2> <y2>
 //   axtool type <text>
@@ -52,13 +53,19 @@ func find(_ e: AXUIElement, _ text: String, _ wantRole: String?) -> AXUIElement?
     return nil
 }
 
+/// Exact titles, except the last, which may be a prefix ("Undo" finds
+/// "Undo Rename Show").
 func menuItem(_ app: AXUIElement, _ path: [String]) -> AXUIElement? {
     guard let bar = attr(app, kAXMenuBarAttribute) else { return nil }
     var here = bar as! AXUIElement
-    for title in path {
+    for (i, title) in path.enumerated() {
         // A menu bar item or menu item holds its items one level down, in an AXMenu.
         let pool = children(here).flatMap { role($0) == "AXMenu" ? children($0) : [$0] }
-        guard let next = pool.first(where: { attr($0, kAXTitleAttribute) as? String == title }) else { return nil }
+        let last = i == path.count - 1
+        guard let next = pool.first(where: {
+            guard let t = attr($0, kAXTitleAttribute) as? String else { return false }
+            return t == title || (last && t.hasPrefix(title))
+        }) else { return nil }
         here = next
     }
     return here
@@ -70,6 +77,8 @@ func post(_ type: CGEventType, _ p: CGPoint, _ button: CGMouseButton = .left, cl
     e?.post(tap: .cghidEventTap)
     usleep(40_000)
 }
+
+let source = CGEventSource(stateID: .privateState)
 
 let keyCodes: [String: CGKeyCode] = [
     "return": 36, "tab": 48, "space": 49, "delete": 51, "escape": 53,
@@ -91,8 +100,11 @@ func key(_ name: String, _ mods: String) {
         default: break
         }
     }
+    // Its own event source, and flags set on every event: posted with the
+    // system's combined state, a ⌘ from an earlier key could stick to the
+    // next ones and turn typing into shortcuts.
     for down in [true, false] {
-        let e = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)
+        let e = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down)
         e?.flags = flags
         e?.post(tap: .cghidEventTap)
         usleep(30_000)
@@ -103,7 +115,8 @@ func type(_ text: String) {
     for ch in text {
         let units = Array(String(ch).utf16)
         for down in [true, false] {
-            let e = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: down)
+            let e = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: down)
+            e?.flags = []
             e?.keyboardSetUnicodeString(stringLength: units.count, unicodeString: units)
             e?.post(tap: .cghidEventTap)
         }
@@ -128,6 +141,10 @@ case "menu":
 case "menustate":
     guard let item = menuItem(app(), Array(a[3...])) else { print("no such menu item"); exit(1) }
     print(attr(item, kAXTitleAttribute) ?? "", "enabled=\(attr(item, kAXEnabledAttribute) ?? "?" as AnyObject)")
+case "focused":
+    guard let e = attr(app(), kAXFocusedUIElementAttribute) else { print("nothing focused"); exit(1) }
+    let el = e as! AXUIElement
+    print(role(el), labels(el).first ?? "", frame(el).map { "\($0)" } ?? "")
 case "click":
     let p = CGPoint(x: Double(a[2])!, y: Double(a[3])!)
     let mode = a.count > 4 ? a[4] : ""
