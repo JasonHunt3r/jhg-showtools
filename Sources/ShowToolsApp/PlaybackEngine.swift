@@ -220,7 +220,7 @@ final class PlaybackEngine {
         let passStart = timeline.loops && timeline.duration > 0
             ? (clock.now / timeline.duration).rounded(.down) * timeline.duration : 0
         let s = timeline.slides[index]
-        seek(passStart + (clock.playing ? s.start : timeline.settledTime(of: index)))
+        seek(passStart + (clock.playing ? s.visibleStart : timeline.settledTime(of: index)))
     }
 
     /// Show a particular slide, fully on screen, and pause there.
@@ -325,7 +325,7 @@ final class PlaybackEngine {
         let prev = timeline.slides[i > 0 ? i - 1 : timeline.slides.count - 1]
         return Layer(slide: prev, localTime: prev.visibleSpan,
                      transitionInPlays: prev.transitionIn.duration,
-                     transitionOutPlays: prev.visibleSpan - prev.length)
+                     transitionOutPlays: prev.transitionOut)
     }
 
     func makeView() -> ShowCanvas {

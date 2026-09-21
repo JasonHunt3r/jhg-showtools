@@ -5,13 +5,14 @@ public struct ResolvedSlide: Sendable {
     public let index: Int
     public let slide: Slide
     public let item: MediaItem
-    /// When the transition into this slide begins.
+    /// The join where this slide's block begins on the storyline.
     public let start: Double
-    /// Seconds from `start` to the next slide's `start`. Includes this
-    /// slide's incoming transition.
+    /// Seconds from this join to the next: the slide's length as set.
     public let length: Double
-    /// Duration already clamped to fit between its neighbours.
-    public let transitionIn: Transition
+    /// Duration and lead already clamped to fit between its neighbours.
+    public internal(set) var transitionIn: Transition
+    /// Seconds of the transition out of this slide (the next one's in), or 0.
+    public internal(set) var transitionOut: Double = 0
     public let kenBurns: KenBurns?
     public let fit: Fit
     public let transform: Transform
@@ -20,11 +21,19 @@ public struct ResolvedSlide: Sendable {
     public let background: SRGBColor
     /// Seconds into the media where playback starts (video and animation).
     public let clipStart: Double
-    /// How long the slide is on screen in total: its own length plus the
-    /// transition out of it, during which it is still visible underneath.
+    /// How long the slide is on screen in total: from its transition in
+    /// beginning (`visibleStart`) to its transition out ending.
     public internal(set) var visibleSpan: Double
 
     public var end: Double { start + length }
+    /// When the transition into this slide begins: its lead before the join.
+    public var visibleStart: Double { start - transitionIn.lead }
+
+    /// Seconds an effect moves for; see `Layer.motionSpan`. Assumes both
+    /// transitions play, as they do mid-show.
+    public func motionSpan(frozen: Bool) -> Double {
+        frozen ? max(visibleSpan - transitionIn.duration - transitionOut, 0) : visibleSpan
+    }
 }
 
 /// One slide as it should appear at a moment.
@@ -168,11 +177,33 @@ public struct ShowTimeline: Sendable {
             t += lengths[i]
         }
 
+        // Leads: a transition can begin before its join, but only as far as
+        // the outgoing slide has room left after its own transition in has
+        // finished, so two transitions never overlap. Slide 0's lead (used
+        // when a show loops) is fitted after the last slide's, then slide 1
+        // is checked again against it.
+        func fitLead(_ i: Int) {
+            guard resolved.indices.contains(i) else { return }
+            let p = i > 0 ? i - 1 : resolved.count - 1
+            var tr = resolved[i].transitionIn
+            let room = i > 0 || show.defaults.loop
+                ? resolved[p].length - (resolved[p].transitionIn.duration - resolved[p].transitionIn.lead)
+                : 0
+            tr.lead = min(max(tr.lead, 0), tr.duration, max(room, 0))
+            resolved[i].transitionIn = tr
+        }
+        for i in resolved.indices.dropFirst() { fitLead(i) }
+        fitLead(0)
+        fitLead(1)
+
         // Each slide stays visible through the transition out of it.
         for i in resolved.indices {
             let next = i + 1 < resolved.count ? resolved[i + 1]
                      : (show.defaults.loop ? resolved.first : nil)
-            resolved[i].visibleSpan = resolved[i].length + (next?.transitionIn.duration ?? 0)
+            let out = next?.transitionIn
+            resolved[i].transitionOut = out?.duration ?? 0
+            resolved[i].visibleSpan = resolved[i].length + resolved[i].transitionIn.lead
+                - (out?.lead ?? 0) + (out?.duration ?? 0)
         }
 
         slides = resolved
@@ -204,21 +235,44 @@ public struct ShowTimeline: Sendable {
         return min(max(t, 0), duration - 1e-9)
     }
 
+    /// `t` is found in a slide's block (join to join). A transition can be
+    /// under way at either end of it: the one into this slide runs on past
+    /// its join, and the one out of it begins its lead before the next join.
+    /// Local times count from each slide's `visibleStart`.
     public func frame(at t: Double) -> FrameState {
         guard !slides.isEmpty else { return .empty }
         let local = wrap(t)
         let i = index(at: t)
+        let n = slides.count
         let cur = slides[i]
-        let into = local - cur.start
-        let d = cur.transitionIn.duration
 
-        // A transition into slide 0 only exists once the show has wrapped.
+        // The transition out of this slide, when it has already begun.
+        if n > 1, i + 1 < n || loops {
+            let ni = (i + 1) % n
+            let next = slides[ni]
+            let d = next.transitionIn.duration
+            let begins = (i + 1 < n ? next.start : duration) - next.transitionIn.lead
+            if d > 0, local >= begins {
+                let into = local - begins
+                return .transition(
+                    from: layer(i, localTime: local - cur.visibleStart, at: t),
+                    // Into slide 0 across the wrap: its transition does play.
+                    to: layer(ni, localTime: into, at: t, transitionInPlays: true),
+                    style: next.transitionIn,
+                    progress: into / d)
+            }
+        }
+
+        // The transition into this slide, still running. Into slide 0 only
+        // once the show has wrapped.
+        let into = local - cur.visibleStart
+        let d = cur.transitionIn.duration
         let hasPrevious = i > 0 || (loops && t >= duration)
-        if d > 0, into < d, hasPrevious, slides.count > 1 {
-            let prevIndex = i > 0 ? i - 1 : slides.count - 1
+        if n > 1, d > 0, into < d, hasPrevious {
+            let prevIndex = i > 0 ? i - 1 : n - 1
             let prev = slides[prevIndex]
             // The previous slide's clock keeps running past its own end.
-            let prevLocal = i > 0 ? local - prev.start : local + duration - prev.start
+            let prevLocal = i > 0 ? local - prev.visibleStart : local + duration - prev.visibleStart
             return .transition(
                 from: layer(prevIndex, localTime: prevLocal, at: t),
                 to: layer(i, localTime: into, at: t),
@@ -230,23 +284,22 @@ public struct ShowTimeline: Sendable {
 
     /// Slide `i` at show time `t`, knowing which of its transitions play on
     /// this pass (the rules `frame(at:)` draws by).
-    func layer(_ i: Int, localTime: Double, at t: Double) -> Layer {
+    func layer(_ i: Int, localTime: Double, at t: Double, transitionInPlays: Bool? = nil) -> Layer {
         let s = slides[i]
         let multiple = slides.count > 1
-        // Into slide 0 only once the show has wrapped. `t` is still in the
-        // pass that ends with the wrap when i is the outgoing last slide, but
-        // slide 0 is never the outgoing one there, so this holds for both.
-        let inPlays = multiple && (i > 0 || (loops && t >= duration))
+        // Into slide 0 only once the show has wrapped (or as the last slide
+        // hands over to it, which the caller says).
+        let inPlays = transitionInPlays ?? (multiple && (i > 0 || (loops && t >= duration)))
         let outPlays = multiple && (i < slides.count - 1 || loops)
         return Layer(slide: s, localTime: localTime,
                      transitionInPlays: inPlays ? s.transitionIn.duration : 0,
-                     transitionOutPlays: outPlays ? s.visibleSpan - s.length : 0)
+                     transitionOutPlays: outPlays ? s.transitionOut : 0)
     }
 
     /// The time at which slide `i` is fully on screen (its transition done).
     public func settledTime(of i: Int) -> Double {
         guard slides.indices.contains(i) else { return 0 }
-        return slides[i].start + slides[i].transitionIn.duration
+        return slides[i].visibleStart + slides[i].transitionIn.duration
     }
 
     // MARK: Auto Ken Burns
@@ -294,7 +347,7 @@ extension ResolvedSlide {
         for i in 0...20 {
             let layer = Layer(slide: self, localTime: visibleSpan * Double(i) / 20,
                               transitionInPlays: transitionIn.duration,
-                              transitionOutPlays: visibleSpan - length)
+                              transitionOutPlays: transitionOut)
             guard let m = Compositor.placement(for: layer, imageExtent: e, outputSize: outputSize) else { continue }
             peak = max(peak, Double(max(hypot(m.a, m.b), hypot(m.c, m.d))))
         }

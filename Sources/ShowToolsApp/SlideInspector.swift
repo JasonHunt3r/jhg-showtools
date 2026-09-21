@@ -321,9 +321,8 @@ struct SlideInspector: View {
     /// angle that Speed ends on, over the time this slide actually turns.
     private func rotationNote(_ slide: Slide, _ r: Rotation) -> String? {
         guard let rs = timeline.slides.first(where: { $0.slide.id == slide.id }) else { return nil }
-        // Frozen, it turns only while on screen alone: its length less the
-        // transition in (the transition out is outside its length already).
-        let span = r.freezeOnTransition ? max(rs.length - rs.transitionIn.duration, 0) : rs.visibleSpan
+        // Frozen, it turns only while on screen alone.
+        let span = rs.motionSpan(frozen: r.freezeOnTransition)
         guard span > 0 else { return nil }
         let secs = formatSeconds(span)
         switch r.mode {

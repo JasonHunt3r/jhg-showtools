@@ -405,3 +405,123 @@ final class SoftnessTests: XCTestCase {
         XCTAssertEqual(r.peakMagnification(outputSize: screen), 3, accuracy: 1e-9)
     }
 }
+
+// MARK: - Transition lead (Phase 2c)
+
+final class TransitionLeadTests: XCTestCase {
+    /// Two (or more) 4 s slides; every transition a 1 s dissolve with `lead`.
+    func timeline(lengths: [Double] = [4, 4], lead: Double, loop: Bool = false,
+                  settings: [SlideSettings]? = nil) -> ShowTimeline {
+        var show = Show(id: 1, name: "t")
+        show.defaults.transition = Transition(style: .dissolve, duration: 1, lead: lead)
+        show.defaults.loop = loop
+        show.defaults.kenBurns = .off
+        var items: [Int64: MediaItem] = [:]
+        for (i, l) in lengths.enumerated() {
+            let id = Int64(i + 1)
+            var s = settings?[i] ?? SlideSettings()
+            s.length = .seconds(l)
+            show.slides.append(Slide(id: id, itemID: id, settings: s))
+            items[id] = MediaItem(id: id, relativePath: "\(id).jpg", hash: "h\(id)", kind: .image,
+                                  pixelWidth: 100, pixelHeight: 100, duration: nil,
+                                  ingestedAt: Date(), sourcePath: "")
+        }
+        return ShowTimeline(show: show, items: items)
+    }
+
+    func describe(_ s: FrameState) -> String {
+        switch s {
+        case .empty: "empty"
+        case .still(let l): "still \(l.slide.index)"
+        case .transition(let a, let b, _, let p): "\(a.slide.index)→\(b.slide.index) \(String(format: "%.2f", p))"
+        }
+    }
+
+    func testTransitionsSavedBeforeLeadKeepTheirSettings() throws {
+        let t = try JSONDecoder().decode(Transition.self,
+            from: Data(#"{"style":"push","duration":2.5,"direction":"up"}"#.utf8))
+        XCTAssertEqual(t, Transition(style: .push, duration: 2.5, direction: .up, lead: 0))
+    }
+
+    func testLeadZeroStartsAtTheJoinAsBefore() {
+        let tl = timeline(lead: 0)
+        XCTAssertEqual(describe(tl.frame(at: 3.9)), "still 0")
+        XCTAssertEqual(describe(tl.frame(at: 4.5)), "0→1 0.50")
+        XCTAssertEqual(describe(tl.frame(at: 5.0)), "still 1")
+    }
+
+    func testAStraddlingTransitionOverlapsEitherSideOfTheJoin() {
+        let tl = timeline(lead: 0.5)                      // overlap 3.5 … 4.5
+        XCTAssertEqual(describe(tl.frame(at: 3.4)), "still 0")
+        XCTAssertEqual(describe(tl.frame(at: 3.5)), "0→1 0.00")
+        XCTAssertEqual(describe(tl.frame(at: 3.9)), "0→1 0.40")
+        XCTAssertEqual(describe(tl.frame(at: 4.0)), "0→1 0.50")
+        XCTAssertEqual(describe(tl.frame(at: 4.25)), "0→1 0.75")
+        XCTAssertEqual(describe(tl.frame(at: 4.5)), "still 1")
+        // The show is still the slides' lengths, join to join.
+        XCTAssertEqual(tl.duration, 8)
+    }
+
+    func testATransitionCanEndAtTheJoin() {
+        let tl = timeline(lead: 1)                        // overlap 3 … 4
+        XCTAssertEqual(describe(tl.frame(at: 3.5)), "0→1 0.50")
+        XCTAssertEqual(describe(tl.frame(at: 4.0)), "still 1")
+        XCTAssertEqual(tl.settledTime(of: 1), 4)
+    }
+
+    func testTheIncomingSlidesClockStartsWhenItAppears() {
+        let tl = timeline(lead: 0.5)
+        guard case .transition(let a, let b, _, _) = tl.frame(at: 3.75) else { return XCTFail() }
+        XCTAssertEqual(b.localTime, 0.25, accuracy: 1e-9)   // appeared at 3.5
+        XCTAssertEqual(a.localTime, 3.75, accuracy: 1e-9)   // slide 0 counts from 0
+        // Slide 1 is on screen 3.5 … 8 (the show doesn't loop, nothing follows).
+        XCTAssertEqual(tl.slides[1].visibleSpan, 4.5, accuracy: 1e-9)
+        XCTAssertEqual(tl.slides[0].visibleSpan, 4.5, accuracy: 1e-9)  // 0 … 4.5
+    }
+
+    func testTheOutgoingSlideReachesItsEndFrameAsTheOverlapEnds() {
+        var r = Rotation(); r.endAngle = 90
+        let tl = timeline(lead: 0.5, settings: [SlideSettings(rotation: r), SlideSettings()])
+        guard case .transition(let a, _, _, _) = tl.frame(at: 4.499) else { return XCTFail() }
+        XCTAssertEqual(a.rotationAngle, 90, accuracy: 0.05)
+    }
+
+    func testALoopingShowWrapsSmoothlyIntoSlideOne() {
+        let tl = timeline(lead: 0.5, loop: true)          // into slide 0: 7.5 … 8.5
+        XCTAssertEqual(describe(tl.frame(at: 7.4)), "still 1")
+        XCTAssertEqual(describe(tl.frame(at: 7.75)), "1→0 0.25")
+        XCTAssertEqual(describe(tl.frame(at: 8.25)), "1→0 0.75")
+        XCTAssertEqual(describe(tl.frame(at: 8.5)), "still 0")
+        // On the first pass nothing comes before slide 0.
+        XCTAssertEqual(describe(tl.frame(at: 0.1)), "still 0")
+    }
+
+    func testLeadsNeverLetTwoTransitionsOverlap() {
+        // Slide 1 is 1 s long. Its own transition in (lead 0.8) still covers
+        // 0.2 s of it, leaving 0.8 s for the transition into slide 2 to start
+        // early: the 0.8 asked for fits.
+        let early = timeline(lengths: [4, 1, 4], lead: 0.8)
+        XCTAssertEqual(early.slides[1].transitionIn.lead, 0.8, accuracy: 1e-9)
+        XCTAssertEqual(early.slides[2].transitionIn.lead, 0.8, accuracy: 1e-9)
+
+        // With lead 0 into slide 1, its transition fills all of it, so the
+        // transition into slide 2 has no room and its 0.8 is cut to 0.
+        let into1 = SlideSettings(transition: Transition(style: .dissolve, duration: 1, lead: 0))
+        let into2 = SlideSettings(transition: Transition(style: .dissolve, duration: 1, lead: 0.8))
+        let tight = timeline(lengths: [4, 1, 4], lead: 0, settings: [SlideSettings(), into1, into2])
+        XCTAssertEqual(tight.slides[2].transitionIn.lead, 0)
+
+        // Either way, every overlap ends before the next one begins.
+        for tl in [early, tight] {
+            for i in 1..<tl.slides.count - 1 {
+                let endIn = tl.slides[i].visibleStart + tl.slides[i].transitionIn.duration
+                XCTAssertLessThanOrEqual(endIn, tl.slides[i + 1].visibleStart + 1e-9)
+            }
+        }
+    }
+
+    func testALeadCantExceedItsDuration() {
+        let tl = timeline(lead: 3)
+        XCTAssertEqual(tl.slides[1].transitionIn.lead, 1)
+    }
+}

@@ -491,9 +491,8 @@ extension TransformOverlay {
         guard let r = engine.timeline.slides.first(where: { $0.slide.id == id }), let rot = r.rotation else { return nil }
         let W = CGFloat(r.item.pixelWidth), H = CGFloat(r.item.pixelHeight)
         guard W > 0, H > 0, frame.width > 0, frame.height > 0 else { return nil }
-        // As the inspector's note works it out: frozen, it turns only while
-        // the slide is on screen alone.
-        let span = rot.freezeOnTransition ? max(r.length - r.transitionIn.duration, 0) : r.visibleSpan
+        // Frozen, it turns only while the slide is on screen alone.
+        let span = r.motionSpan(frozen: rot.freezeOnTransition)
         let e = CGRect(x: 0, y: 0, width: W, height: H)
         func view(_ p: CGPoint) -> CGPoint { CGPoint(x: frame.minX + p.x, y: frame.minY + frame.height - p.y) }
         func end(_ progress: Double) -> RotEnd? {

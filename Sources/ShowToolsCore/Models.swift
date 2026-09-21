@@ -98,14 +98,30 @@ public enum Direction: String, Codable, CaseIterable, Sendable {
 
 public struct Transition: Codable, Hashable, Sendable {
     public var style: TransitionStyle
-    /// Seconds.
+    /// Seconds: how long the two pictures overlap.
     public var duration: Double
     public var direction: Direction
+    /// Seconds before the join at which the overlap begins: 0 starts it at
+    /// the join and runs it into the incoming slide (how every transition
+    /// worked before the lane); `duration` ends it at the join; anything
+    /// between straddles it (Phase 2c).
+    public var lead: Double
 
-    public init(style: TransitionStyle, duration: Double, direction: Direction = .left) {
+    public init(style: TransitionStyle, duration: Double, direction: Direction = .left, lead: Double = 0) {
         self.style = style
         self.duration = duration
         self.direction = direction
+        self.lead = lead
+    }
+
+    /// Field by field: shows saved before `lead` existed have no such key,
+    /// and a synthesized decoder would drop the whole transition.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        style = try c.decode(TransitionStyle.self, forKey: .style)
+        duration = (try? c.decodeIfPresent(Double.self, forKey: .duration)) ?? 1
+        direction = (try? c.decodeIfPresent(Direction.self, forKey: .direction)) ?? .left
+        lead = (try? c.decodeIfPresent(Double.self, forKey: .lead)) ?? 0
     }
 
     public static let defaultDissolve = Transition(style: .dissolve, duration: 1.0)

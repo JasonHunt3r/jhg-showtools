@@ -291,27 +291,38 @@ slide A so that the transition joins them seamlessly.
   deliberately left alone until it has been seen (the zoomed-out work area
   is how to see it); the second layer (2c) may turn out to be the answer
 
-### Phase 2c: Layers (after 2a)
-Final Cut's model: the storyline stays simple and magnetic. Anything layered
-is a **connected clip** stacked above it and attached to a storyline slide,
-so it moves and trims with that slide. Each connected clip has opacity,
-position and scale, a blend mode, fade in and out, and alpha from PNGs and
-HEICs with transparency.
-- **Two picture layers: the storyline plus one connected clip per slide**
-  (settled 2026-09-21). The main uses are overlaps and picture-in-picture.
-  Each layer adds a decoded image to *both* sides of every transition, so
-  4 layers would double the memory and compositing cost for the sake of
-  collages. Collages are better made as a new library image (see the plugin
-  seam)
-- Connected clips are stored as a **list**, so a third layer later (text
-  over a picture-in-picture, say) only changes the UI, not the saved shows
-- Borders and watermarks are **stamps** on a slide or a whole show, not a
-  visible lane
-- Text/titles come after the picture layers. They matter for wedding shows
-  and sports highlights, but they aren't needed first
-- The renderer already builds the storyline picture first and composites it
-  last, so connected clips are an extra compositing step, not a rewrite
-- Setlist export (Phase 4) gets a separate section for connected clips
+### Phase 2c: The lane — transitions and image layers (after 2a)
+Redesigned with Jason 2026-09-21 (this replaces the earlier "connected clip
+on a slide" design). Above the storyline runs a **lane** with two rows:
+
+- **Transitions row**, directly above the slides. Each transition is a
+  **section sitting across the join** between two slides. The section *is*
+  the overlap: its left edge is where the next image starts to appear, its
+  right edge where the old one is fully gone (for a dissolve, the start and
+  end of the opacity change). Its two edges move independently, so a
+  transition can start before the join, after it, or straddle it. Drag the
+  edges to set the window; click the section and its settings (style,
+  direction, duration) appear in the controls above the picture.
+- **A cut is no transition**: the slide blocks simply butt together and the
+  transitions row is empty at that join. The storyline itself shows only
+  the slides, butted together, with no transition markers on the cuts.
+- **Images row**, above the transitions: image overlays (picture-in-picture,
+  overlaps, PNG/HEIC with transparency) as sections placed freely in time,
+  able to span joins, with gaps between them. One row, so two images never
+  overlap each other. Selected, an image gets the handles on the main image
+  and its settings (opacity, blend mode, fit, Transform, fades) in the
+  controls above the picture and the inspector. Composited over the finished
+  storyline picture.
+- Still two picture layers in all: the storyline and one image row.
+
+Timing model: each transition gets a **lead**, the seconds before the join
+at which it begins (0 is how every transition worked before 2c, so existing
+shows play unchanged). The show's length is still the sum of the slides'
+lengths (join to join).
+
+Open: whether an image section stays at its time on the clock or moves with
+the slide it starts over when slides are trimmed or reordered (asked
+2026-09-21; leaning to "moves with its slide", Final Cut's behaviour).
 
 ### Plugin seam (internal, our own plugins only)
 Tools that make or alter media sit behind one interface: library media in,
