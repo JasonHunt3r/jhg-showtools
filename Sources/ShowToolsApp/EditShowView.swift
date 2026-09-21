@@ -14,6 +14,8 @@ struct EditShowView: View {
     /// The transition selected in the storyline's lane, by the slide it
     /// leads into; its settings show over the preview.
     @State private var selectedTransition: Int64?
+    /// The image selected in the lane's images row.
+    @State private var selectedOverlay: UUID?
     @AppStorage("storylineZoom") private var pps: Double = 24
 
     var body: some View {
@@ -40,15 +42,20 @@ struct EditShowView: View {
                         Divider()
                         StorylineView(show: show, timeline: timeline, engine: engine,
                                       selection: $selection, selectedTransition: $selectedTransition,
+                                      selectedOverlay: $selectedOverlay,
                                       pps: $pps, mutate: mutate,
                                       openInspector: { inspectorShown = true })
                     }
-                    .frame(minHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 80,
-                           idealHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 90)
+                    .frame(minHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 80 + 56,
+                           idealHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 90 + 56)
                 }
                 .onDeleteCommand {
-                    // A selected transition goes first: removing it leaves a cut.
-                    if let id = selectedTransition {
+                    // What's selected in the lane goes first: an image is
+                    // taken out; a transition leaves a cut.
+                    if let id = selectedOverlay {
+                        mutate("Remove Image") { $0.overlays.removeAll { $0.id == id } }
+                        selectedOverlay = nil
+                    } else if let id = selectedTransition {
                         mutate("Remove Transition") { s in
                             guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
                             s.slides[i].settings.transition = ShowToolsCore.Transition(style: .cut, duration: 0)
@@ -58,7 +65,9 @@ struct EditShowView: View {
                         SlideActions.remove(selection, selection: $selection, mutate: mutate)
                     }
                 }
-                .onChange(of: selection) { _, s in if !s.isEmpty { selectedTransition = nil } }
+                .onChange(of: selection) { _, s in
+                    if !s.isEmpty { selectedTransition = nil; selectedOverlay = nil }
+                }
                 .task {
                     // Dev hook: SHOWTOOLS_DEV_TRANSITION=<slideIndex> selects the
                     // transition into that slide, so its controls can be screenshotted.

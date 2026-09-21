@@ -16,6 +16,8 @@ struct StorylineView: View {
     @Binding var selection: Set<Int64>
     /// The transition selected in the lane, by the slide it leads into.
     @Binding var selectedTransition: Int64?
+    /// The image selected in the lane's images row.
+    @Binding var selectedOverlay: UUID?
     /// Points per second: the zoom.
     @Binding var pps: Double
     let mutate: ShowMutator
@@ -41,6 +43,14 @@ struct StorylineView: View {
     }
     @State private var transitionEdit: TransitionEdit?
     @State private var hoveredJoin: Int64?
+    /// Something is being dragged over the images row: it opens up.
+    @State private var imagesDropTargeted = false
+
+    /// The images row: a thin strip until it has images or one is dragged
+    /// over it. Everything below it sits `laneTop` and `blocksTop` down.
+    private var imagesRowHeight: CGFloat { timeline.overlays.isEmpty && !imagesDropTargeted ? 10 : 30 }
+    private var laneTop: CGFloat { imagesRowHeight + 2 }
+    private var blocksTop: CGFloat { laneTop + Self.laneRowHeight + 4 }
 
     private struct Moving {
         var ids: Set<Int64>
@@ -129,12 +139,17 @@ struct StorylineView: View {
                         .contentShape(Rectangle())
                         .gesture(scrubGesture)
                     ZStack(alignment: .topLeading) {
-                        Color.clear.frame(width: contentWidth, height: Self.laneRowHeight + 4 + Self.blockHeight + 2)
+                        Color.clear.frame(width: contentWidth, height: blocksTop + Self.blockHeight + 2)
+                        ImagesRow(show: show, timeline: timeline, engine: engine, pps: pps, inset: Self.inset,
+                                  width: contentWidth, height: imagesRowHeight,
+                                  dropTargeted: $imagesDropTargeted, selectedOverlay: $selectedOverlay,
+                                  mutate: mutate,
+                                  didSelect: { selection = []; selectedTransition = nil })
                         ForEach(placed) { p in
                             let isMoving = moving?.ids.contains(p.id) == true
                             block(p)
                                 .opacity(isMoving ? 0.25 : 1)
-                                .offset(x: p.x, y: Self.laneRowHeight + 4)
+                                .offset(x: p.x, y: blocksTop)
                                 .id(p.id)
                         }
                         if moving == nil {
@@ -149,7 +164,7 @@ struct StorylineView: View {
                             }
                             .frame(width: groupWidth, alignment: .leading)
                             .shadow(radius: 6)
-                            .offset(x: m.pointerX - m.grab, y: Self.laneRowHeight - 2)
+                            .offset(x: m.pointerX - m.grab, y: blocksTop - 6)
                             .allowsHitTesting(false)
                             .id("dragging-\(first.id)")
                         }
@@ -208,6 +223,7 @@ struct StorylineView: View {
             selection = [id]
         }
         selectedTransition = nil
+        selectedOverlay = nil
         engine.showSlide(id: id)
         // Checked on the event rather than with a double-tap gesture, which
         // would hold every single click back while it waits for a second.
@@ -290,7 +306,7 @@ struct StorylineView: View {
         }
         .frame(width: max(width, 1), height: Self.blockHeight)
         .contentShape(Rectangle())
-        .offset(x: offset, y: Self.laneRowHeight + 4)
+        .offset(x: offset, y: blocksTop)
         .onHover { inside in
             if inside {
                 hoveredEdge = kind
@@ -490,7 +506,7 @@ struct StorylineView: View {
         .onHover { if $0 { NSCursor.openHand.set() } else { NSCursor.arrow.set() } }
         .help("\(r.transitionIn.style.title) · \(formatSeconds(duration))"
               + (own ? "" : " (show default)") + ". Drag an edge to change when it starts or ends; drag the middle to slide it.")
-        .offset(x: left, y: 2)
+        .offset(x: left, y: laneTop + 2)
     }
 
     private func transitionEdgeZone(_ r: ResolvedSlide, part: TransitionEdit.Part) -> some View {
@@ -571,12 +587,13 @@ struct StorylineView: View {
             selectedTransition = id
         }
         .help("Cut. Click + to add a transition here.")
-        .offset(x: joinX - 11, y: 1)
+        .offset(x: joinX - 11, y: laneTop + 1)
     }
 
     /// Selecting a transition shows it: the preview goes to its join.
     private func selectTransition(_ id: Int64, at time: Double) {
         selectedTransition = id
+        selectedOverlay = nil
         selection = []
         engine.pause()
         engine.seek(time)

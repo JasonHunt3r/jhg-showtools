@@ -291,3 +291,33 @@ public struct OverlayClip: Codable, Hashable, Identifiable, Sendable {
         }
     }
 }
+
+/// Where images can go in the lane's single images row: two never overlap.
+public enum OverlayPlacement {
+    /// The free stretch of the show around `t`, between the images either
+    /// side of it (or the show's ends). Nil if `t` is inside an image.
+    /// `ignoring` leaves one clip out: the one being moved or trimmed.
+    public static func freeSpan(at t: Double, in clips: [OverlayClip], duration: Double,
+                                ignoring: UUID? = nil) -> ClosedRange<Double>? {
+        guard t >= 0, t <= duration else { return nil }
+        var lo = 0.0, hi = duration
+        for c in clips where c.id != ignoring {
+            let end = c.start + c.length
+            if c.start <= t && t < end { return nil }
+            if end <= t { lo = max(lo, end) }
+            if c.start > t { hi = min(hi, c.start) }
+        }
+        return lo...hi
+    }
+
+    /// A new image dropped or placed at `t`: it starts there and runs for
+    /// `length`, cut short by the next image or the end of the show. Nil if
+    /// there's no room for at least `shortest` seconds.
+    public static func place(itemID: Int64, at t: Double, length: Double, in clips: [OverlayClip],
+                             duration: Double, shortest: Double = 0.2) -> OverlayClip? {
+        guard let free = freeSpan(at: t, in: clips, duration: duration) else { return nil }
+        let room = free.upperBound - t
+        guard room >= shortest else { return nil }
+        return OverlayClip(itemID: itemID, start: t, length: min(length, room))
+    }
+}

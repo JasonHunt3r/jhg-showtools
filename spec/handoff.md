@@ -59,6 +59,12 @@ screenshots:
   section's left and right edges and its middle (snaps to centred), the "+"
   on hover at a cut, Delete on a selected transition (should make a cut,
   not delete slides), the controls over the picture, and "Use Show Default"
+- **Images row (2026-09-21):** checked by screenshot (two clips, fades
+  drawn as ramps). Try: the row opening when an image is dragged over it;
+  dropping from Finder and from Photos (lands where dropped, 5 s, half size,
+  cut short by the next image); right-click → Place Image Here… and the
+  library picker; dragging a clip and its edges (no overlaps); Delete on a
+  selected image
 - **Soft-at-this-zoom warning (2026-09-21):** checked by screenshot; the
   flags on the test library are all correct for a 2560×1664 screen
 

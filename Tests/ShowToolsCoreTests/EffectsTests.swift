@@ -605,3 +605,24 @@ final class OverlayTests: XCTestCase {
         XCTAssertLessThan(m.b, 0.05)
     }
 }
+
+extension OverlayTests {
+    func testFreeSpanIsTheGapBetweenImages() {
+        let a = OverlayClip(itemID: 2, start: 2, length: 3)      // 2 … 5
+        let b = OverlayClip(itemID: 2, start: 8, length: 2)      // 8 … 10
+        XCTAssertEqual(OverlayPlacement.freeSpan(at: 6, in: [a, b], duration: 20), 5...8)
+        XCTAssertEqual(OverlayPlacement.freeSpan(at: 1, in: [a, b], duration: 20), 0...2)
+        XCTAssertEqual(OverlayPlacement.freeSpan(at: 12, in: [a, b], duration: 20), 10...20)
+        XCTAssertNil(OverlayPlacement.freeSpan(at: 3, in: [a, b], duration: 20))
+        // Moving `a` itself: its own space counts as free.
+        XCTAssertEqual(OverlayPlacement.freeSpan(at: 3, in: [a, b], duration: 20, ignoring: a.id), 0...8)
+    }
+
+    func testPlacingStopsAtTheNextImage() {
+        let b = OverlayClip(itemID: 2, start: 8, length: 2)
+        XCTAssertEqual(OverlayPlacement.place(itemID: 3, at: 6, length: 5, in: [b], duration: 20)?.length, 2)
+        XCTAssertEqual(OverlayPlacement.place(itemID: 3, at: 12, length: 5, in: [b], duration: 20)?.length, 5)
+        XCTAssertNil(OverlayPlacement.place(itemID: 3, at: 9, length: 5, in: [b], duration: 20))
+        XCTAssertNil(OverlayPlacement.place(itemID: 3, at: 7.9, length: 5, in: [b], duration: 20))
+    }
+}
