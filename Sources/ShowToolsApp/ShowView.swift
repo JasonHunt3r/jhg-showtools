@@ -241,8 +241,7 @@ struct DefaultsBar: View {
         let d = show.defaults
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 18) {
-                TextField("Name", text: Binding(get: { show.name },
-                                                set: { v in mutate("Rename Show") { $0.name = v } }))
+                ShowNameField(show: show)
                     .textFieldStyle(.plain)
                     .font(.title3.weight(.semibold))
                     .frame(minWidth: 140, maxWidth: 240)
@@ -285,6 +284,36 @@ struct DefaultsBar: View {
             content()
         }
         .fixedSize()
+    }
+}
+
+/// The show's name, saved once when editing ends (Return, or leaving the
+/// field): one save and one undo step for a whole rename, not one per
+/// keystroke. An empty name puts the old one back, as Rename… does. The
+/// draft remembers its show, so switching shows mid-edit renames the show
+/// it was typed for.
+struct ShowNameField: View {
+    let show: Show
+    @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
+    @State private var draft: (showID: Int64, text: String)?
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        TextField("Name", text: Binding(
+            get: { draft?.showID == show.id ? draft!.text : show.name },
+            set: { draft = (show.id, $0) }))
+            .focused($focused)
+            .onSubmit(commit)
+            .onChange(of: focused) { _, f in if !f { commit() } }
+            .onChange(of: show.id) { _, _ in commit() }
+    }
+
+    private func commit() {
+        guard let d = draft else { return }
+        draft = nil
+        let name = d.text.trimmingCharacters(in: .whitespaces)
+        if name != model.show(d.showID)?.name { model.renameShow(d.showID, to: name, undo: undoManager) }
     }
 }
 
