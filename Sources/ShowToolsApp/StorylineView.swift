@@ -334,10 +334,12 @@ struct StorylineView: View {
         .onHover { inside in
             if inside {
                 hoveredEdge = kind
-                cursor(for: kind).push()
+                cursor(for: kind).set()
             } else {
                 if hoveredEdge == kind { hoveredEdge = nil }
-                NSCursor.pop()
+                // Set, not popped: the zones move under the pointer during
+                // a trim, and a push without its pop leaves the cursor stuck.
+                NSCursor.arrow.set()
             }
         }
         .gesture(edgeGesture(kind, cutX: cutX))

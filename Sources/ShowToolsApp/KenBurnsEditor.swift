@@ -126,7 +126,7 @@ struct KenBurnsEditor: View {
                 .offset(x: rect.width - 10, y: rect.height - 10)
                 .gesture(zoomGesture(end, scale: scale))
                 .onHover { inside in
-                    if inside { NSCursor.crosshair.push() } else { NSCursor.pop() }
+                    if inside { NSCursor.crosshair.set() } else { NSCursor.arrow.set() }
                 }
         }
         .frame(width: rect.width, height: rect.height)

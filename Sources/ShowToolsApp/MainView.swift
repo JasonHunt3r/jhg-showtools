@@ -170,7 +170,9 @@ extension MainView {
             .tag(SidebarItem.show(show.id))
             .contextMenu {
                 Button("Play") { Player.open(show: show, model: model, fullScreen: false) }
+                    .disabled(show.slides.isEmpty)
                 Button("Play Full Screen") { Player.open(show: show, model: model, fullScreen: true) }
+                    .disabled(show.slides.isEmpty)
                 Divider()
                 Button("Rename…") { startRenaming(.show(show.id), current: show.name) }
                 Button("Delete Show…") { confirmDelete = show }

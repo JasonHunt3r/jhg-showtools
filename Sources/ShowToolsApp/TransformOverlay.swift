@@ -103,6 +103,15 @@ struct TransformOverlay: View {
             if selectedOverlay != nil, !s.isEmpty { deselect() }
         }
         .onDisappear {
+            // A drag cut short by the view going away keeps what it did.
+            if let d = drag, d.moved, let zone = d.zone, let t = live {
+                commit(t, subject: d.geo.subject, action: actionName(zone))
+            }
+            drag = nil
+            if let r = rotDrag, r.moved, let new = liveRotation {
+                commitRotation(new, slideID: r.geo.slideID, action: rotationActionName(r.zone, r.start))
+            }
+            rotDrag = nil
             commitRun()
             engine.endLiveEdit()
         }

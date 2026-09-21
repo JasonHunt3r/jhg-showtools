@@ -243,7 +243,8 @@ struct PreviewStage: View {
         .frame(height: Self.barHeight)
         .contentShape(Rectangle())
         .onHover { inside in
-            if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
+            // Set, not pushed: a push without its pop leaves the cursor stuck.
+            if inside { NSCursor.resizeUpDown.set() } else { NSCursor.arrow.set() }
         }
         .gesture(DragGesture(minimumDistance: 0)
             .onChanged { g in

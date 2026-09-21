@@ -69,6 +69,7 @@ final class AppModel {
         }
         do {
             let lib = try Library(root: masterURL)
+            Self.removeLeftoverStaging(in: lib.root)
             if lib.isPrivate { locked = lib } else { load(lib) }
         } catch {
             loadError = "\(error)"
@@ -147,6 +148,11 @@ final class AppModel {
         Player.closeAll()
         Thumbnails.shared.clear()
         sidebar = .library
+        // Not when reopening the library that's open: an import into it may
+        // be staging right now.
+        if library?.root.standardizedFileURL != lib.root.standardizedFileURL {
+            Self.removeLeftoverStaging(in: lib.root)
+        }
         library = nil
         locked = nil
         load(lib)
@@ -209,6 +215,11 @@ final class AppModel {
         library = nil      // closes the database before the move
         do {
             try FileManager.default.moveItem(at: from, to: to)
+            // Open Recent follows the folder to its new name.
+            if let i = recentLibraries.firstIndex(where: { $0.standardizedFileURL == from.standardizedFileURL }) {
+                recentLibraries[i] = to
+                UserDefaults.standard.set(recentLibraries.map(\.path), forKey: Self.recentKey)
+            }
             open(at: to)
         } catch {
             open(at: from)
@@ -492,10 +503,26 @@ final class AppModel {
     }
 
     /// Files dropped on a show: ours from the Collection Browser as they
-    /// are; anything from Finder or Photos imported first.
+    /// are; anything from Finder or Photos imported first (both, if a drop
+    /// somehow carries both).
     func itemIDs(from providers: [NSItemProvider]) async -> [Int64] {
-        if let ours = await ItemDrag.ids(from: providers) { return ours }
-        return await importProviders(providers)
+        let isOurs = { (p: NSItemProvider) in p.hasItemConformingToTypeIdentifier(ItemDrag.type.identifier) }
+        let theirs = providers.filter { !isOurs($0) }
+        var ids = await ItemDrag.ids(from: providers.filter(isOurs)) ?? []
+        if !theirs.isEmpty { ids += await importProviders(theirs) }
+        return ids
+    }
+
+    /// `.staging-…` folders are only ever temporary (see `importProviders`):
+    /// any found when a library opens were left by a crash mid-import, with
+    /// copies of Photos originals in them. Only for a library that isn't
+    /// already open: an import runs into the open library, so none can be
+    /// staging in any other.
+    private static func removeLeftoverStaging(in root: URL) {
+        let fm = FileManager.default
+        for name in (try? fm.contentsOfDirectory(atPath: root.path)) ?? [] where name.hasPrefix(".staging-") {
+            try? fm.removeItem(at: root.appendingPathComponent(name))
+        }
     }
 
     func addToCollection(_ itemIDs: [Int64], _ collectionID: Int64) {
