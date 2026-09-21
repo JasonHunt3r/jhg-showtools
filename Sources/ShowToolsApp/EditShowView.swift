@@ -30,7 +30,7 @@ struct EditShowView: View {
                         inspectorShown: $inspectorShown, model: model,
                         preview: PreviewStage(engine: engine, title: show.name,
                                               selection: $selection, selectedTransition: $selectedTransition,
-                                              mutate: mutate),
+                                              selectedOverlay: $selectedOverlay, mutate: mutate),
                         list: OrderList(show: show, timeline: timeline, engine: engine,
                                         selection: $selection, mutate: mutate,
                                         toggleInspector: { inspectorShown.toggle() }),
@@ -68,9 +68,21 @@ struct EditShowView: View {
                 .onChange(of: selection) { _, s in
                     if !s.isEmpty { selectedTransition = nil; selectedOverlay = nil }
                 }
+                .onChange(of: selectedOverlay) { _, o in if o != nil { selectedTransition = nil } }
                 .task {
                     // Dev hook: SHOWTOOLS_DEV_TRANSITION=<slideIndex> selects the
                     // transition into that slide, so its controls can be screenshotted.
+                    // SHOWTOOLS_DEV_OVERLAY=<n> selects the lane's nth image.
+                    if let v = ProcessInfo.processInfo.environment["SHOWTOOLS_DEV_OVERLAY"], let n = Int(v),
+                       show.overlays.indices.contains(n) {
+                        try? await Task.sleep(for: .seconds(1.2))
+                        let c = show.overlays[n]
+                        selection = []
+                        selectedOverlay = c.id
+                        engine.pause()
+                        engine.seek(c.start + min(c.fadeIn, c.length / 2) + 0.5)
+                        return
+                    }
                     guard let v = ProcessInfo.processInfo.environment["SHOWTOOLS_DEV_TRANSITION"],
                           let i = Int(v), show.slides.indices.contains(i) else { return }
                     try? await Task.sleep(for: .seconds(1.2))
@@ -142,6 +154,7 @@ struct PreviewStage: View {
     let title: String
     @Binding var selection: Set<Int64>
     @Binding var selectedTransition: Int64?
+    @Binding var selectedOverlay: UUID?
     let mutate: ShowMutator
     @State private var hovering = false
     /// The slide whose image is selected in the picture, for its handles.
@@ -177,7 +190,8 @@ struct PreviewStage: View {
             GeometryReader { g in
                 TransformOverlay(engine: engine, frame: Self.pictureRect(in: g.size, zoom: CGFloat(workZoom)),
                                  target: rotationAvailable ? editTarget : .transform,
-                                 imageSlideID: $imageSlideID, selection: $selection, mutate: mutate)
+                                 imageSlideID: $imageSlideID, selectedOverlay: $selectedOverlay,
+                                 selection: $selection, mutate: mutate)
             }
             // The buttons sit above the handles so they stay clickable.
             Color.clear
@@ -212,7 +226,10 @@ struct PreviewStage: View {
                     .help("Pop out the preview into its own window, e.g. for another screen")
                 }
                 .overlay(alignment: .top) {
-                    if let id = selectedTransition,
+                    if let id = selectedOverlay, let clip = engine.show.overlays.first(where: { $0.id == id }) {
+                        overlayControls(clip)
+                            .padding(.top, 48)
+                    } else if let id = selectedTransition,
                        let r = engine.timeline.slides.first(where: { $0.slide.id == id }) {
                         transitionControls(r)
                             .padding(.top, 48)
@@ -281,6 +298,53 @@ struct PreviewStage: View {
                 .buttonStyle(.plain)
                 .help("Done")
         }
+        .font(.caption)
+        .padding(.horizontal, 12).padding(.vertical, 6)
+        .background(.black.opacity(0.7), in: Capsule())
+        .foregroundStyle(.white)
+        .environment(\.colorScheme, .dark)
+    }
+
+    /// The selected lane image's settings, over the picture. Its place and
+    /// size are the handles' (and the arrow keys'); its time is the lane's.
+    private func overlayControls(_ clip: OverlayClip) -> some View {
+        let id = clip.id
+        func set(_ action: String, _ change: @escaping (inout OverlayClip) -> Void) {
+            mutate(action) { s in
+                guard let i = s.overlays.firstIndex(where: { $0.id == id }) else { return }
+                change(&s.overlays[i])
+            }
+        }
+        return HStack(spacing: 10) {
+            BarSlider(title: "Opacity", value: clip.opacity) { v in set("Change Opacity") { $0.opacity = v } }
+            Picker("", selection: Binding(get: { clip.blend }, set: { b in set("Change Blend Mode") { $0.blend = b } })) {
+                ForEach(BlendMode.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .labelsHidden().fixedSize()
+            .help("Blend mode")
+            Picker("", selection: Binding(get: { clip.fit }, set: { f in set("Change Fit") { $0.fit = f } })) {
+                ForEach(Fit.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .labelsHidden().fixedSize()
+            .help("Fit")
+            HStack(spacing: 3) {
+                Text("Fade")
+                SecondsField(value: clip.fadeIn) { v in set("Change Fade In") { $0.fadeIn = min(v, clip.length) } }
+                    .help("Fade in")
+                SecondsField(value: clip.fadeOut) { v in set("Change Fade Out") { $0.fadeOut = min(v, clip.length) } }
+                    .help("Fade out")
+            }
+            Button("Remove") {
+                mutate("Remove Image") { $0.overlays.removeAll { $0.id == id } }
+                selectedOverlay = nil
+            }
+            .help("Take this image out of the lane (Delete)")
+            Button { selectedOverlay = nil } label: { Image(systemName: "xmark") }
+                .buttonStyle(.plain)
+                .help("Done")
+        }
+        // Its natural width: squeezed, SwiftUI drops the labels first.
+        .fixedSize()
         .font(.caption)
         .padding(.horizontal, 12).padding(.vertical, 6)
         .background(.black.opacity(0.7), in: Capsule())

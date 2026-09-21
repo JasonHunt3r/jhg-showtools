@@ -25,12 +25,14 @@ struct TransformOverlay: View {
     let frame: CGRect
     var target: Target = .transform
     @Binding var imageSlideID: Int64?
+    /// An image from the lane's images row, selected instead of a slide.
+    @Binding var selectedOverlay: UUID?
     @Binding var selection: Set<Int64>
     let mutate: ShowMutator
 
     /// The Transform being edited, drawn by the engine before it's saved.
     @State private var live: Transform?
-    @State private var liveSlideID: Int64?
+    @State private var liveSubject: Subject?
     @State private var drag: Drag?
     /// Rotation mode's drag and the Rotation it's drawing live.
     @State private var rotDrag: RotDrag?
@@ -41,6 +43,19 @@ struct TransformOverlay: View {
     @FocusState private var focused: Bool
 
     private enum Zone: Equatable { case move, scale(corner: Int), rotate, anchor }
+
+    /// What the Transform handles and keys edit: a slide's image, or an
+    /// image from the lane (which has no Ken Burns or spin, but is placed
+    /// by the same fit and Transform).
+    enum Subject: Equatable {
+        case slide(Int64)
+        case overlay(UUID)
+    }
+
+    private var subject: Subject? {
+        if let o = selectedOverlay { return .overlay(o) }
+        return imageSlideID.map { .slide($0) }
+    }
 
     private struct Drag {
         /// Nil: the click landed on the background.
@@ -58,7 +73,7 @@ struct TransformOverlay: View {
         let _ = engine.seekCount
         let _ = engine.revision
         let rot = target == .rotation ? imageSlideID.flatMap { rotationGeo($0) } : nil
-        let geo = rot == nil ? imageSlideID.flatMap { selectedGeo($0) } : nil
+        let geo = rot == nil ? subject.flatMap { selectedGeo($0) } : nil
         ZStack {
             if !engine.isPlaying {
                 if let rot { rotationHandles(rot) } else if let geo { handles(geo) }
@@ -78,13 +93,14 @@ struct TransformOverlay: View {
         .focused($focused)
         .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow], phases: [.down, .repeat]) { key($0) }
         .onKeyPress(.escape) {
-            guard imageSlideID != nil else { return .ignored }
+            guard subject != nil else { return .ignored }
             deselect()
             return .handled
         }
         .onChange(of: engine.isPlaying) { _, playing in if playing { deselect() } }
         .onChange(of: selection) { _, s in
             if let id = imageSlideID, s != [id] { deselect() }
+            if selectedOverlay != nil, !s.isEmpty { deselect() }
         }
         .onDisappear {
             commitRun()
@@ -98,7 +114,7 @@ struct TransformOverlay: View {
     /// its Transform. View coordinates: y runs down, so a positive angle in
     /// the usual rotation matrix turns clockwise, as the Transform's does.
     struct Geo {
-        let slideID: Int64
+        let subject: Subject
         let frame: CGRect
         let W: CGFloat, H: CGFloat
         /// Image pixels (Core Image, y up) → picture pixels (y up), for fit
@@ -147,16 +163,34 @@ struct TransformOverlay: View {
                                               transform: .identity, spin: nil, outputSize: frame.size),
               let full = Compositor.placement(for: layer, imageExtent: e, outputSize: frame.size)
         else { return nil }
-        return Geo(slideID: layer.slide.slide.id, frame: frame, W: W, H: H, base: base, full: full,
+        return Geo(subject: .slide(layer.slide.slide.id), frame: frame, W: W, H: H, base: base, full: full,
                    transform: layer.slide.transform)
     }
+
+    /// The lane's image showing now, placed like a slide with no motion.
+    private func geo(_ o: OverlayLayer) -> Geo? {
+        let W = CGFloat(o.overlay.item.pixelWidth), H = CGFloat(o.overlay.item.pixelHeight)
+        guard W > 0, H > 0, frame.width > 0, frame.height > 0 else { return nil }
+        let e = CGRect(x: 0, y: 0, width: W, height: H), c = o.overlay.clip
+        guard let base = Compositor.placement(imageExtent: e, fit: c.fit, kb: .centred, transform: .identity,
+                                              spin: nil, outputSize: frame.size),
+              let full = Compositor.placement(imageExtent: e, fit: c.fit, kb: .centred, transform: c.transform,
+                                              spin: nil, outputSize: frame.size)
+        else { return nil }
+        return Geo(subject: .overlay(c.id), frame: frame, W: W, H: H, base: base, full: full, transform: c.transform)
+    }
+
+    private var overlayNow: OverlayLayer? { engine.timeline.overlay(at: engine.now) }
 
     private var layersNow: [Layer] { engine.timeline.frame(at: engine.now).layers }
 
     /// The selected slide, if it's on screen now. The engine's timeline
     /// already carries a live edit, so this follows a drag as it happens.
-    private func selectedGeo(_ id: Int64) -> Geo? {
-        layersNow.last(where: { $0.slide.slide.id == id }).flatMap(geo)
+    private func selectedGeo(_ subject: Subject) -> Geo? {
+        switch subject {
+        case .slide(let id): layersNow.last(where: { $0.slide.slide.id == id }).flatMap(geo)
+        case .overlay(let id): overlayNow.flatMap { $0.overlay.clip.id == id ? geo($0) : nil }
+        }
     }
 
     private func zone(_ g: Geo, at p: CGPoint) -> Zone? {
@@ -190,7 +224,7 @@ struct TransformOverlay: View {
                     d.moved = true
                     drag = d
                 }
-                setLive(apply(d, to: g.location, modifiers: NSEvent.modifierFlags), slideID: d.geo.slideID)
+                setLive(apply(d, to: g.location, modifiers: NSEvent.modifierFlags), subject: d.geo.subject)
             }
             .onEnded { _ in
                 if let r = rotDrag {
@@ -203,7 +237,7 @@ struct TransformOverlay: View {
                 defer { drag = nil }
                 guard let d = drag else { return }
                 guard let zone = d.zone else { deselect(); return }
-                if d.moved, let t = live { commit(t, slideID: d.geo.slideID, action: actionName(zone)) }
+                if d.moved, let t = live { commit(t, subject: d.geo.subject, action: actionName(zone)) }
             }
     }
 
@@ -218,19 +252,21 @@ struct TransformOverlay: View {
         }
         // In Rotation mode the Transform's corner and anchor handles aren't
         // drawn, so only a drag on the image itself (a move) reaches them.
-        if let id = imageSlideID, let g = selectedGeo(id), let z = zone(g, at: p),
+        if let sub = subject, let g = selectedGeo(sub), let z = zone(g, at: p),
            target == .transform || z == .move {
             drag = Drag(zone: z, start: g.transform, geo: g, startPoint: p)
             return
         }
         // Not on the selected image's handles: select the image under the
         // click (the top one mid-transition), and let the same drag move it.
-        if let g = layersNow.reversed().compactMap(geo).first(where: { $0.contains(p) }) {
-            select(g.slideID)
+        // The lane's image is drawn on top, so it's found first.
+        let candidates = [overlayNow.flatMap(geo)].compactMap { $0 } + layersNow.reversed().compactMap(geo)
+        if let g = candidates.first(where: { $0.contains(p) }) {
+            select(g.subject)
             drag = Drag(zone: .move, start: g.transform, geo: g, startPoint: p)
         } else {
             drag = Drag(zone: nil, start: .identity,
-                        geo: Geo(slideID: 0, frame: frame, W: 1, H: 1, base: .identity, full: .identity,
+                        geo: Geo(subject: .slide(0), frame: frame, W: 1, H: 1, base: .identity, full: .identity,
                                  transform: .identity),
                         startPoint: p)
         }
@@ -287,7 +323,7 @@ struct TransformOverlay: View {
             case nil: break
             }
         }
-        guard let id = imageSlideID, !engine.isPlaying, let g = selectedGeo(id) else { return .arrow }
+        guard let sub = subject, !engine.isPlaying, let g = selectedGeo(sub) else { return .arrow }
         if target == .rotation { return g.contains(p) ? (drag == nil ? .openHand : .closedHand) : .arrow }
         switch zone(g, at: p) {
         case .move?: return drag == nil ? .openHand : .closedHand
@@ -330,8 +366,8 @@ struct TransformOverlay: View {
 
     private func key(_ press: KeyPress) -> KeyPress.Result {
         // Keys edit the Transform only; Rotation is set with its arms.
-        guard target == .transform, let id = imageSlideID, !engine.isPlaying,
-              let g = selectedGeo(id) else { return .ignored }
+        guard target == .transform, let sub = subject, !engine.isPlaying,
+              let g = selectedGeo(sub) else { return .ignored }
         var t = g.transform
         let big = press.modifiers.contains(.shift)
         let turn: Double = big ? 15 : 1
@@ -359,7 +395,7 @@ struct TransformOverlay: View {
             }
             action = "Nudge Image"
         }
-        setLive(t, slideID: id)
+        setLive(t, subject: sub)
         if run == nil { runAction = action }
         run?.cancel()
         run = Task { @MainActor in
@@ -373,41 +409,60 @@ struct TransformOverlay: View {
     private func commitRun() {
         run?.cancel()
         run = nil
-        if let t = live, let id = liveSlideID, drag == nil { commit(t, slideID: id, action: runAction) }
+        if let t = live, let sub = liveSubject, drag == nil { commit(t, subject: sub, action: runAction) }
     }
 
     // MARK: Selecting and saving
 
-    private func select(_ id: Int64) {
-        imageSlideID = id
-        selection = [id]
+    private func select(_ subject: Subject) {
+        switch subject {
+        case .slide(let id):
+            selectedOverlay = nil
+            imageSlideID = id
+            selection = [id]
+        case .overlay(let id):
+            imageSlideID = nil
+            selection = []
+            selectedOverlay = id
+        }
         focused = true
     }
 
     private func deselect() {
         commitRun()
         imageSlideID = nil
+        selectedOverlay = nil
         focused = false
         NSCursor.arrow.set()
     }
 
-    private func setLive(_ t: Transform, slideID: Int64) {
+    private func setLive(_ t: Transform, subject: Subject) {
         live = t
-        liveSlideID = slideID
+        liveSubject = subject
         var s = engine.show
-        guard let i = s.slides.firstIndex(where: { $0.id == slideID }) else { return }
-        s.slides[i].settings.transform = t == .identity ? nil : t
+        guard Self.write(t, to: subject, in: &s) else { return }
         engine.showLiveEdit(s)
     }
 
-    private func commit(_ t: Transform, slideID: Int64, action: String) {
-        controlLog.notice("\(action, privacy: .public) slide \(slideID): offset \(t.offsetX), \(t.offsetY) scale \(t.scale) rotation \(t.rotation)")
-        mutate(action) { s in
-            guard let i = s.slides.firstIndex(where: { $0.id == slideID }) else { return }
+    /// Puts a Transform on its slide or lane image. False if it's gone.
+    @discardableResult
+    private static func write(_ t: Transform, to subject: Subject, in s: inout Show) -> Bool {
+        switch subject {
+        case .slide(let id):
+            guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return false }
             s.slides[i].settings.transform = t == .identity ? nil : t
+        case .overlay(let id):
+            guard let i = s.overlays.firstIndex(where: { $0.id == id }) else { return false }
+            s.overlays[i].transform = t
         }
+        return true
+    }
+
+    private func commit(_ t: Transform, subject: Subject, action: String) {
+        controlLog.notice("\(action, privacy: .public) \(String(describing: subject), privacy: .public): offset \(t.offsetX), \(t.offsetY) scale \(t.scale) rotation \(t.rotation)")
+        mutate(action) { s in Self.write(t, to: subject, in: &s) }
         live = nil
-        liveSlideID = nil
+        liveSubject = nil
         engine.endLiveEdit()
     }
 

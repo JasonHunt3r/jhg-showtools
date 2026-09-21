@@ -59,6 +59,35 @@ struct CommitSlider: View {
     }
 }
 
+/// A compact 0…1 slider for the controls over the picture: a label, the
+/// slider and a percentage, saving once on release like `CommitSlider`.
+struct BarSlider: View {
+    let title: String
+    let value: Double
+    let commit: (Double) -> Void
+    @State private var dragging: Double?
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Text(title)
+            Slider(value: Binding(get: { dragging ?? value }, set: { dragging = $0 }), in: 0...1) { editing in
+                if !editing, let d = dragging {
+                    dragging = nil
+                    if d != value {
+                        controlLog.notice("\(title, privacy: .public) bar: \(value) → \(d)")
+                        commit(d)
+                    }
+                }
+            }
+            .controlSize(.small)
+            .frame(width: 90)
+            Text("\(Int(((dragging ?? value) * 100).rounded()))%")
+                .monospacedDigit()
+                .frame(width: 34, alignment: .trailing)
+        }
+    }
+}
+
 /// The centre-zero acceleration slider: left slows the move down, right
 /// speeds it up, 0 is constant speed.
 struct AccelerationSlider: View {

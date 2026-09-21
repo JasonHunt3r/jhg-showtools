@@ -65,10 +65,19 @@ screenshots:
   cut short by the next image); right-click → Place Image Here… and the
   library picker; dragging a clip and its edges (no overlaps); Delete on a
   selected image
+- **Selecting a lane image (2026-09-21):** checked by screenshot (handles on
+  the image, its bar over the picture). Try: clicking the image in the row
+  (the playhead should jump onto it) and on the picture (the lane image wins
+  over the slide under it); its handles and arrow keys; the opacity slider,
+  blend mode, fit and fades; Esc and a background click to deselect
 - **Soft-at-this-zoom warning (2026-09-21):** checked by screenshot; the
   flags on the test library are all correct for a 2560×1664 screen
 
-## Next: Phase 2c Layers (2a is built, bar presets, which were deferred)
+## Next: after 2c (the lane is built: transitions row and images row)
+
+Left in 2c: image stickiness (parked, see "Ask Jason later"), video in the
+lane (images only for now), and drawing a lane image's overhang in the zoomed
+out work area. After 2c, per the plan: 2b library manager.
 
 2c is settled at two picture layers (storyline plus one connected clip per slide), stored as a list. See `spec/plan.md`. The text below is the original 2c note.
 

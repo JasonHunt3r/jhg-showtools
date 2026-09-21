@@ -34,7 +34,8 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   slide's image in the Edit Show preview, so its handles show
   (`SHOWTOOLS_DEV_IMAGE=rotation` shows its Rotation handles).
   `SHOWTOOLS_DEV_TRANSITION=<slideIndex>` selects the transition into that
-  slide in the storyline's lane. The mode comes from the `editMode` default:
+  slide in the storyline's lane; `SHOWTOOLS_DEV_OVERLAY=<n>` selects the
+  lane's nth image. The mode comes from the `editMode` default:
   `defaults write com.jhg.showtools editMode show`.
 - Every show edit goes through a `ShowMutator` with an undo name. Drags
   (reorder, trim, Ken Burns) commit once, on release, so each is one undo step.

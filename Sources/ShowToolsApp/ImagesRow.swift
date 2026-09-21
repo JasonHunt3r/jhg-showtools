@@ -93,7 +93,7 @@ struct ImagesRow: View {
     /// as far as there's room.
     private func place(_ itemIDs: [Int64], at t: Double) {
         guard !itemIDs.isEmpty else { return }
-        var placed: UUID?
+        var placed: OverlayClip?
         mutate(itemIDs.count == 1 ? "Place Image" : "Place Images") { s in
             var at = t
             for id in itemIDs {
@@ -105,11 +105,12 @@ struct ImagesRow: View {
                 // Half size, centred: visibly over the picture, and easy to grab.
                 clip.transform.scale = 0.5
                 s.overlays.append(clip)
-                placed = placed ?? clip.id
+                placed = placed ?? clip
                 at = clip.start + clip.length
             }
         }
-        if let placed { select(placed) }
+        // The new clip isn't in `show` yet (that's the show before this edit).
+        if let placed { select(placed.id, clip: placed) }
     }
 
     // MARK: One image
@@ -213,9 +214,17 @@ struct ImagesRow: View {
             }
     }
 
-    private func select(_ id: UUID) {
+    /// Selecting an image also brings the playhead onto it, where it's
+    /// fully faded in, so its handles show on the picture.
+    private func select(_ id: UUID, clip: OverlayClip? = nil) {
         selectedOverlay = id
         didSelect()
+        guard let c = clip ?? show.overlays.first(where: { $0.id == id }) else { return }
+        engine.pause()
+        let now = timeline.wrap(engine.now)
+        if now < c.start || now >= c.start + c.length {
+            engine.seek(c.start + min(c.fadeIn, c.length / 2))
+        }
     }
 }
 
