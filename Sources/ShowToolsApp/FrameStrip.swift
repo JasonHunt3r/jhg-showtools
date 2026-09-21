@@ -20,6 +20,9 @@ struct FrameStrip: View {
     let pps: Double
     let scrollOffset: CGFloat
     let inset: CGFloat
+    /// The play bar's slider, in the strip's own x: Whole Show lines up with
+    /// it, so a frame sits under the knob's place for its moment.
+    let scrubber: CGRect
     @Environment(AppModel.self) private var model
 
     enum Span: String, CaseIterable {
@@ -32,16 +35,18 @@ struct FrameStrip: View {
     @State private var dragStartHeight: Double?
     @State private var frames = FrameCache()
 
-    static let handle: CGFloat = 6
+    /// The top edge: thin to look at, a little bigger to grab.
+    static let handle: CGFloat = 4
+    /// How far short of each end of a slider its knob stops (half a knob).
+    static let knobInset: CGFloat = 10
 
     var body: some View {
         VStack(spacing: 0) {
             // The top edge: drag it for bigger or smaller frames.
             Rectangle()
-                .fill(Color.primary.opacity(0.08))
+                .fill(Color.primary.opacity(0.12))
                 .frame(height: Self.handle)
-                .overlay(Capsule().fill(Color.secondary.opacity(0.5)).frame(width: 36, height: 3))
-                .contentShape(Rectangle())
+                .contentShape(Rectangle().inset(by: -4))
                 .onHover { if $0 { NSCursor.resizeUpDown.set() } else { NSCursor.arrow.set() } }
                 .gesture(DragGesture()
                     .onChanged { g in
@@ -88,17 +93,26 @@ struct FrameStrip: View {
             }
             return out
         case .wholeShow:
-            let count = max(Int(width / frameW), 1)
-            let w = width / CGFloat(count)
+            let track = wholeTrack(width: width)
+            let count = max(Int(track.width / frameW), 1)
+            let w = track.width / CGFloat(count)
             return (0..<count).map { k in
-                Slot(time: (Double(k) + 0.5) * duration / Double(count), x: CGFloat(k) * w)
+                Slot(time: (Double(k) + 0.5) * duration / Double(count), x: track.minX + CGFloat(k) * w)
             }
         }
     }
 
+    /// Whole Show's span: the play bar knob's travel, or the whole strip if
+    /// the play bar hasn't reported where it is.
+    private func wholeTrack(width: CGFloat) -> (minX: CGFloat, width: CGFloat) {
+        guard scrubber.width > Self.knobInset * 4 else { return (0, width) }
+        return (scrubber.minX + Self.knobInset, scrubber.width - Self.knobInset * 2)
+    }
+
     private func strip(width: CGFloat, height: CGFloat) -> some View {
         let frameW = (height * outputAspect).rounded()
-        let wholeW = span == .wholeShow ? width / CGFloat(max(Int(width / frameW), 1)) : frameW
+        let track = wholeTrack(width: width)
+        let wholeW = span == .wholeShow ? track.width / CGFloat(max(Int(track.width / frameW), 1)) : frameW
         let list = slots(width: width, frameW: frameW)
         let pixels = CGSize(width: frameW * 2, height: height * 2)
         return ZStack(alignment: .topLeading) {
@@ -148,9 +162,10 @@ struct FrameStrip: View {
         TimelineView(.animation(minimumInterval: 1 / 30, paused: !engine.isPlaying)) { _ in
             let _ = engine.seekCount
             let t = timeline.wrap(engine.now)
+            let track = wholeTrack(width: width)
             let x: CGFloat = span == .storyline
                 ? inset + CGFloat(t * pps) - scrollOffset
-                : CGFloat(t / max(timeline.duration, 0.001)) * width
+                : track.minX + CGFloat(t / max(timeline.duration, 0.001)) * track.width
             Rectangle().fill(Color.red).frame(width: 2)
                 .offset(x: x - 1)
                 .opacity(x >= 0 && x <= width ? 1 : 0)

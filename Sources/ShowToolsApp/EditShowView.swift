@@ -18,6 +18,8 @@ struct EditShowView: View {
     @State private var selectedOverlay: UUID?
     @AppStorage("storylineZoom") private var pps: Double = 24
     @State private var storylineOffset: CGFloat = 0
+    /// Where the play bar's slider sits, for the frame strip's Whole Show.
+    @State private var scrubberFrame: CGRect = .zero
     @AppStorage("frameStripShown") private var frameStripShown = true
     @AppStorage("frameStripHeight") private var frameStripHeight: Double = 64
 
@@ -43,7 +45,8 @@ struct EditShowView: View {
                     VStack(spacing: 0) {
                         if frameStripShown {
                             FrameStrip(show: show, timeline: timeline, engine: engine, pps: pps,
-                                       scrollOffset: storylineOffset, inset: StorylineView.inset)
+                                       scrollOffset: storylineOffset, inset: StorylineView.inset,
+                                       scrubber: scrubberFrame)
                         }
                         TransportRow(engine: engine, pps: $pps, fit: fitStoryline)
                         Divider()
@@ -53,6 +56,8 @@ struct EditShowView: View {
                                       pps: $pps, scrollOffset: $storylineOffset, mutate: mutate,
                                       openInspector: { inspectorShown = true })
                     }
+                    .coordinateSpace(name: "editShowBottom")
+                    .onPreferenceChange(ScrubberFrameKey.self) { scrubberFrame = $0 }
                     .frame(minHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 80 + 56 + stripHeight,
                            idealHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 90 + 56 + stripHeight)
                 }
@@ -474,6 +479,10 @@ struct TransportRow: View {
                             if engine.isPlaying { engine.pause() }
                             engine.seek(t)
                         }), in: 0...max(engine.duration, 0.1))
+                        // Where it is, for the frame strip's Whole Show to line up with.
+                        .background(GeometryReader { g in
+                            Color.clear.preference(key: ScrubberFrameKey.self, value: g.frame(in: .named("editShowBottom")))
+                        })
                     Text("\(formatClock(engine.timeline.wrap(engine.now))) / \(formatDuration(engine.duration))")
                         .font(.system(size: 11, design: .monospaced))
                         .frame(width: 110, alignment: .trailing)
@@ -508,3 +517,12 @@ func formatClock(_ s: Double) -> String {
     return String(format: "%d:%04.1f", m, t - Double(m * 60))
 }
 
+
+/// The play bar's slider frame, reported up for the frame strip.
+struct ScrubberFrameKey: PreferenceKey {
+    static let defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let next = nextValue()
+        if next != .zero { value = next }
+    }
+}
