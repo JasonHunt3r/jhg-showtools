@@ -338,6 +338,21 @@ reordered ("stickiness"). Jason wants to decide once he has set up his own
 files as a test bed: **ask him then.** Until then images stay at their time
 on the clock.
 
+### Inspector: the slide, then its effects (Jason, 2026-09-21)
+The inspector is the slide itself (file, rating, placement: fit, position,
+zoom, rotation, background; its length), then an **Effects** section: a
+display-only timeline of the slide's time on screen with a bar for each
+thing acting on the picture (transition in and out, Ken Burns, Rotation,
+lane images over it; hatched where freeze on transition holds still), then
+the effects' controls. Built 2026-09-21. The bars may become draggable
+later; they aren't, because most timings come from other settings.
+
+### Frame strip (asked 2026-09-21, not built)
+A strip of rendered frames of the finished picture above the play bar;
+drag its top edge taller for bigger frames. Open: whether it follows the
+play bar's timescale (the whole show) or the storyline's (zoom and
+scroll).
+
 ### Plugin seam (internal, our own plugins only)
 Tools that make or alter media sit behind one interface: library media in,
 new library media (or a render step) out. The first candidates are

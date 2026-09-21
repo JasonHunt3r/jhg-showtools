@@ -49,9 +49,20 @@ struct SlideInspector: View {
                     }
                 }
 
-                // The starting placement first, then everything time-based.
+                // The slide itself: where it sits and for how long. Then its
+                // effects: everything that changes the picture over time,
+                // with a timeline of when (Jason, 2026-09-21).
                 transformSection(first)
                 lengthSection(first)
+                if let r = timeline.slides.first(where: { $0.slide.id == first.id }) {
+                    Section {
+                        EffectsTimeline(slide: r, timeline: timeline)
+                    } header: {
+                        Text("Effects")
+                    } footer: {
+                        if selected.count > 1 { Text("Showing the first selected slide.") }
+                    }
+                }
                 transitionSection(first)
                 kenBurnsSection(first)
                 rotationSection(first)

@@ -244,7 +244,7 @@ struct CollectionBrowser: View {
                 break
             }
         }
-        .onChange(of: selection) { _, s in
+        .onChange(of: selection, initial: true) { _, s in
             guard !s.isEmpty else { return }
             let want = Set(s.map { Pick.slide($0) })
             if picked != want { picked = want }
