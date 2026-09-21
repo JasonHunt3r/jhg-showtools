@@ -11,6 +11,7 @@
 //                                        more titles walk into submenus)
 //   axtool menustate <pid> <menu> <item> an item's title and whether enabled
 //   axtool focused <pid>                 the element that has the keyboard
+//   axtool front <pid>                   bring that app forward (do before input)
 //   axtool click <x> <y> [right|double|cmd|shift]
 //   axtool drag <x1> <y1> <x2> <y2>
 //   axtool type <text>
@@ -156,6 +157,10 @@ case "menu":
 case "menustate":
     guard let item = menuItem(app(), Array(a[3...])) else { print("no such menu item"); exit(1) }
     print(attr(item, kAXTitleAttribute) ?? "", "enabled=\(attr(item, kAXEnabledAttribute) ?? "?" as AnyObject)")
+case "front":
+    NSRunningApplication(processIdentifier: pid_t(a[2])!)?.activate()
+    usleep(400_000)
+    print(NSWorkspace.shared.frontmostApplication?.localizedName ?? "?")
 case "focused":
     guard let e = attr(app(), kAXFocusedUIElementAttribute) else { print("nothing focused"); exit(1) }
     let el = e as! AXUIElement
