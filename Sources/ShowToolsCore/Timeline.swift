@@ -278,3 +278,30 @@ struct SplitMix64 {
     }
     mutating func unit() -> Double { Double(next() >> 11) / Double(1 << 53) }
 }
+
+extension ResolvedSlide {
+    /// Above this, the picture enlarges the file enough to look soft. A
+    /// little enlargement is hard to see, so it isn't flagged.
+    public static let softAbove = 1.25
+
+    /// How much the picture enlarges the file at its closest: output pixels
+    /// per file pixel, the most it reaches over the slide's time on screen
+    /// (Ken Burns, the Transform and rotation all count). Measured against
+    /// the file's own size, not the smaller copy decoded for playback.
+    public func peakMagnification(outputSize: CGSize) -> Double {
+        let e = CGRect(x: 0, y: 0, width: item.pixelWidth, height: item.pixelHeight)
+        var peak = 0.0
+        for i in 0...20 {
+            let layer = Layer(slide: self, localTime: visibleSpan * Double(i) / 20,
+                              transitionInPlays: transitionIn.duration,
+                              transitionOutPlays: visibleSpan - length)
+            guard let m = Compositor.placement(for: layer, imageExtent: e, outputSize: outputSize) else { continue }
+            peak = max(peak, Double(max(hypot(m.a, m.b), hypot(m.c, m.d))))
+        }
+        return peak
+    }
+
+    public func isSoft(outputSize: CGSize) -> Bool {
+        peakMagnification(outputSize: outputSize) > Self.softAbove
+    }
+}

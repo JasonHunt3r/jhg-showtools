@@ -209,7 +209,10 @@ slide A so that the transition joins them seamlessly.
   semi-transparent over it (an opacity slider and a toggle). It's an editing
   aid only and never renders into the show. It shows A's end frame exactly as
   it plays, including Ken Burns and rotation
-- **"Soft at this zoom" flag.** When the framing shows the image with fewer
+- **"Soft at this zoom" flag** (built 2026-09-21: an orange triangle in the
+  order list and on the storyline block, a line in the inspector, and the
+  exact figure in the block's hover info; flagged above 1.25× the file's
+  pixels on the main screen, at the slide's closest moment). When the framing shows the image with fewer
   pixels than the output, the slide gets a warning. This is where the
   upscaling hook later attaches (see the plugin seam)
 - **Effects stack per slide (mix and match).** Each slide *use* can have

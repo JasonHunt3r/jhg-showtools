@@ -491,6 +491,15 @@ struct StoryBlock: View {
         .clipShape(RoundedRectangle(cornerRadius: 5))
         .overlay(RoundedRectangle(cornerRadius: 5)
             .strokeBorder(selected ? Color.accentColor : .black.opacity(0.45), lineWidth: selected ? 3 : 1))
+        .overlay(alignment: .topTrailing) {
+            let m = slide.peakMagnification(outputSize: outputPixelSize)
+            if m > ResolvedSlide.softAbove, width > 24 {
+                SoftBadge(magnification: m)
+                    .font(.caption)
+                    .padding(4)
+                    .shadow(color: .black.opacity(0.6), radius: 1)
+            }
+        }
     }
 }
 
@@ -567,6 +576,13 @@ struct HoverInfo: ViewModifier {
                                  : String(format: "zoom %.2f → %.2f", slide.kenBurns!.start.zoom, slide.kenBurns!.end.zoom))
                         }
                         GridRow { Text("Fit").foregroundStyle(.secondary); Text(slide.fit.title) }
+                        GridRow {
+                            let m = slide.peakMagnification(outputSize: outputPixelSize)
+                            Text("Sharpness").foregroundStyle(.secondary)
+                            Text(m > ResolvedSlide.softAbove
+                                 ? String(format: "soft: up to %.1f× the file's pixels", m)
+                                 : String(format: "sharp (up to %.2f× the file's pixels)", m))
+                        }
                         GridRow {
                             Text("Image").foregroundStyle(.secondary)
                             Text("\(slide.item.pixelWidth) × \(slide.item.pixelHeight) · \(orientation)")

@@ -9,6 +9,25 @@ var outputAspect: CGFloat {
     return f.height > 0 ? f.width / f.height : 16 / 9
 }
 
+/// The main screen in pixels: the full-screen frame the show plays at, for
+/// judging whether a slide enlarges its file enough to look soft.
+@MainActor
+var outputPixelSize: CGSize {
+    guard let s = NSScreen.main else { return CGSize(width: 1920, height: 1080) }
+    return CGSize(width: s.frame.width * s.backingScaleFactor, height: s.frame.height * s.backingScaleFactor)
+}
+
+/// A slide that enlarges its file enough to look soft on the main screen.
+struct SoftBadge: View {
+    let magnification: Double
+
+    var body: some View {
+        Image(systemName: "exclamationmark.triangle.fill")
+            .foregroundStyle(.orange)
+            .help("Soft at this zoom: shown at up to \(String(format: "%.1f", magnification))× the file's own pixels on this screen")
+    }
+}
+
 /// Drag the start (green) and end (red) frames on the picture. Drag inside
 /// a frame to move it; drag its corner to zoom. Framing uses the same
 /// calculation as the renderer, so what's drawn here is what plays.

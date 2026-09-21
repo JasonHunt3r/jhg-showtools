@@ -333,6 +333,8 @@ struct OrderList: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        let resolved = Dictionary(timeline.slides.map { ($0.slide.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let screen = outputPixelSize
         List(selection: $selection) {
             ForEach(Array(show.slides.enumerated()), id: \.element.id) { i, slide in
                 if let item = model.itemsByID[slide.itemID] {
@@ -347,6 +349,16 @@ struct OrderList: View {
                             .frame(width: aspect >= 1 ? 40 : 30 * aspect, height: aspect >= 1 ? 40 / aspect : 30)
                             .clipShape(RoundedRectangle(cornerRadius: 2))
                             .frame(width: 40, height: 30)
+                            // On the thumbnail, so it costs the name no width.
+                            .overlay(alignment: .topTrailing) {
+                                if let m = resolved[slide.id]?.peakMagnification(outputSize: screen),
+                                   m > ResolvedSlide.softAbove {
+                                    SoftBadge(magnification: m)
+                                        .font(.system(size: 9))
+                                        .shadow(color: .black.opacity(0.7), radius: 1)
+                                        .offset(x: 3, y: -3)
+                                }
+                            }
                         Text(item.fileName)
                             .lineLimit(1).truncationMode(.middle)
                             .fontWeight(i == engine.currentIndex ? .semibold : .regular)

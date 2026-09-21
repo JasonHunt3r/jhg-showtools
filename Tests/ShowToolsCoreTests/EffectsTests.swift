@@ -364,3 +364,44 @@ final class TransformEditTests: XCTestCase {
         for q in corners { near(screen(q, moved, spin: spin), screen(q, t, spin: spin)) }
     }
 }
+
+// MARK: - Soft at this zoom
+
+final class SoftnessTests: XCTestCase {
+    let screen = CGSize(width: 2880, height: 1800)
+
+    func resolved(_ settings: SlideSettings, w: Int = 4000, h: Int = 3000) -> ResolvedSlide {
+        var show = Show(id: 1, name: "t")
+        show.defaults.loop = false
+        show.slides = [Slide(id: 1, itemID: 1, settings: settings)]
+        let item = MediaItem(id: 1, relativePath: "a.jpg", hash: "h", kind: .image, pixelWidth: w,
+                             pixelHeight: h, duration: nil, ingestedAt: Date(), sourcePath: "")
+        return ShowTimeline(show: show, items: [1: item]).slides[0]
+    }
+
+    func testAFittedLargePhotoIsSharp() {
+        // Fit: min(2880/4000, 1800/3000) = 0.6.
+        let r = resolved(SlideSettings(kenBurns: .off, fit: .fit))
+        XCTAssertEqual(r.peakMagnification(outputSize: screen), 0.6, accuracy: 1e-9)
+        XCTAssertFalse(r.isSoft(outputSize: screen))
+    }
+
+    func testTransformZoomMakesItSoft() {
+        var t = Transform(); t.scale = 3; t.rotation = 30
+        let r = resolved(SlideSettings(kenBurns: .off, fit: .fit, transform: t))
+        XCTAssertEqual(r.peakMagnification(outputSize: screen), 1.8, accuracy: 1e-9)
+        XCTAssertTrue(r.isSoft(outputSize: screen))
+    }
+
+    func testKenBurnsCountsAtItsClosest() {
+        // Fill: max(0.72, 0.6) = 0.72; zoomed to 2.5 at the end → 1.8.
+        let kb = KenBurns(start: .centred, end: KenBurnsFrame(x: 0.5, y: 0.5, zoom: 2.5))
+        let r = resolved(SlideSettings(kenBurns: .custom(kb), fit: .fill))
+        XCTAssertEqual(r.peakMagnification(outputSize: screen), 1.8, accuracy: 1e-9)
+    }
+
+    func testASmallFileIsSoftEvenFitted() {
+        let r = resolved(SlideSettings(kenBurns: .off, fit: .fit), w: 800, h: 600)
+        XCTAssertEqual(r.peakMagnification(outputSize: screen), 3, accuracy: 1e-9)
+    }
+}

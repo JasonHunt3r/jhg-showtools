@@ -51,6 +51,8 @@ screenshots:
   out in the margin; the onion toggle and its opacity slider. The onion
   skin skips video slides for now (asking for another video's frame would
   seek its player)
+- **Soft-at-this-zoom warning (2026-09-21):** checked by screenshot; the
+  flags on the test library are all correct for a 2560×1664 screen
 
 ## Next: Phase 2a (framing, rotation, match cuts), then 2c Layers
 

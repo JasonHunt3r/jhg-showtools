@@ -218,6 +218,17 @@ struct SlideInspector: View {
                 Button("Reset Transform") { edit("Reset Transform") { $0.transform = nil } }
                     .disabled(first.settings.transform == nil)
             }
+            if let r = timeline.slides.first(where: { $0.slide.id == first.id }) {
+                let m = r.peakMagnification(outputSize: outputPixelSize)
+                if m > ResolvedSlide.softAbove {
+                    Label {
+                        Text("Soft at this zoom: at its closest it's shown at \(String(format: "%.1f", m))× the file's own pixels on this screen.")
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    }
+                    .font(.caption)
+                }
+            }
         } header: {
             Text("Transform")
         } footer: {
