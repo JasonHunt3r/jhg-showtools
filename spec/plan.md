@@ -14,8 +14,9 @@ live on the desktop of each attached monitor.
 - Not a product. It's built for Jason's own Mac: no signing, no notarization,
   no App Store.
 - Not a full video editor. Layering is in scope (Phase 2c); colour grading,
-  audio mixing and effects plugins are not. (Changed 2026-09-21: this line
-  used to rule out multi-track compositing.)
+  audio mixing and *public* plugins are not. (Changed 2026-09-21: this line
+  used to rule out multi-track compositing. The app does have internal seams
+  for its own plugins; see "Plugin seam".)
 
 ---
 
@@ -187,17 +188,100 @@ for ripping through slides and their details.
   editor** where you drag the start and end frames on the image; **⌘Z / ⇧⌘Z**
   undo and redo for every show edit
 
-### Phase 2c: Layers (straight after Phase 2)
+### Phase 2a: Framing, rotation and match cuts (added 2026-09-21, before 2c)
+The main reason for this phase is **match cuts**: lining slide B up against
+slide A so that the transition joins them seamlessly.
+
+- **Free framing.** Zoom can go below 1× (today it is held between 1× and 6×),
+  and the image can be moved past its own edges (today `clampCentre` stops
+  that). Wherever the image doesn't cover the frame, a **background colour**
+  set on the slide shows through
+- **Onion skin.** While you frame slide B, slide A's **last frame** is drawn
+  semi-transparent over it (an opacity slider and a toggle). It's an editing
+  aid only and never renders into the show. It shows A's end frame exactly as
+  it plays, including Ken Burns and rotation
+- **"Soft at this zoom" flag.** When the framing shows the image with fewer
+  pixels than the output, the slide gets a warning. This is where the
+  upscaling hook later attaches (see the plugin seam)
+- **Effects stack per slide (mix and match).** Each slide *use* can have
+  several motion effects on at once, each with its own on/off checkbox in
+  the inspector. Ken Burns (pan and zoom) and rotation are separate effects
+  that combine. 2a's effects: **Ken Burns** and **Rotation**. The stack is
+  also where later effects plug in
+- **Rotation**, which works with Ken Burns or on its own. It has two modes,
+  chosen per slide:
+  - **Speed:** a speed slider (°/s). Note that trimming the slide then
+    changes where the rotation ends, which moves a match-cut end frame
+  - **Angles:** a start angle and an end angle, so the end frame stays put
+    when the slide is trimmed. This is the mode for match cuts
+  - **Acceleration** is a slider with **0 in the centre**: left decelerates,
+    right accelerates. In Angles mode it shapes the way from start to end
+    rather than changing the end angle
+- **Ken Burns gets the same acceleration slider** (settled 2026-09-21),
+  alongside its current easing, so a Flush can speed up its zoom as well as
+  its spin
+- **Pivot ("polar deviation").** The rotation point can be offset from the
+  image centre. Two small polar grids (a joystick for start and one for
+  end), with a **Lock** checkbox that keeps them the same. The pivot is
+  pinned to the image, so it moves along with a Ken Burns pan
+- **Transform handles on the image (Adobe conventions,** checked against
+  Adobe's Photoshop help 2026-09-21). They act on whichever frame, start
+  or end, is selected in the editor:
+  - drag a **corner handle** to scale. Scaling is always proportional (it's a
+    photo), and it's anchored on the opposite corner
+  - **Option**-drag scales around the centre instead
+  - move the pointer **just outside a corner**, where the cursor becomes a
+    curved two-headed arrow, and drag to **rotate** around the pivot.
+    **Shift** snaps to 15° steps (macOS has no built-in rotate cursor, so we
+    draw one)
+  - the **pivot** shows as a crosshair on the image (Photoshop's reference
+    point) and can be dragged anywhere, even off the image. It's the same
+    value as the polar grids, just shown in two places
+  - a freshly placed slide image gets the handles straight away, so rotating
+    it is one drag
+  - no Enter/Esc commit step as in Photoshop: edits are live, and ⌘Z undoes
+- **Presets** set several effects at once. They're a starting point, not a
+  separate effect type. **Flush** is the first one: accelerating rotation
+  plus zoom and pan, "down the hole"
+- **Zoomable work area.** The framing editor and the preview can zoom out
+  past the frame (a pasteboard around it), so an image that is rotated,
+  shrunk or pushed off-centre can be seen hanging past the frame's edges,
+  corners included. The frame edge stays marked
+- **Corners:** a rotated image exposes the background at the corners. This is
+  deliberately left alone until it has been seen (the zoomed-out work area
+  is how to see it); the second layer (2c) may turn out to be the answer
+
+### Phase 2c: Layers (after 2a)
 Final Cut's model: the storyline stays simple and magnetic. Anything layered
 is a **connected clip** stacked above it and attached to a storyline slide,
 so it moves and trims with that slide. Each connected clip has opacity,
 position and scale, a blend mode, fade in and out, and alpha from PNGs and
-HEICs with transparency. Uses: logos and watermarks, frames and borders,
-title cards, picture-in-picture and collages, free-form overlaps, and
-textures or light leaks.
+HEICs with transparency.
+- **Two picture layers: the storyline plus one connected clip per slide**
+  (settled 2026-09-21). The main uses are overlaps and picture-in-picture.
+  Each layer adds a decoded image to *both* sides of every transition, so
+  4 layers would double the memory and compositing cost for the sake of
+  collages. Collages are better made as a new library image (see the plugin
+  seam)
+- Connected clips are stored as a **list**, so a third layer later (text
+  over a picture-in-picture, say) only changes the UI, not the saved shows
+- Borders and watermarks are **stamps** on a slide or a whole show, not a
+  visible lane
+- Text/titles come after the picture layers. They matter for wedding shows
+  and sports highlights, but they aren't needed first
 - The renderer already builds the storyline picture first and composites it
   last, so connected clips are an extra compositing step, not a rewrite
 - Setlist export (Phase 4) gets a separate section for connected clips
+
+### Plugin seam (internal, our own plugins only)
+Tools that make or alter media sit behind one interface: library media in,
+new library media (or a render step) out. The first candidates are
+**AI upscaling** (an upscaled copy stored next to the original, which the
+slide then uses), the **collage maker** (a new library image; to be fleshed
+out before it's committed to) and **stamps**. It is internal only:
+App Store rules forbid downloading or running code that adds features after
+review, so any add-ons would ship inside the app. The upscaling engine is
+chosen later, after checking what macOS actually offers.
 
 ### Phase 2b: Library manager
 - Browse the whole library: thumbnail grid, sort and filter (type, date, size,
@@ -317,4 +401,4 @@ textures or light leaks.
 
 ## Open questions
 
-None. Plan approved 2026-09-20.
+None. Plan approved 2026-09-20; Phase 2a added and settled 2026-09-21.

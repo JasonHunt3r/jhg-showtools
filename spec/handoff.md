@@ -36,7 +36,9 @@ screenshots:
 - popping out the preview onto a second screen
 - **dragging from the Photos app** (the code path exists but has never been exercised)
 
-## Next: Phase 2c, Layers
+## Next: Phase 2a (framing, rotation, match cuts), then 2c Layers
+
+**Superseded 2026-09-21:** 2a now comes first, and 2c is settled at two picture layers. See `spec/plan.md`. The text below is the original 2c note.
 
 Designed and approved in `spec/plan.md`: Final Cut's model, with **connected
 clips** stacked above the storyline and attached to a slide, so they move and
