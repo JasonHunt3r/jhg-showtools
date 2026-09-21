@@ -49,6 +49,11 @@ final class AppModel {
     private(set) var recentLibraries: [URL] = []
     /// Whether the open library is private (kept here so views update).
     private(set) var libraryIsPrivate = false
+    /// Bumped every time a library is loaded. Show and file ids restart at
+    /// 1 in every library, so an undo step recorded in one would land on
+    /// whatever has the same id in the next: undo steps check this, and the
+    /// window clears its undo history when it changes.
+    private(set) var libraryGeneration = 0
     private static let recentKey = "recentLibraries"
 
     /// The app always starts on the master library (plan, 2b). If the master
@@ -150,6 +155,7 @@ final class AppModel {
     }
 
     private func load(_ lib: Library) {
+        libraryGeneration += 1
         do {
             library = lib
             libraryIsPrivate = lib.isPrivate
@@ -195,9 +201,30 @@ final class AppModel {
     /// Imports files and folders. Returns the library item for every file,
     /// including ones that were already in the library, in order — so a drop
     /// onto a show can append exactly what was dropped.
+    ///
+    /// Imports run one at a time, in the order they were asked for: one that
+    /// arrives while another is running waits its turn rather than being
+    /// dropped (or running alongside it and copying the same file twice).
     @discardableResult
     func importFiles(_ urls: [URL]) async -> [Int64] {
-        guard let lib = library, importStatus == nil || importStatus?.finished == true else { return [] }
+        guard let lib = library else { return [] }
+        let previous = importQueue
+        let this = Task { @MainActor in
+            _ = await previous?.value
+            return await self.runImport(urls, into: lib)
+        }
+        importQueue = this
+        return await this.value
+    }
+
+    /// The import running or last run; the next one waits for it.
+    private var importQueue: Task<[Int64], Never>?
+
+    /// Into the library that was open when it was asked for; nothing, if
+    /// that library has been closed since (its callers would otherwise add
+    /// the ids to another library's collection or show).
+    private func runImport(_ urls: [URL], into lib: Library) async -> [Int64] {
+        guard library === lib else { return [] }
         let files = await Task.detached { Ingest.collect(urls) }.value
         importStatus = ImportStatus(total: files.count)
         var ids: [Int64] = []
@@ -213,8 +240,15 @@ final class AppModel {
                     let copied = try await Task.detached {
                         try await Ingest.copyIn(file, expectedHash: hash, mediaDir: media)
                     }.value
-                    let item = try lib.insertItem(relativePath: copied.relativePath, hash: hash,
+                    let item: MediaItem
+                    do {
+                        item = try lib.insertItem(relativePath: copied.relativePath, hash: hash,
                                                   probe: copied.probe, sourcePath: file.path)
+                    } catch {
+                        // No row, so nothing would ever find the copy: take it back out.
+                        try? FileManager.default.removeItem(at: media.appendingPathComponent(copied.relativePath))
+                        throw error
+                    }
                     items.append(item)
                     itemsByID[item.id] = item
                     importStatus?.added += 1
@@ -226,7 +260,7 @@ final class AppModel {
             importStatus?.done += 1
         }
         importStatus?.finished = true
-        return ids
+        return library === lib ? ids : []
     }
 
     /// Drops can carry file URLs (Finder) or file promises (Photos). Both end
@@ -404,8 +438,12 @@ final class AppModel {
             return
         }
         if let undo {
+            let generation = libraryGeneration
             undo.registerUndo(withTarget: self) { model in
-                MainActor.assumeIsolated { model.update(before, undo: undo, action: action) }
+                MainActor.assumeIsolated {
+                    guard model.libraryGeneration == generation else { return }
+                    model.update(before, undo: undo, action: action)
+                }
             }
             if let action { undo.setActionName(action) }
         }
@@ -481,8 +519,12 @@ final class AppModel {
             itemsByID[id]?.rating = r
             if let i = items.firstIndex(where: { $0.id == id }) { items[i].rating = r }
         }
+        let generation = libraryGeneration
         undo?.registerUndo(withTarget: self) { model in
-            MainActor.assumeIsolated { model.applyRatings(before, undo: undo) }
+            MainActor.assumeIsolated {
+                guard model.libraryGeneration == generation else { return }
+                model.applyRatings(before, undo: undo)
+            }
         }
         undo?.setActionName("Rate")
     }

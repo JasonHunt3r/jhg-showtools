@@ -199,22 +199,35 @@ public struct ShowTimeline: Sendable {
 
         // Leads: a transition can begin before its join, but only as far as
         // the outgoing slide has room left after its own transition in has
-        // finished, so two transitions never overlap. Slide 0's lead (used
-        // when a show loops) is fitted after the last slide's, then slide 1
-        // is checked again against it.
-        func fitLead(_ i: Int) {
-            guard resolved.indices.contains(i) else { return }
+        // finished, so two transitions never overlap.
+        /// How far slide `p`'s transition in runs past its join. Slide 0's
+        /// never plays in a show that doesn't loop, so it takes no room.
+        func tail(_ p: Int) -> Double {
+            guard p > 0 || show.defaults.loop else { return 0 }
+            return resolved[p].transitionIn.duration - resolved[p].transitionIn.lead
+        }
+        /// True if the lead had to shrink.
+        func fitLead(_ i: Int) -> Bool {
             let p = i > 0 ? i - 1 : resolved.count - 1
             var tr = resolved[i].transitionIn
-            let room = i > 0 || show.defaults.loop
-                ? resolved[p].length - (resolved[p].transitionIn.duration - resolved[p].transitionIn.lead)
-                : 0
-            tr.lead = min(max(tr.lead, 0), tr.duration, max(room, 0))
+            let room = i > 0 || show.defaults.loop ? resolved[p].length - tail(p) : 0
+            let fitted = min(max(tr.lead, 0), tr.duration, max(room, 0))
+            guard fitted != tr.lead else { return false }
+            tr.lead = fitted
             resolved[i].transitionIn = tr
+            return true
         }
-        for i in resolved.indices.dropFirst() { fitLead(i) }
-        fitLead(0)
-        fitLead(1)
+        // A shorter lead lengthens that transition's tail, which can leave
+        // less room before the next join, so this goes round until nothing
+        // moves. Leads only ever shrink, and no transition outlasts its own
+        // slide, so it settles within a couple of rounds; the cap is a guard.
+        var rounds = 0
+        var changed = true
+        while changed && rounds < resolved.count + 2 {
+            changed = false
+            for i in resolved.indices where fitLead(i) { changed = true }
+            rounds += 1
+        }
 
         // Each slide stays visible through the transition out of it.
         for i in resolved.indices {

@@ -626,3 +626,68 @@ extension OverlayTests {
         XCTAssertNil(OverlayPlacement.place(itemID: 3, at: 7.9, length: 5, in: [b], duration: 20))
     }
 }
+
+extension TransitionLeadTests {
+    /// Slides of these lengths, every join the new-show default (a 2 s
+    /// dissolve centred on the join).
+    func defaultTimeline(_ lengths: [Double], loop: Bool) -> ShowTimeline {
+        var show = Show(id: 1, name: "t")
+        show.defaults.loop = loop
+        var items: [Int64: MediaItem] = [:]
+        for (i, l) in lengths.enumerated() {
+            let id = Int64(i + 1)
+            show.slides.append(Slide(id: id, itemID: id, settings: SlideSettings(length: .seconds(l))))
+            items[id] = MediaItem(id: id, relativePath: "\(id).jpg", hash: "h\(id)", kind: .image,
+                                  pixelWidth: 100, pixelHeight: 100, duration: nil,
+                                  ingestedAt: Date(), sourcePath: "")
+        }
+        return ShowTimeline(show: show, items: items)
+    }
+
+    /// Every transition as a span of show time, in play order, must end
+    /// before the next begins. In a looping show the one into slide 0 plays
+    /// at the end of each pass, and its tail runs into the start of the next.
+    func assertNoOverlap(_ t: ShowTimeline, file: StaticString = #filePath, line: UInt = #line) {
+        var spans: [(into: Int, begin: Double, end: Double)] = []
+        for s in t.slides where s.index > 0 {
+            spans.append((s.index, s.visibleStart, s.visibleStart + s.transitionIn.duration))
+        }
+        if t.loops, let first = t.slides.first {
+            let tr = first.transitionIn
+            spans.append((0, -tr.lead, tr.duration - tr.lead))
+            spans.append((0, t.duration - tr.lead, t.duration - tr.lead + tr.duration))
+        }
+        spans = spans.filter { $0.end > $0.begin }.sorted { $0.begin < $1.begin }
+        for (a, b) in zip(spans, spans.dropFirst()) {
+            XCTAssertLessThanOrEqual(a.end, b.begin + 1e-9,
+                                     "transition into \(a.into) runs past the start of the one into \(b.into)",
+                                     file: file, line: line)
+        }
+    }
+
+    /// Found in the 2026-09-21 audit: re-fitting slide 1's lead after slide
+    /// 0's lengthened its tail, without re-checking slide 2, let two
+    /// transitions overlap, and slide 0 vanished mid-dissolve.
+    func testShortSlidesNeverOverlapTransitions() {
+        let t = defaultTimeline([2.5, 2.2, 5], loop: false)
+        assertNoOverlap(t)
+        // Slide 0 is gone before slide 2 arrives: the dissolve into slide 1
+        // (1.5…3.5 s) ends, slide 1 shows alone, then the next (from 3.7 s).
+        XCTAssertEqual(describe(t.frame(at: 3.6)), "still 1")
+        XCTAssertEqual(describe(t.frame(at: 3.8)), "1→2 0.05")
+    }
+
+    /// In a show that doesn't loop, slide 0's transition in never plays,
+    /// so it mustn't take room from the transition into slide 1.
+    func testUnplayedFirstTransitionTakesNoRoom() {
+        let t = defaultTimeline([2.5, 2.2, 5], loop: false)
+        XCTAssertEqual(t.slides[1].transitionIn.lead, 1, accuracy: 1e-9)
+    }
+
+    func testShortSlidesInALoopNeverOverlapTransitions() {
+        for lengths in [[2.5, 2.2, 5], [5, 2.2, 1.5], [1.2, 1.1, 1.3, 1], [0.5, 4, 0.5]] {
+            assertNoOverlap(defaultTimeline(lengths, loop: true))
+            assertNoOverlap(defaultTimeline(lengths, loop: false))
+        }
+    }
+}
