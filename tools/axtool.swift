@@ -11,13 +11,14 @@
 //                                        more titles walk into submenus)
 //   axtool menustate <pid> <menu> <item> an item's title and whether enabled
 //   axtool focused <pid>                 the element that has the keyboard
-//   axtool click <x> <y> [right|double]
+//   axtool click <x> <y> [right|double|cmd|shift]
 //   axtool drag <x1> <y1> <x2> <y2>
 //   axtool type <text>
 //   axtool key <name> [cmd,shift,opt,ctrl]   return, escape, delete, space,
 //                                        tab, left, right, up, down, or a letter
 //
-// Screen points, top-left origin, as `dump` prints them.
+// Screen points, top-left origin, as `dump` prints them. click, drag, type
+// and key refuse to run unless ShowTools is the frontmost app.
 import ApplicationServices
 import AppKit
 
@@ -71,9 +72,11 @@ func menuItem(_ app: AXUIElement, _ path: [String]) -> AXUIElement? {
     return here
 }
 
-func post(_ type: CGEventType, _ p: CGPoint, _ button: CGMouseButton = .left, clicks: Int64 = 1) {
+func post(_ type: CGEventType, _ p: CGPoint, _ button: CGMouseButton = .left, clicks: Int64 = 1,
+          flags: CGEventFlags = []) {
     let e = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: p, mouseButton: button)
     e?.setIntegerValueField(.mouseEventClickState, value: clicks)
+    e?.flags = flags
     e?.post(tap: .cghidEventTap)
     usleep(40_000)
 }
@@ -120,12 +123,24 @@ func type(_ text: String) {
             e?.keyboardSetUnicodeString(stringLength: units.count, unicodeString: units)
             e?.post(tap: .cghidEventTap)
         }
-        usleep(40_000)
+        usleep(8_000)
+    }
+}
+
+/// Events go to whatever app is in front, not to ShowTools. Every click,
+/// drag and key checks first, and refuses if ShowTools isn't frontmost:
+/// on 2026-09-21 typed paths landed in Jason's editor when it came forward.
+func requireShowToolsInFront() {
+    let front = NSWorkspace.shared.frontmostApplication
+    guard front?.bundleIdentifier == "com.jhg.showtools" else {
+        print("REFUSED: \(front?.localizedName ?? "another app") is in front, not ShowTools")
+        exit(2)
     }
 }
 
 let a = CommandLine.arguments
 guard a.count >= 2 else { print("see the header of axtool.swift"); exit(1) }
+if ["click", "drag", "type", "key"].contains(a[1]) { requireShowToolsInFront() }
 let app = { AXUIElementCreateApplication(pid_t(a[2])!) }
 switch a[1] {
 case "dump":
@@ -151,6 +166,9 @@ case "click":
     post(.mouseMoved, p)
     if mode == "right" {
         post(.rightMouseDown, p, .right); post(.rightMouseUp, p, .right)
+    } else if mode == "cmd" || mode == "shift" {
+        let f: CGEventFlags = mode == "cmd" ? .maskCommand : .maskShift
+        post(.leftMouseDown, p, flags: f); post(.leftMouseUp, p, flags: f)
     } else {
         post(.leftMouseDown, p); post(.leftMouseUp, p)
         if mode == "double" { post(.leftMouseDown, p, clicks: 2); post(.leftMouseUp, p, clicks: 2) }
