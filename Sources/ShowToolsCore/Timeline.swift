@@ -14,6 +14,9 @@ public struct ResolvedSlide: Sendable {
     public let transitionIn: Transition
     public let kenBurns: KenBurns?
     public let fit: Fit
+    /// Nil when the slide has no rotation or its checkbox is off.
+    public let rotation: Rotation?
+    public let background: RGBColor
     /// Seconds into the media where playback starts (video and animation).
     public let clipStart: Double
     /// How long the slide is on screen in total: its own length plus the
@@ -36,6 +39,15 @@ public struct Layer: Sendable {
 
     public var kenBurnsFrame: KenBurnsFrame {
         slide.kenBurns?.frame(at: kenBurnsProgress) ?? .centred
+    }
+
+    /// Degrees clockwise, sampled over the same span as Ken Burns.
+    public var rotationAngle: Double {
+        slide.rotation?.angle(at: kenBurnsProgress, span: slide.visibleSpan) ?? 0
+    }
+
+    public var rotationPivot: ImagePoint {
+        slide.rotation?.pivot(at: kenBurnsProgress) ?? .centre
     }
 }
 
@@ -107,6 +119,8 @@ public struct ShowTimeline: Sendable {
                 index: i, slide: slide, item: item, start: t, length: lengths[i],
                 transitionIn: transition, kenBurns: kb,
                 fit: slide.settings.fit ?? d.fit,
+                rotation: slide.settings.rotation.flatMap { $0.enabled ? $0 : nil },
+                background: slide.settings.background ?? d.background,
                 clipStart: item.kind == .image ? 0 : max(slide.settings.clipStart ?? 0, 0),
                 visibleSpan: lengths[i]))
             t += lengths[i]

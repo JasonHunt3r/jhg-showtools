@@ -142,14 +142,29 @@ public struct KenBurns: Codable, Hashable, Sendable {
     public var start: KenBurnsFrame
     public var end: KenBurnsFrame
     public var easing: Easing
+    /// −1…1, applied alongside the easing; see `Acceleration`. 0 leaves the
+    /// move exactly as it was before the slider existed.
+    public var acceleration: Double
 
-    public init(start: KenBurnsFrame, end: KenBurnsFrame, easing: Easing = .easeInOut) {
+    public init(start: KenBurnsFrame, end: KenBurnsFrame, easing: Easing = .easeInOut,
+                acceleration: Double = 0) {
         self.start = start; self.end = end; self.easing = easing
+        self.acceleration = acceleration
+    }
+
+    /// Field by field: shows saved before `acceleration` existed have no such
+    /// key, and a synthesized decoder would throw away their frames.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        start = try c.decode(KenBurnsFrame.self, forKey: .start)
+        end = try c.decode(KenBurnsFrame.self, forKey: .end)
+        easing = (try? c.decodeIfPresent(Easing.self, forKey: .easing)) ?? .easeInOut
+        acceleration = (try? c.decodeIfPresent(Double.self, forKey: .acceleration)) ?? 0
     }
 
     public func frame(at progress: Double) -> KenBurnsFrame {
-        let p = easing.apply(min(max(progress, 0), 1))
-        func mix(_ a: Double, _ b: Double) -> Double { a + (b - a) * p }
+        let p = easing.apply(Acceleration.shape(progress, amount: acceleration))
+        func mix(_ a: Double, _ b: Double) -> Double { ShowToolsCore.mix(a, b, p) }
         return KenBurnsFrame(x: mix(start.x, end.x), y: mix(start.y, end.y),
                              zoom: mix(start.zoom, end.zoom))
     }
@@ -184,14 +199,21 @@ public struct SlideSettings: Codable, Hashable, Sendable {
     /// Seconds into a video (or animation) where this slide starts playing
     /// it — set by trimming the front of its block. Nil means the beginning.
     public var clipStart: Double?
+    /// What shows wherever the image doesn't cover the frame.
+    public var background: RGBColor?
+    /// Nil means no rotation. There's no show-wide default for it.
+    public var rotation: Rotation?
 
     public init(length: SlideLength? = nil, transition: Transition? = nil,
-                kenBurns: KenBurnsSetting? = nil, fit: Fit? = nil, clipStart: Double? = nil) {
+                kenBurns: KenBurnsSetting? = nil, fit: Fit? = nil, clipStart: Double? = nil,
+                background: RGBColor? = nil, rotation: Rotation? = nil) {
         self.length = length
         self.transition = transition
         self.kenBurns = kenBurns
         self.fit = fit
         self.clipStart = clipStart
+        self.background = background
+        self.rotation = rotation
     }
 
     /// Field by field, for the same reason as `ShowDefaults`.
@@ -202,6 +224,8 @@ public struct SlideSettings: Codable, Hashable, Sendable {
         kenBurns = (try? c.decodeIfPresent(KenBurnsSetting.self, forKey: .kenBurns)) ?? nil
         fit = (try? c.decodeIfPresent(Fit.self, forKey: .fit)) ?? nil
         clipStart = (try? c.decodeIfPresent(Double.self, forKey: .clipStart)) ?? nil
+        background = (try? c.decodeIfPresent(RGBColor.self, forKey: .background)) ?? nil
+        rotation = (try? c.decodeIfPresent(Rotation.self, forKey: .rotation)) ?? nil
     }
 }
 
@@ -227,6 +251,7 @@ public struct ShowDefaults: Codable, Hashable, Sendable {
     /// Only `.off` and `.auto` make sense as a show-wide default.
     public var kenBurns: KenBurnsSetting = .off
     public var fit: Fit = .fill
+    public var background: RGBColor = .black
     /// Video slides play their whole clip unless given a length.
     public var videoUsesClipLength: Bool = true
     public var loop: Bool = true
@@ -246,6 +271,7 @@ public struct ShowDefaults: Codable, Hashable, Sendable {
         transition = get(.transition, d.transition)
         kenBurns = get(.kenBurns, d.kenBurns)
         fit = get(.fit, d.fit)
+        background = get(.background, d.background)
         videoUsesClipLength = get(.videoUsesClipLength, d.videoUsesClipLength)
         loop = get(.loop, d.loop)
     }
