@@ -34,13 +34,6 @@ struct StorylineView: View {
     /// The images row when it's open (a thin strip when empty).
     static let imagesRowOpen: CGFloat = 30
 
-    /// The storyline's own height with its rows open: padding, ruler, the
-    /// images and transitions rows, and the blocks. The frame strip takes
-    /// whatever the bottom area has beyond this and the play bar.
-    static var naturalHeight: CGFloat {
-        6 + rulerHeight + 4 + (imagesRowOpen + 2 + laneRowHeight + 4) + blockHeight + 2 + 6
-    }
-
     /// A transition section being dragged: drawn as it goes, saved on release.
     private struct TransitionEdit {
         enum Part { case start, end, body }

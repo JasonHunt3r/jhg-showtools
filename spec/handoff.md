@@ -107,7 +107,7 @@ screenshots:
   locked screen. Also that Settings ▸ Let Spotlight index the library, with
   an alternate library open, renames *that* library's folder in place
 - **Effects timeline and frame strip (2026-09-21):** both checked by
-  screenshot. Try: the divider above the strip (bigger frames, fewer of them), its
+  screenshot. Try: the divider between picture and strip (bigger frames, fewer of them), its
   Follow Storyline / Whole Show menu, scrolling and zooming the storyline
   (frames should move with the blocks), clicking a frame, and View ▸ Show
   Frame Strip (⌥⌘F)

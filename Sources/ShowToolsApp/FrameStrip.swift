@@ -9,11 +9,11 @@ import ShowToolsCore
 /// storyline shows the parts; this shows the result.
 ///
 /// It follows the storyline (frames sit over their moments and scroll with
-/// the blocks) or shows the whole show. It takes whatever height the bottom
-/// of the window has left over, so dragging the divider above it up makes
-/// the frames bigger: each then covers more time, so there are fewer. (Its
-/// own resize edge, stacked under the divider, was one bar too many.) Click
-/// a frame to go there. View ▸ Show Frame Strip (⌥⌘F) turns it on and off.
+/// the blocks) or shows the whole show across its width. It sits under the
+/// picture in the main viewer's column only, so the browser and inspector
+/// keep their height (Jason); the divider between picture and strip sizes
+/// it: bigger frames each cover more time, so there are fewer. Click a
+/// frame to go there. View ▸ Show Frame Strip (⌥⌘F) turns it on and off.
 struct FrameStrip: View {
     let show: Show
     let timeline: ShowTimeline
@@ -22,9 +22,6 @@ struct FrameStrip: View {
     let pps: Double
     let scrollOffset: CGFloat
     let inset: CGFloat
-    /// The play bar's slider, in the strip's own x: Whole Show lines up with
-    /// it, so a frame sits under the knob's place for its moment.
-    let scrubber: CGRect
     @Environment(AppModel.self) private var model
 
     enum Span: String, CaseIterable {
@@ -38,8 +35,6 @@ struct FrameStrip: View {
     /// The smallest it gets: the divider can't squeeze it below this. Small:
     /// a thumbnail-sized frame (Jason wanted it to shrink further).
     static let minHeight: CGFloat = 20
-    /// How far short of each end of a slider its knob stops (half a knob).
-    static let knobInset: CGFloat = 10
 
     var body: some View {
         GeometryReader { g in
@@ -87,11 +82,11 @@ struct FrameStrip: View {
         }
     }
 
-    /// Whole Show's span: the play bar knob's travel, or the whole strip if
-    /// the play bar hasn't reported where it is.
+    /// Whole Show's span: the strip's own width. (It lined up with the play
+    /// bar while the strip ran the window's width; under the picture it's
+    /// narrower than the play bar.)
     private func wholeTrack(width: CGFloat) -> (minX: CGFloat, width: CGFloat) {
-        guard scrubber.width > Self.knobInset * 4 else { return (0, width) }
-        return (scrubber.minX + Self.knobInset, scrubber.width - Self.knobInset * 2)
+        (0, width)
     }
 
     private func strip(width: CGFloat, height: CGFloat) -> some View {

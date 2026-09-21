@@ -18,9 +18,6 @@ struct EditShowView: View {
     @State private var selectedOverlay: UUID?
     @AppStorage("storylineZoom") private var pps: Double = 24
     @State private var storylineOffset: CGFloat = 0
-    /// Where the play bar's slider sits, for the frame strip's Whole Show.
-    @State private var scrubberFrame: CGRect = .zero
-    @AppStorage("frameStripShown") private var frameStripShown = true
 
     var body: some View {
         // A ZStack, not a Group: modifiers on a Group apply to each child, so
@@ -34,7 +31,9 @@ struct EditShowView: View {
                         inspectorShown: $inspectorShown, model: model,
                         preview: PreviewStage(engine: engine, title: show.name,
                                               selection: $selection, selectedTransition: $selectedTransition,
-                                              selectedOverlay: $selectedOverlay, mutate: mutate),
+                                              selectedOverlay: $selectedOverlay, mutate: mutate,
+                                              show: show, timeline: timeline, pps: pps,
+                                              storylineOffset: storylineOffset),
                         list: CollectionBrowser(show: show, timeline: timeline, engine: engine,
                                                 mutate: mutate, inspectorShown: $inspectorShown,
                                                 selection: $selection, selectedOverlay: $selectedOverlay),
@@ -42,29 +41,16 @@ struct EditShowView: View {
                                                   mutate: mutate))
                         .frame(minHeight: 220)
                     VStack(spacing: 0) {
-                        if frameStripShown {
-                            FrameStrip(show: show, timeline: timeline, engine: engine, pps: pps,
-                                       scrollOffset: storylineOffset, inset: StorylineView.inset,
-                                       scrubber: scrubberFrame)
-                        }
                         TransportRow(engine: engine, pps: $pps, fit: fitStoryline)
                         Divider()
-                        // With the strip on, the storyline keeps its own
-                        // height and the strip takes what's left, so the
-                        // divider above sizes the frames.
                         StorylineView(show: show, timeline: timeline, engine: engine,
                                       selection: $selection, selectedTransition: $selectedTransition,
                                       selectedOverlay: $selectedOverlay,
                                       pps: $pps, scrollOffset: $storylineOffset, mutate: mutate,
                                       openInspector: { inspectorShown = true })
-                            .fixedSize(horizontal: false, vertical: frameStripShown)
                     }
-                    .coordinateSpace(name: "editShowBottom")
-                    .onPreferenceChange(ScrubberFrameKey.self) { scrubberFrame = $0 }
-                    // The storyline and play bar at their own heights, plus
-                    // the strip's least (or, starting out, a little more).
-                    .frame(minHeight: StorylineView.naturalHeight + Self.transportHeight + stripMin,
-                           idealHeight: StorylineView.naturalHeight + Self.transportHeight + stripIdeal)
+                    .frame(minHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 80 + 56,
+                           idealHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 90 + 56)
                 }
                 .onDeleteCommand {
                     // What's selected in the lane goes first: an image is
@@ -138,14 +124,6 @@ struct EditShowView: View {
 
     @State private var visibleWidth: CGFloat = 800
 
-    /// The play bar: its controls and padding, and the divider under it.
-    static let transportHeight: CGFloat = 36
-
-    /// The strip takes the bottom area's spare height; this is its least,
-    /// and what it starts with.
-    private var stripMin: CGFloat { frameStripShown ? FrameStrip.minHeight : 0 }
-    private var stripIdeal: CGFloat { frameStripShown ? 64 : 0 }
-
     private func fitStoryline() {
         guard timeline.duration > 0 else { return }
         pps = min(max(Double(visibleWidth - StorylineView.inset * 2 - 40) / timeline.duration, 2), 400)
@@ -181,6 +159,13 @@ struct PreviewStage: View {
     @Binding var selectedTransition: Int64?
     @Binding var selectedOverlay: UUID?
     let mutate: ShowMutator
+    /// For the frame strip under the picture: the show, and the storyline's
+    /// zoom and scroll to follow.
+    let show: Show
+    let timeline: ShowTimeline
+    let pps: Double
+    let storylineOffset: CGFloat
+    @AppStorage("frameStripShown") private var frameStripShown = true
     @State private var hovering = false
     /// The slide whose image is selected in the picture, for its handles.
     @State private var imageSlideID: Int64?
@@ -205,7 +190,22 @@ struct PreviewStage: View {
                          onionOpacity: onionOpacity)
     }
 
+    /// The picture, with the frame strip below it in this column only (not
+    /// under the browser and inspector), split by one divider that sizes it.
     var body: some View {
+        if frameStripShown {
+            VSplitView {
+                picture.frame(minHeight: 120)
+                FrameStrip(show: show, timeline: timeline, engine: engine, pps: pps,
+                           scrollOffset: storylineOffset, inset: StorylineView.inset)
+                    .frame(minHeight: FrameStrip.minHeight, idealHeight: 64)
+            }
+        } else {
+            picture
+        }
+    }
+
+    private var picture: some View {
         ZStack {
             Color.black
             // The canvas fills the stage: it draws the pasteboard round the
@@ -488,10 +488,6 @@ struct TransportRow: View {
                             if engine.isPlaying { engine.pause() }
                             engine.seek(t)
                         }), in: 0...max(engine.duration, 0.1))
-                        // Where it is, for the frame strip's Whole Show to line up with.
-                        .background(GeometryReader { g in
-                            Color.clear.preference(key: ScrubberFrameKey.self, value: g.frame(in: .named("editShowBottom")))
-                        })
                     Text("\(formatClock(engine.timeline.wrap(engine.now))) / \(formatDuration(engine.duration))")
                         .font(.system(size: 11, design: .monospaced))
                         .frame(width: 110, alignment: .trailing)
@@ -526,12 +522,3 @@ func formatClock(_ s: Double) -> String {
     return String(format: "%d:%04.1f", m, t - Double(m * 60))
 }
 
-
-/// The play bar's slider frame, reported up for the frame strip.
-struct ScrubberFrameKey: PreferenceKey {
-    static let defaultValue: CGRect = .zero
-    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
-        let next = nextValue()
-        if next != .zero { value = next }
-    }
-}

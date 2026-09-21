@@ -349,16 +349,15 @@ later; they aren't, because most timings come from other settings.
 
 ### Frame strip (built 2026-09-21)
 A strip of rendered frames of the finished picture (slides, transitions,
-lane images) above the play bar. It can **follow the storyline** (frames
-over their moments, scrolling with the blocks; the default) or show the
-**whole show**, chosen from a small menu on the strip (Whole Show lines up
-with the play bar's track). It takes the bottom area's spare height, so the
-divider above it sizes the frames: drag it up for bigger frames, which each
-cover more time, so fewer show. (It had its own resize edge too, stacked
-under the divider; Jason found the pair confusing, so it went.) Click a
-frame to go there. **View ▸ Show Frame Strip (⌥⌘F)**. Frames render in the
-background through the Compositor from small copies of the files, cached by
-time. Video shows its first frame for now.
+lane images) **under the picture, in the main viewer's column only**, so the
+browser and inspector keep their full height (Jason). One divider between
+picture and strip sizes it: bigger frames each cover more time, so fewer
+show. It can **follow the storyline** (frames over their moments, scrolling
+with the blocks; the default) or show the **whole show** across its width,
+from a small menu on the strip. Click a frame to go there. **View ▸ Show
+Frame Strip (⌥⌘F)**. Frames render in the background through the
+Compositor from small copies of the files, cached by time. Video shows its
+first frame for now.
 
 ### Plugin seam (internal, our own plugins only)
 Tools that make or alter media sit behind one interface: library media in,
