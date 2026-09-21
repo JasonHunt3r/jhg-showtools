@@ -64,8 +64,15 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
 - Settings JSON decodes field by field. Don't replace that with synthesized
   Codable: one unreadable field would reset all of them, and the next save
   would make the loss permanent. Every model type does this, including
-  `Transition`, `KenBurns`, `Rotation`, `Transform` and `OverlayClip`. A new field
-  on a synthesized type would drop every saved value that lacks it.
+  `Transition`, `KenBurns`, `Rotation`, `Transform` and `OverlayClip`, down to
+  `KenBurnsFrame`, `ImagePoint` and `SRGBColor`. A new field on a synthesized
+  type would drop every saved value that lacks it.
+- Removing or renaming an enum case is the same trap. An unreadable enum
+  field falls back to its default, but `Transition` requires its `style`:
+  saved transitions of a removed style become the show's default (as
+  Accordion's would have), permanently on the next save. `KenBurnsSetting`
+  and `SlideLength` are synthesized enums, so a removed case drops the
+  whole setting. Keep old cases decodable, or migrate them.
 - Library schema changes are additive migrations (`Library.migrate`,
   currently version 5), each tested by opening a library written by the
   version before. The master library upgrades itself on first open, after

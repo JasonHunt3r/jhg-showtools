@@ -162,6 +162,15 @@ public struct KenBurnsFrame: Codable, Hashable, Sendable {
     }
 
     public static let centred = KenBurnsFrame(x: 0.5, y: 0.5, zoom: 1)
+
+    /// Field by field, for the same reason as `ShowDefaults`.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func get(_ k: CodingKeys, _ fallback: Double) -> Double {
+            ((try? c.decodeIfPresent(Double.self, forKey: k)) ?? nil) ?? fallback
+        }
+        x = get(.x, 0.5); y = get(.y, 0.5); zoom = get(.zoom, 1)
+    }
 }
 
 public struct KenBurns: Codable, Hashable, Sendable {

@@ -30,6 +30,13 @@ public struct SRGBColor: Codable, Hashable, Sendable {
     }
 
     public static let black = SRGBColor(red: 0, green: 0, blue: 0)
+
+    /// Field by field, for the same reason as `ShowDefaults`.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func get(_ k: CodingKeys) -> Double { ((try? c.decodeIfPresent(Double.self, forKey: k)) ?? nil) ?? 0 }
+        red = get(.red); green = get(.green); blue = get(.blue)
+    }
 }
 
 /// A point in the image's own terms, as `KenBurnsFrame` uses: 0…1 across
@@ -42,6 +49,13 @@ public struct ImagePoint: Codable, Hashable, Sendable {
     public init(x: Double, y: Double) { self.x = x; self.y = y }
 
     public static let centre = ImagePoint(x: 0.5, y: 0.5)
+
+    /// Field by field, for the same reason as `ShowDefaults`.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func get(_ k: CodingKeys) -> Double { ((try? c.decodeIfPresent(Double.self, forKey: k)) ?? nil) ?? 0.5 }
+        x = get(.x); y = get(.y)
+    }
 }
 
 /// Where a slide's image sits when nothing is moving it (Final Cut's

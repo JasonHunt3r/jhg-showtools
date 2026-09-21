@@ -114,6 +114,24 @@ final class DecodingTests: XCTestCase {
         XCTAssertEqual(s.length, .seconds(3))
         XCTAssertNil(s.transition)
     }
+
+    /// The small value types inside the settings fall back field by field
+    /// too, so a field added later can't cost a saved Ken Burns move, pivot
+    /// or background.
+    func testSmallValueTypesDecodeFieldByField() throws {
+        let kb = try JSONDecoder().decode(KenBurns.self, from: Data(
+            #"{"start":{"x":0.2,"y":0.3,"zoom":1.5},"end":{"x":0.7,"zoom":"bad"}}"#.utf8))
+        XCTAssertEqual(kb.start, KenBurnsFrame(x: 0.2, y: 0.3, zoom: 1.5))
+        XCTAssertEqual(kb.end, KenBurnsFrame(x: 0.7, y: 0.5, zoom: 1))
+
+        let p = try JSONDecoder().decode(ImagePoint.self, from: Data(#"{"x":0.1,"future":true}"#.utf8))
+        XCTAssertEqual(p, ImagePoint(x: 0.1, y: 0.5))
+
+        let s = try JSONDecoder().decode(SlideSettings.self, from: Data(
+            #"{"length":{"seconds":{"_0":3}},"background":{"red":1,"green":0.5}}"#.utf8))
+        XCTAssertEqual(s.background, SRGBColor(red: 1, green: 0.5, blue: 0))
+        XCTAssertEqual(s.length, .seconds(3))
+    }
 }
 
 final class UndoSupportTests: XCTestCase {
