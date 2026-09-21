@@ -1,7 +1,8 @@
 # CLAUDE.md — ShowTools
 
 A macOS slideshow composer and player for Jason's own Mac. The plan, with
-every decision so far, is in `spec/plan.md`: read it first.
+every decision so far, is in `spec/plan.md`: read it first. The state of play
+(what's built, what's confirmed by hand, what's next) is in `spec/handoff.md`.
 
 ## Layout
 
@@ -18,6 +19,9 @@ every decision so far, is in `spec/plan.md`: read it first.
   through the Compositor to PNG, which is how transitions get checked by eye).
 - `make-app.sh`: builds `build/ShowTools.app` (a SwiftPM binary wrapped in a
   bundle, the same approach as CutSim).
+- `tools/`: `make-test-library.sh <dir>` builds a scratch library with
+  generated media and a test show. There are also a window lister and a
+  contact-sheet tool, for checking screenshots.
 
 ## Rules
 
@@ -32,6 +36,15 @@ every decision so far, is in `spec/plan.md`: read it first.
   (reorder, trim, Ken Burns) commit once, on release, so each is one undo step.
 - Modifiers on a SwiftUI `Group` apply to every child. Use a `ZStack` when
   a container needs its own onAppear/onDisappear/task.
+- Edit Show's columns are `ColumnsSplitView`, a manual NSSplitView layout.
+  Don't switch back to NSSplitViewController or holding priorities: the
+  lowest-priority column absorbs every divider drag (measured). Its dividers
+  draw clear on purpose, because with a manual layout NSSplitView's divider
+  layers go stale. Check AppKit layout in a standalone harness or with a
+  layer-tree dump before changing it.
+- Jason can't be asked to grant accessibility, so nothing here can be
+  clicked or typed into. Anything that needs a drag or a key press goes on
+  his hands-on list in the handoff.
 - The library item carries no slide settings. Settings belong to each use of
   it (`Slide`). The same file can appear many times with different settings.
 - Settings JSON decodes field by field. Don't replace that with synthesized
