@@ -55,6 +55,49 @@ public enum LibraryLocation {
     }
 }
 
+/// Test launches (those with `SHOWTOOLS_LIBRARY`) leave a note in the app's
+/// defaults while they run, removed when they quit. A note left by a copy
+/// that's no longer running means it crashed, and a plain launch soon after
+/// is most likely the crash reporter's Reopen (or macOS relaunching it),
+/// which carries none of the test's environment and would open the real
+/// library. That launch opens nothing, once: the notes are cleared, so the
+/// next deliberate launch opens normally. (2026-09-21: a crash relaunch
+/// created an empty real library.)
+public struct TestLaunchRecord {
+    public static let key = "runningTestLaunches"
+    let defaults: UserDefaults
+    let isAlive: (Int32) -> Bool
+
+    public init(defaults: UserDefaults = .standard,
+                isAlive: @escaping (Int32) -> Bool = { kill($0, 0) == 0 || errno == EPERM }) {
+        self.defaults = defaults
+        self.isAlive = isAlive
+    }
+
+    private var notes: [String: String] {
+        get { defaults.dictionary(forKey: Self.key) as? [String: String] ?? [:] }
+        nonmutating set { defaults.set(newValue, forKey: Self.key) }
+    }
+
+    /// A test launch starting: note it.
+    public func begin(pid: Int32, library: String) { notes[String(pid)] = library }
+
+    /// A test launch quitting properly: remove its note.
+    public func end(pid: Int32) { notes[String(pid)] = nil }
+
+    /// For a plain launch: why it mustn't open a library, or nil. Clears the
+    /// notes of every copy no longer running, so it only refuses once.
+    public func crashRelaunchProblem() -> String? {
+        let dead = notes.filter { pid, _ in Int32(pid).map { !isAlive($0) } ?? true }
+        guard !dead.isEmpty else { return nil }
+        notes = notes.filter { dead[$0.key] == nil }
+        return "The last test copy of ShowTools (on \(dead.values.sorted().joined(separator: ", "))) "
+            + "didn't quit normally, so this launch is probably its crash relaunch. It has no "
+            + "SHOWTOOLS_LIBRARY and would have opened the real library, so nothing was opened. "
+            + "Quit and open ShowTools again to use the real library."
+    }
+}
+
 /// The library database plus the folder of media it manages.
 ///
 /// Not thread-safe: the app uses it from the main actor. Heavy file work

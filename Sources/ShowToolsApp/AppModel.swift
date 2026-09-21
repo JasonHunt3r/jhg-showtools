@@ -67,6 +67,12 @@ final class AppModel {
             loadError = problem
             return
         }
+        if let scratch = ProcessInfo.processInfo.environment["SHOWTOOLS_LIBRARY"], !scratch.isEmpty {
+            Self.noteTestLaunch(library: scratch)
+        } else if let problem = TestLaunchRecord().crashRelaunchProblem() {
+            loadError = problem
+            return
+        }
         do {
             let lib = try Library(root: masterURL)
             Self.removeLeftoverStaging(in: lib.root)
@@ -74,6 +80,22 @@ final class AppModel {
         } catch {
             loadError = "\(error)"
         }
+    }
+
+    /// A test launch notes itself (see `TestLaunchRecord`) and removes the
+    /// note when it quits: normally, or by SIGTERM (`kill`, how Claude closes
+    /// its test copies). Only a crash leaves the note.
+    private static var sigterm: DispatchSourceSignal?
+    private static func noteTestLaunch(library: String) {
+        let pid = ProcessInfo.processInfo.processIdentifier
+        TestLaunchRecord().begin(pid: pid, library: library)
+        NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification,
+                                               object: nil, queue: .main) { _ in TestLaunchRecord().end(pid: pid) }
+        signal(SIGTERM, SIG_IGN)
+        let source = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        source.setEventHandler { TestLaunchRecord().end(pid: pid); exit(0) }
+        source.resume()
+        sigterm = source
     }
 
     /// The master library's folder (under either name, as Spotlight's

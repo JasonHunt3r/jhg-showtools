@@ -397,3 +397,46 @@ extension LibraryTests {
         XCTAssertNotNil(LibraryLocation.testLaunchProblem(["SHOWTOOLS_LIBARY": "/tmp/t"]))
     }
 }
+
+final class TestLaunchRecordTests: XCTestCase {
+    var defaults: UserDefaults!
+    override func setUp() {
+        defaults = UserDefaults(suiteName: "showtools-tests-\(UUID().uuidString)")
+    }
+
+    /// A test copy that quit properly leaves nothing behind.
+    func testACleanQuitLeavesNoProblem() {
+        let r = TestLaunchRecord(defaults: defaults, isAlive: { _ in false })
+        r.begin(pid: 101, library: "/tmp/Scratch.noindex")
+        r.end(pid: 101)
+        XCTAssertNil(r.crashRelaunchProblem())
+    }
+
+    /// A test copy still running is no reason to refuse a plain launch.
+    func testARunningTestCopyIsFine() {
+        let r = TestLaunchRecord(defaults: defaults, isAlive: { $0 == 101 })
+        r.begin(pid: 101, library: "/tmp/Scratch.noindex")
+        XCTAssertNil(r.crashRelaunchProblem())
+    }
+
+    /// A test copy that crashed: the next plain launch is refused, once.
+    func testACrashedTestCopyRefusesOnce() {
+        let r = TestLaunchRecord(defaults: defaults, isAlive: { _ in false })
+        r.begin(pid: 101, library: "/tmp/Scratch.noindex")
+        let problem = r.crashRelaunchProblem()
+        XCTAssertNotNil(problem)
+        XCTAssertTrue(problem?.contains("/tmp/Scratch.noindex") == true)
+        XCTAssertNil(r.crashRelaunchProblem(), "the next deliberate launch opens normally")
+    }
+
+    /// Only dead copies' notes are cleared; a running one's stays.
+    func testOnlyDeadNotesAreCleared() {
+        var alive: Set<Int32> = [102]
+        let r = TestLaunchRecord(defaults: defaults, isAlive: { alive.contains($0) })
+        r.begin(pid: 101, library: "/tmp/A.noindex")
+        r.begin(pid: 102, library: "/tmp/B.noindex")
+        XCTAssertNotNil(r.crashRelaunchProblem())
+        alive = []                                           // B crashes later
+        XCTAssertTrue(r.crashRelaunchProblem()?.contains("/tmp/B.noindex") == true)
+    }
+}

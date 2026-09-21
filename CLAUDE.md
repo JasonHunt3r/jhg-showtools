@@ -35,7 +35,11 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   Set `SHOWTOOLS_LIBRARY=<scratch path>`: `open -n --env SHOWTOOLS_LIBRARY=… build/ShowTools.app`.
   A launch with any `SHOWTOOLS_` variable but no `SHOWTOOLS_LIBRARY` (a dev
   hook alone, or a typo) opens nothing and says why
-  (`LibraryLocation.testLaunchProblem`).
+  (`LibraryLocation.testLaunchProblem`). A test copy that crashes can be
+  relaunched without its environment (the crash reporter's Reopen), so
+  test launches leave a note that a proper quit removes, and the first plain
+  launch after a crashed one opens nothing (`TestLaunchRecord`). Close test
+  copies with `kill` or ⌘Q; `kill -9` leaves the note, costing one refused launch.
 - `SHOWTOOLS_DEV_PLAY="<showID>:<slideIndex>[:full]"` opens the player at
   launch, so it can be screenshotted without clicking (UI scripting
   was once off-limits; they still save clicks). `SHOWTOOLS_DEV_SHOW="<showID>[:<slideIndex>]"`
