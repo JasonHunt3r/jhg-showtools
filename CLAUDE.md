@@ -37,8 +37,8 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   hook alone, or a typo) opens nothing and says why
   (`LibraryLocation.testLaunchProblem`).
 - `SHOWTOOLS_DEV_PLAY="<showID>:<slideIndex>[:full]"` opens the player at
-  launch, so it can be screenshotted without clicking (UI scripting isn't
-  permitted on this Mac). `SHOWTOOLS_DEV_SHOW="<showID>[:<slideIndex>]"`
+  launch, so it can be screenshotted without clicking (UI scripting
+  was once off-limits; they still save clicks). `SHOWTOOLS_DEV_SHOW="<showID>[:<slideIndex>]"`
   selects a show (and a slide). `SHOWTOOLS_DEV_IMAGE=1` also selects that
   slide's image in the Edit Show preview, so its handles show
   (`SHOWTOOLS_DEV_IMAGE=rotation` shows its Rotation handles).
@@ -56,9 +56,14 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   draw clear on purpose, because with a manual layout NSSplitView's divider
   layers go stale. Check AppKit layout in a standalone harness or with a
   layer-tree dump before changing it.
-- Jason can't be asked to grant accessibility, so nothing here can be
-  clicked or typed into. Anything that needs a drag or a key press goes on
-  his hands-on list in the handoff.
+- Accessibility is granted to the Claude app (2026-09-21), so the app can
+  be clicked, dragged and typed into: `tools/axtool.swift` reads the UI
+  (`dump`, `find`, `menustate`) and acts with real events (`click`, `drag`,
+  `type`, `key`, `menu`). Run hands-on checks with it, always on a scratch
+  library, and keep them cheap: read with `find`/`dump` (text), and take a
+  screenshot only when the check is about what's on screen. Cross-app drops
+  (Finder, Photos), Touch ID, pinch, and look-and-feel still go on Jason's
+  list. Don't drive the app while Jason is using it.
 - The library item carries no slide settings. Settings belong to each use of
   it (`Slide`). The same file can appear many times with different settings.
 - Settings JSON decodes field by field. Don't replace that with synthesized
