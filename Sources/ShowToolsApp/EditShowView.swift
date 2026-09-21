@@ -23,7 +23,8 @@ struct EditShowView: View {
                 VSplitView {
                     ShowColumns(
                         inspectorShown: $inspectorShown, model: model,
-                        preview: PreviewStage(engine: engine, title: show.name),
+                        preview: PreviewStage(engine: engine, title: show.name,
+                                              selection: $selection, mutate: mutate),
                         list: OrderList(show: show, timeline: timeline, engine: engine,
                                         selection: $selection, mutate: mutate,
                                         toggleInspector: { inspectorShown.toggle() }),
@@ -100,7 +101,11 @@ struct EditShowView: View {
 struct PreviewStage: View {
     let engine: PlaybackEngine
     let title: String
+    @Binding var selection: Set<Int64>
+    let mutate: ShowMutator
     @State private var hovering = false
+    /// The slide whose image is selected in the picture, for its handles.
+    @State private var imageSlideID: Int64?
 
     var body: some View {
         ZStack {
@@ -108,6 +113,14 @@ struct PreviewStage: View {
             ShowCanvasView(engine: engine)
                 .aspectRatio(outputAspect, contentMode: .fit)
                 .overlay(alignment: .bottom) { SlideProgress(engine: engine) }
+            // Over the whole stage, so handles past the picture's edge show.
+            GeometryReader { g in
+                TransformOverlay(engine: engine, frame: Self.fitted(in: g.size),
+                                 imageSlideID: $imageSlideID, selection: $selection, mutate: mutate)
+            }
+            // The buttons sit above the handles so they stay clickable.
+            Color.clear
+                .aspectRatio(outputAspect, contentMode: .fit)
                 .overlay(alignment: .bottomLeading) {
                     Button { engine.togglePlay() } label: {
                         HStack(spacing: 6) {
@@ -138,6 +151,22 @@ struct PreviewStage: View {
                 }
         }
         .onHover { hovering = $0 }
+        .task {
+            // Dev hook: SHOWTOOLS_DEV_IMAGE=1 selects the selected slide's
+            // image at launch, so its handles can be screenshotted.
+            guard ProcessInfo.processInfo.environment["SHOWTOOLS_DEV_IMAGE"] != nil else { return }
+            try? await Task.sleep(for: .seconds(1))
+            imageSlideID = selection.first
+        }
+    }
+
+    /// The picture's rect in a stage of `size`: the same aspect fit the
+    /// canvas gets.
+    static func fitted(in size: CGSize) -> CGRect {
+        guard size.width > 0, size.height > 0 else { return .zero }
+        let w = min(size.width, size.height * outputAspect)
+        let h = w / outputAspect
+        return CGRect(x: (size.width - w) / 2, y: (size.height - h) / 2, width: w, height: h)
     }
 }
 

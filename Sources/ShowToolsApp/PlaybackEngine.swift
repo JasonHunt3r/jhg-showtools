@@ -67,6 +67,9 @@ final class PlaybackEngine {
     @ObservationIgnored private var lastChange: CFTimeInterval = CACurrentMediaTime()
     /// The clock waits for the first slide's media, so a show never opens on black.
     @ObservationIgnored private var waitingToStart = false
+    /// True while a handle drag or a run of nudges is drawn before it's
+    /// saved. The saved show mustn't replace it until the edit is committed.
+    @ObservationIgnored private(set) var isEditingLive = false
 
     init(showID: Int64, model: AppModel) {
         self.showID = showID
@@ -101,7 +104,7 @@ final class PlaybackEngine {
     // MARK: Keeping up with edits
 
     private func tick() {
-        if let latest = model?.show(showID), latest != show { reload(latest) }
+        if !isEditingLive, let latest = model?.show(showID), latest != show { reload(latest) }
         let t = clock.now
         // A show that doesn't loop stops at its end (or its start, in reverse).
         if clock.playing, !timeline.loops, timeline.duration > 0 {
@@ -128,6 +131,24 @@ final class PlaybackEngine {
         if let keptID, let s = timeline.slides.first(where: { $0.slide.id == keptID }) {
             clock.seek(s.start + max(0, min(into, s.length)))
         }
+        touch()
+    }
+
+    /// Draws `edited` in place of the saved show, for a live edit that
+    /// doesn't change timing (a Transform). Call `endLiveEdit` once it's
+    /// committed, or abandoned.
+    func showLiveEdit(_ edited: Show) {
+        isEditingLive = true
+        show = edited
+        timeline = model?.timeline(for: edited) ?? timeline
+        touch()
+    }
+
+    /// Back to the saved show: the next tick picks it up.
+    func endLiveEdit() {
+        guard isEditingLive else { return }
+        isEditingLive = false
+        tick()
         touch()
     }
 

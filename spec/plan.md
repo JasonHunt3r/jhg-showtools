@@ -252,6 +252,19 @@ slide A so that the transition joins them seamlessly.
   - a freshly placed slide image gets the handles straight away, so rotating
     it is one drag
   - no Enter/Esc commit step as in Photoshop: edits are live, and ⌘Z undoes
+- **Selecting the image and the keyboard (settled 2026-09-21).** Click the
+  image in the Edit Show preview to select it (outline and handles). Esc or a
+  click on the background deselects. While it's selected, keys edit that
+  slide's Transform:
+  - arrows nudge 1 px, Shift+arrow 10 px (Photoshop and Keynote convention).
+    A pixel means one pixel of the full-screen frame on the main display,
+    not of the smaller preview
+  - Option+←/→ rotate 1° anticlockwise/clockwise, Shift+Option 15°
+  - Option+↑/↓ zoom in/out 1%, Shift+Option 10%
+  - Option was chosen because ⌘+/⌘− already zoom the storyline and ⌘+arrows
+    mean start/end across macOS
+  - a run of presses is one undo step; the run ends after about a second
+    without a key
 - **Freeze on transition**: a checkbox on every effect that moves the
   image (Ken Burns, Rotation), **off by default**. When it's on, the effect
   holds its start frame through the transition in and its end frame through

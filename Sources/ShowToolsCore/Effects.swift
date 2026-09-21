@@ -159,3 +159,56 @@ public struct Rotation: Codable, Hashable, Sendable {
 func mix(_ a: Double, _ b: Double, _ p: Double) -> Double {
     a * (1 - p) + b * p
 }
+
+/// Changes to a Transform made by dragging on the picture (the handles).
+///
+/// Points are in picture coordinates with y running down, as a view draws,
+/// in the same units as `size`. Only differences between points matter, so
+/// any common origin works. `anchor` is where the Transform's anchor sits
+/// before the Transform is applied (fit and Ken Burns only).
+///
+/// In these coordinates the Transform is  q ↦ A + s·R(θ)·(q − A) + offset,
+/// where R is the usual rotation matrix, which turns clockwise when y runs
+/// down, matching the Transform's clockwise degrees.
+public enum TransformEdit {
+    public static func offset(_ t: Transform, size: CGSize) -> CGPoint {
+        CGPoint(x: t.offsetX * size.width, y: t.offsetY * size.height)
+    }
+
+    public static func withOffset(_ t: Transform, _ o: CGPoint, size: CGSize) -> Transform {
+        var t = t
+        t.offsetX = Double(o.x / size.width)
+        t.offsetY = Double(o.y / size.height)
+        return t
+    }
+
+    /// Scaled by `k` about the on-screen point `p`, which stays put: the
+    /// opposite corner for a corner drag, the centre with Option.
+    ///   k·(T(q) − p) + p  =  A + k·s·R·(q − A) + [k·offset + (1 − k)·(p − A)]
+    public static func scaled(_ t: Transform, by k: Double, about p: CGPoint,
+                              anchor A: CGPoint, size: CGSize) -> Transform {
+        var out = t
+        out.scale = t.scale * k
+        let o = offset(t, size: size), kk = CGFloat(k)
+        return withOffset(out, CGPoint(x: kk * o.x + (1 - kk) * (p.x - A.x),
+                                       y: kk * o.y + (1 - kk) * (p.y - A.y)), size: size)
+    }
+
+    /// The anchor moved to the on-screen point `x` without moving the image:
+    /// the offset takes up the difference. Returns the new Transform and the
+    /// new anchor's position before the Transform, for the caller to turn
+    /// back into an image point.
+    public static func movingAnchor(_ t: Transform, to x: CGPoint, anchor A: CGPoint,
+                                    size: CGSize) -> (Transform, CGPoint) {
+        let o = offset(t, size: size)
+        let th = CGFloat(t.rotation) * .pi / 180, s = CGFloat(max(t.scale, 0.0001))
+        let c = cos(th), sn = sin(th)
+        // New anchor B before the Transform, from s·R·(B − A) = x − offset − A.
+        let v = CGPoint(x: x.x - o.x - A.x, y: x.y - o.y - A.y)
+        let B = CGPoint(x: A.x + (c * v.x + sn * v.y) / s, y: A.y + (-sn * v.x + c * v.y) / s)
+        // Same picture about B: offset' = offset + (A − B) − s·R·(A − B).
+        let d = CGPoint(x: A.x - B.x, y: A.y - B.y)
+        let sRd = CGPoint(x: s * (c * d.x - sn * d.y), y: s * (sn * d.x + c * d.y))
+        return (withOffset(t, CGPoint(x: o.x + d.x - sRd.x, y: o.y + d.y - sRd.y), size: size), B)
+    }
+}

@@ -286,3 +286,81 @@ extension EffectsTests {
         }
     }
 }
+
+// MARK: - Handle maths
+
+final class TransformEditTests: XCTestCase {
+    let size = CGSize(width: 800, height: 450)
+    let image = CGRect(x: 0, y: 0, width: 400, height: 300)
+
+    /// On screen, y down, for an image point in Core Image pixels.
+    func screen(_ q: CGPoint, _ t: Transform, spin: (angle: Double, pivot: ImagePoint)? = nil) -> CGPoint {
+        let m = Compositor.placement(imageExtent: image, fit: .fit, kb: .centred, transform: t,
+                                     spin: spin, outputSize: size)!
+        let p = q.applying(m)
+        return CGPoint(x: p.x, y: size.height - p.y)
+    }
+    var corners: [CGPoint] { [CGPoint(x: 0, y: 300), CGPoint(x: 400, y: 300), CGPoint(x: 400, y: 0), .zero] }
+    /// The anchor before the Transform, on screen.
+    func anchorBase(_ t: Transform) -> CGPoint {
+        screen(CGPoint(x: t.anchor.x * 400, y: (1 - t.anchor.y) * 300), .identity)
+    }
+    func near(_ a: CGPoint, _ b: CGPoint, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertEqual(a.x, b.x, accuracy: 1e-6, file: file, line: line)
+        XCTAssertEqual(a.y, b.y, accuracy: 1e-6, file: file, line: line)
+    }
+    var messy: Transform {
+        var t = Transform()
+        t.offsetX = 0.07; t.offsetY = -0.12; t.scale = 0.8; t.rotation = 23
+        t.anchor = ImagePoint(x: 0.3, y: 0.65)
+        return t
+    }
+
+    func testScalingFromACornerKeepsTheOppositeCornerPut() {
+        let t = messy
+        let fixed = screen(corners[2], t)                 // bottom right stays
+        let before = screen(corners[0], t)
+        let out = TransformEdit.scaled(t, by: 1.7, about: fixed, anchor: anchorBase(t), size: size)
+        near(screen(corners[2], out), fixed)
+        near(screen(corners[0], out), CGPoint(x: fixed.x + 1.7 * (before.x - fixed.x),
+                                              y: fixed.y + 1.7 * (before.y - fixed.y)))
+        XCTAssertEqual(out.rotation, t.rotation)
+    }
+
+    func testScalingAboutTheCentreKeepsTheCentrePut() {
+        let t = messy
+        let c = corners.map { screen($0, t) }
+        let centre = CGPoint(x: c.map(\.x).reduce(0, +) / 4, y: c.map(\.y).reduce(0, +) / 4)
+        let out = TransformEdit.scaled(t, by: 0.5, about: centre, anchor: anchorBase(t), size: size)
+        let c2 = corners.map { screen($0, out) }
+        near(CGPoint(x: c2.map(\.x).reduce(0, +) / 4, y: c2.map(\.y).reduce(0, +) / 4), centre)
+    }
+
+    func testMovingTheAnchorLeavesTheImageWhereItWas() {
+        let t = messy
+        let target = CGPoint(x: 612, y: 90)
+        let (out, B) = TransformEdit.movingAnchor(t, to: target, anchor: anchorBase(t), size: size)
+        // B back to an image point, as the overlay does.
+        let base = Compositor.placement(imageExtent: image, fit: .fit, kb: .centred, transform: .identity,
+                                        spin: nil, outputSize: size)!
+        let ci = CGPoint(x: B.x, y: size.height - B.y).applying(base.inverted())
+        var moved = out
+        moved.anchor = ImagePoint(x: ci.x / 400, y: 1 - ci.y / 300)
+        for q in corners { near(screen(q, moved), screen(q, t)) }
+        // …and the crosshair (anchor before the Transform, plus the offset) is at the target.
+        let o = TransformEdit.offset(moved, size: size)
+        near(CGPoint(x: anchorBase(moved).x + o.x, y: anchorBase(moved).y + o.y), target)
+    }
+
+    func testMovingTheAnchorWorksWithASpinToo() {
+        let t = messy
+        let spin = (angle: 40.0, pivot: ImagePoint(x: 0.9, y: 0.1))
+        let (out, B) = TransformEdit.movingAnchor(t, to: CGPoint(x: 200, y: 300), anchor: anchorBase(t), size: size)
+        let base = Compositor.placement(imageExtent: image, fit: .fit, kb: .centred, transform: .identity,
+                                        spin: nil, outputSize: size)!
+        let ci = CGPoint(x: B.x, y: size.height - B.y).applying(base.inverted())
+        var moved = out
+        moved.anchor = ImagePoint(x: ci.x / 400, y: 1 - ci.y / 300)
+        for q in corners { near(screen(q, moved, spin: spin), screen(q, t, spin: spin)) }
+    }
+}
