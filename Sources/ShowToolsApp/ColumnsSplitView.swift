@@ -89,19 +89,48 @@ final class ColumnsSplitView: NSSplitView, @preconcurrency NSSplitViewDelegate {
         var insW = inspectorShown ? inspectorWidth : 0
         // A narrow window squeezes the side columns before the main one
         // goes below its minimum.
-        var mainW = W - listW - insW - 2 * t
+        // One gap when the inspector is hidden (no line at the window edge).
+        let gaps: CGFloat = inspectorShown ? 2 : 1
+        var mainW = W - listW - insW - gaps * t
         if mainW < mainMin {
             var short = mainMin - mainW
             let insGive = inspectorShown ? min(short, insW - inspectorRange.lowerBound) : 0
             insW -= max(insGive, 0); short -= max(insGive, 0)
             let listGive = min(short, listW - listRange.lowerBound)
             listW -= max(listGive, 0)
-            mainW = max(W - listW - insW - 2 * t, 0)
+            mainW = max(W - listW - insW - gaps * t, 0)
         }
         main.frame = NSRect(x: 0, y: 0, width: mainW, height: H)
         list.frame = NSRect(x: mainW + t, y: 0, width: listW, height: H)
         inspector.isHidden = !inspectorShown
         inspector.frame = NSRect(x: mainW + t + listW + t, y: 0, width: insW, height: H)
+    }
+
+    // MARK: Divider lines
+
+    /// NSSplitView draws each divider in a layer of its own and only moves
+    /// those layers when it lays the columns out itself, so with this manual
+    /// layout they were left behind: a stale line across the preview where
+    /// the list used to be (found by dumping the layer tree, 2026-09-21).
+    /// Instead they're drawn clear, and the split view's own background
+    /// shows through the 1pt gaps between columns, which are always right.
+    override var dividerColor: NSColor { .clear }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        wantsLayer = true
+        updateGapColour()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateGapColour()
+    }
+
+    private func updateGapColour() {
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer?.backgroundColor = NSColor.separatorColor.cgColor
+        }
     }
 
     override func resizeSubviews(withOldSize oldSize: NSSize) { arrange() }
