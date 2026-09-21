@@ -71,6 +71,8 @@ public struct Rotation: Codable, Hashable, Sendable {
     public var pivotEnd: ImagePoint = .centre
     /// The pivot grids' Lock checkbox: the end pivot follows the start.
     public var pivotLocked: Bool = true
+    /// Hold still through the transitions in and out. Off by default.
+    public var freezeOnTransition: Bool = false
 
     public init() {}
 
@@ -90,9 +92,10 @@ public struct Rotation: Codable, Hashable, Sendable {
         pivotStart = get(.pivotStart, d.pivotStart)
         pivotEnd = get(.pivotEnd, d.pivotEnd)
         pivotLocked = get(.pivotLocked, d.pivotLocked)
+        freezeOnTransition = get(.freezeOnTransition, d.freezeOnTransition)
     }
 
-    /// The whole turn, in degrees, over a slide visible for `span` seconds.
+    /// The whole turn, in degrees, over `span` seconds of movement.
     public func sweep(span: Double) -> Double {
         switch mode {
         case .speed: speed * max(span, 0)
@@ -100,7 +103,7 @@ public struct Rotation: Codable, Hashable, Sendable {
         }
     }
 
-    /// The angle at `progress` 0…1 through a slide visible for `span` seconds.
+    /// The angle at `progress` 0…1 through `span` seconds of movement.
     public func angle(at progress: Double, span: Double) -> Double {
         let p = Acceleration.shape(progress, amount: acceleration)
         switch mode {

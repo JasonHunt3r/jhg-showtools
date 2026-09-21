@@ -37,17 +37,37 @@ public struct Layer: Sendable {
         slide.visibleSpan > 0 ? min(max(localTime / slide.visibleSpan, 0), 1) : 0
     }
 
-    public var kenBurnsFrame: KenBurnsFrame {
-        slide.kenBurns?.frame(at: kenBurnsProgress) ?? .centred
+    /// Seconds an effect moves for. Frozen, that's only the time the slide
+    /// is on screen alone: after its transition in, before its transition out.
+    public func motionSpan(frozen: Bool) -> Double {
+        frozen ? max(slide.length - slide.transitionIn.duration, 0) : slide.visibleSpan
     }
 
-    /// Degrees clockwise, sampled over the same span as Ken Burns.
+    /// 0…1 through an effect's move; see `motionSpan`. Frozen, it holds 0
+    /// through the transition in and 1 through the transition out.
+    public func motionProgress(frozen: Bool) -> Double {
+        guard frozen else { return kenBurnsProgress }
+        let span = motionSpan(frozen: true)
+        let t = localTime - slide.transitionIn.duration
+        guard span > 0 else { return t < 0 ? 0 : 1 }
+        return min(max(t / span, 0), 1)
+    }
+
+    public var kenBurnsFrame: KenBurnsFrame {
+        guard let kb = slide.kenBurns else { return .centred }
+        return kb.frame(at: motionProgress(frozen: kb.freezeOnTransition))
+    }
+
+    /// Degrees clockwise.
     public var rotationAngle: Double {
-        slide.rotation?.angle(at: kenBurnsProgress, span: slide.visibleSpan) ?? 0
+        guard let r = slide.rotation else { return 0 }
+        return r.angle(at: motionProgress(frozen: r.freezeOnTransition),
+                       span: motionSpan(frozen: r.freezeOnTransition))
     }
 
     public var rotationPivot: ImagePoint {
-        slide.rotation?.pivot(at: kenBurnsProgress) ?? .centre
+        guard let r = slide.rotation else { return .centre }
+        return r.pivot(at: motionProgress(frozen: r.freezeOnTransition))
     }
 }
 

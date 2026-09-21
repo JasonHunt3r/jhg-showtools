@@ -145,11 +145,15 @@ public struct KenBurns: Codable, Hashable, Sendable {
     /// −1…1, applied alongside the easing; see `Acceleration`. 0 leaves the
     /// move exactly as it was before the slider existed.
     public var acceleration: Double
+    /// Hold still through the transitions in and out, moving only while
+    /// the slide is on screen alone. Off by default.
+    public var freezeOnTransition: Bool
 
     public init(start: KenBurnsFrame, end: KenBurnsFrame, easing: Easing = .easeInOut,
-                acceleration: Double = 0) {
+                acceleration: Double = 0, freezeOnTransition: Bool = false) {
         self.start = start; self.end = end; self.easing = easing
         self.acceleration = acceleration
+        self.freezeOnTransition = freezeOnTransition
     }
 
     /// Field by field: shows saved before `acceleration` existed have no such
@@ -160,6 +164,7 @@ public struct KenBurns: Codable, Hashable, Sendable {
         end = try c.decode(KenBurnsFrame.self, forKey: .end)
         easing = (try? c.decodeIfPresent(Easing.self, forKey: .easing)) ?? .easeInOut
         acceleration = (try? c.decodeIfPresent(Double.self, forKey: .acceleration)) ?? 0
+        freezeOnTransition = (try? c.decodeIfPresent(Bool.self, forKey: .freezeOnTransition)) ?? false
     }
 
     public func frame(at progress: Double) -> KenBurnsFrame {

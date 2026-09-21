@@ -61,11 +61,19 @@ struct KenBurnsEditor: View {
             .font(.caption)
 
             HStack {
-                Button("Swap") { commit(KenBurns(start: current.end, end: current.start, easing: current.easing)) }
+                // Both change the frames only; easing, acceleration and
+                // freeze stay as they are.
+                Button("Swap") {
+                    var k = current
+                    swap(&k.start, &k.end)
+                    commit(k)
+                }
                     .help("Play the move backwards")
                 Button("Reset") {
-                    commit(KenBurns(start: .centred, end: KenBurnsFrame(x: 0.5, y: 0.5, zoom: 1.25),
-                                    easing: current.easing))
+                    var k = current
+                    k.start = .centred
+                    k.end = KenBurnsFrame(x: 0.5, y: 0.5, zoom: 1.25)
+                    commit(k)
                 }
                 Spacer()
                 Text("zoom \(current.start.zoom, specifier: "%.2f") → \(current.end.zoom, specifier: "%.2f")")

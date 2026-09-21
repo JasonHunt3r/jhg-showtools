@@ -208,7 +208,9 @@ slide A so that the transition joins them seamlessly.
   the inspector. Ken Burns (pan and zoom) and rotation are separate effects
   that combine. 2a's effects: **Ken Burns** and **Rotation**. The stack is
   also where later effects plug in
-- **Rotation**, which works with Ken Burns or on its own. It has two modes,
+- **Rotation**, which works with Ken Burns or on its own. It has its **own
+  interface** (its own inspector section and its own on-image editor), and
+  it isn't folded into the Ken Burns editor (settled 2026-09-21). It has two modes,
   chosen per slide:
   - **Speed:** a speed slider (°/s). Note that trimming the slide then
     changes where the rotation ends, which moves a match-cut end frame
@@ -226,7 +228,8 @@ slide A so that the transition joins them seamlessly.
   pinned to the image, so it moves along with a Ken Burns pan
 - **Transform handles on the image (Adobe conventions,** checked against
   Adobe's Photoshop help 2026-09-21). They act on whichever frame, start
-  or end, is selected in the editor:
+  or end, is selected. The Ken Burns editor gets the scale handles; the
+  rotate handle and the pivot crosshair live in the Rotation interface:
   - drag a **corner handle** to scale. Scaling is always proportional (it's a
     photo), and it's anchored on the opposite corner
   - **Option**-drag scales around the centre instead
@@ -240,6 +243,13 @@ slide A so that the transition joins them seamlessly.
   - a freshly placed slide image gets the handles straight away, so rotating
     it is one drag
   - no Enter/Esc commit step as in Photoshop: edits are live, and ⌘Z undoes
+- **Freeze on transition**: a checkbox on every effect that moves the
+  image (Ken Burns, Rotation), **off by default**. When it's on, the effect
+  holds its start frame through the transition in and its end frame through
+  the transition out, and only moves while the slide is on screen alone.
+  That makes a match cut through a dissolve exact. (Built in the model
+  2026-09-21.) How to choose the frame a match cut lines up on is to be
+  revisited only if eyeballing it proves hard in use
 - **Presets** set several effects at once. They're a starting point, not a
   separate effect type. **Flush** is the first one: accelerating rotation
   plus zoom and pan, "down the hole"

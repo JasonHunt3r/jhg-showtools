@@ -131,3 +131,52 @@ extension EffectsTests {
         }
     }
 }
+
+extension EffectsTests {
+    /// Two 4s slides joined by a 1s dissolve: B starts at 4 and the dissolve runs
+    /// 4…5. A is first in a show that doesn't loop, but still has its 1s
+    /// transition-in on the books, so frozen it moves 1…4.
+    func twoSlides(_ a: SlideSettings, _ b: SlideSettings = SlideSettings()) -> ShowTimeline {
+        var show = Show(id: 1, name: "t")
+        show.defaults.transition = Transition(style: .dissolve, duration: 1)
+        show.defaults.loop = false
+        show.slides = [Slide(id: 1, itemID: 1, settings: a), Slide(id: 2, itemID: 2, settings: b)]
+        let item = { (id: Int64) in MediaItem(id: id, relativePath: "\(id).jpg", hash: "h\(id)",
+            kind: .image, pixelWidth: 100, pixelHeight: 100, duration: nil,
+            ingestedAt: Date(), sourcePath: "") }
+        return ShowTimeline(show: show, items: [1: item(1), 2: item(2)])
+    }
+
+    func testFreezeOnTransitionReachesTheEndFrameAsTheDissolveBegins() {
+        var r = Rotation(); r.endAngle = 90
+        var frozen = r; frozen.freezeOnTransition = true
+        func outgoing(_ tl: ShowTimeline, at t: Double) -> Layer? {
+            switch tl.frame(at: t) {
+            case .still(let l): l
+            case .transition(let from, _, _, _): from
+            case .empty: nil
+            }
+        }
+        let loose = twoSlides(SlideSettings(length: .seconds(4), rotation: r))
+        let held = twoSlides(SlideSettings(length: .seconds(4), rotation: frozen))
+        // Unfrozen: still turning through the dissolve (4…5).
+        XCTAssertLessThan(outgoing(loose, at: 4.5)!.rotationAngle, 90)
+        // Frozen: at the end angle for the whole dissolve…
+        XCTAssertEqual(outgoing(held, at: 4.0)!.rotationAngle, 90)
+        XCTAssertEqual(outgoing(held, at: 4.5)!.rotationAngle, 90)
+        // …and moving before it.
+        XCTAssertEqual(outgoing(held, at: 2.5)!.rotationAngle, 45, accuracy: 1e-9)
+    }
+
+    func testFreezeHoldsTheStartFrameThroughTheTransitionIn() {
+        let kb = KenBurns(start: .centred, end: KenBurnsFrame(x: 0.5, y: 0.5, zoom: 2),
+                          easing: .linear, freezeOnTransition: true)
+        let tl = twoSlides(SlideSettings(length: .seconds(4)),
+                           SlideSettings(length: .seconds(4), kenBurns: .custom(kb)))
+        guard case .transition(_, let b, _, _) = tl.frame(at: 4.5) else { return XCTFail() }
+        XCTAssertEqual(b.kenBurnsFrame, .centred)
+        guard case .still(let b2) = tl.frame(at: 6.5) else { return XCTFail() }
+        // B moves from 5 (dissolve over) to 8 (its own end; it's last, no transition out).
+        XCTAssertEqual(b2.kenBurnsFrame.zoom, 1.5, accuracy: 1e-9)
+    }
+}
