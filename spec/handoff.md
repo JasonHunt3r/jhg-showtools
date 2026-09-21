@@ -41,6 +41,11 @@ screenshots:
   freeze on transition, and Ken Burns's new acceleration and freeze. Each
   slider should be one undo step per drag, and the preview only updates on
   release (no live preview while dragging yet)
+- **Image handles and keys (2026-09-21):** Jason has dragged the image
+  (a move and a rotate saved correctly). Not yet reported on: the cursors
+  per zone, corner scaling with and without Option, Shift-snapped rotation,
+  dragging the anchor, the arrow-key map, and ⌘Z undoing one drag or one
+  run of nudges as a single step
 
 ## Next: Phase 2a (framing, rotation, match cuts), then 2c Layers
 
