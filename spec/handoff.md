@@ -70,6 +70,12 @@ screenshots:
   (the playhead should jump onto it) and on the picture (the lane image wins
   over the slide under it); its handles and arrow keys; the opacity slider,
   blend mode, fit and fades; Esc and a background click to deselect
+- **Collections sidebar (2026-09-21):** checked by screenshot (Library →
+  Collections → shows nested). Try: + New ▸ New Collection / New Show; a
+  collection's grid (select it); right-click Rename… and Delete… on both
+  (deleting a collection warns how many shows go with it); dropping files
+  on a collection; in a grid, New Collection from Items, Add to
+  Collection, Remove from Collection
 - **Soft-at-this-zoom warning (2026-09-21):** checked by screenshot; the
   flags on the test library are all correct for a 2560×1664 screen
 

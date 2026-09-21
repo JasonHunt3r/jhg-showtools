@@ -4,6 +4,7 @@ import ShowToolsCore
 
 enum SidebarItem: Hashable {
     case library
+    case collection(Int64)
     case show(Int64)
 }
 
@@ -180,19 +181,95 @@ final class AppModel {
 
     // MARK: Shows
 
-    func newShow(name: String? = nil, itemIDs: [Int64] = []) {
+    /// A new show in `collectionID`, or, if none is given, in the collection
+    /// selected in the sidebar (or holding the selected show), or the first.
+    func newShow(name: String? = nil, itemIDs: [Int64] = [], in collectionID: Int64? = nil) {
         guard let lib = library else { return }
         let n = name ?? nextShowName()
         do {
-            // Until the sidebar can say which collection, a new show goes in
-            // the first one (a new library always has one).
-            let show = try lib.createShow(name: n, collectionID: collections.first?.id, itemIDs: itemIDs)
+            let show = try lib.createShow(name: n, collectionID: collectionID ?? currentCollectionID,
+                                          itemIDs: itemIDs)
             shows.append(show)
             collections = try lib.allCollections()
             sidebar = .show(show.id)
         } catch {
             loadError = "\(error)"
         }
+    }
+
+    /// The collection the sidebar is in: the selected one, or the selected
+    /// show's; otherwise the first.
+    var currentCollectionID: Int64? {
+        switch sidebar {
+        case .collection(let id): id
+        case .show(let id): show(id)?.collectionID ?? collections.first?.id
+        default: collections.first?.id
+        }
+    }
+
+    func collection(_ id: Int64) -> MediaCollection? { collections.first { $0.id == id } }
+
+    func newCollection(itemIDs: [Int64] = []) {
+        guard let lib = library else { return }
+        do {
+            let c = try lib.createCollection(name: nextName("Untitled Collection", taken: collections.map(\.name)))
+            if !itemIDs.isEmpty { try lib.addItems(itemIDs, toCollection: c.id) }
+            collections = try lib.allCollections()
+            sidebar = .collection(c.id)
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
+    func renameCollection(_ id: Int64, to name: String) {
+        guard let lib = library, !name.isEmpty else { return }
+        do {
+            try lib.renameCollection(id: id, to: name)
+            collections = try lib.allCollections()
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
+    /// Its shows go with it; the files stay in the library.
+    func deleteCollection(_ id: Int64) {
+        guard let lib = library else { return }
+        do {
+            try lib.deleteCollection(id: id)
+            collections = try lib.allCollections()
+            shows = try lib.allShows()
+            switch sidebar {
+            case .collection(id): sidebar = .library
+            case .show(let s) where show(s) == nil: sidebar = .library
+            default: break
+            }
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
+    func removeFromCollection(_ itemIDs: [Int64], _ collectionID: Int64) {
+        guard let lib = library else { return }
+        do {
+            try lib.removeItems(itemIDs, fromCollection: collectionID)
+            collections = try lib.allCollections()
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
+    func renameShow(_ id: Int64, to name: String, undo: UndoManager? = nil) {
+        guard var s = show(id), !name.isEmpty else { return }
+        s.name = name
+        update(s, undo: undo, action: "Rename Show")
+    }
+
+    private func nextName(_ base: String, taken: [String]) -> String {
+        let names = Set(taken)
+        if !names.contains(base) { return base }
+        var n = 2
+        while names.contains("\(base) \(n)") { n += 1 }
+        return "\(base) \(n)"
     }
 
     private func nextShowName() -> String {

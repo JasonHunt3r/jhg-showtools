@@ -8,7 +8,14 @@ let droppableTypes: [UTType] = [.fileURL, .image, .movie]
 
 struct MainView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
     @State private var confirmDelete: Show?
+    @State private var confirmDeleteCollection: MediaCollection?
+    /// Collections folded shut in the sidebar (open by default).
+    @State private var folded: Set<Int64> = []
+    /// Renaming: what, and the name being typed.
+    @State private var renaming: SidebarItem?
+    @State private var draftName = ""
 
     var body: some View {
         @Bindable var model = model
@@ -18,33 +25,40 @@ struct MainView: View {
                     .badge(model.items.count)
                     .tag(SidebarItem.library)
 
-                Section("Shows") {
-                    ForEach(model.shows) { show in
-                        Label(show.name, systemImage: "play.rectangle")
-                            .badge(show.slides.count)
-                            .tag(SidebarItem.show(show.id))
-                            .contextMenu {
-                                Button("Play") { Player.open(show: show, model: model, fullScreen: false) }
-                                Button("Play Full Screen") { Player.open(show: show, model: model, fullScreen: true) }
-                                Divider()
-                                Button("Delete Show…") { confirmDelete = show }
+                // Library → Collection → Show, as Final Cut's Library → Event → Project.
+                Section("Collections") {
+                    ForEach(model.collections) { c in
+                        DisclosureGroup(isExpanded: Binding(get: { !folded.contains(c.id) },
+                                                            set: { open in
+                                                                if open { folded.remove(c.id) } else { folded.insert(c.id) }
+                                                            })) {
+                            ForEach(model.shows.filter { $0.collectionID == c.id }) { show in
+                                showRow(show)
                             }
-                            // Dropping files on a show imports them and appends them to it.
-                            .onDrop(of: droppableTypes, isTargeted: nil) { providers in
-                                Task {
-                                    let ids = await model.importProviders(providers)
-                                    model.append(ids, to: show.id)
-                                }
-                                return true
-                            }
+                        } label: {
+                            collectionRow(c)
+                        }
+                    }
+                    // Shows in no collection shouldn't exist after the
+                    // upgrade, but if one does, it still has a place.
+                    ForEach(model.shows.filter { s in !model.collections.contains { $0.id == s.collectionID } }) { show in
+                        showRow(show)
                     }
                 }
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 210)
             .safeAreaInset(edge: .bottom) {
                 HStack {
-                    Button { model.newShow() } label: { Label("New Show", systemImage: "plus") }
-                        .buttonStyle(.borderless)
+                    Menu {
+                        Button("New Collection") { model.newCollection() }
+                        Button("New Show") { model.newShow() }
+                            .disabled(model.collections.isEmpty)
+                    } label: {
+                        Label("New", systemImage: "plus")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help("New collection, or a new show in the selected collection")
                     Spacer()
                 }
                 .padding(8)
@@ -53,6 +67,8 @@ struct MainView: View {
             switch model.sidebar {
             case .show(let id) where model.show(id) != nil:
                 ShowView(showID: id)
+            case .collection(let id) where model.collection(id) != nil:
+                LibraryGridView(collectionID: id)
             default:
                 LibraryGridView()
             }
@@ -65,6 +81,29 @@ struct MainView: View {
                     .background(.background)
             }
         }
+        .confirmationDialog("Delete “\(confirmDeleteCollection?.name ?? "")”?",
+                            isPresented: Binding(get: { confirmDeleteCollection != nil },
+                                                 set: { if !$0 { confirmDeleteCollection = nil } }),
+                            presenting: confirmDeleteCollection) { c in
+            Button("Delete Collection", role: .destructive) { model.deleteCollection(c.id) }
+        } message: { c in
+            let n = model.shows.filter { $0.collectionID == c.id }.count
+            Text(n == 0 ? "The images stay in the library."
+                 : "Its \(n == 1 ? "show" : "\(n) shows") will be deleted too. The images stay in the library.")
+        }
+        .alert(renamingTitle, isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+            TextField("Name", text: $draftName)
+            Button("Rename") {
+                let name = draftName.trimmingCharacters(in: .whitespaces)
+                switch renaming {
+                case .collection(let id): model.renameCollection(id, to: name)
+                case .show(let id): model.renameShow(id, to: name, undo: undoManager)
+                default: break
+                }
+                renaming = nil
+            }
+            Button("Cancel", role: .cancel) { renaming = nil }
+        }
         .confirmationDialog("Delete “\(confirmDelete?.name ?? "")”?",
                             isPresented: Binding(get: { confirmDelete != nil },
                                                  set: { if !$0 { confirmDelete = nil } }),
@@ -73,6 +112,59 @@ struct MainView: View {
         } message: { _ in
             Text("The show's slide order and settings are deleted. The images stay in the library.")
         }
+    }
+}
+
+extension MainView {
+    private var renamingTitle: String {
+        if case .collection = renaming { return "Rename Collection" }
+        return "Rename Show"
+    }
+
+    private func startRenaming(_ item: SidebarItem, current: String) {
+        draftName = current
+        renaming = item
+    }
+
+    func collectionRow(_ c: MediaCollection) -> some View {
+        Label(c.name, systemImage: "rectangle.stack")
+            .badge(c.itemIDs.count)
+            .tag(SidebarItem.collection(c.id))
+            .contextMenu {
+                Button("New Show in “\(c.name)”") { model.newShow(in: c.id) }
+                Divider()
+                Button("Rename…") { startRenaming(.collection(c.id), current: c.name) }
+                Button("Delete Collection…") { confirmDeleteCollection = c }
+            }
+            // Dropping files on a collection imports them into it.
+            .onDrop(of: droppableTypes, isTargeted: nil) { providers in
+                Task {
+                    let ids = await model.importProviders(providers)
+                    model.addToCollection(ids, c.id)
+                }
+                return true
+            }
+    }
+
+    func showRow(_ show: Show) -> some View {
+        Label(show.name, systemImage: "play.rectangle")
+            .badge(show.slides.count)
+            .tag(SidebarItem.show(show.id))
+            .contextMenu {
+                Button("Play") { Player.open(show: show, model: model, fullScreen: false) }
+                Button("Play Full Screen") { Player.open(show: show, model: model, fullScreen: true) }
+                Divider()
+                Button("Rename…") { startRenaming(.show(show.id), current: show.name) }
+                Button("Delete Show…") { confirmDelete = show }
+            }
+            // Dropping files on a show imports them and appends them to it.
+            .onDrop(of: droppableTypes, isTargeted: nil) { providers in
+                Task {
+                    let ids = await model.importProviders(providers)
+                    model.append(ids, to: show.id)
+                }
+                return true
+            }
     }
 }
 
@@ -113,16 +205,34 @@ struct ImportBanner: View {
 
 // MARK: - Library grid
 
+/// The library's files, or one collection's.
 struct LibraryGridView: View {
+    /// Nil shows the whole library.
+    var collectionID: Int64? = nil
     @Environment(AppModel.self) private var model
     @State private var selection: Set<Int64> = []
     @State private var anchor: Int64?
     @State private var dropTargeted = false
     @AppStorage("gridTileSize") private var tileSize: Double = 150
 
+    private var collection: MediaCollection? { collectionID.flatMap(model.collection) }
+
+    /// The files shown: the library's, or the collection's in the order they
+    /// were added.
+    private var visible: [MediaItem] {
+        guard let c = collection else { return model.items }
+        return c.itemIDs.compactMap { model.itemsByID[$0] }
+    }
+
     var body: some View {
         Group {
-            if model.items.isEmpty {
+            if let c = collection, visible.isEmpty {
+                ContentUnavailableView {
+                    Label("“\(c.name)” is empty", systemImage: "rectangle.stack")
+                } description: {
+                    Text("Drag photos here from Finder or Photos, or select files in the Library and choose Add to Collection.")
+                }
+            } else if model.items.isEmpty {
                 ContentUnavailableView {
                     Label("Your library is empty", systemImage: "photo.on.rectangle.angled")
                 } description: {
@@ -135,7 +245,11 @@ struct LibraryGridView: View {
             }
         }
         .onDrop(of: droppableTypes, isTargeted: $dropTargeted) { providers in
-            Task { await model.importProviders(providers) }
+            let cid = collectionID
+            Task {
+                let ids = await model.importProviders(providers)
+                if let cid { model.addToCollection(ids, cid) }
+            }
             return true
         }
         .overlay {
@@ -143,8 +257,9 @@ struct LibraryGridView: View {
                 RoundedRectangle(cornerRadius: 8).strokeBorder(Color.accentColor, lineWidth: 3).padding(4)
             }
         }
-        .navigationTitle("Library")
-        .navigationSubtitle(selection.isEmpty ? "\(model.items.count) items" : "\(selection.count) selected")
+        .navigationTitle(collection?.name ?? "Library")
+        .navigationSubtitle(selection.isEmpty ? "\(visible.count) items" : "\(selection.count) selected")
+        .onChange(of: collectionID) { selection = []; anchor = nil }
         .toolbar {
             ToolbarItemGroup {
                 Slider(value: $tileSize, in: 90...320).frame(width: 100)
@@ -161,7 +276,7 @@ struct LibraryGridView: View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: tileSize, maximum: tileSize * 1.4), spacing: 10)],
                       spacing: 10) {
-                ForEach(model.items) { item in
+                ForEach(visible) { item in
                     tile(item)
                 }
             }
@@ -189,9 +304,21 @@ struct LibraryGridView: View {
         .contextMenu {
             let ids = selection.contains(item.id) ? orderedSelection : [item.id]
             Button("New Show from \(ids.count == 1 ? "Item" : "\(ids.count) Items")") {
-                model.newShow(itemIDs: ids)
+                model.newShow(itemIDs: ids, in: collectionID)
             }
             addToShowMenu(ids: ids)
+            Divider()
+            Button("New Collection from \(ids.count == 1 ? "Item" : "\(ids.count) Items")") {
+                model.newCollection(itemIDs: ids)
+            }
+            addToCollectionMenu(ids: ids)
+            if let cid = collectionID {
+                Button("Remove from Collection") {
+                    model.removeFromCollection(ids, cid)
+                    selection.subtract(ids)
+                }
+                .help("Take them out of this collection. They stay in the library and in any show that uses them.")
+            }
             Divider()
             Button("Show in Finder") {
                 let urls = ids.compactMap { model.itemsByID[$0] }.compactMap(model.url(for:))
@@ -213,9 +340,20 @@ struct LibraryGridView: View {
         .help("Add the selection to a show")
     }
 
-    /// Selection in library order, so a new show follows the grid.
+    private func addToCollectionMenu(ids: [Int64]) -> some View {
+        Menu("Add to Collection") {
+            Button("New Collection…") { model.newCollection(itemIDs: ids) }
+            if !model.collections.isEmpty { Divider() }
+            ForEach(model.collections) { c in
+                Button(c.name) { model.addToCollection(ids, c.id) }
+                    .disabled(c.id == collectionID)
+            }
+        }
+    }
+
+    /// Selection in grid order, so a new show follows the grid.
     private var orderedSelection: [Int64] {
-        model.items.map(\.id).filter(selection.contains)
+        visible.map(\.id).filter(selection.contains)
     }
 
     /// Finder-style clicking: plain replaces, ⌘ toggles, ⇧ extends a range.
@@ -225,9 +363,9 @@ struct LibraryGridView: View {
             if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
             anchor = id
         } else if mods.contains(.shift), let a = anchor,
-                  let i = model.items.firstIndex(where: { $0.id == a }),
-                  let j = model.items.firstIndex(where: { $0.id == id }) {
-            selection.formUnion(model.items[min(i, j)...max(i, j)].map(\.id))
+                  let i = visible.firstIndex(where: { $0.id == a }),
+                  let j = visible.firstIndex(where: { $0.id == id }) {
+            selection.formUnion(visible[min(i, j)...max(i, j)].map(\.id))
         } else {
             selection = [id]
             anchor = id
