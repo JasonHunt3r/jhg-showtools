@@ -21,18 +21,15 @@ struct EditShowView: View {
                 // The columns sit on top; the transport and storyline run the
                 // full width underneath them.
                 VSplitView {
-                    HSplitView {
-                        PreviewStage(engine: engine, title: show.name)
-                            .frame(minWidth: 420, minHeight: 220)
-                        OrderList(show: show, timeline: timeline, engine: engine,
-                                  selection: $selection, mutate: mutate,
-                                  openInspector: { inspectorShown = true })
-                            .frame(minWidth: 180, idealWidth: 230, maxWidth: 360)
-                        if inspectorShown {
-                            SlideInspector(show: show, timeline: timeline, selection: selection, mutate: mutate)
-                                .frame(minWidth: 260, idealWidth: 290, maxWidth: 420)
-                        }
-                    }
+                    ShowColumns(
+                        inspectorShown: $inspectorShown, model: model,
+                        preview: PreviewStage(engine: engine, title: show.name),
+                        list: OrderList(show: show, timeline: timeline, engine: engine,
+                                        selection: $selection, mutate: mutate,
+                                        openInspector: { inspectorShown = true }),
+                        inspector: SlideInspector(show: show, timeline: timeline, selection: selection,
+                                                  mutate: mutate))
+                        .frame(minHeight: 220)
                     VStack(spacing: 0) {
                         TransportRow(engine: engine, pps: $pps, fit: fitStoryline)
                         Divider()
