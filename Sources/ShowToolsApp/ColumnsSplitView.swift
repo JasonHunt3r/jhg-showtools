@@ -12,7 +12,7 @@ import AppKit
 /// With holding priorities, whichever column ranks lowest absorbs every
 /// change, including divider drags that don't touch it (measured 2026-09-21).
 @MainActor
-final class ColumnsSplitView: NSSplitView, @preconcurrency NSSplitViewDelegate {
+final class ColumnsSplitView: NSSplitView {
     var mainMin: CGFloat = 420
     var listRange: ClosedRange<CGFloat> = 180...420
     /// Its least is what the inspector's content needs (the Rotation pivot
@@ -57,7 +57,8 @@ final class ColumnsSplitView: NSSplitView, @preconcurrency NSSplitViewDelegate {
         super.init(frame: NSRect(x: 0, y: 0, width: 1200, height: 400))
         isVertical = true
         dividerStyle = .thin
-        delegate = self
+        rules = ColumnsDelegate(self)
+        delegate = rules
         for v in [main, list, inspector] {
             v.translatesAutoresizingMaskIntoConstraints = true
             addSubview(v)
@@ -65,6 +66,9 @@ final class ColumnsSplitView: NSSplitView, @preconcurrency NSSplitViewDelegate {
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
+
+    /// Held here: `delegate` is weak.
+    private var rules: ColumnsDelegate?
 
     private var main: NSView { subviews[0] }
     private var list: NSView { subviews[1] }
@@ -140,7 +144,7 @@ final class ColumnsSplitView: NSSplitView, @preconcurrency NSSplitViewDelegate {
 
     override func resizeSubviews(withOldSize oldSize: NSSize) { arrange() }
 
-    // MARK: Divider limits
+    // MARK: Divider limits (called by ColumnsDelegate)
 
     func splitView(_ sv: NSSplitView, constrainMinCoordinate proposed: CGFloat, ofSubviewAt i: Int) -> CGFloat {
         i == 0 ? mainMin : list.frame.minX + listRange.lowerBound
@@ -186,5 +190,36 @@ final class ColumnsSplitView: NSSplitView, @preconcurrency NSSplitViewDelegate {
         let d = UserDefaults.standard
         d.set(Double(listWidth), forKey: defaultsKey + ".list")
         d.set(Double(inspectorWidth), forKey: defaultsKey + ".inspector")
+    }
+}
+
+/// The split view's delegate: its own object, passing every call to the
+/// split view. The split view mustn't be its own delegate: AppKit answers
+/// "does it respond to toggleSidebar:?" by asking the delegate, so a split
+/// view that is its own delegate asks itself forever and crashes (measured
+/// in a harness, 2026-09-21, and seen once in the app, from a menu check
+/// while the keyboard was in Edit Show's columns).
+@MainActor
+private final class ColumnsDelegate: NSObject, @preconcurrency NSSplitViewDelegate {
+    unowned let owner: ColumnsSplitView
+    init(_ owner: ColumnsSplitView) { self.owner = owner }
+
+    func splitView(_ sv: NSSplitView, constrainMinCoordinate proposed: CGFloat, ofSubviewAt i: Int) -> CGFloat {
+        owner.splitView(sv, constrainMinCoordinate: proposed, ofSubviewAt: i)
+    }
+    func splitView(_ sv: NSSplitView, constrainMaxCoordinate proposed: CGFloat, ofSubviewAt i: Int) -> CGFloat {
+        owner.splitView(sv, constrainMaxCoordinate: proposed, ofSubviewAt: i)
+    }
+    func splitView(_ sv: NSSplitView, canCollapseSubview v: NSView) -> Bool {
+        owner.splitView(sv, canCollapseSubview: v)
+    }
+    func splitView(_ sv: NSSplitView, shouldCollapseSubview v: NSView, forDoubleClickOnDividerAt i: Int) -> Bool {
+        owner.splitView(sv, shouldCollapseSubview: v, forDoubleClickOnDividerAt: i)
+    }
+    func splitView(_ sv: NSSplitView, shouldAdjustSizeOfSubview v: NSView) -> Bool {
+        owner.splitView(sv, shouldAdjustSizeOfSubview: v)
+    }
+    func splitViewDidResizeSubviews(_ notification: Notification) {
+        owner.splitViewDidResizeSubviews(notification)
     }
 }
