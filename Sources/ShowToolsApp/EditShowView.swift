@@ -166,6 +166,8 @@ struct PreviewStage: View {
     let pps: Double
     let storylineOffset: CGFloat
     @AppStorage("frameStripShown") private var frameStripShown = true
+    @AppStorage("frameStripHeight") private var stripHeight: Double = 90
+    @State private var stripDragStart: Double?
     @State private var hovering = false
     /// The slide whose image is selected in the picture, for its handles.
     @State private var imageSlideID: Int64?
@@ -191,18 +193,53 @@ struct PreviewStage: View {
     }
 
     /// The picture, with the frame strip below it in this column only (not
-    /// under the browser and inspector), split by one divider that sizes it.
+    /// under the browser and inspector), split by one bar that sizes it.
     var body: some View {
         if frameStripShown {
-            VSplitView {
-                picture.frame(minHeight: 120)
-                FrameStrip(show: show, timeline: timeline, engine: engine, pps: pps,
-                           scrollOffset: storylineOffset, inset: StorylineView.inset)
-                    .frame(minHeight: FrameStrip.minHeight, idealHeight: 64)
+            GeometryReader { g in
+                // The picture keeps at least 120 points; the strip at least 20.
+                let most = max(Double(g.size.height) - 120 - Double(Self.barHeight), Double(FrameStrip.minHeight))
+                let h = CGFloat(min(max(stripHeight, Double(FrameStrip.minHeight)), most))
+                VStack(spacing: 0) {
+                    picture
+                    stripBar(most: most)
+                    FrameStrip(show: show, timeline: timeline, engine: engine, pps: pps,
+                               scrollOffset: storylineOffset, inset: StorylineView.inset)
+                        .frame(height: h)
+                }
             }
         } else {
             picture
         }
+    }
+
+    /// The bar between picture and strip: a slim line to look at, in a
+    /// taller band to grab (the system split line was too fiddly, Jason).
+    static let barHeight: CGFloat = 12
+
+    private func stripBar(most: Double) -> some View {
+        ZStack {
+            Color.black
+            Rectangle()
+                .fill(Color(nsColor: .separatorColor))
+                .frame(height: 5)
+            Capsule()
+                .fill(Color.secondary.opacity(0.7))
+                .frame(width: 40, height: 3)
+        }
+        .frame(height: Self.barHeight)
+        .contentShape(Rectangle())
+        .onHover { inside in
+            if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
+        }
+        .gesture(DragGesture(minimumDistance: 0)
+            .onChanged { g in
+                let start = stripDragStart ?? stripHeight
+                stripDragStart = start
+                stripHeight = min(max(start - Double(g.translation.height), Double(FrameStrip.minHeight)), most)
+            }
+            .onEnded { _ in stripDragStart = nil })
+        .help("Drag to size the frame strip")
     }
 
     private var picture: some View {
