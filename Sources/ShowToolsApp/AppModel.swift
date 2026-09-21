@@ -63,6 +63,10 @@ final class AppModel {
         recentLibraries = (UserDefaults.standard.stringArray(forKey: Self.recentKey) ?? [])
             .map { URL(fileURLWithPath: $0) }
             .filter { FileManager.default.fileExists(atPath: $0.path) }
+        if let problem = LibraryLocation.testLaunchProblem() {
+            loadError = problem
+            return
+        }
         do {
             let lib = try Library(root: masterURL)
             if lib.isPrivate { locked = lib } else { load(lib) }

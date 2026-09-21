@@ -33,6 +33,9 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
 
 - **Never test against the real library** (`~/Pictures/ShowTools Library.noindex`).
   Set `SHOWTOOLS_LIBRARY=<scratch path>`: `open -n --env SHOWTOOLS_LIBRARY=… build/ShowTools.app`.
+  A launch with any `SHOWTOOLS_` variable but no `SHOWTOOLS_LIBRARY` (a dev
+  hook alone, or a typo) opens nothing and says why
+  (`LibraryLocation.testLaunchProblem`).
 - `SHOWTOOLS_DEV_PLAY="<showID>:<slideIndex>[:full]"` opens the player at
   launch, so it can be screenshotted without clicking (UI scripting isn't
   permitted on this Mac). `SHOWTOOLS_DEV_SHOW="<showID>[:<slideIndex>]"`
@@ -65,7 +68,10 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   on a synthesized type would drop every saved value that lacks it.
 - Library schema changes are additive migrations (`Library.migrate`,
   currently version 5), each tested by opening a library written by the
-  version before. The master library upgrades itself on first open.
+  version before. The master library upgrades itself on first open, after
+  copying its database to `Library.sqlite.v<N>.bak`. A new migration must
+  also raise `Library.schemaVersion`, or that copy isn't made (the
+  new-library test fails if they disagree).
 - `MediaItem` is not called `LibraryItem`, and the app refers to
   `ShowToolsCore.Transition` by its full name, because both short names
   collide with SwiftUI. Likewise `SRGBColor` (not `RGBColor`, QuickDraw's)

@@ -30,6 +30,19 @@ public enum LibraryLocation {
 
     public static func isHidden(_ url: URL) -> Bool { url.pathExtension == "noindex" }
 
+    /// Why this launch mustn't open a library, or nil if it may. Any
+    /// `SHOWTOOLS_` setting marks a test launch (a dev hook, or a mistyped
+    /// `SHOWTOOLS_LIBRARY`), and a test launch must name its scratch
+    /// library: without one, `resolve()` falls back to the real library.
+    public static func testLaunchProblem(
+        _ env: [String: String] = ProcessInfo.processInfo.environment) -> String? {
+        let ours = env.keys.filter { $0.hasPrefix("SHOWTOOLS_") }.sorted()
+        guard !ours.isEmpty, (env["SHOWTOOLS_LIBRARY"] ?? "").isEmpty else { return nil }
+        return "This launch sets \(ours.joined(separator: ", ")) but no SHOWTOOLS_LIBRARY, "
+            + "so it would open the real library. Nothing was opened. "
+            + "Set SHOWTOOLS_LIBRARY to a scratch library."
+    }
+
     /// True when `url`, or the folder it would be created in, syncs to iCloud.
     public static func isInICloud(_ url: URL) -> Bool {
         let fm = FileManager.default
@@ -63,7 +76,26 @@ public final class Library {
                                withIntermediateDirectories: true)
         self.root = root
         db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
+        try backUpBeforeUpgrade()
         try migrate()
+    }
+
+    /// The schema version `migrate` brings a library up to.
+    public static let schemaVersion = 5
+
+    /// Before an existing library is upgraded, a copy of its database as it
+    /// was, beside it: `Library.sqlite.v<N>.bak`. Upgrades are additive and
+    /// tested, but once real photos are in a library a bad one mustn't be
+    /// permanent. `VACUUM INTO` makes a consistent copy with the WAL
+    /// included. A backup of that version already there is kept, and if the
+    /// copy can't be made the library doesn't open, rather than upgrade
+    /// without one.
+    private func backUpBeforeUpgrade() throws {
+        let v = db.userVersion
+        guard v > 0, v < Self.schemaVersion else { return }
+        let backup = root.appendingPathComponent("Library.sqlite.v\(v).bak")
+        guard !FileManager.default.fileExists(atPath: backup.path) else { return }
+        try db.exec("VACUUM INTO '\(backup.path.replacingOccurrences(of: "'", with: "''"))'")
     }
 
     private func migrate() throws {

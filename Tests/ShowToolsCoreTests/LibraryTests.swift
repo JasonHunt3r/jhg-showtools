@@ -321,3 +321,61 @@ extension LibraryTests {
         XCTAssertEqual(try Library(root: dir.appendingPathComponent("Plain")).name, "Plain")
     }
 }
+
+extension LibraryTests {
+    /// Opening an older library copies its database first, as it was.
+    func testAnUpgradeKeepsABackupOfTheOldVersion() throws {
+        let root = dir.appendingPathComponent("Old.noindex")
+        try FileManager.default.createDirectory(at: root.appendingPathComponent("Media"),
+                                                withIntermediateDirectories: true)
+        do {
+            let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
+            try db.exec("""
+                CREATE TABLE items (id INTEGER PRIMARY KEY AUTOINCREMENT, rel_path TEXT NOT NULL UNIQUE,
+                    hash TEXT NOT NULL UNIQUE, kind TEXT NOT NULL, width INTEGER NOT NULL,
+                    height INTEGER NOT NULL, duration REAL, ingested_at REAL NOT NULL,
+                    source_path TEXT NOT NULL);
+                CREATE TABLE shows (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
+                    defaults TEXT NOT NULL, created_at REAL NOT NULL);
+                CREATE TABLE slides (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    show_id INTEGER NOT NULL REFERENCES shows(id) ON DELETE CASCADE,
+                    position INTEGER NOT NULL, item_id INTEGER NOT NULL REFERENCES items(id),
+                    settings TEXT NOT NULL);
+                INSERT INTO items (rel_path, hash, kind, width, height, duration, ingested_at, source_path)
+                    VALUES ('a.jpg', 'h1', 'image', 400, 300, NULL, 0, '/x/a.jpg');
+                PRAGMA user_version = 1;
+                """)
+        }
+        _ = try Library(root: root)
+        let backup = root.appendingPathComponent("Library.sqlite.v1.bak")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: backup.path))
+        let old = try Database(path: backup.path)
+        XCTAssertEqual(old.userVersion, 1)
+        XCTAssertEqual(try old.prepare("SELECT rel_path FROM items").firstText(), "a.jpg")
+
+        // Opening it again: already current, so no new backup, and no error.
+        _ = try Library(root: root)
+        let backups = try FileManager.default.contentsOfDirectory(atPath: root.path).filter { $0.hasSuffix(".bak") }
+        XCTAssertEqual(backups, ["Library.sqlite.v1.bak"])
+    }
+
+    /// A brand-new library has nothing to back up, and starts current.
+    func testANewLibraryNeedsNoBackup() throws {
+        let root = dir.appendingPathComponent("New.noindex")
+        _ = try Library(root: root)
+        XCTAssertEqual(try Database(path: root.appendingPathComponent("Library.sqlite").path).userVersion,
+                       Library.schemaVersion)
+        XCTAssertFalse(try FileManager.default.contentsOfDirectory(atPath: root.path).contains { $0.hasSuffix(".bak") })
+    }
+
+    /// A launch with any SHOWTOOLS_ setting must name its scratch library.
+    func testATestLaunchMustNameItsLibrary() {
+        XCTAssertNil(LibraryLocation.testLaunchProblem([:]))
+        XCTAssertNil(LibraryLocation.testLaunchProblem(["HOME": "/x"]))
+        XCTAssertNil(LibraryLocation.testLaunchProblem(["SHOWTOOLS_LIBRARY": "/tmp/t", "SHOWTOOLS_DEV_SHOW": "1"]))
+        XCTAssertNotNil(LibraryLocation.testLaunchProblem(["SHOWTOOLS_DEV_SHOW": "1"]))
+        XCTAssertNotNil(LibraryLocation.testLaunchProblem(["SHOWTOOLS_LIBRARY": ""]))
+        // A typo in the library's own name is caught too.
+        XCTAssertNotNil(LibraryLocation.testLaunchProblem(["SHOWTOOLS_LIBARY": "/tmp/t"]))
+    }
+}
