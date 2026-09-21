@@ -349,6 +349,38 @@ review, so any add-ons would ship inside the app. The upscaling engine is
 chosen later, after checking what macOS actually offers.
 
 ### Phase 2b: Library manager
+**Starts with Collections (Jason, 2026-09-21).** The app is organised the
+way Final Cut is (Library → Event → Project), with ShowTools' own names:
+
+- **Library → Collection → Show** in the sidebar. A **Collection** is a
+  defined set of the library's photos (a photo can be in several); a
+  **Show** belongs to a collection and is built from its photos.
+- **One master library**, as now, so duplicates are caught across it and
+  "random from all files" means everything. There's also the ability to
+  **load an alternate library** when needed (as Final Cut and Aperture
+  can). Any library location obeys the same rules (hidden from Spotlight by
+  default, never in iCloud).
+- The right-hand list becomes the **Collection Browser**: the collection's
+  files, dragged from there into the storyline or the images row. The
+  show's order lives in the storyline (which already reorders by drag). The
+  browser has **a bar at the top with an arrow showing there's more to
+  expand**.
+- **A file that isn't in the show's collection** (dropped from Finder or
+  Photos, or from elsewhere in the library) brings up a dialog: "…isn't in
+  the collection. Add it?" with Add to Collection / Cancel and the standard
+  suppression checkbox, labelled **"Always add without asking"** (it only
+  means anything with Add, so Cancel can't become a silent refusal).
+  Ticking it switches on a preference, **"Add files to the collection
+  automatically"**, which is also where it's switched back off.
+- Existing shows (only the test show so far) go into one starting
+  collection.
+
+The rest of 2b below (browsing, delete, rename, Info, relink) then applies
+to the Collection Browser and the library.
+
+Open (asked 2026-09-21): what the browser's expand arrow opens; and whether
+an alternate library replaces the open one (one at a time) or opens beside
+it.
 - Browse the whole library: thumbnail grid, sort and filter (type, date, size,
   "not in any show")
 - **Delete** follows the Photos convention:
