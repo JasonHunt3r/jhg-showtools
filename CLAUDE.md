@@ -15,6 +15,12 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   show it (the Edit Show preview and its pop-out share one engine). A paused
   engine stops drawing about 0.6s after the last change; call `touch()`
   after anything visible changes.
+- App files worth knowing: `TransformOverlay` (the handles, arrow keys
+  and Rotation mode on the preview), `StorylineView` (blocks and the lane's
+  transitions row), `ImagesRow` (the lane's images row), `CollectionBrowser`
+  (Edit Show's right column), `CollectionAdd` (the in-app drag type and the
+  "add to collection?" question), `Libraries` (open/new/private),
+  `FrameStrip`, `EffectsTimeline`, `EffectControls` (sliders, pads).
 - `Sources/stcli/`: dev CLI. `ingest`, `show`, and `render` (writes frames
   through the Compositor to PNG, which is how transitions get checked by eye).
 - `make-app.sh`: builds `build/ShowTools.app` (a SwiftPM binary wrapped in a
@@ -54,10 +60,25 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   it (`Slide`). The same file can appear many times with different settings.
 - Settings JSON decodes field by field. Don't replace that with synthesized
   Codable: one unreadable field would reset all of them, and the next save
-  would make the loss permanent.
+  would make the loss permanent. Every model type does this, including
+  `Transition`, `KenBurns`, `Rotation`, `Transform` and `OverlayClip`. A new field
+  on a synthesized type would drop every saved value that lacks it.
+- Library schema changes are additive migrations (`Library.migrate`,
+  currently version 5), each tested by opening a library written by the
+  version before. The master library upgrades itself on first open.
 - `MediaItem` is not called `LibraryItem`, and the app refers to
   `ShowToolsCore.Transition` by its full name, because both short names
-  collide with SwiftUI.
+  collide with SwiftUI. Likewise `SRGBColor` (not `RGBColor`, QuickDraw's)
+  and `MediaCollection` (not `Collection`, Swift's).
+- Measure, don't guess: write frame, hit-test or timing probes to a file in
+  the scratchpad. `log show` returns nothing from this app in Claude's
+  sandbox, so a "no log lines" check proves nothing. Remove probes before
+  committing.
+- SwiftUI hosting views hit-test all their content, clipped or not. Edit
+  Show's columns use `ColumnHost`, which takes the mouse only inside its
+  frame. Keep it, or content wider than its column steals the next column's
+  clicks and scrolling.
+- Tell Jason before restarting the app: he's often using it.
 - Library delete conventions (Delete asks first, ⌘Delete moves to the Trash
   without asking) and the slide-removal notice are settled decisions. See
   the plan.
