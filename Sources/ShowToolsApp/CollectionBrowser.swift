@@ -6,8 +6,10 @@ import ShowToolsCore
 /// in the storyline.
 ///
 /// A bar at the top: the collection, a search field, a filter menu, and an
-/// arrow that opens (→) or closes (←) the inspector column. Files already
-/// used in the show carry an orange line, as Final Cut marks used media.
+/// arrow that opens (→) or closes (←) the inspector column. Files the show
+/// uses come first, in the order they first appear (so they reorder with
+/// the storyline), then a divider and the rest of the collection. Used
+/// files carry an orange line, as Final Cut marks used media.
 /// With the list focused, Final Cut's keys add the selected files: **E**
 /// appends them to the show, **W** inserts them at the join nearest the
 /// playhead (splitting a still would only repeat it), **Q** places the first
@@ -41,16 +43,42 @@ struct CollectionBrowser: View {
     /// Files the show uses, slides and lane images alike.
     private var used: Set<Int64> { Set(show.slides.map(\.itemID) + show.overlays.map(\.itemID)) }
 
-    private var files: [MediaItem] {
-        guard let c = collection else { return [] }
-        let used = used
-        let needle = search.trimmingCharacters(in: .whitespaces).lowercased()
-        return c.itemIDs.compactMap { model.itemsByID[$0] }.filter { item in
-            (needle.isEmpty || item.fileName.lowercased().contains(needle))
-                && item.rating >= minRating
-                && (use == .all || (use == .used) == used.contains(item.id))
+    /// When each used file first appears on screen: its first slide's join,
+    /// or its first lane image's start, whichever comes first.
+    private var firstAppearance: [Int64: Double] {
+        var first: [Int64: Double] = [:]
+        for r in timeline.slides where first[r.item.id].map({ r.start < $0 }) ?? true {
+            first[r.item.id] = r.start
         }
+        for o in timeline.overlays where first[o.item.id].map({ o.start < $0 }) ?? true {
+            first[o.item.id] = o.start
+        }
+        return first
     }
+
+    private func passes(_ item: MediaItem) -> Bool {
+        let needle = search.trimmingCharacters(in: .whitespaces).lowercased()
+        return (needle.isEmpty || item.fileName.lowercased().contains(needle)) && item.rating >= minRating
+    }
+
+    /// The show's files, in the order they first appear.
+    private var usedFiles: [MediaItem] {
+        guard use != .unused, let c = collection else { return [] }
+        let first = firstAppearance
+        return c.itemIDs.filter { first[$0] != nil }
+            .sorted { first[$0]! < first[$1]! }
+            .compactMap { model.itemsByID[$0] }
+            .filter(passes)
+    }
+
+    /// The rest of the collection, in the order the files were added.
+    private var unusedFiles: [MediaItem] {
+        guard use != .used, let c = collection else { return [] }
+        let used = used
+        return c.itemIDs.filter { !used.contains($0) }.compactMap { model.itemsByID[$0] }.filter(passes)
+    }
+
+    private var files: [MediaItem] { usedFiles + unusedFiles }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -129,10 +157,21 @@ struct CollectionBrowser: View {
     // MARK: The list
 
     private var list: some View {
-        let used = used
+        let top = usedFiles, rest = unusedFiles
         return List(selection: $picked) {
-            ForEach(files) { item in
-                row(item, used: used.contains(item.id)).tag(item.id)
+            if !top.isEmpty {
+                Section {
+                    ForEach(top) { item in row(item, used: true).tag(item.id) }
+                } header: {
+                    Text("In this show")
+                }
+            }
+            if !rest.isEmpty {
+                Section {
+                    ForEach(rest) { item in row(item, used: false).tag(item.id) }
+                } header: {
+                    Text("Not in this show")
+                }
             }
         }
         .contextMenu(forSelectionType: Int64.self) { ids in
@@ -182,9 +221,9 @@ struct CollectionBrowser: View {
         }
     }
 
-    /// The chosen files in the list's order.
+    /// The chosen files in the order the list shows them.
     private func ordered(_ ids: Set<Int64>) -> [Int64] {
-        (collection?.itemIDs ?? []).filter(ids.contains)
+        files.map(\.id).filter(ids.contains)
     }
 
     // MARK: Adding to the show
