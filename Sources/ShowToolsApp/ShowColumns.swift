@@ -12,16 +12,20 @@ struct ShowColumns<Preview: View, List: View, Inspector: View>: NSViewRepresenta
 
     @MainActor final class Coordinator {
         var inspectorShown: Binding<Bool>
-        var hosts: [NSHostingView<AnyView>] = []
+        var hosts: [ColumnHost] = []
         init(_ b: Binding<Bool>) { inspectorShown = b }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator($inspectorShown) }
 
     func makeNSView(context: Context) -> ColumnsSplitView {
-        let hosts = [wrap(preview), wrap(list), wrap(inspector)].map { view -> NSHostingView<AnyView> in
-            let h = NSHostingView(rootView: view)
+        let hosts = [wrap(preview), wrap(list), wrap(inspector)].map { view -> ColumnHost in
+            let h = ColumnHost(rootView: view)
             h.sizingOptions = []   // the split view decides sizes, not the content
+            // A column's content can be wider than the column (the inspector
+            // was 316 in 260, measured 2026-09-21): clipped, it can't hang
+            // over its neighbour and take its clicks and scrolling.
+            h.clipsToBounds = true
             return h
         }
         context.coordinator.hosts = hosts
@@ -57,4 +61,16 @@ struct ShowColumns<Preview: View, List: View, Inspector: View>: NSViewRepresenta
     /// Views hosted here don't inherit the SwiftUI environment, so the model
     /// is handed back in.
     private func wrap<V: View>(_ v: V) -> AnyView { AnyView(v.environment(model)) }
+}
+
+/// A column's hosting view that takes the mouse only inside its own frame.
+/// SwiftUI hit-tests a hosting view's whole content, clipped or not, so a
+/// column whose content was wider than it (the inspector, 2026-09-21) caught
+/// the clicks and scrolling meant for the column beside it.
+final class ColumnHost: NSHostingView<AnyView> {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        // `point` is in the superview's coordinates, as `frame` is.
+        guard frame.contains(point) else { return nil }
+        return super.hitTest(point)
+    }
 }
