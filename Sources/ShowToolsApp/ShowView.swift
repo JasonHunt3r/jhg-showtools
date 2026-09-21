@@ -31,7 +31,7 @@ struct ShowView: View {
             switch mode {
             case .slides:
                 EditSlidesView(show: show, timeline: timeline, selection: $selection, mutate: mutate,
-                               openInspector: { inspectorShown = true })
+                               toggleInspector: { inspectorShown.toggle() })
             case .show:
                 EditShowView(show: show, timeline: timeline, selection: $selection, mutate: mutate,
                              inspectorShown: $inspectorShown)
@@ -122,7 +122,8 @@ struct EditSlidesView: View {
     let timeline: ShowTimeline
     @Binding var selection: Set<Int64>
     let mutate: ShowMutator
-    let openInspector: () -> Void
+    /// Double-clicking a list item opens the inspector, or closes it if open.
+    let toggleInspector: () -> Void
     @Environment(AppModel.self) private var model
     @State private var dropTargeted = false
 
@@ -155,7 +156,7 @@ struct EditSlidesView: View {
                 let i = show.slides.firstIndex { ids.contains($0.id) }
                 Player.open(show: show, model: model, fullScreen: false, startAt: i)
             }
-        } primaryAction: { _ in openInspector() }
+        } primaryAction: { _ in toggleInspector() }
         .overlay {
             if show.slides.isEmpty {
                 ContentUnavailableView("No slides yet", systemImage: "rectangle.stack",

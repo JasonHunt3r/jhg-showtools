@@ -26,7 +26,7 @@ struct EditShowView: View {
                         preview: PreviewStage(engine: engine, title: show.name),
                         list: OrderList(show: show, timeline: timeline, engine: engine,
                                         selection: $selection, mutate: mutate,
-                                        openInspector: { inspectorShown = true }),
+                                        toggleInspector: { inspectorShown.toggle() }),
                         inspector: SlideInspector(show: show, timeline: timeline, selection: selection,
                                                   mutate: mutate))
                         .frame(minHeight: 220)
@@ -238,7 +238,7 @@ struct OrderList: View {
     let engine: PlaybackEngine
     @Binding var selection: Set<Int64>
     let mutate: ShowMutator
-    let openInspector: () -> Void
+    let toggleInspector: () -> Void
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -271,9 +271,10 @@ struct OrderList: View {
             Button("Duplicate") { SlideActions.duplicate(ids, mutate: mutate) }
             Button("Remove from Show") { SlideActions.remove(ids, selection: $selection, mutate: mutate) }
         } primaryAction: { ids in
-            // Double-click: show it, and open the inspector on it.
+            // Double-click: show it, and open the inspector — or close it
+            // if it's already open.
             if let id = ids.first { engine.showSlide(id: id) }
-            openInspector()
+            toggleInspector()
         }
         .onChange(of: selection) { _, ids in
             // Picking one slide in the list shows it in the preview.
