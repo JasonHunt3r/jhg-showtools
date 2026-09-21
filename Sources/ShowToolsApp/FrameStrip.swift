@@ -35,8 +35,9 @@ struct FrameStrip: View {
     @AppStorage("frameStripSpan") private var span: Span = .storyline
     @State private var frames = FrameCache()
 
-    /// The smallest it gets: the divider can't squeeze it below this.
-    static let minHeight: CGFloat = 32
+    /// The smallest it gets: the divider can't squeeze it below this. Small:
+    /// a thumbnail-sized frame (Jason wanted it to shrink further).
+    static let minHeight: CGFloat = 20
     /// How far short of each end of a slider its knob stops (half a knob).
     static let knobInset: CGFloat = 10
 

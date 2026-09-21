@@ -31,6 +31,15 @@ struct StorylineView: View {
     static let inset: CGFloat = 12
     /// The lane's transitions row, above the blocks.
     static let laneRowHeight: CGFloat = 22
+    /// The images row when it's open (a thin strip when empty).
+    static let imagesRowOpen: CGFloat = 30
+
+    /// The storyline's own height with its rows open: padding, ruler, the
+    /// images and transitions rows, and the blocks. The frame strip takes
+    /// whatever the bottom area has beyond this and the play bar.
+    static var naturalHeight: CGFloat {
+        6 + rulerHeight + 4 + (imagesRowOpen + 2 + laneRowHeight + 4) + blockHeight + 2 + 6
+    }
 
     /// A transition section being dragged: drawn as it goes, saved on release.
     private struct TransitionEdit {
@@ -53,7 +62,7 @@ struct StorylineView: View {
 
     /// The images row: a thin strip until it has images or one is dragged
     /// over it. Everything below it sits `laneTop` and `blocksTop` down.
-    private var imagesRowHeight: CGFloat { timeline.overlays.isEmpty && !imagesDropTargeted ? 10 : 30 }
+    private var imagesRowHeight: CGFloat { timeline.overlays.isEmpty && !imagesDropTargeted ? 10 : Self.imagesRowOpen }
     private var laneTop: CGFloat { imagesRowHeight + 2 }
     private var blocksTop: CGFloat { laneTop + Self.laneRowHeight + 4 }
 

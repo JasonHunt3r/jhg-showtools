@@ -61,8 +61,10 @@ struct EditShowView: View {
                     }
                     .coordinateSpace(name: "editShowBottom")
                     .onPreferenceChange(ScrubberFrameKey.self) { scrubberFrame = $0 }
-                    .frame(minHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 80 + 56 + stripMin,
-                           idealHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 90 + 56 + stripIdeal)
+                    // The storyline and play bar at their own heights, plus
+                    // the strip's least (or, starting out, a little more).
+                    .frame(minHeight: StorylineView.naturalHeight + Self.transportHeight + stripMin,
+                           idealHeight: StorylineView.naturalHeight + Self.transportHeight + stripIdeal)
                 }
                 .onDeleteCommand {
                     // What's selected in the lane goes first: an image is
@@ -135,6 +137,9 @@ struct EditShowView: View {
     }
 
     @State private var visibleWidth: CGFloat = 800
+
+    /// The play bar: its controls and padding, and the divider under it.
+    static let transportHeight: CGFloat = 36
 
     /// The strip takes the bottom area's spare height; this is its least,
     /// and what it starts with.
