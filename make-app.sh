@@ -31,6 +31,15 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>LSMinimumSystemVersion</key>     <string>14.0</string>
     <key>NSHighResolutionCapable</key>    <true/>
     <key>NSSupportsAutomaticTermination</key> <false/>
+    <!-- Files dragged within the app (from the Collection Browser). -->
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>        <string>com.jhg.showtools.items</string>
+            <key>UTTypeDescription</key>       <string>ShowTools library files</string>
+            <key>UTTypeConformsTo</key>        <array><string>public.data</string></array>
+        </dict>
+    </array>
 </dict>
 </plist>
 PLIST

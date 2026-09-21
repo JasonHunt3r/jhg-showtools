@@ -136,10 +136,11 @@ extension MainView {
                 Button("Rename…") { startRenaming(.collection(c.id), current: c.name) }
                 Button("Delete Collection…") { confirmDeleteCollection = c }
             }
-            // Dropping files on a collection imports them into it.
-            .onDrop(of: droppableTypes, isTargeted: nil) { providers in
+            // Dropping files on a collection puts them in it (imported first
+            // if they come from Finder or Photos): no question, that's the ask.
+            .onDrop(of: ItemDrag.accepted, isTargeted: nil) { providers in
                 Task {
-                    let ids = await model.importProviders(providers)
+                    let ids = await model.itemIDs(from: providers)
                     model.addToCollection(ids, c.id)
                 }
                 return true
@@ -157,10 +158,11 @@ extension MainView {
                 Button("Rename…") { startRenaming(.show(show.id), current: show.name) }
                 Button("Delete Show…") { confirmDelete = show }
             }
-            // Dropping files on a show imports them and appends them to it.
-            .onDrop(of: droppableTypes, isTargeted: nil) { providers in
+            // Dropping files on a show appends them to it (asking first about
+            // any not in its collection).
+            .onDrop(of: ItemDrag.accepted, isTargeted: nil) { providers in
                 Task {
-                    let ids = await model.importProviders(providers)
+                    let ids = await model.itemIDs(from: providers)
                     model.append(ids, to: show.id)
                 }
                 return true

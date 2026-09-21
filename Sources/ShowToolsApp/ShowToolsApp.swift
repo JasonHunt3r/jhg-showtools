@@ -56,6 +56,7 @@ struct AppCommands: Commands {
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @AppStorage(SlideRemovalNotice.suppressKey) private var suppressRemovalNotice = false
+    @AppStorage(CollectionAddNotice.autoAddKey) private var autoAddToCollection = false
 
     var body: some View {
         Form {
@@ -78,6 +79,12 @@ struct SettingsView: View {
                 Text(model.libraryHiddenFromSpotlight
                      ? "Hidden: the library folder ends in “.noindex”, so Spotlight skips its file names, image details and the text in pictures."
                      : "Searchable: Spotlight can find library files by name, image details and the text in pictures.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Collections") {
+                Toggle("Add files to the collection automatically", isOn: $autoAddToCollection)
+                Text("When a file that isn't in a show's collection goes into the show, add it to the collection without asking. Off: ShowTools asks first.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

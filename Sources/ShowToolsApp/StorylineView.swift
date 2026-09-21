@@ -45,6 +45,9 @@ struct StorylineView: View {
     @State private var hoveredJoin: Int64?
     /// Something is being dragged over the images row: it opens up.
     @State private var imagesDropTargeted = false
+    /// Files being dragged over the storyline: where the pointer is, for the
+    /// insertion line.
+    @State private var dropX: CGFloat?
 
     /// The images row: a thin strip until it has images or one is dragged
     /// over it. Everything below it sits `laneTop` and `blocksTop` down.
@@ -156,6 +159,14 @@ struct StorylineView: View {
                             transitionsRow(placed)
                             cutHandles(placed)
                         }
+                        if let x = dropX {
+                            let target = dropTarget(x, placed)
+                            RoundedRectangle(cornerRadius: 1.5)
+                                .fill(Color.accentColor)
+                                .frame(width: 3, height: Self.blockHeight + 8)
+                                .offset(x: target.x - 1.5, y: blocksTop - 4)
+                                .allowsHitTesting(false)
+                        }
                         // The group being dragged follows the pointer.
                         if let m = moving, let first = group.first {
                             let groupWidth = group.reduce(0) { $0 + $1.width }
@@ -170,6 +181,9 @@ struct StorylineView: View {
                         }
                     }
                     .animation(.snappy(duration: 0.18), value: moving?.target)
+                    .onDrop(of: ItemDrag.accepted, delegate: StorylineDrop(
+                        update: { dropX = $0?.x },
+                        perform: { providers, location in drop(providers, at: location.x, placed) }))
                 }
                 .overlay(alignment: .topLeading) { Playhead(engine: engine, timeline: timeline, pps: pps, inset: Self.inset) }
                 .coordinateSpace(name: "storyline")
@@ -440,6 +454,32 @@ struct StorylineView: View {
 
     private func signed(_ d: Double) -> String {
         (d >= 0 ? "+" : "−") + formatSeconds(abs(d))
+    }
+
+    // MARK: Dropping files
+
+    /// The join a drop at `x` lands on: before the block under the pointer
+    /// if it's in the block's first half, after it if in the second.
+    private func dropTarget(_ x: CGFloat, _ placed: [Placed]) -> (index: Int, x: CGFloat) {
+        for p in placed where x < p.x + p.width / 2 {
+            return (show.slides.firstIndex { $0.id == p.id } ?? show.slides.count, p.x)
+        }
+        return (show.slides.count, placed.last.map { $0.x + $0.width } ?? Self.inset)
+    }
+
+    /// Files from the Collection Browser, or from Finder or Photos (imported
+    /// first), inserted as slides at the join, after checking they're in
+    /// the show's collection.
+    private func drop(_ providers: [NSItemProvider], at x: CGFloat, _ placed: [Placed]) {
+        let index = dropTarget(x, placed).index
+        let showID = show.id
+        Task {
+            let ids = await model.itemIDs(from: providers)
+            guard !ids.isEmpty, model.bringIntoCollection(ids, forShow: showID) else { return }
+            mutate(ids.count == 1 ? "Insert Slide" : "Insert Slides") { s in
+                s.slides.insert(contentsOf: ids.map { Slide(id: 0, itemID: $0) }, at: min(index, s.slides.count))
+            }
+        }
     }
 
     // MARK: Transitions row
@@ -854,5 +894,26 @@ struct EdgeBracket: View {
             ctx.stroke(p, with: .color(.yellow), lineWidth: 3)
         }
         .frame(width: 5)
+    }
+}
+
+/// Tracks files dragged over the storyline, for its insertion line, and
+/// hands over the drop.
+struct StorylineDrop: DropDelegate {
+    let update: (CGPoint?) -> Void
+    let perform: ([NSItemProvider], CGPoint) -> Void
+
+    func validateDrop(info: DropInfo) -> Bool { info.hasItemsConforming(to: ItemDrag.accepted) }
+    func dropEntered(info: DropInfo) { update(info.location) }
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        update(info.location)
+        return DropProposal(operation: .copy)
+    }
+    func dropExited(info: DropInfo) { update(nil) }
+    func performDrop(info: DropInfo) -> Bool {
+        let location = info.location
+        update(nil)
+        perform(info.itemProviders(for: ItemDrag.accepted), location)
+        return true
     }
 }

@@ -85,6 +85,15 @@ screenshots:
   numbered entries. Try clicking a use (should select that slide in the
   storyline with its own inspector, or that lane image with its bar) and
   selecting a slide in the storyline (its entry should highlight)
+- **Dragging and the add-to-collection question (2026-09-21):** none of it
+  can be triggered without a mouse, so all untried. Try: dragging browser
+  rows (one, and a multi-selection) onto the storyline (an insertion line
+  at the join) and onto the images row; dropping Finder or Photos files on
+  the storyline, the images row, a show in the sidebar and a collection;
+  a file from outside the show's collection (e.g. Library ▸ Add to Show)
+  bringing up "…isn't in the collection … Add it?", its Cancel (nothing
+  added), and "Always add without asking" switching on Settings ▸
+  Collections ▸ "Add files to the collection automatically"
 - **Soft-at-this-zoom warning (2026-09-21):** checked by screenshot; the
   flags on the test library are all correct for a 2560×1664 screen
 

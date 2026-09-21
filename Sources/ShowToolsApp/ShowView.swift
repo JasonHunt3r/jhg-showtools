@@ -163,9 +163,9 @@ struct EditSlidesView: View {
                     description: Text("Select items in the Library and choose Add to Show, or drag files here."))
             }
         }
-        .onDrop(of: droppableTypes, isTargeted: $dropTargeted) { providers in
+        .onDrop(of: ItemDrag.accepted, isTargeted: $dropTargeted) { providers in
             Task {
-                let ids = await model.importProviders(providers)
+                let ids = await model.itemIDs(from: providers)
                 model.append(ids, to: show.id)
             }
             return true

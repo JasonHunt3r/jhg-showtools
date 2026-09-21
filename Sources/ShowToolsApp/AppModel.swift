@@ -304,12 +304,32 @@ final class AppModel {
     }
 
     func append(_ itemIDs: [Int64], to showID: Int64, undo: UndoManager? = nil) {
-        guard var show = show(showID), !itemIDs.isEmpty else { return }
+        guard var show = show(showID), !itemIDs.isEmpty,
+              bringIntoCollection(itemIDs, forShow: showID) else { return }
         show.slides += itemIDs.map { Slide(id: 0, itemID: $0) }
         update(show, undo: undo, action: "Add Slides")
-        // A show's files are always in its collection. (Step 4 of the
-        // Collections work puts the ask-first dialog in front of this.)
-        if let cid = show.collectionID { addToCollection(itemIDs, cid) }
+    }
+
+    /// Files about to go into a show must be in its collection. Any that
+    /// aren't are added, after asking (unless the preference says always).
+    /// False if the answer was Cancel: the caller then adds nothing.
+    func bringIntoCollection(_ itemIDs: [Int64], forShow showID: Int64) -> Bool {
+        guard let cid = show(showID)?.collectionID, let c = collection(cid) else { return true }
+        let have = Set(c.itemIDs)
+        let missing = itemIDs.filter { !have.contains($0) }
+        guard !missing.isEmpty else { return true }
+        let first = itemsByID[missing[0]]?.fileName ?? "This file"
+        guard CollectionAddNotice.confirm(count: Set(missing).count, firstName: first, collection: c.name)
+        else { return false }
+        addToCollection(missing, cid)
+        return true
+    }
+
+    /// Files dropped on a show: ours from the Collection Browser as they
+    /// are; anything from Finder or Photos imported first.
+    func itemIDs(from providers: [NSItemProvider]) async -> [Int64] {
+        if let ours = await ItemDrag.ids(from: providers) { return ours }
+        return await importProviders(providers)
     }
 
     func addToCollection(_ itemIDs: [Int64], _ collectionID: Int64) {

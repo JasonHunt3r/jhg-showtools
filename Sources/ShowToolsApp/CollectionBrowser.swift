@@ -192,6 +192,7 @@ struct CollectionBrowser: View {
                 Section {
                     ForEach(top) { u in
                         row(u.item, used: true, use: u.of > 1 ? u.number : nil).tag(u.pick)
+                            .onDrag { ItemDrag.provider(dragged(u.pick, item: u.item.id)) }
                     }
                 } header: {
                     Text("In this show")
@@ -199,7 +200,10 @@ struct CollectionBrowser: View {
             }
             if !rest.isEmpty {
                 Section {
-                    ForEach(rest) { item in row(item, used: false).tag(Pick.file(item.id)) }
+                    ForEach(rest) { item in
+                        row(item, used: false).tag(Pick.file(item.id))
+                            .onDrag { ItemDrag.provider(dragged(.file(item.id), item: item.id)) }
+                    }
                 } header: {
                     Text("Not in this show")
                 }
@@ -290,6 +294,11 @@ struct CollectionBrowser: View {
     private func ordered(_ picks: Set<Pick>) -> [Int64] {
         let ids = Set(picks.compactMap(itemID))
         return files.map(\.id).filter(ids.contains)
+    }
+
+    /// Dragging a picked row takes the whole pick; any other row, just it.
+    private func dragged(_ pick: Pick, item: Int64) -> [Int64] {
+        picked.contains(pick) ? ordered(picked) : [item]
     }
 
     private func itemID(_ pick: Pick) -> Int64? {

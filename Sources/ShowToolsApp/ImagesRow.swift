@@ -66,10 +66,11 @@ struct ImagesRow: View {
             Button("Place Image Here…") { placing = PlaceRequest(time: t) }
                 .disabled(OverlayPlacement.freeSpan(at: t, in: show.overlays, duration: timeline.duration) == nil)
         }
-        .onDrop(of: droppableTypes, isTargeted: $dropTargeted) { providers, location in
+        .onDrop(of: ItemDrag.accepted, isTargeted: $dropTargeted) { providers, location in
             let t = time(at: location.x)
             Task {
-                let ids = await model.importProviders(providers)
+                let ids = await model.itemIDs(from: providers)
+                guard !ids.isEmpty, model.bringIntoCollection(ids, forShow: show.id) else { return }
                 place(ids, at: t)
             }
             return true
