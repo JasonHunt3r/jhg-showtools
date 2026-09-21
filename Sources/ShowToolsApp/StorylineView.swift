@@ -14,6 +14,8 @@ struct StorylineView: View {
     let timeline: ShowTimeline
     let engine: PlaybackEngine
     @Binding var selection: Set<Int64>
+    /// The transition selected in the lane, by the slide it leads into.
+    @Binding var selectedTransition: Int64?
     /// Points per second: the zoom.
     @Binding var pps: Double
     let mutate: ShowMutator
@@ -23,6 +25,22 @@ struct StorylineView: View {
     static let blockHeight: CGFloat = 64
     static let rulerHeight: CGFloat = 22
     static let inset: CGFloat = 12
+    /// The lane's transitions row, above the blocks.
+    static let laneRowHeight: CGFloat = 22
+
+    /// A transition section being dragged: drawn as it goes, saved on release.
+    private struct TransitionEdit {
+        enum Part { case start, end, body }
+        /// The slide the transition leads into.
+        let id: Int64
+        let part: Part
+        let lead0: Double, duration0: Double
+        var lead: Double, duration: Double
+        /// The longest the overlap can be: the shorter of the two slides.
+        let limit: Double
+    }
+    @State private var transitionEdit: TransitionEdit?
+    @State private var hoveredJoin: Int64?
 
     private struct Moving {
         var ids: Set<Int64>
@@ -111,16 +129,18 @@ struct StorylineView: View {
                         .contentShape(Rectangle())
                         .gesture(scrubGesture)
                     ZStack(alignment: .topLeading) {
-                        Color.clear.frame(width: contentWidth, height: Self.blockHeight + 14)
+                        Color.clear.frame(width: contentWidth, height: Self.laneRowHeight + 4 + Self.blockHeight + 2)
                         ForEach(placed) { p in
                             let isMoving = moving?.ids.contains(p.id) == true
                             block(p)
                                 .opacity(isMoving ? 0.25 : 1)
-                                .offset(x: p.x, y: 12)
+                                .offset(x: p.x, y: Self.laneRowHeight + 4)
                                 .id(p.id)
                         }
-                        transitionMarkers(placed)
-                        if moving == nil { cutHandles(placed) }
+                        if moving == nil {
+                            transitionsRow(placed)
+                            cutHandles(placed)
+                        }
                         // The group being dragged follows the pointer.
                         if let m = moving, let first = group.first {
                             let groupWidth = group.reduce(0) { $0 + $1.width }
@@ -129,7 +149,7 @@ struct StorylineView: View {
                             }
                             .frame(width: groupWidth, alignment: .leading)
                             .shadow(radius: 6)
-                            .offset(x: m.pointerX - m.grab, y: 6)
+                            .offset(x: m.pointerX - m.grab, y: Self.laneRowHeight - 2)
                             .allowsHitTesting(false)
                             .id("dragging-\(first.id)")
                         }
@@ -187,6 +207,7 @@ struct StorylineView: View {
         } else {
             selection = [id]
         }
+        selectedTransition = nil
         engine.showSlide(id: id)
         // Checked on the event rather than with a double-tap gesture, which
         // would hold every single click back while it waits for a second.
@@ -269,7 +290,7 @@ struct StorylineView: View {
         }
         .frame(width: max(width, 1), height: Self.blockHeight)
         .contentShape(Rectangle())
-        .offset(x: offset, y: 12)
+        .offset(x: offset, y: Self.laneRowHeight + 4)
         .onHover { inside in
             if inside {
                 hoveredEdge = kind
@@ -405,27 +426,160 @@ struct StorylineView: View {
         (d >= 0 ? "+" : "−") + formatSeconds(abs(d))
     }
 
-    /// A marker on each cut, as wide as the transition into the next slide.
-    private func transitionMarkers(_ placed: [Placed]) -> some View {
-        ForEach(placed) { p in
-            let d = p.slide.transitionIn.duration
-            // Slide 1's transition only happens when a loop wraps round; a
-            // marker at 0:00 would read as a transition from nothing.
-            if d > 0, p.slide.index > 0, moving == nil {
-                let w = max(CGFloat(d * pps), 8)
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.white.opacity(0.85))
-                    .overlay(
-                        Image(systemName: "rectangle.righthalf.inset.filled.arrow.right")
-                            .font(.system(size: 7))
-                            .foregroundStyle(.black.opacity(0.7))
-                            .opacity(w > 14 ? 1 : 0))
-                    .frame(width: w, height: 10)
-                    .offset(x: p.x, y: 0)
-                    .help("\(p.slide.transitionIn.style.title) · \(formatSeconds(d))")
-                    .onTapGesture { selection = [p.id] }
+    // MARK: Transitions row
+
+    /// Each join, with the slide that comes in there. When a show loops,
+    /// the wrap from the last slide into the first is a join too, at the end.
+    private func joins(_ placed: [Placed]) -> [(incoming: Placed, x: CGFloat, time: Double)] {
+        var out = placed.indices.dropFirst().map { (incoming: placed[$0], x: placed[$0].x, time: placed[$0].slide.start) }
+        if timeline.loops, placed.count > 1, let last = placed.last {
+            out.append((incoming: placed[0], x: last.x + last.width, time: timeline.duration))
+        }
+        return out
+    }
+
+    /// The lane's transitions row: each transition a section across its
+    /// join, the section being the overlap itself. Its edges move
+    /// independently, its middle slides it; a cut shows nothing but a "+"
+    /// on hover. Sections the show's default gave are drawn lighter than
+    /// ones set by hand.
+    private func transitionsRow(_ placed: [Placed]) -> some View {
+        ForEach(joins(placed), id: \.incoming.id) { j in
+            let r = j.incoming.slide
+            let editing = transitionEdit?.id == r.slide.id ? transitionEdit : nil
+            let lead = editing?.lead ?? r.transitionIn.lead
+            let d = editing?.duration ?? r.transitionIn.duration
+            if d > 0 {
+                transitionSection(r, joinX: j.x, joinTime: j.time, lead: lead, duration: d)
+            } else {
+                addTransitionButton(r, joinX: j.x)
             }
         }
+    }
+
+    private func transitionSection(_ r: ResolvedSlide, joinX: CGFloat, joinTime: Double,
+                                   lead: Double, duration: Double) -> some View {
+        let id = r.slide.id
+        let left = joinX - CGFloat(lead * pps)
+        let width = max(CGFloat(duration * pps), 8)
+        let own = r.slide.settings.transition != nil
+        let selected = selectedTransition == id
+        let h = Self.laneRowHeight - 4
+        return ZStack(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(selected ? Color.accentColor : Color.white.opacity(own ? 0.9 : 0.55))
+            // Where the join is, inside the overlap.
+            Rectangle().fill(Color.black.opacity(0.55))
+                .frame(width: 1, height: h)
+                .offset(x: CGFloat(lead * pps))
+            if width > 70 {
+                Text(r.transitionIn.style.title)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(selected ? .white : .black.opacity(0.75))
+                    .lineLimit(1)
+                    .frame(width: width, alignment: .center)
+                    .allowsHitTesting(false)
+            }
+        }
+        .frame(width: width, height: h)
+        .contentShape(Rectangle())
+        .onTapGesture { selectTransition(id, at: joinTime) }
+        .gesture(transitionDrag(r, part: .body))
+        .overlay(alignment: .leading) { transitionEdgeZone(r, part: .start) }
+        .overlay(alignment: .trailing) { transitionEdgeZone(r, part: .end) }
+        .onHover { if $0 { NSCursor.openHand.set() } else { NSCursor.arrow.set() } }
+        .help("\(r.transitionIn.style.title) · \(formatSeconds(duration))"
+              + (own ? "" : " (show default)") + ". Drag an edge to change when it starts or ends; drag the middle to slide it.")
+        .offset(x: left, y: 2)
+    }
+
+    private func transitionEdgeZone(_ r: ResolvedSlide, part: TransitionEdit.Part) -> some View {
+        Color.clear
+            .frame(width: 6)
+            .contentShape(Rectangle())
+            .onHover { if $0 { NSCursor.resizeLeftRight.set() } else { NSCursor.arrow.set() } }
+            .gesture(transitionDrag(r, part: part))
+    }
+
+    /// Edges move independently, but the section always touches or covers
+    /// its join, and an overlap can't outlast either slide it joins.
+    private func transitionDrag(_ r: ResolvedSlide, part: TransitionEdit.Part) -> some Gesture {
+        DragGesture(minimumDistance: 2)
+            .onChanged { g in
+                let id = r.slide.id
+                if transitionEdit?.id != id {
+                    let i = r.index
+                    let prev = i > 0 ? timeline.slides[i - 1] : timeline.slides.last
+                    transitionEdit = TransitionEdit(id: id, part: part, lead0: r.transitionIn.lead,
+                                                    duration0: r.transitionIn.duration,
+                                                    lead: r.transitionIn.lead, duration: r.transitionIn.duration,
+                                                    limit: min(r.length, prev?.length ?? r.length))
+                }
+                guard var e = transitionEdit else { return }
+                let dt = Double(g.translation.width) / pps
+                let tail0 = e.duration0 - e.lead0
+                let shortest = 0.1
+                switch e.part {
+                case .start:
+                    e.lead = min(max(e.lead0 - dt, max(0, shortest - tail0)), max(e.limit - tail0, 0))
+                    e.duration = e.lead + tail0
+                case .end:
+                    let tail = min(max(tail0 + dt, max(0, shortest - e.lead0)), max(e.limit - e.lead0, 0))
+                    e.duration = e.lead0 + tail
+                case .body:
+                    var lead = min(max(e.lead0 - dt, 0), e.duration0)
+                    // Snaps to centred on the join, within a few points.
+                    if abs(lead - e.duration0 / 2) * pps < 4 { lead = e.duration0 / 2 }
+                    e.lead = lead
+                }
+                transitionEdit = e
+            }
+            .onEnded { _ in
+                guard let e = transitionEdit else { return }
+                transitionEdit = nil
+                guard e.lead != e.lead0 || e.duration != e.duration0 else { return }
+                let base = r.transitionIn
+                mutate(e.part == .body ? "Move Transition" : "Change Transition Length") { s in
+                    guard let i = s.slides.firstIndex(where: { $0.id == e.id }) else { return }
+                    s.slides[i].settings.transition = ShowToolsCore.Transition(style: base.style, duration: e.duration,
+                                                                 direction: base.direction, lead: e.lead)
+                }
+                selectedTransition = e.id
+            }
+    }
+
+    /// At a cut: a "+" on hover that adds the show's default transition (or,
+    /// if the default is itself a cut, a new show's default).
+    private func addTransitionButton(_ r: ResolvedSlide, joinX: CGFloat) -> some View {
+        let id = r.slide.id
+        return ZStack {
+            Color.clear
+            if hoveredJoin == id {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.white, Color.accentColor)
+            }
+        }
+        .frame(width: 22, height: Self.laneRowHeight - 2)
+        .contentShape(Rectangle())
+        .onHover { hoveredJoin = $0 ? id : (hoveredJoin == id ? nil : hoveredJoin) }
+        .onTapGesture {
+            mutate("Add Transition") { s in
+                guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
+                s.slides[i].settings.transition = s.defaults.transition.style == .cut ? .newShowDefault : nil
+            }
+            selectedTransition = id
+        }
+        .help("Cut. Click + to add a transition here.")
+        .offset(x: joinX - 11, y: 1)
+    }
+
+    /// Selecting a transition shows it: the preview goes to its join.
+    private func selectTransition(_ id: Int64, at time: Double) {
+        selectedTransition = id
+        selection = []
+        engine.pause()
+        engine.seek(time)
     }
 
     private var scrubGesture: some Gesture {

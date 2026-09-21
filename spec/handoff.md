@@ -55,6 +55,10 @@ screenshots:
   land where the maths says). Try: the Transform/Rotation switch, dragging
   each arm (Shift snaps to 15°; going round twice should give 720°), Speed
   mode's red arm setting the speed, and dragging the pivots, locked and not
+- **Transitions row (2026-09-21):** checked by screenshot. Try: dragging a
+  section's left and right edges and its middle (snaps to centred), the "+"
+  on hover at a cut, Delete on a selected transition (should make a cut,
+  not delete slides), the controls over the picture, and "Use Show Default"
 - **Soft-at-this-zoom warning (2026-09-21):** checked by screenshot; the
   flags on the test library are all correct for a 2560×1664 screen
 

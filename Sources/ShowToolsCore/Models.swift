@@ -124,7 +124,12 @@ public struct Transition: Codable, Hashable, Sendable {
         lead = (try? c.decodeIfPresent(Double.self, forKey: .lead)) ?? 0
     }
 
-    public static let defaultDissolve = Transition(style: .dissolve, duration: 1.0)
+    /// A new show's default (Jason, 2026-09-21): a 2 s dissolve centred on
+    /// the join. Every join a slide hasn't been given its own transition for
+    /// uses the show's default, so it's assigned automatically, and since a
+    /// transition is measured from its join it stays with it when a seam is
+    /// trimmed or rolled.
+    public static let newShowDefault = Transition(style: .dissolve, duration: 2, lead: 1)
 }
 
 public enum Easing: String, Codable, CaseIterable, Sendable {
@@ -274,7 +279,8 @@ public struct Slide: Identifiable, Hashable, Sendable {
 
 public struct ShowDefaults: Codable, Hashable, Sendable {
     public var length: Double = 5
-    public var transition: Transition = .defaultDissolve
+    /// Shows saved earlier stored their own default, so they keep it.
+    public var transition: Transition = .newShowDefault
     /// Only `.off` and `.auto` make sense as a show-wide default.
     public var kenBurns: KenBurnsSetting = .off
     /// New shows fit the whole image in (changed from fill 2026-09-21).

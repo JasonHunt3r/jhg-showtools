@@ -525,3 +525,13 @@ final class TransitionLeadTests: XCTestCase {
         XCTAssertEqual(tl.slides[1].transitionIn.lead, 1)
     }
 }
+
+extension TransitionLeadTests {
+    func testNewShowsDefaultToATwoSecondDissolveCentredOnTheJoin() throws {
+        XCTAssertEqual(ShowDefaults().transition, Transition(style: .dissolve, duration: 2, lead: 1))
+        // Saved shows wrote their default out in full, so they keep it.
+        let old = try JSONDecoder().decode(ShowDefaults.self, from: Data(
+            #"{"transition":{"style":"dissolve","duration":1,"direction":"left"},"length":5}"#.utf8))
+        XCTAssertEqual(old.transition, Transition(style: .dissolve, duration: 1, lead: 0))
+    }
+}

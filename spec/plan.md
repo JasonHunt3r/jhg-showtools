@@ -299,10 +299,17 @@ on a slide" design). Above the storyline runs a **lane** with two rows:
   **section sitting across the join** between two slides. The section *is*
   the overlap: its left edge is where the next image starts to appear, its
   right edge where the old one is fully gone (for a dissolve, the start and
-  end of the opacity change). Its two edges move independently, so a
-  transition can start before the join, after it, or straddle it. Drag the
-  edges to set the window; click the section and its settings (style,
-  direction, duration) appear in the controls above the picture.
+  end of the opacity change). Its two edges move independently, but a
+  section always touches or covers its join: it can end at the join, start
+  at it, or straddle it (starting after the join would leave the outgoing
+  image hanging on into the next slide's block). Drag the edges to set the
+  window, or its middle to slide it; click the section and its settings
+  (style, direction, duration) appear in the controls above the picture.
+- **Default transition (Jason, 2026-09-21):** each show has one, and every
+  join without its own transition uses it automatically. A new show's is a
+  **2 s dissolve centred on the join**. It moves with its seam when slides
+  are trimmed or rolled. Editing a section gives that join its own
+  transition; "Use show default" puts it back.
 - **A cut is no transition**: the slide blocks simply butt together and the
   transitions row is empty at that join. The storyline itself shows only
   the slides, butted together, with no transition markers on the cuts.
@@ -322,7 +329,8 @@ lengths (join to join).
 
 Open: whether an image section stays at its time on the clock or moves with
 the slide it starts over when slides are trimmed or reordered (asked
-2026-09-21; leaning to "moves with its slide", Final Cut's behaviour).
+2026-09-21; Jason isn't sure yet: settle it when the images row is built,
+perhaps by trying both).
 
 ### Plugin seam (internal, our own plugins only)
 Tools that make or alter media sit behind one interface: library media in,

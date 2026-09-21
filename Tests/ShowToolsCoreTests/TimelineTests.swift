@@ -13,6 +13,9 @@ final class TimelineTests: XCTestCase {
     func show(_ lengths: [Double?], loop: Bool = false) -> (Show, [Int64: MediaItem]) {
         var d = ShowDefaults()
         d.loop = loop
+        // These tests were written against a 1 s dissolve from the join (the
+        // default before 2c); pinned so they keep testing the same thing.
+        d.transition = Transition(style: .dissolve, duration: 1)
         let slides = lengths.enumerated().map { i, l in
             Slide(id: Int64(i + 1), itemID: Int64(i + 1),
                   settings: SlideSettings(length: l.map { .seconds($0) }))

@@ -11,6 +11,9 @@ struct EditShowView: View {
     @Binding var inspectorShown: Bool
     @Environment(AppModel.self) private var model
     @State private var engine: PlaybackEngine?
+    /// The transition selected in the storyline's lane, by the slide it
+    /// leads into; its settings show over the preview.
+    @State private var selectedTransition: Int64?
     @AppStorage("storylineZoom") private var pps: Double = 24
 
     var body: some View {
@@ -24,7 +27,8 @@ struct EditShowView: View {
                     ShowColumns(
                         inspectorShown: $inspectorShown, model: model,
                         preview: PreviewStage(engine: engine, title: show.name,
-                                              selection: $selection, mutate: mutate),
+                                              selection: $selection, selectedTransition: $selectedTransition,
+                                              mutate: mutate),
                         list: OrderList(show: show, timeline: timeline, engine: engine,
                                         selection: $selection, mutate: mutate,
                                         toggleInspector: { inspectorShown.toggle() }),
@@ -35,13 +39,39 @@ struct EditShowView: View {
                         TransportRow(engine: engine, pps: $pps, fit: fitStoryline)
                         Divider()
                         StorylineView(show: show, timeline: timeline, engine: engine,
-                                      selection: $selection, pps: $pps, mutate: mutate,
+                                      selection: $selection, selectedTransition: $selectedTransition,
+                                      pps: $pps, mutate: mutate,
                                       openInspector: { inspectorShown = true })
                     }
                     .frame(minHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 80,
                            idealHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 90)
                 }
-                .onDeleteCommand { SlideActions.remove(selection, selection: $selection, mutate: mutate) }
+                .onDeleteCommand {
+                    // A selected transition goes first: removing it leaves a cut.
+                    if let id = selectedTransition {
+                        mutate("Remove Transition") { s in
+                            guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
+                            s.slides[i].settings.transition = ShowToolsCore.Transition(style: .cut, duration: 0)
+                        }
+                        selectedTransition = nil
+                    } else {
+                        SlideActions.remove(selection, selection: $selection, mutate: mutate)
+                    }
+                }
+                .onChange(of: selection) { _, s in if !s.isEmpty { selectedTransition = nil } }
+                .task {
+                    // Dev hook: SHOWTOOLS_DEV_TRANSITION=<slideIndex> selects the
+                    // transition into that slide, so its controls can be screenshotted.
+                    guard let v = ProcessInfo.processInfo.environment["SHOWTOOLS_DEV_TRANSITION"],
+                          let i = Int(v), show.slides.indices.contains(i) else { return }
+                    try? await Task.sleep(for: .seconds(1.2))
+                    selection = []
+                    selectedTransition = show.slides[i].id
+                    if let r = timeline.slides.first(where: { $0.slide.id == show.slides[i].id }) {
+                        engine.pause()
+                        engine.seek(r.start)
+                    }
+                }
                 .background(shortcuts(engine))
             } else {
                 Color.black
@@ -102,6 +132,7 @@ struct PreviewStage: View {
     let engine: PlaybackEngine
     let title: String
     @Binding var selection: Set<Int64>
+    @Binding var selectedTransition: Int64?
     let mutate: ShowMutator
     @State private var hovering = false
     /// The slide whose image is selected in the picture, for its handles.
@@ -171,6 +202,13 @@ struct PreviewStage: View {
                     .opacity(hovering ? 1 : 0)
                     .help("Pop out the preview into its own window, e.g. for another screen")
                 }
+                .overlay(alignment: .top) {
+                    if let id = selectedTransition,
+                       let r = engine.timeline.slides.first(where: { $0.slide.id == id }) {
+                        transitionControls(r)
+                            .padding(.top, 48)
+                    }
+                }
                 .overlay(alignment: .topLeading) {
                     workControls
                         .padding(10)
@@ -195,6 +233,50 @@ struct PreviewStage: View {
             // SHOWTOOLS_DEV_IMAGE=rotation opens it in Rotation mode.
             if ProcessInfo.processInfo.environment["SHOWTOOLS_DEV_IMAGE"] == "rotation" { editTarget = .rotation }
         }
+    }
+
+    /// The selected transition's settings, over the picture. Its timing is
+    /// set by dragging it in the lane; this sets the rest.
+    private func transitionControls(_ r: ResolvedSlide) -> some View {
+        let id = r.slide.id
+        let t = r.transitionIn
+        let own = r.slide.settings.transition != nil
+        func set(_ action: String, _ new: ShowToolsCore.Transition?) {
+            mutate(action) { s in
+                guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
+                s.slides[i].settings.transition = new
+            }
+        }
+        return HStack(spacing: 10) {
+            TransitionPicker(transition: t) { new in
+                // A new duration keeps the window where it was relative to
+                // the join: centred stays centred.
+                var new = new
+                if new.duration != t.duration, t.duration > 0 { new.lead = t.lead * new.duration / t.duration }
+                set("Change Transition", new)
+            }
+            Text(t.lead == 0 ? "starts at the join"
+                 : t.lead >= t.duration ? "ends at the join"
+                 : "\(formatSeconds(t.lead)) before the join")
+                .foregroundStyle(.white.opacity(0.7))
+            if own {
+                Button("Use Show Default") { set("Use Default Transition", nil) }
+                    .help("Go back to the show's default transition")
+            }
+            Button("Remove") {
+                set("Remove Transition", ShowToolsCore.Transition(style: .cut, duration: 0))
+                selectedTransition = nil
+            }
+            .help("Make this join a cut (Delete)")
+            Button { selectedTransition = nil } label: { Image(systemName: "xmark") }
+                .buttonStyle(.plain)
+                .help("Done")
+        }
+        .font(.caption)
+        .padding(.horizontal, 12).padding(.vertical, 6)
+        .background(.black.opacity(0.7), in: Capsule())
+        .foregroundStyle(.white)
+        .environment(\.colorScheme, .dark)
     }
 
     /// Zoom (Fit, or smaller to see past the frame) and the onion skin.
