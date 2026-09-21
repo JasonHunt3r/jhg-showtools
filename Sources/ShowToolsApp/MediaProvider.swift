@@ -54,27 +54,49 @@ final class MediaProvider {
             request(item)
             return nil
         case .animatedImage:
-            guard let a = animations[item.id], a.total > 0 else { request(item); return nil }
-            let t = (layer.slide.clipStart + layer.localTime).truncatingRemainder(dividingBy: a.total)
-            var lo = 0, hi = a.ends.count - 1
-            while lo < hi {
-                let mid = (lo + hi) / 2
-                if a.ends[mid] > t { hi = mid } else { lo = mid + 1 }
-            }
-            return a.frames[lo]
+            return animationFrame(item, at: layer.slide.clipStart + layer.localTime)
         case .video:
             return slot(for: layer.slide)?.image(localTime: layer.localTime, slideLength: layer.slide.length,
                                                  clipStart: layer.slide.clipStart, playing: playing)
         }
     }
 
-    /// Loads what's about to be needed and drops what's far away.
-    func prepare(around index: Int, in timeline: ShowTimeline, visible: [Layer]) {
+    /// The lane's image. Stills and animations; video in the lane isn't
+    /// supported yet, so it draws nothing.
+    func image(for overlay: OverlayLayer) -> CIImage? {
+        let item = overlay.overlay.item
+        switch item.kind {
+        case .image:
+            if let img = stills[item.id] { return img }
+            request(item)
+            return nil
+        case .animatedImage:
+            return animationFrame(item, at: overlay.localTime)
+        case .video:
+            return nil
+        }
+    }
+
+    private func animationFrame(_ item: MediaItem, at time: Double) -> CIImage? {
+        guard let a = animations[item.id], a.total > 0 else { request(item); return nil }
+        let t = time.truncatingRemainder(dividingBy: a.total)
+        var lo = 0, hi = a.ends.count - 1
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if a.ends[mid] > t { hi = mid } else { lo = mid + 1 }
+        }
+        return a.frames[lo]
+    }
+
+    /// Loads what's about to be needed and drops what's far away. `alsoKeep`
+    /// is the lane's images near the playhead.
+    func prepare(around index: Int, in timeline: ShowTimeline, visible: [Layer], alsoKeep: [MediaItem] = []) {
         guard !timeline.slides.isEmpty else { return }
         let n = timeline.slides.count
         let window = (-1...2).map { (index + $0 + n) % n }
-        let wanted = Set(window.map { timeline.slides[$0].item.id })
+        let wanted = Set(window.map { timeline.slides[$0].item.id } + alsoKeep.map(\.id))
         for i in window { request(timeline.slides[i].item) }
+        for item in alsoKeep { request(item) }
 
         stills = stills.filter { wanted.contains($0.key) }
         animations = animations.filter { wanted.contains($0.key) }

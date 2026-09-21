@@ -327,10 +327,16 @@ at which it begins (0 is how every transition worked before 2c, so existing
 shows play unchanged). The show's length is still the sum of the slides'
 lengths (join to join).
 
-Open: whether an image section stays at its time on the clock or moves with
-the slide it starts over when slides are trimmed or reordered (asked
-2026-09-21; Jason isn't sure yet: settle it when the images row is built,
-perhaps by trying both).
+- **Adding images (Jason, 2026-09-21):** the images row is collapsed to a
+  thin strip while empty and **expands when an image is dragged over or
+  dropped into it** (from Finder or Photos). Or **right-click** in the lane
+  at the mouse position: "Place Image Here…" picks one from the library.
+
+**Parked, ask later:** whether an image section stays at its time on the
+clock or moves with the slide it starts over when slides are trimmed or
+reordered ("stickiness"). Jason wants to decide once he has set up his own
+files as a test bed: **ask him then.** Until then images stay at their time
+on the clock.
 
 ### Plugin seam (internal, our own plugins only)
 Tools that make or alter media sit behind one interface: library media in,

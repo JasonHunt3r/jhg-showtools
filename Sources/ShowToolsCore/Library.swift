@@ -109,6 +109,16 @@ public final class Library {
                     """)
             }
         }
+        // 3 (2026-09-21): the lane's images row, a JSON list on each show.
+        // Additive: every existing show starts with none.
+        if db.userVersion < 3 {
+            try db.transaction {
+                try db.exec("""
+                    ALTER TABLE shows ADD COLUMN overlays TEXT NOT NULL DEFAULT '[]';
+                    PRAGMA user_version = 3;
+                    """)
+            }
+        }
     }
 
     public func url(for item: MediaItem) -> URL {
@@ -182,11 +192,12 @@ public final class Library {
     }
 
     public func allShows() throws -> [Show] {
-        let s = try db.prepare("SELECT id, name, defaults FROM shows ORDER BY created_at, id")
+        let s = try db.prepare("SELECT id, name, defaults, overlays FROM shows ORDER BY created_at, id")
         var shows: [Show] = []
         while try s.step() {
             shows.append(Show(id: s.int(0), name: s.text(1),
-                              defaults: decode(ShowDefaults.self, s.text(2)) ?? ShowDefaults()))
+                              defaults: decode(ShowDefaults.self, s.text(2)) ?? ShowDefaults(),
+                              overlays: OverlayClip.decodeList(s.text(3))))
         }
         let sl = try db.prepare("SELECT id, item_id, settings FROM slides WHERE show_id = ? ORDER BY position")
         for i in shows.indices {
@@ -217,8 +228,9 @@ public final class Library {
     public func saveShow(_ show: Show) throws -> Show {
         try db.transaction {
             var show = show
-            try db.prepare("UPDATE shows SET name = ?, defaults = ? WHERE id = ?")
-                .bind(.text(show.name), .text(try json(show.defaults)), .int(show.id)).run()
+            try db.prepare("UPDATE shows SET name = ?, defaults = ?, overlays = ? WHERE id = ?")
+                .bind(.text(show.name), .text(try json(show.defaults)), .text(try json(show.overlays)),
+                      .int(show.id)).run()
 
             let insert = try db.prepare(
                 "INSERT INTO slides (show_id, position, item_id, settings) VALUES (?, ?, ?, ?)")

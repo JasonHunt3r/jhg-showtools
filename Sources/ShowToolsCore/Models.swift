@@ -322,12 +322,15 @@ public struct Show: Identifiable, Hashable, Sendable {
     public var name: String
     public var defaults: ShowDefaults
     public var slides: [Slide]
+    /// The lane's images row.
+    public var overlays: [OverlayClip]
 
     public init(id: Int64, name: String, defaults: ShowDefaults = ShowDefaults(),
-                slides: [Slide] = []) {
+                slides: [Slide] = [], overlays: [OverlayClip] = []) {
         self.id = id
         self.name = name
         self.defaults = defaults
         self.slides = slides
+        self.overlays = overlays
     }
 }

@@ -212,3 +212,82 @@ public enum TransformEdit {
         return (withOffset(t, CGPoint(x: o.x + d.x - sRd.x, y: o.y + d.y - sRd.y), size: size), B)
     }
 }
+
+// MARK: - The lane's images row (Phase 2c)
+
+/// How an image in the lane mixes with the picture under it.
+public enum BlendMode: String, Codable, CaseIterable, Sendable {
+    case normal, multiply, screen, overlay, softLight, lighten, darken, difference, add
+
+    public var title: String {
+        switch self {
+        case .normal: "Normal"
+        case .multiply: "Multiply"
+        case .screen: "Screen"
+        case .overlay: "Overlay"
+        case .softLight: "Soft Light"
+        case .lighten: "Lighten"
+        case .darken: "Darken"
+        case .difference: "Difference"
+        case .add: "Add"
+        }
+    }
+}
+
+/// An image in the lane's images row, laid over the finished picture:
+/// picture-in-picture, an overlap, a PNG or HEIC with transparency.
+///
+/// It sits at a time on the show's clock. Whether it should instead move
+/// with the slide under it when slides are trimmed or reordered is parked
+/// until Jason has his own files to test with (plan, Phase 2c).
+public struct OverlayClip: Codable, Hashable, Identifiable, Sendable {
+    public var id: UUID = UUID()
+    public var itemID: Int64
+    /// Seconds from the start of the show.
+    public var start: Double
+    public var length: Double
+    public var fit: Fit = .fit
+    public var transform: Transform = .identity
+    /// 0…1.
+    public var opacity: Double = 1
+    public var blend: BlendMode = .normal
+    /// Seconds to fade in from nothing and out to nothing.
+    public var fadeIn: Double = 0.5
+    public var fadeOut: Double = 0.5
+
+    public init(itemID: Int64, start: Double, length: Double) {
+        self.itemID = itemID
+        self.start = start
+        self.length = length
+    }
+
+    /// Field by field, for the same reason as `ShowDefaults`. The file and
+    /// the timing have no sensible fallback, so without them it fails, and
+    /// the list it's in skips it (see `decodeList`).
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func get<T: Decodable>(_ k: CodingKeys, _ fallback: T) -> T {
+            ((try? c.decodeIfPresent(T.self, forKey: k)) ?? nil) ?? fallback
+        }
+        itemID = try c.decode(Int64.self, forKey: .itemID)
+        start = try c.decode(Double.self, forKey: .start)
+        length = try c.decode(Double.self, forKey: .length)
+        id = get(.id, UUID())
+        fit = get(.fit, .fit)
+        transform = get(.transform, .identity)
+        opacity = get(.opacity, 1)
+        blend = get(.blend, .normal)
+        fadeIn = get(.fadeIn, 0.5)
+        fadeOut = get(.fadeOut, 0.5)
+    }
+
+    /// A saved list, keeping every clip that can be read: one unreadable
+    /// clip mustn't cost the rest (the next save would make that permanent).
+    public static func decodeList(_ json: String) -> [OverlayClip] {
+        guard let array = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [Any] else { return [] }
+        return array.compactMap { element in
+            guard let data = try? JSONSerialization.data(withJSONObject: element) else { return nil }
+            return try? JSONDecoder().decode(OverlayClip.self, from: data)
+        }
+    }
+}

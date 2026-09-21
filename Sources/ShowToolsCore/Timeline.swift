@@ -129,10 +129,30 @@ public enum FrameState: Sendable {
     }
 }
 
+/// An image from the lane's images row with its file found.
+public struct ResolvedOverlay: Sendable {
+    public let clip: OverlayClip
+    public let item: MediaItem
+    public var start: Double { clip.start }
+    public var end: Double { clip.start + clip.length }
+}
+
+/// The lane's image as it appears at one moment.
+public struct OverlayLayer: Sendable {
+    public let overlay: ResolvedOverlay
+    /// Seconds since it appeared.
+    public let localTime: Double
+    /// Its opacity with the fades applied.
+    public let opacity: Double
+}
+
 public struct ShowTimeline: Sendable {
     public let slides: [ResolvedSlide]
     public let duration: Double
     public let loops: Bool
+    /// The images row, earliest first. Clips whose file is missing, or that
+    /// have no length, are left out.
+    public let overlays: [ResolvedOverlay]
 
     /// Slides whose library item is missing are skipped.
     public init(show: Show, items: [Int64: MediaItem]) {
@@ -209,6 +229,22 @@ public struct ShowTimeline: Sendable {
         slides = resolved
         duration = t
         loops = show.defaults.loop
+        overlays = show.overlays
+            .compactMap { c in c.length > 0 ? items[c.itemID].map { ResolvedOverlay(clip: c, item: $0) } : nil }
+            .sorted { $0.start < $1.start }
+    }
+
+    /// The lane's image showing at `t`, if any. Images sit on the show's
+    /// clock, so a looping show shows them again on every pass.
+    public func overlay(at t: Double) -> OverlayLayer? {
+        guard !overlays.isEmpty else { return nil }
+        let local = wrap(t)
+        guard let o = overlays.last(where: { $0.start <= local && local < $0.end }) else { return nil }
+        let into = local - o.start, c = o.clip
+        var a = min(max(c.opacity, 0), 1)
+        if c.fadeIn > 0 { a *= min(into / c.fadeIn, 1) }
+        if c.fadeOut > 0 { a *= min((c.length - into) / c.fadeOut, 1) }
+        return OverlayLayer(overlay: o, localTime: into, opacity: max(a, 0))
     }
 
     public var isEmpty: Bool { slides.isEmpty }

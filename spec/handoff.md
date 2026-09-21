@@ -102,6 +102,12 @@ open -n --env SHOWTOOLS_LIBRARY=/tmp/STTest/TestLib.noindex build/ShowTools.app
 - UI scripting and CGEvent input are blocked (no accessibility permission).
   Anything that needs a drag, Jason tests.
 
+## Ask Jason later
+- **Image stickiness** (Phase 2c): once he has his own files set up as a
+  test bed, ask whether an image in the lane should stay at its time on the
+  clock or move with the slide it starts over when slides are trimmed or
+  reordered. For now it stays on the clock.
+
 ## Known issues / debts
 - **CPU** is about 33–37% while a show plays (60 fps Core Image redraw of
   stills). Idle previews now stop drawing. This needs work before Phase 5's

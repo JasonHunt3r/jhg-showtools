@@ -48,18 +48,20 @@ case "render":
     for tArg in args.dropFirst(6) {
         guard let t = Double(tArg) else { continue }
         let state = timeline.frame(at: t)
-        let img = Compositor.compose(state, size: size) { layer in
-            if let hit = cache[layer.slide.item.id] { return hit }
-            guard layer.slide.item.kind != .video,
-                  let src = CGImageSourceCreateWithURL(lib.url(for: layer.slide.item) as CFURL, nil),
+        func load(_ item: MediaItem) -> CIImage? {
+            if let hit = cache[item.id] { return hit }
+            guard item.kind != .video,
+                  let src = CGImageSourceCreateWithURL(lib.url(for: item) as CFURL, nil),
                   let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, [
                       kCGImageSourceCreateThumbnailFromImageAlways: true,
                       kCGImageSourceCreateThumbnailWithTransform: true,
                       kCGImageSourceThumbnailMaxPixelSize: 3000] as CFDictionary) else { return nil }
             let ci = CIImage(cgImage: cg)
-            cache[layer.slide.item.id] = ci
+            cache[item.id] = ci
             return ci
         }
+        let img = Compositor.compose(state, size: size, overlay: timeline.overlay(at: t),
+                                     overlaySource: { load($0.overlay.item) }) { load($0.slide.item) }
         let file = out.appendingPathComponent(String(format: "t%07.3f.png", t))
         try ctx.writePNGRepresentation(of: img, to: file, format: .RGBA8,
                                        colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)

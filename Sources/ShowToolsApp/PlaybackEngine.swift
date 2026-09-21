@@ -248,8 +248,9 @@ final class PlaybackEngine {
             clock.seek(t)
             clock.play(rate: 1)
         }
+        let overlay = timeline.overlay(at: t)
         if let i = state.currentIndex {
-            media.prepare(around: i, in: timeline, visible: state.layers)
+            media.prepare(around: i, in: timeline, visible: state.layers, alsoKeep: overlaysNear(t))
         }
 
         guard let drawable = view.currentDrawable,
@@ -257,8 +258,10 @@ final class PlaybackEngine {
         // Video follows the clock only at normal speed; otherwise it's seeked.
         let playing = clock.playing && clock.rate == 1
         let source: (Layer) -> CIImage? = { [media] layer in media.image(for: layer, playing: playing) }
-        let image = (view as? ShowCanvas)?.stage.map { stageImage(state, size: size, stage: $0, source: source) }
-            ?? Compositor.compose(state, size: size, source: source)
+        let overlaySource: (OverlayLayer) -> CIImage? = { [media] o in media.image(for: o) }
+        let image = (view as? ShowCanvas)?.stage.map {
+            stageImage(state, overlay: overlay, overlaySource: overlaySource, size: size, stage: $0, source: source)
+        } ?? Compositor.compose(state, size: size, overlay: overlay, overlaySource: overlaySource, source: source)
         let dest = CIRenderDestination(width: Int(size.width), height: Int(size.height),
                                        pixelFormat: view.colorPixelFormat, commandBuffer: cb) {
             drawable.texture
@@ -273,7 +276,9 @@ final class PlaybackEngine {
     /// stage's zoom. Wherever an image hangs past the frame it's drawn,
     /// dimmed, outside the edge; with an image selected, the previous
     /// slide's last frame lies over it, see-through (the onion skin).
-    private func stageImage(_ state: FrameState, size: CGSize, stage: ShowCanvas.Stage,
+    private func stageImage(_ state: FrameState, overlay: OverlayLayer?,
+                            overlaySource: @escaping (OverlayLayer) -> CIImage?,
+                            size: CGSize, stage: ShowCanvas.Stage,
                             source: (Layer) -> CIImage?) -> CIImage {
         let whole = CGRect(origin: .zero, size: size)
         // Centred, so the same in Core Image's y-up space as in the view's.
@@ -296,7 +301,8 @@ final class PlaybackEngine {
         for layer in state.layers {
             if let over = uncropped(layer, opacity: 0.35) { out = over.composited(over: out) }
         }
-        out = Compositor.compose(state, size: frame.size, source: source)
+        out = Compositor.compose(state, size: frame.size, overlay: overlay, overlaySource: overlaySource,
+                                 source: source)
             .transformed(by: move).composited(over: out)
         if stage.zoom < 1 {
             // The frame's edge, so a black slide still shows where it ends.
@@ -314,6 +320,13 @@ final class PlaybackEngine {
             out = onion.composited(over: out)
         }
         return out.cropped(to: whole)
+    }
+
+    /// The lane's images showing now or starting in the next few seconds,
+    /// so their files are decoded before they're needed.
+    private func overlaysNear(_ t: Double) -> [MediaItem] {
+        let local = timeline.wrap(t)
+        return timeline.overlays.filter { $0.end > local - 1 && $0.start < local + 8 }.map(\.item)
     }
 
     /// The slide before `id` as it looks at the very end of its move: the

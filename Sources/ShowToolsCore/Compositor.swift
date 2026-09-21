@@ -10,8 +10,61 @@ import CoreImage.CIFilterBuiltins
 /// would call it once per output frame.
 public enum Compositor {
 
+    /// The picture, with the lane's image (if one is showing) laid over it.
+    /// The overlay parameters come before `source` so a trailing closure
+    /// still means the slides' source.
     public static func compose(_ state: FrameState, size: CGSize,
+                               overlay: OverlayLayer? = nil,
+                               overlaySource: ((OverlayLayer) -> CIImage?)? = nil,
                                source: (Layer) -> CIImage?) -> CIImage {
+        let picture = composeSlides(state, size: size, source: source)
+        guard let overlay, let img = overlaySource?(overlay) else { return picture }
+        return laid(overlay, image: img, over: picture, size: size)
+    }
+
+    /// An image from the lane over the finished picture: placed by its fit
+    /// and Transform, faded, and mixed by its blend mode.
+    public static func laid(_ overlay: OverlayLayer, image: CIImage, over picture: CIImage,
+                            size: CGSize) -> CIImage {
+        let out = CGRect(origin: .zero, size: size)
+        let c = overlay.overlay.clip
+        guard overlay.opacity > 0,
+              let m = placement(imageExtent: image.extent, fit: c.fit, kb: .centred, transform: c.transform,
+                                spin: nil, outputSize: size)
+        else { return picture }
+        let top = withOpacity(image.transformed(by: m), overlay.opacity).cropped(to: out)
+        return blend(top, over: picture, mode: c.blend).cropped(to: out)
+    }
+
+    public static func withOpacity(_ image: CIImage, _ opacity: Double) -> CIImage {
+        guard opacity < 1 else { return image }
+        let f = CIFilter.colorMatrix()
+        f.inputImage = image
+        f.aVector = CIVector(x: 0, y: 0, z: 0, w: CGFloat(max(opacity, 0)))
+        return f.outputImage ?? image
+    }
+
+    /// Core Image's own blend filters, which respect the top image's alpha.
+    static func blend(_ top: CIImage, over base: CIImage, mode: BlendMode) -> CIImage {
+        let name: String? = switch mode {
+        case .normal: nil
+        case .multiply: "CIMultiplyBlendMode"
+        case .screen: "CIScreenBlendMode"
+        case .overlay: "CIOverlayBlendMode"
+        case .softLight: "CISoftLightBlendMode"
+        case .lighten: "CILightenBlendMode"
+        case .darken: "CIDarkenBlendMode"
+        case .difference: "CIDifferenceBlendMode"
+        case .add: "CIAdditionCompositing"
+        }
+        guard let name, let f = CIFilter(name: name) else { return top.composited(over: base) }
+        f.setValue(top, forKey: kCIInputImageKey)
+        f.setValue(base, forKey: kCIInputBackgroundImageKey)
+        return f.outputImage ?? top.composited(over: base)
+    }
+
+    static func composeSlides(_ state: FrameState, size: CGSize,
+                              source: (Layer) -> CIImage?) -> CIImage {
         let out = CGRect(origin: .zero, size: size)
         let black = CIImage(color: .black).cropped(to: out)
 

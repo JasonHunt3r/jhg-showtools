@@ -195,3 +195,33 @@ extension LibraryTests {
         XCTAssertEqual(try Library(root: root).allItems()[0].rating, 5)
     }
 }
+
+extension LibraryTests {
+    func testOverlaysRoundTrip() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let probe = MediaProbe(kind: .image, width: 10, height: 10)
+        let a = try lib.insertItem(relativePath: "a.jpg", hash: "a", probe: probe, sourcePath: "")
+        let logo = try lib.insertItem(relativePath: "logo.png", hash: "l", probe: probe, sourcePath: "")
+        var show = try lib.createShow(name: "Over", itemIDs: [a.id])
+        XCTAssertEqual(show.overlays, [])
+        var clip = OverlayClip(itemID: logo.id, start: 2, length: 3)
+        clip.blend = .screen; clip.opacity = 0.7
+        clip.transform.scale = 0.3; clip.transform.offsetX = 0.35
+        show.overlays = [clip]
+        try lib.saveShow(show)
+        XCTAssertEqual(try lib.allShows()[0].overlays, [clip])
+    }
+
+    func testOneUnreadableOverlayDoesNotCostTheOthers() {
+        let json = #"""
+            [{"itemID":1,"start":0,"length":2,"blend":"screen"},
+             {"itemID":"nope","start":1},
+             {"itemID":2,"start":5,"length":1,"blend":"sparkly"}]
+            """#
+        let clips = OverlayClip.decodeList(json)
+        XCTAssertEqual(clips.map(\.itemID), [1, 2])
+        XCTAssertEqual(clips[0].blend, .screen)
+        XCTAssertEqual(clips[1].blend, .normal)       // the bad field falls back alone
+        XCTAssertEqual(OverlayClip.decodeList("not json"), [])
+    }
+}

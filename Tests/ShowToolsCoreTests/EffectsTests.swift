@@ -535,3 +535,73 @@ extension TransitionLeadTests {
         XCTAssertEqual(old.transition, Transition(style: .dissolve, duration: 1, lead: 0))
     }
 }
+
+// MARK: - The lane's images row
+
+final class OverlayTests: XCTestCase {
+    func item(_ id: Int64) -> MediaItem {
+        MediaItem(id: id, relativePath: "\(id).png", hash: "h\(id)", kind: .image, pixelWidth: 100,
+                  pixelHeight: 100, duration: nil, ingestedAt: Date(), sourcePath: "")
+    }
+
+    func timeline(_ clips: [OverlayClip], loop: Bool = false) -> ShowTimeline {
+        var show = Show(id: 1, name: "t")
+        show.defaults.loop = loop
+        show.slides = [Slide(id: 1, itemID: 1, settings: SlideSettings(length: .seconds(10)))]
+        show.overlays = clips
+        return ShowTimeline(show: show, items: [1: item(1), 2: item(2)])
+    }
+
+    func testAnOverlayShowsInItsWindowAndFades() {
+        var c = OverlayClip(itemID: 2, start: 2, length: 4)
+        c.fadeIn = 1; c.fadeOut = 1; c.opacity = 0.8
+        let tl = timeline([c])
+        XCTAssertNil(tl.overlay(at: 1.9))
+        XCTAssertEqual(tl.overlay(at: 2.5)!.opacity, 0.4, accuracy: 1e-9)   // halfway in
+        XCTAssertEqual(tl.overlay(at: 4)!.opacity, 0.8, accuracy: 1e-9)
+        XCTAssertEqual(tl.overlay(at: 5.5)!.opacity, 0.4, accuracy: 1e-9)   // halfway out
+        XCTAssertEqual(tl.overlay(at: 3)!.localTime, 1, accuracy: 1e-9)
+        XCTAssertNil(tl.overlay(at: 6))
+    }
+
+    func testAMissingFileIsLeftOut() {
+        let tl = timeline([OverlayClip(itemID: 99, start: 0, length: 5)])
+        XCTAssertTrue(tl.overlays.isEmpty)
+        XCTAssertNil(tl.overlay(at: 1))
+    }
+
+    /// The pixel at the centre of a 4×4 render.
+    func centre(_ image: CIImage) -> (r: Double, g: Double, b: Double) {
+        var px = [UInt8](repeating: 0, count: 4)
+        CIContext().render(image, toBitmap: &px, rowBytes: 4, bounds: CGRect(x: 2, y: 2, width: 1, height: 1),
+                           format: .RGBA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)
+        return (Double(px[0]) / 255, Double(px[1]) / 255, Double(px[2]) / 255)
+    }
+
+    func testNormalAtHalfOpacityAndMultiply() {
+        let size = CGSize(width: 4, height: 4)
+        let red = CIImage(color: CIColor(red: 1, green: 0, blue: 0)).cropped(to: CGRect(origin: .zero, size: size))
+        let blue = CIImage(color: CIColor(red: 0, green: 0, blue: 1)).cropped(to: CGRect(x: 0, y: 0, width: 100, height: 100))
+        var c = OverlayClip(itemID: 2, start: 0, length: 5)
+        c.fit = .fill
+        let tl = timeline([c])
+        let half = OverlayLayer(overlay: tl.overlays[0], localTime: 1, opacity: 0.5)
+        let n = centre(Compositor.laid(half, image: blue, over: red, size: size))
+        // Core Image mixes in linear light, as the dissolves do: an even
+        // mix is 0.5 linear, which is about 0.735 once encoded as sRGB.
+        XCTAssertEqual(n.r, 0.735, accuracy: 0.02)
+        XCTAssertEqual(n.b, 0.735, accuracy: 0.02)
+        XCTAssertLessThan(n.g, 0.02)
+
+        // Multiply: yellow over grey is darker yellow, and blue vanishes.
+        c.blend = .multiply
+        let tl2 = timeline([c])
+        let full = OverlayLayer(overlay: tl2.overlays[0], localTime: 1, opacity: 1)
+        let grey = CIImage(color: CIColor(red: 0.5, green: 0.5, blue: 0.5)).cropped(to: CGRect(origin: .zero, size: size))
+        let yellow = CIImage(color: CIColor(red: 1, green: 1, blue: 0)).cropped(to: CGRect(x: 0, y: 0, width: 100, height: 100))
+        let m = centre(Compositor.laid(full, image: yellow, over: grey, size: size))
+        XCTAssertEqual(m.r, m.g, accuracy: 0.02)
+        XCTAssertLessThan(m.r, 0.7)
+        XCTAssertLessThan(m.b, 0.05)
+    }
+}
