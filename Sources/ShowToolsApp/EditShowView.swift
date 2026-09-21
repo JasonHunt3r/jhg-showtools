@@ -21,7 +21,6 @@ struct EditShowView: View {
     /// Where the play bar's slider sits, for the frame strip's Whole Show.
     @State private var scrubberFrame: CGRect = .zero
     @AppStorage("frameStripShown") private var frameStripShown = true
-    @AppStorage("frameStripHeight") private var frameStripHeight: Double = 64
 
     var body: some View {
         // A ZStack, not a Group: modifiers on a Group apply to each child, so
@@ -50,16 +49,20 @@ struct EditShowView: View {
                         }
                         TransportRow(engine: engine, pps: $pps, fit: fitStoryline)
                         Divider()
+                        // With the strip on, the storyline keeps its own
+                        // height and the strip takes what's left, so the
+                        // divider above sizes the frames.
                         StorylineView(show: show, timeline: timeline, engine: engine,
                                       selection: $selection, selectedTransition: $selectedTransition,
                                       selectedOverlay: $selectedOverlay,
                                       pps: $pps, scrollOffset: $storylineOffset, mutate: mutate,
                                       openInspector: { inspectorShown = true })
+                            .fixedSize(horizontal: false, vertical: frameStripShown)
                     }
                     .coordinateSpace(name: "editShowBottom")
                     .onPreferenceChange(ScrubberFrameKey.self) { scrubberFrame = $0 }
-                    .frame(minHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 80 + 56 + stripHeight,
-                           idealHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 90 + 56 + stripHeight)
+                    .frame(minHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 80 + 56 + stripMin,
+                           idealHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 90 + 56 + stripIdeal)
                 }
                 .onDeleteCommand {
                     // What's selected in the lane goes first: an image is
@@ -133,9 +136,10 @@ struct EditShowView: View {
 
     @State private var visibleWidth: CGFloat = 800
 
-    private var stripHeight: CGFloat {
-        frameStripShown ? CGFloat(frameStripHeight) + FrameStrip.handle : 0
-    }
+    /// The strip takes the bottom area's spare height; this is its least,
+    /// and what it starts with.
+    private var stripMin: CGFloat { frameStripShown ? FrameStrip.minHeight : 0 }
+    private var stripIdeal: CGFloat { frameStripShown ? 64 : 0 }
 
     private func fitStoryline() {
         guard timeline.duration > 0 else { return }

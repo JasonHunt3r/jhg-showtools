@@ -351,8 +351,11 @@ later; they aren't, because most timings come from other settings.
 A strip of rendered frames of the finished picture (slides, transitions,
 lane images) above the play bar. It can **follow the storyline** (frames
 over their moments, scrolling with the blocks; the default) or show the
-**whole show**, chosen from a small menu on the strip. Drag its top edge
-for bigger frames, which then each cover more time, so fewer show. Click a
+**whole show**, chosen from a small menu on the strip (Whole Show lines up
+with the play bar's track). It takes the bottom area's spare height, so the
+divider above it sizes the frames: drag it up for bigger frames, which each
+cover more time, so fewer show. (It had its own resize edge too, stacked
+under the divider; Jason found the pair confusing, so it went.) Click a
 frame to go there. **View ▸ Show Frame Strip (⌥⌘F)**. Frames render in the
 background through the Compositor from small copies of the files, cached by
 time. Video shows its first frame for now.

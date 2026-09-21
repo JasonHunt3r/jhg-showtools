@@ -9,9 +9,11 @@ import ShowToolsCore
 /// storyline shows the parts; this shows the result.
 ///
 /// It follows the storyline (frames sit over their moments and scroll with
-/// the blocks) or shows the whole show. Drag its top edge for bigger frames:
-/// each then covers more time, so there are fewer. Click one to go there.
-/// View ▸ Show Frame Strip (⌥⌘F) turns it on and off.
+/// the blocks) or shows the whole show. It takes whatever height the bottom
+/// of the window has left over, so dragging the divider above it up makes
+/// the frames bigger: each then covers more time, so there are fewer. (Its
+/// own resize edge, stacked under the divider, was one bar too many.) Click
+/// a frame to go there. View ▸ Show Frame Strip (⌥⌘F) turns it on and off.
 struct FrameStrip: View {
     let show: Show
     let timeline: ShowTimeline
@@ -31,37 +33,19 @@ struct FrameStrip: View {
         var icon: String { self == .storyline ? "link" : "arrow.left.and.right" }
     }
     @AppStorage("frameStripSpan") private var span: Span = .storyline
-    @AppStorage("frameStripHeight") private var height: Double = 64
-    @State private var dragStartHeight: Double?
     @State private var frames = FrameCache()
 
-    /// The top edge: thin to look at, a little bigger to grab.
-    static let handle: CGFloat = 4
+    /// The smallest it gets: the divider can't squeeze it below this.
+    static let minHeight: CGFloat = 32
     /// How far short of each end of a slider its knob stops (half a knob).
     static let knobInset: CGFloat = 10
 
     var body: some View {
-        VStack(spacing: 0) {
-            // The top edge: drag it for bigger or smaller frames.
-            Rectangle()
-                .fill(Color.primary.opacity(0.12))
-                .frame(height: Self.handle)
-                .contentShape(Rectangle().inset(by: -4))
-                .onHover { if $0 { NSCursor.resizeUpDown.set() } else { NSCursor.arrow.set() } }
-                .gesture(DragGesture()
-                    .onChanged { g in
-                        let start = dragStartHeight ?? height
-                        dragStartHeight = start
-                        height = min(max(start - g.translation.height, 32), 220)
-                    }
-                    .onEnded { _ in dragStartHeight = nil })
-                .help("Drag to make the frames bigger or smaller")
-            GeometryReader { g in
-                strip(width: g.size.width, height: g.size.height)
-            }
-            .frame(height: CGFloat(height))
-            .clipped()
+        GeometryReader { g in
+            strip(width: g.size.width, height: g.size.height)
         }
+        .frame(minHeight: Self.minHeight, maxHeight: .infinity)
+        .clipped()
         .background(Color.black)
     }
 
