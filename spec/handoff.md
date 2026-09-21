@@ -6,8 +6,8 @@ decision, phase by phase) first; this file is the state of play.
 ## Where it stands
 
 Phases 1 and 2 are **built and committed**, and so are four rounds of Phase 2
-fixes from Jason's hands-on testing. There is no git remote: the repo is local
-only (`~/Projects/ShowTools`).
+fixes from Jason's hands-on testing. The repo is `~/Projects/ShowTools`, pushed
+to **github.com/JasonHunt3r/jhg-showtools** (public, `main`).
 
 - **Phase 1:** the managed library (`~/Pictures/ShowTools Library.noindex`,
   SQLite plus copied, hash-verified media, hidden from Spotlight by default,
