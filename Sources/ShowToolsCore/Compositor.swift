@@ -17,8 +17,12 @@ public enum Compositor {
 
         func place(_ layer: Layer) -> CIImage {
             guard let img = source(layer) else { return black }
-            return placed(img, fit: layer.slide.fit, kb: layer.kenBurnsFrame, in: size)
-                .composited(over: black)
+            let c = layer.slide.background
+            let ground = CIImage(color: CIColor(red: c.red, green: c.green, blue: c.blue)).cropped(to: out)
+            let spin = layer.slide.rotation == nil ? nil : (angle: layer.rotationAngle, pivot: layer.rotationPivot)
+            return placed(img, fit: layer.slide.fit, kb: layer.kenBurnsFrame,
+                          transform: layer.slide.transform, spin: spin, in: size)
+                .composited(over: ground)
         }
 
         switch state {
@@ -77,17 +81,71 @@ public enum Compositor {
     /// The part of the image to show, scaled to fill `size` exactly.
     public static func placed(_ image: CIImage, fit: Fit, kb: KenBurnsFrame,
                               in size: CGSize) -> CIImage {
-        let W = image.extent.width, H = image.extent.height
+        placed(image, fit: fit, kb: kb, transform: .identity, spin: nil, in: size)
+    }
+
+    /// The image placed in a `size` frame: fit and Ken Burns first, then the
+    /// Rotation effect's spin, then the slide's Transform. Whatever the image
+    /// no longer covers is left clear, for the background to show through.
+    public static func placed(_ image: CIImage, fit: Fit, kb: KenBurnsFrame,
+                              transform: Transform, spin: (angle: Double, pivot: ImagePoint)?,
+                              in size: CGSize) -> CIImage {
+        guard let m = placement(imageExtent: image.extent, fit: fit, kb: kb,
+                                transform: transform, spin: spin, outputSize: size)
+        else { return image }
+        return image.transformed(by: m)
+            .cropped(to: CGRect(origin: .zero, size: size))
+    }
+
+    /// Image pixels (Core Image coordinates) → output pixels. Nil for an
+    /// empty image or frame.
+    ///
+    /// Angles are clockwise on screen, and offsets run right and down, as the
+    /// editor shows them; Core Image's y runs up, hence the sign flips.
+    /// Scale and rotation can't distort (the Transform is a similarity), so
+    /// the spin can be applied before it and still turn around its pivot as
+    /// the pivot ends up on screen.
+    public static func placement(imageExtent e: CGRect, fit: Fit, kb: KenBurnsFrame,
+                                 transform: Transform, spin: (angle: Double, pivot: ImagePoint)?,
+                                 outputSize size: CGSize) -> CGAffineTransform? {
+        let W = e.width, H = e.height
         let r = viewRegion(imageSize: CGSize(width: W, height: H), fit: fit, kb: kb, outputSize: size)
-        guard r.width > 0, r.height > 0 else { return image }
+        guard r.width > 0, r.height > 0 else { return nil }
         // Core Image measures y from the bottom.
         let y0 = H - r.maxY
-        let t = CGAffineTransform(translationX: -(image.extent.minX + r.minX),
-                                  y: -(image.extent.minY + y0))
+        var m = CGAffineTransform(translationX: -(e.minX + r.minX), y: -(e.minY + y0))
             .concatenating(CGAffineTransform(scaleX: size.width / r.width,
                                              y: size.height / r.height))
-        return image.transformed(by: t)
-            .cropped(to: CGRect(origin: .zero, size: size))
+
+        /// An image point, as the base framing puts it in the output. Both
+        /// centres come from here, before either turn is applied: measured
+        /// after the spin, the anchor would travel round with it and the
+        /// Transform would make the whole picture wobble.
+        let base = m
+        func onScreen(_ p: ImagePoint) -> CGPoint {
+            CGPoint(x: e.minX + CGFloat(p.x) * W, y: e.minY + CGFloat(1 - p.y) * H).applying(base)
+        }
+        func about(_ c: CGPoint, _ t: CGAffineTransform) -> CGAffineTransform {
+            CGAffineTransform(translationX: -c.x, y: -c.y)
+                .concatenating(t)
+                .concatenating(CGAffineTransform(translationX: c.x, y: c.y))
+        }
+        func clockwise(_ degrees: Double) -> CGAffineTransform {
+            CGAffineTransform(rotationAngle: -CGFloat(degrees) * .pi / 180)
+        }
+
+        if let spin, spin.angle != 0 {
+            m = m.concatenating(about(onScreen(spin.pivot), clockwise(spin.angle)))
+        }
+        if transform != .identity {
+            let s = CGFloat(max(transform.scale, 0.01))
+            m = m.concatenating(about(onScreen(transform.anchor),
+                                      CGAffineTransform(scaleX: s, y: s)
+                                          .concatenating(clockwise(transform.rotation))))
+                 .concatenating(CGAffineTransform(translationX: CGFloat(transform.offsetX) * size.width,
+                                                  y: -CGFloat(transform.offsetY) * size.height))
+        }
+        return m
     }
 
     // MARK: Transitions

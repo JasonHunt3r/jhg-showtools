@@ -200,6 +200,11 @@ slide A so that the transition joins them seamlessly.
   go below 1× and the image can hang past the frame's edges. Wherever the
   image doesn't cover the frame, a **background colour** set on the slide
   shows through. Ken Burns and Rotation add motion on top of the Transform
+- **Inspector layout (settled 2026-09-21):** **Transform** (position,
+  zoom, rotation) sits at the top of the column. It's the image's starting
+  state. Below it is everything time-based: the transition in, Ken Burns,
+  and animated Rotation. Jason counts animated rotation in that camp. The
+  on-image handles edit the Transform; they never switch a motion effect on
 - **Onion skin.** While you frame slide B, slide A's **last frame** is drawn
   semi-transparent over it (an opacity slider and a toggle). It's an editing
   aid only and never renders into the show. It shows A's end frame exactly as

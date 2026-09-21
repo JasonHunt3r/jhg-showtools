@@ -238,3 +238,51 @@ extension EffectsTests {
         XCTAssertEqual(t.rotation, 12)
     }
 }
+
+extension EffectsTests {
+    /// A 400×300 image fitted into 800×600: 2× scale, filling the frame.
+    func place(_ p: ImagePoint, transform: Transform = .identity,
+               spin: (angle: Double, pivot: ImagePoint)? = nil) -> CGPoint {
+        let e = CGRect(x: 0, y: 0, width: 400, height: 300)
+        let m = Compositor.placement(imageExtent: e, fit: .fit, kb: .centred, transform: transform,
+                                     spin: spin, outputSize: CGSize(width: 800, height: 600))!
+        return CGPoint(x: e.minX + p.x * 400, y: e.minY + (1 - p.y) * 300).applying(m)
+    }
+
+    func assertNear(_ a: CGPoint, _ b: CGPoint, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertEqual(a.x, b.x, accuracy: 1e-6, file: file, line: line)
+        XCTAssertEqual(a.y, b.y, accuracy: 1e-6, file: file, line: line)
+    }
+
+    func testIdentityTransformIsJustTheFit() {
+        // Top-left of the image → top-left of the frame (Core Image y is up).
+        assertNear(place(ImagePoint(x: 0, y: 0)), CGPoint(x: 0, y: 600))
+        assertNear(place(.centre), CGPoint(x: 400, y: 300))
+    }
+
+    func testTransformOffsetsRightAndDown() {
+        var t = Transform(); t.offsetX = 0.25; t.offsetY = 0.5
+        assertNear(place(.centre, transform: t), CGPoint(x: 600, y: 0))
+    }
+
+    func testTransformScalesAndTurnsClockwiseAroundItsAnchor() {
+        var t = Transform(); t.anchor = ImagePoint(x: 0, y: 0); t.scale = 0.5
+        assertNear(place(ImagePoint(x: 0, y: 0), transform: t), CGPoint(x: 0, y: 600))   // anchor stays
+        assertNear(place(ImagePoint(x: 1, y: 1), transform: t), CGPoint(x: 400, y: 300))
+        t.scale = 1; t.rotation = 90; t.anchor = .centre
+        // Clockwise on screen: the top-centre point swings to the right.
+        assertNear(place(ImagePoint(x: 0.5, y: 0), transform: t), CGPoint(x: 700, y: 300))
+    }
+
+    func testSpinTurnsAroundItsPivotAndTheAnchorDoesNotWobble() {
+        let pivot = ImagePoint(x: 1, y: 1)                    // bottom-right corner
+        assertNear(place(pivot, spin: (angle: 37, pivot: pivot)), CGPoint(x: 800, y: 0))
+        // With a scaled Transform on top, the pivot's image point lands where
+        // the Transform alone puts it, at every angle.
+        var t = Transform(); t.scale = 0.5
+        let still = place(pivot, transform: t)
+        for a in [0.0, 45, 170, 300] {
+            assertNear(place(pivot, transform: t, spin: (angle: a, pivot: pivot)), still)
+        }
+    }
+}
