@@ -31,7 +31,9 @@ case "ingest":
     }
 
 case "show":
-    let show = try lib.createShow(name: args[3], itemIDs: try lib.allItems().map(\.id))
+    // Into the library's first collection, as the app puts a new show.
+    let show = try lib.createShow(name: args[3], collectionID: try lib.allCollections().first?.id,
+                                  itemIDs: try lib.allItems().map(\.id))
     print("show #\(show.id) \(show.name): \(show.slides.count) slides")
 
 case "render":

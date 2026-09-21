@@ -225,3 +225,83 @@ extension LibraryTests {
         XCTAssertEqual(OverlayClip.decodeList("not json"), [])
     }
 }
+
+// MARK: - Collections (schema 4)
+
+extension LibraryTests {
+    /// A library as schema 3 left it, with a show and a file the show
+    /// doesn't use: after the upgrade, one starting collection has both
+    /// files and the show is in it.
+    func testAVersionThreeLibraryGetsAStartingCollection() throws {
+        let root = dir.appendingPathComponent("V3.noindex")
+        try FileManager.default.createDirectory(at: root.appendingPathComponent("Media"),
+                                                withIntermediateDirectories: true)
+        do {
+            let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
+            try db.exec("""
+                CREATE TABLE items (id INTEGER PRIMARY KEY AUTOINCREMENT, rel_path TEXT NOT NULL UNIQUE,
+                    hash TEXT NOT NULL UNIQUE, kind TEXT NOT NULL, width INTEGER NOT NULL,
+                    height INTEGER NOT NULL, duration REAL, ingested_at REAL NOT NULL,
+                    source_path TEXT NOT NULL, rating INTEGER NOT NULL DEFAULT 0);
+                CREATE TABLE shows (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
+                    defaults TEXT NOT NULL, created_at REAL NOT NULL, overlays TEXT NOT NULL DEFAULT '[]');
+                CREATE TABLE slides (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    show_id INTEGER NOT NULL REFERENCES shows(id) ON DELETE CASCADE,
+                    position INTEGER NOT NULL, item_id INTEGER NOT NULL REFERENCES items(id),
+                    settings TEXT NOT NULL);
+                INSERT INTO items (rel_path, hash, kind, width, height, duration, ingested_at, source_path, rating)
+                    VALUES ('a.jpg', 'h1', 'image', 400, 300, NULL, 1, '', 3),
+                           ('b.jpg', 'h2', 'image', 400, 300, NULL, 2, '', 0);
+                INSERT INTO shows (name, defaults, created_at) VALUES ('Test Show', '{}', 0);
+                INSERT INTO slides (show_id, position, item_id, settings) VALUES (1, 0, 1, '{}');
+                PRAGMA user_version = 3;
+                """)
+        }
+        let lib = try Library(root: root)
+        let collections = try lib.allCollections()
+        XCTAssertEqual(collections.count, 1)
+        XCTAssertEqual(collections[0].name, Library.startingCollectionName)
+        XCTAssertEqual(Set(collections[0].itemIDs), [1, 2])
+        let shows = try lib.allShows()
+        XCTAssertEqual(shows.count, 1)
+        XCTAssertEqual(shows[0].collectionID, collections[0].id)
+        XCTAssertEqual(shows[0].slides.map(\.itemID), [1])
+        XCTAssertEqual(try lib.allItems().first?.rating, 3)          // nothing else touched
+    }
+
+    func testANewLibraryStartsWithOneEmptyCollection() throws {
+        let lib = try Library(root: dir.appendingPathComponent("New"))
+        let c = try lib.allCollections()
+        XCTAssertEqual(c.map(\.name), [Library.startingCollectionName])
+        XCTAssertEqual(c[0].itemIDs, [])
+    }
+
+    func testCollectionsHoldFilesAndShows() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let probe = MediaProbe(kind: .image, width: 10, height: 10)
+        let a = try lib.insertItem(relativePath: "a.jpg", hash: "a", probe: probe, sourcePath: "")
+        let b = try lib.insertItem(relativePath: "b.jpg", hash: "b", probe: probe, sourcePath: "")
+        let c = try lib.insertItem(relativePath: "c.jpg", hash: "c", probe: probe, sourcePath: "")
+
+        let wedding = try lib.createCollection(name: "Wedding")
+        try lib.addItems([a.id, b.id, a.id], toCollection: wedding.id)      // a twice: once is enough
+        var show = try lib.createShow(name: "Ceremony", collectionID: wedding.id, itemIDs: [b.id, c.id])
+        // The show's files joined its collection (c was new to it).
+        var w = try lib.allCollections().first { $0.id == wedding.id }!
+        XCTAssertEqual(w.itemIDs, [a.id, b.id, c.id])
+
+        try lib.removeItems([a.id], fromCollection: wedding.id)
+        try lib.renameCollection(id: wedding.id, to: "Wedding 2026")
+        w = try lib.allCollections().first { $0.id == wedding.id }!
+        XCTAssertEqual(w.name, "Wedding 2026")
+        XCTAssertEqual(w.itemIDs, [b.id, c.id])
+
+        // Saving keeps its collection; deleting the collection takes the show.
+        show.name = "Ceremony (edit)"
+        try lib.saveShow(show)
+        XCTAssertEqual(try lib.allShows().first { $0.id == show.id }?.collectionID, wedding.id)
+        try lib.deleteCollection(id: wedding.id)
+        XCTAssertNil(try lib.allShows().first { $0.id == show.id })
+        XCTAssertEqual(try lib.allItems().count, 3)                          // files stay
+    }
+}

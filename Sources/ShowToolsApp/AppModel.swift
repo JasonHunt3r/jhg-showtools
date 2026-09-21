@@ -18,6 +18,8 @@ final class AppModel {
     private(set) var items: [MediaItem] = []
     private(set) var itemsByID: [Int64: MediaItem] = [:]
     var shows: [Show] = []
+    /// Library → Collection → Show (plan, 2b).
+    private(set) var collections: [MediaCollection] = []
 
     var sidebar: SidebarItem? = .library
     /// Developer hook only: a slide for the show view to select on appearing.
@@ -51,6 +53,7 @@ final class AppModel {
             items = try lib.allItems()
             itemsByID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
             shows = try lib.allShows()
+            collections = try lib.allCollections()
             loadError = nil
         } catch {
             library = nil
@@ -181,8 +184,11 @@ final class AppModel {
         guard let lib = library else { return }
         let n = name ?? nextShowName()
         do {
-            let show = try lib.createShow(name: n, itemIDs: itemIDs)
+            // Until the sidebar can say which collection, a new show goes in
+            // the first one (a new library always has one).
+            let show = try lib.createShow(name: n, collectionID: collections.first?.id, itemIDs: itemIDs)
             shows.append(show)
+            collections = try lib.allCollections()
             sidebar = .show(show.id)
         } catch {
             loadError = "\(error)"
@@ -224,6 +230,19 @@ final class AppModel {
         guard var show = show(showID), !itemIDs.isEmpty else { return }
         show.slides += itemIDs.map { Slide(id: 0, itemID: $0) }
         update(show, undo: undo, action: "Add Slides")
+        // A show's files are always in its collection. (Step 4 of the
+        // Collections work puts the ask-first dialog in front of this.)
+        if let cid = show.collectionID { addToCollection(itemIDs, cid) }
+    }
+
+    func addToCollection(_ itemIDs: [Int64], _ collectionID: Int64) {
+        guard let lib = library else { return }
+        do {
+            try lib.addItems(itemIDs, toCollection: collectionID)
+            collections = try lib.allCollections()
+        } catch {
+            loadError = "\(error)"
+        }
     }
 
     func deleteShow(_ id: Int64) {

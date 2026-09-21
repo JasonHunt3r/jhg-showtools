@@ -119,6 +119,87 @@ public final class Library {
                     """)
             }
         }
+        // 4 (2026-09-21): collections. Library → Collection → Show. A
+        // starting collection gets everything already in the library, and
+        // every existing show goes into it, so nothing seems to vanish.
+        // Deleting a collection takes its shows with it (as deleting an
+        // Event does in Final Cut); the app asks first.
+        if db.userVersion < 4 {
+            try db.transaction {
+                try db.exec("""
+                    CREATE TABLE collections (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        created_at REAL NOT NULL
+                    );
+                    CREATE TABLE collection_items (
+                        collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+                        item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+                        added_at REAL NOT NULL,
+                        PRIMARY KEY (collection_id, item_id)
+                    );
+                    ALTER TABLE shows ADD COLUMN collection_id INTEGER
+                        REFERENCES collections(id) ON DELETE CASCADE;
+                    """)
+                try db.prepare("INSERT INTO collections (name, created_at) VALUES (?, ?)")
+                    .bind(.text(Self.startingCollectionName), .double(Date().timeIntervalSince1970)).run()
+                let cid = db.lastInsertID
+                try db.prepare("""
+                    INSERT INTO collection_items (collection_id, item_id, added_at)
+                    SELECT ?, id, ingested_at FROM items
+                    """).bind(.int(cid)).run()
+                try db.prepare("UPDATE shows SET collection_id = ?").bind(.int(cid)).run()
+                try db.exec("PRAGMA user_version = 4")
+            }
+        }
+    }
+
+    public static let startingCollectionName = "Untitled Collection"
+
+    // MARK: Collections
+
+    public func allCollections() throws -> [MediaCollection] {
+        let s = try db.prepare("SELECT id, name FROM collections ORDER BY created_at, id")
+        var out: [MediaCollection] = []
+        while try s.step() { out.append(MediaCollection(id: s.int(0), name: s.text(1))) }
+        let m = try db.prepare("SELECT collection_id, item_id FROM collection_items ORDER BY added_at, item_id")
+        var members: [Int64: [Int64]] = [:]
+        while try m.step() { members[m.int(0), default: []].append(m.int(1)) }
+        for i in out.indices { out[i].itemIDs = members[out[i].id] ?? [] }
+        return out
+    }
+
+    public func createCollection(name: String) throws -> MediaCollection {
+        try db.prepare("INSERT INTO collections (name, created_at) VALUES (?, ?)")
+            .bind(.text(name), .double(Date().timeIntervalSince1970)).run()
+        return MediaCollection(id: db.lastInsertID, name: name)
+    }
+
+    public func renameCollection(id: Int64, to name: String) throws {
+        try db.prepare("UPDATE collections SET name = ? WHERE id = ?").bind(.text(name), .int(id)).run()
+    }
+
+    /// Its shows go with it; the files stay in the library.
+    public func deleteCollection(id: Int64) throws {
+        try db.prepare("DELETE FROM collections WHERE id = ?").bind(.int(id)).run()
+    }
+
+    /// Files already in it are left as they were.
+    public func addItems(_ itemIDs: [Int64], toCollection id: Int64) throws {
+        let now = Date().timeIntervalSince1970
+        try db.transaction {
+            let s = try db.prepare("""
+                INSERT OR IGNORE INTO collection_items (collection_id, item_id, added_at) VALUES (?, ?, ?)
+                """)
+            for item in itemIDs { try s.bind(.int(id), .int(item), .double(now)).run() }
+        }
+    }
+
+    public func removeItems(_ itemIDs: [Int64], fromCollection id: Int64) throws {
+        try db.transaction {
+            let s = try db.prepare("DELETE FROM collection_items WHERE collection_id = ? AND item_id = ?")
+            for item in itemIDs { try s.bind(.int(id), .int(item)).run() }
+        }
     }
 
     public func url(for item: MediaItem) -> URL {
@@ -192,12 +273,13 @@ public final class Library {
     }
 
     public func allShows() throws -> [Show] {
-        let s = try db.prepare("SELECT id, name, defaults, overlays FROM shows ORDER BY created_at, id")
+        let s = try db.prepare("SELECT id, name, defaults, overlays, collection_id FROM shows ORDER BY created_at, id")
         var shows: [Show] = []
         while try s.step() {
             shows.append(Show(id: s.int(0), name: s.text(1),
                               defaults: decode(ShowDefaults.self, s.text(2)) ?? ShowDefaults(),
-                              overlays: OverlayClip.decodeList(s.text(3))))
+                              overlays: OverlayClip.decodeList(s.text(3)),
+                              collectionID: s.isNull(4) ? nil : s.int(4)))
         }
         let sl = try db.prepare("SELECT id, item_id, settings FROM slides WHERE show_id = ? ORDER BY position")
         for i in shows.indices {
@@ -211,14 +293,17 @@ public final class Library {
         return shows
     }
 
-    public func createShow(name: String, itemIDs: [Int64] = []) throws -> Show {
+    /// A new show in a collection. Its files join the collection if they
+    /// aren't in it already.
+    public func createShow(name: String, collectionID: Int64? = nil, itemIDs: [Int64] = []) throws -> Show {
         let show = try db.transaction { () -> Show in
-            try db.prepare("INSERT INTO shows (name, defaults, created_at) VALUES (?, ?, ?)")
+            try db.prepare("INSERT INTO shows (name, defaults, created_at, collection_id) VALUES (?, ?, ?, ?)")
                 .bind(.text(name), .text(try json(ShowDefaults())),
-                      .double(Date().timeIntervalSince1970)).run()
+                      .double(Date().timeIntervalSince1970), collectionID.map { .int($0) } ?? .null).run()
             return Show(id: db.lastInsertID, name: name,
-                        slides: itemIDs.map { Slide(id: 0, itemID: $0) })
+                        slides: itemIDs.map { Slide(id: 0, itemID: $0) }, collectionID: collectionID)
         }
+        if let collectionID, !itemIDs.isEmpty { try addItems(itemIDs, toCollection: collectionID) }
         return try saveShow(show)
     }
 
@@ -228,9 +313,9 @@ public final class Library {
     public func saveShow(_ show: Show) throws -> Show {
         try db.transaction {
             var show = show
-            try db.prepare("UPDATE shows SET name = ?, defaults = ?, overlays = ? WHERE id = ?")
+            try db.prepare("UPDATE shows SET name = ?, defaults = ?, overlays = ?, collection_id = ? WHERE id = ?")
                 .bind(.text(show.name), .text(try json(show.defaults)), .text(try json(show.overlays)),
-                      .int(show.id)).run()
+                      show.collectionID.map { .int($0) } ?? .null, .int(show.id)).run()
 
             let insert = try db.prepare(
                 "INSERT INTO slides (show_id, position, item_id, settings) VALUES (?, ?, ?, ?)")

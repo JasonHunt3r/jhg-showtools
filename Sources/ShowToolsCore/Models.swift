@@ -324,13 +324,32 @@ public struct Show: Identifiable, Hashable, Sendable {
     public var slides: [Slide]
     /// The lane's images row.
     public var overlays: [OverlayClip]
+    /// The collection it belongs to and draws its photos from.
+    public var collectionID: Int64?
 
     public init(id: Int64, name: String, defaults: ShowDefaults = ShowDefaults(),
-                slides: [Slide] = [], overlays: [OverlayClip] = []) {
+                slides: [Slide] = [], overlays: [OverlayClip] = [], collectionID: Int64? = nil) {
         self.id = id
         self.name = name
         self.defaults = defaults
         self.slides = slides
         self.overlays = overlays
+        self.collectionID = collectionID
+    }
+}
+
+/// A defined set of the library's files, which shows are built from (plan,
+/// 2b). A file can be in several collections. `MediaCollection`, not
+/// `Collection`, which is Swift's own protocol.
+public struct MediaCollection: Identifiable, Hashable, Sendable {
+    public var id: Int64
+    public var name: String
+    /// In the order they were added.
+    public var itemIDs: [Int64]
+
+    public init(id: Int64, name: String, itemIDs: [Int64] = []) {
+        self.id = id
+        self.name = name
+        self.itemIDs = itemIDs
     }
 }
