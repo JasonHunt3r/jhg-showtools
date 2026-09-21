@@ -81,7 +81,10 @@ screenshots:
   inspector; search; the filter menu (in / not in this show, minimum
   stars); E, W and Q with files selected (append; insert at the nearest
   join; place in the images row at the playhead) and their right-click
-  equivalents
+  equivalents. The top section lists uses: a file used twice has two
+  numbered entries. Try clicking a use (should select that slide in the
+  storyline with its own inspector, or that lane image with its bar) and
+  selecting a slide in the storyline (its entry should highlight)
 - **Soft-at-this-zoom warning (2026-09-21):** checked by screenshot; the
   flags on the test library are all correct for a 2560×1664 screen
 

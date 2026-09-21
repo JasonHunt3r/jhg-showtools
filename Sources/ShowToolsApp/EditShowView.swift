@@ -32,7 +32,8 @@ struct EditShowView: View {
                                               selection: $selection, selectedTransition: $selectedTransition,
                                               selectedOverlay: $selectedOverlay, mutate: mutate),
                         list: CollectionBrowser(show: show, timeline: timeline, engine: engine,
-                                                mutate: mutate, inspectorShown: $inspectorShown),
+                                                mutate: mutate, inspectorShown: $inspectorShown,
+                                                selection: $selection, selectedOverlay: $selectedOverlay),
                         inspector: SlideInspector(show: show, timeline: timeline, selection: selection,
                                                   mutate: mutate))
                         .frame(minHeight: 220)

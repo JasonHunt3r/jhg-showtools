@@ -9,7 +9,12 @@ import ShowToolsCore
 /// arrow that opens (→) or closes (←) the inspector column. Files the show
 /// uses come first, in the order they first appear (so they reorder with
 /// the storyline), then a divider and the rest of the collection. Used
-/// files carry an orange line, as Final Cut marks used media.
+/// files carry an orange line, as Final Cut marks used media. The top
+/// section lists *uses*: a file used more than once has an entry at each
+/// use, numbered (1, 2, 3…), because each use has its own settings.
+/// Selecting a use selects it in the show (the slide in the storyline, with
+/// its inspector, or the lane image with its bar), and the storyline's
+/// selection shows here in turn.
 /// With the list focused, Final Cut's keys add the selected files: **E**
 /// appends them to the show, **W** inserts them at the join nearest the
 /// playhead (splitting a still would only repeat it), **Q** places the first
@@ -20,9 +25,18 @@ struct CollectionBrowser: View {
     let engine: PlaybackEngine
     let mutate: ShowMutator
     @Binding var inspectorShown: Bool
+    /// The show's own selections: slides (storyline) and lane images.
+    @Binding var selection: Set<Int64>
+    @Binding var selectedOverlay: UUID?
     @Environment(AppModel.self) private var model
 
-    @State private var picked: Set<Int64> = []
+    /// What's picked in the list: uses in the show, or files not in it.
+    enum Pick: Hashable {
+        case slide(Int64)
+        case overlay(UUID)
+        case file(Int64)
+    }
+    @State private var picked: Set<Pick> = []
     @State private var search = ""
     @AppStorage("browserUse") private var use: UseFilter = .all
     @AppStorage("browserMinRating") private var minRating = 0
@@ -43,17 +57,32 @@ struct CollectionBrowser: View {
     /// Files the show uses, slides and lane images alike.
     private var used: Set<Int64> { Set(show.slides.map(\.itemID) + show.overlays.map(\.itemID)) }
 
-    /// When each used file first appears on screen: its first slide's join,
-    /// or its first lane image's start, whichever comes first.
-    private var firstAppearance: [Int64: Double] {
-        var first: [Int64: Double] = [:]
-        for r in timeline.slides where first[r.item.id].map({ r.start < $0 }) ?? true {
-            first[r.item.id] = r.start
+    /// One use of a file in the show: a slide (at its join) or a lane image
+    /// (at its start).
+    struct Use: Identifiable {
+        let item: MediaItem
+        /// The slide or lane image this use is.
+        let pick: Pick
+        /// 1 for its first appearance, 2 for the next…
+        let number: Int
+        /// How many times the show uses this file in all.
+        var of: Int
+        let time: Double
+        var id: Pick { pick }
+    }
+
+    /// Every use of every file, in the order they appear on screen.
+    private var uses: [Use] {
+        let appearances = (timeline.slides.map { ($0.item, Pick.slide($0.slide.id), $0.start) }
+                           + timeline.overlays.map { ($0.item, Pick.overlay($0.clip.id), $0.start) })
+            .sorted { $0.2 < $1.2 }
+        var seen: [Int64: Int] = [:]
+        var out: [Use] = appearances.map { item, pick, t in
+            seen[item.id, default: 0] += 1
+            return Use(item: item, pick: pick, number: seen[item.id]!, of: 0, time: t)
         }
-        for o in timeline.overlays where first[o.item.id].map({ o.start < $0 }) ?? true {
-            first[o.item.id] = o.start
-        }
-        return first
+        for i in out.indices { out[i].of = seen[out[i].item.id] ?? 1 }
+        return out
     }
 
     private func passes(_ item: MediaItem) -> Bool {
@@ -61,15 +90,15 @@ struct CollectionBrowser: View {
         return (needle.isEmpty || item.fileName.lowercased().contains(needle)) && item.rating >= minRating
     }
 
-    /// The show's files, in the order they first appear.
-    private var usedFiles: [MediaItem] {
+    /// The show's uses of this collection's files, in order of appearance.
+    private var usedEntries: [Use] {
         guard use != .unused, let c = collection else { return [] }
-        let first = firstAppearance
-        return c.itemIDs.filter { first[$0] != nil }
-            .sorted { first[$0]! < first[$1]! }
-            .compactMap { model.itemsByID[$0] }
-            .filter(passes)
+        let inCollection = Set(c.itemIDs)
+        return uses.filter { inCollection.contains($0.item.id) && passes($0.item) }
     }
+
+    /// The show's files, once each, in the order they first appear.
+    private var usedFiles: [MediaItem] { usedEntries.filter { $0.number == 1 }.map(\.item) }
 
     /// The rest of the collection, in the order the files were added.
     private var unusedFiles: [MediaItem] {
@@ -157,25 +186,27 @@ struct CollectionBrowser: View {
     // MARK: The list
 
     private var list: some View {
-        let top = usedFiles, rest = unusedFiles
+        let top = usedEntries, rest = unusedFiles
         return List(selection: $picked) {
             if !top.isEmpty {
                 Section {
-                    ForEach(top) { item in row(item, used: true).tag(item.id) }
+                    ForEach(top) { u in
+                        row(u.item, used: true, use: u.of > 1 ? u.number : nil).tag(u.pick)
+                    }
                 } header: {
                     Text("In this show")
                 }
             }
             if !rest.isEmpty {
                 Section {
-                    ForEach(rest) { item in row(item, used: false).tag(item.id) }
+                    ForEach(rest) { item in row(item, used: false).tag(Pick.file(item.id)) }
                 } header: {
                     Text("Not in this show")
                 }
             }
         }
-        .contextMenu(forSelectionType: Int64.self) { ids in
-            let chosen = ordered(ids)
+        .contextMenu(forSelectionType: Pick.self) { picks in
+            let chosen = ordered(picks)
             Button("Append to Show  (E)") { append(chosen) }
             Button("Insert at Playhead  (W)") { insertAtPlayhead(chosen) }
             Button("Place in Images Row at Playhead  (Q)") { placeAtPlayhead(chosen) }
@@ -195,9 +226,33 @@ struct CollectionBrowser: View {
             }
             return .handled
         }
+        // Picking one use selects it in the show; the show's selection comes
+        // back here. Each side only changes the other when they differ.
+        .onChange(of: picked) { _, p in
+            guard p.count == 1, let only = p.first else { return }
+            switch only {
+            case .slide(let id):
+                if selection != [id] { selection = [id] }
+                if !engine.isPlaying { engine.showSlide(id: id) }
+            case .overlay(let id):
+                if selectedOverlay != id { selectedOverlay = id }
+            case .file:
+                break
+            }
+        }
+        .onChange(of: selection) { _, s in
+            guard !s.isEmpty else { return }
+            let want = Set(s.map { Pick.slide($0) })
+            if picked != want { picked = want }
+        }
+        .onChange(of: selectedOverlay) { _, o in
+            if let o, picked != [.overlay(o)] { picked = [.overlay(o)] }
+        }
     }
 
-    private func row(_ item: MediaItem, used: Bool) -> some View {
+    /// `use` is which use of the file this entry is, shown when it has more
+    /// than one.
+    private func row(_ item: MediaItem, used: Bool, use: Int? = nil) -> some View {
         let aspect = CGFloat(item.pixelWidth) / CGFloat(max(item.pixelHeight, 1))
         return HStack(spacing: 8) {
             ThumbnailView(item: item, url: model.url(for: item))
@@ -218,12 +273,31 @@ struct CollectionBrowser: View {
                         .foregroundStyle(.yellow)
                 }
             }
+            if let use {
+                Spacer(minLength: 4)
+                Text("\(use)")
+                    .font(.caption.weight(.bold)).monospacedDigit()
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6).padding(.vertical, 1)
+                    .background(Capsule().fill(Color.orange))
+                    .help("Use \(use) of this file in the show")
+            }
         }
     }
 
-    /// The chosen files in the order the list shows them.
-    private func ordered(_ ids: Set<Int64>) -> [Int64] {
-        files.map(\.id).filter(ids.contains)
+    /// The files behind the picked entries, once each, in the order the list
+    /// shows them (E, W and Q add files).
+    private func ordered(_ picks: Set<Pick>) -> [Int64] {
+        let ids = Set(picks.compactMap(itemID))
+        return files.map(\.id).filter(ids.contains)
+    }
+
+    private func itemID(_ pick: Pick) -> Int64? {
+        switch pick {
+        case .file(let id): id
+        case .slide(let id): show.slides.first { $0.id == id }?.itemID
+        case .overlay(let id): show.overlays.first { $0.id == id }?.itemID
+        }
     }
 
     // MARK: Adding to the show
