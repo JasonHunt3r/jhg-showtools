@@ -35,6 +35,12 @@ screenshots:
 - dragging the Ken Burns frames; ⌘Z / ⇧⌘Z
 - popping out the preview onto a second screen
 - **dragging from the Photos app** (the code path exists but has never been exercised)
+- **Phase 2a inspector (2026-09-21), seen only in screenshots:** the Transform
+  sliders (position, zoom, rotation), the background colour well, Rotation's
+  sliders, Angles/Speed, acceleration, both pivot pads and their Lock,
+  freeze on transition, and Ken Burns's new acceleration and freeze. Each
+  slider should be one undo step per drag, and the preview only updates on
+  release (no live preview while dragging yet)
 
 ## Next: Phase 2a (framing, rotation, match cuts), then 2c Layers
 
@@ -77,6 +83,14 @@ open -n --env SHOWTOOLS_LIBRARY=/tmp/STTest/TestLib.noindex build/ShowTools.app
   Anything that needs a drag, Jason tests.
 
 ## Known issues / debts
+- **Unexplained write, 2026-09-21:** in the scratch library, a slide's
+  Transform zoom went from 0.5 to 0.1 (the Zoom slider's floor) with no one
+  touching it, between the first and third inspector test launches. Four
+  replays (collapsed sliders, inspector opened live, Rotation-first layout,
+  launch and quit) didn't reproduce it. Every inspector control now logs its
+  commits (`log show --last 1h --predicate 'subsystem == "com.jhg.showtools"'`)
+  and skips no-op commits. If a value changes by itself again, that log
+  names the control.
 - **CPU** is about 33–37% while a show plays (60 fps Core Image redraw of
   stills). Idle previews now stop drawing. This needs work before Phase 5's
   always-on desktop.

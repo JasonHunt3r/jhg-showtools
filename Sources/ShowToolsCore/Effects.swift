@@ -20,7 +20,7 @@ public enum Acceleration {
 }
 
 /// An sRGB colour, components 0…1.
-public struct RGBColor: Codable, Hashable, Sendable {
+public struct SRGBColor: Codable, Hashable, Sendable {
     public var red: Double
     public var green: Double
     public var blue: Double
@@ -29,7 +29,7 @@ public struct RGBColor: Codable, Hashable, Sendable {
         self.red = red; self.green = green; self.blue = blue
     }
 
-    public static let black = RGBColor(red: 0, green: 0, blue: 0)
+    public static let black = SRGBColor(red: 0, green: 0, blue: 0)
 }
 
 /// A point in the image's own terms, as `KenBurnsFrame` uses: 0…1 across

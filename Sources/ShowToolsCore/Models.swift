@@ -208,13 +208,13 @@ public struct SlideSettings: Codable, Hashable, Sendable {
     /// show-wide default for it.
     public var transform: Transform?
     /// What shows wherever the image doesn't cover the frame.
-    public var background: RGBColor?
+    public var background: SRGBColor?
     /// Nil means no rotation. There's no show-wide default for it.
     public var rotation: Rotation?
 
     public init(length: SlideLength? = nil, transition: Transition? = nil,
                 kenBurns: KenBurnsSetting? = nil, fit: Fit? = nil, clipStart: Double? = nil,
-                transform: Transform? = nil, background: RGBColor? = nil,
+                transform: Transform? = nil, background: SRGBColor? = nil,
                 rotation: Rotation? = nil) {
         self.length = length
         self.transition = transition
@@ -235,7 +235,7 @@ public struct SlideSettings: Codable, Hashable, Sendable {
         fit = (try? c.decodeIfPresent(Fit.self, forKey: .fit)) ?? nil
         clipStart = (try? c.decodeIfPresent(Double.self, forKey: .clipStart)) ?? nil
         transform = (try? c.decodeIfPresent(Transform.self, forKey: .transform)) ?? nil
-        background = (try? c.decodeIfPresent(RGBColor.self, forKey: .background)) ?? nil
+        background = (try? c.decodeIfPresent(SRGBColor.self, forKey: .background)) ?? nil
         rotation = (try? c.decodeIfPresent(Rotation.self, forKey: .rotation)) ?? nil
     }
 }
@@ -264,7 +264,7 @@ public struct ShowDefaults: Codable, Hashable, Sendable {
     /// New shows fit the whole image in (changed from fill 2026-09-21).
     /// Shows saved earlier stored their own value, so they keep it.
     public var fit: Fit = .fit
-    public var background: RGBColor = .black
+    public var background: SRGBColor = .black
     /// Video slides play their whole clip unless given a length.
     public var videoUsesClipLength: Bool = true
     public var loop: Bool = true

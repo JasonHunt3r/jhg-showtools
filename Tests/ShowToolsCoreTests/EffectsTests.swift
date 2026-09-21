@@ -42,7 +42,7 @@ final class EffectsTests: XCTestCase {
         var r = Rotation()
         r.mode = .speed; r.speed = -45; r.acceleration = 0.8
         r.pivotStart = ImagePoint(x: -0.2, y: 1.3); r.pivotLocked = false
-        let s = SlideSettings(background: RGBColor(red: 1, green: 0.5, blue: 0), rotation: r)
+        let s = SlideSettings(background: SRGBColor(red: 1, green: 0.5, blue: 0), rotation: r)
         let back = try JSONDecoder().decode(SlideSettings.self, from: JSONEncoder().encode(s))
         XCTAssertEqual(back, s)
     }
@@ -107,7 +107,7 @@ final class EffectsTests: XCTestCase {
         show.defaults.transition = Transition(style: .cut, duration: 0)
         show.defaults.loop = false
         show.slides = [Slide(id: 1, itemID: 1, settings: SlideSettings(
-            length: .seconds(4), background: RGBColor(red: 0, green: 0, blue: 1), rotation: r))]
+            length: .seconds(4), background: SRGBColor(red: 0, green: 0, blue: 1), rotation: r))]
         let item = MediaItem(id: 1, relativePath: "a.jpg", hash: "h", kind: .image,
                              pixelWidth: 100, pixelHeight: 100, duration: nil,
                              ingestedAt: Date(), sourcePath: "")
@@ -116,7 +116,7 @@ final class EffectsTests: XCTestCase {
             return nil
         }
         XCTAssertEqual(layer(show)?.rotationAngle ?? -1, 45, accuracy: 1e-9)
-        XCTAssertEqual(layer(show)?.slide.background, RGBColor(red: 0, green: 0, blue: 1))
+        XCTAssertEqual(layer(show)?.slide.background, SRGBColor(red: 0, green: 0, blue: 1))
         show.slides[0].settings.rotation?.enabled = false
         XCTAssertEqual(layer(show)?.rotationAngle, 0)
     }

@@ -42,10 +42,12 @@ struct SlideInspector: View {
                     }
                 }
 
+                // The starting placement first, then everything time-based.
+                transformSection(first)
                 lengthSection(first)
                 transitionSection(first)
                 kenBurnsSection(first)
-                fitSection(first)
+                rotationSection(first)
             }
             .formStyle(.grouped)
         } else {
@@ -137,8 +139,26 @@ struct SlideInspector: View {
                                fit: first.settings.fit ?? show.defaults.fit, kb: kb) { new in
                     edit("Edit Ken Burns") { $0.kenBurns = .custom(new) }
                 }
+                AccelerationSlider(value: kb.acceleration) { a in
+                    editKenBurns("Change Acceleration") { $0.acceleration = a }
+                }
+                Toggle("Freeze on transition", isOn: Binding(get: { kb.freezeOnTransition }, set: { on in
+                    editKenBurns("Change Freeze on Transition") { $0.freezeOnTransition = on }
+                }))
+                .help("Hold the start frame through the transition in and the end frame through the transition out")
             }
         } footer: { mixedNote(mixed { $0.kenBurns }) }
+    }
+
+    /// Changes one field of each selected slide's custom move, leaving the
+    /// rest of each move as it is.
+    private func editKenBurns(_ action: String, _ change: @escaping (inout KenBurns) -> Void) {
+        edit(action) { s in
+            if case .custom(var k) = s.kenBurns {
+                change(&k)
+                s.kenBurns = .custom(k)
+            }
+        }
     }
 
     /// Custom starts from whatever the slide does now, so switching to it
@@ -150,13 +170,158 @@ struct SlideInspector: View {
         return KenBurns(start: .centred, end: KenBurnsFrame(x: 0.5, y: 0.5, zoom: 1.25))
     }
 
-    private func fitSection(_ first: Slide) -> some View {
-        Section {
+    /// Fit plus the still placement on top of it: where the image starts
+    /// before anything moves it.
+    private func transformSection(_ first: Slide) -> some View {
+        let t = first.settings.transform ?? .identity
+        func editTransform(_ action: String, _ change: @escaping (inout Transform) -> Void) {
+            edit(action) { s in
+                var x = s.transform ?? .identity
+                change(&x)
+                s.transform = x == .identity ? nil : x
+            }
+        }
+        return Section {
             Picker("Fit", selection: Binding(get: { first.settings.fit }, set: { f in edit("Change Fit") { $0.fit = f } })) {
                 Text("Show default (\(show.defaults.fit.title))").tag(Fit?.none)
                 ForEach(Fit.allCases, id: \.self) { Text($0.title).tag(Fit?.some($0)) }
             }
-        } footer: { mixedNote(mixed { $0.fit }) }
+            CommitSlider(title: "Position X", value: t.offsetX, range: -1...1, display: 100, unit: "%") { v in
+                editTransform("Move") { $0.offsetX = v }
+            }
+            CommitSlider(title: "Position Y", value: t.offsetY, range: -1...1, display: 100, unit: "%") { v in
+                editTransform("Move") { $0.offsetY = v }
+            }
+            CommitSlider(title: "Zoom", value: t.scale, range: 0.1...4, display: 100, unit: "%",
+                         fieldRange: 0.01...20) { v in
+                editTransform("Zoom") { $0.scale = v }
+            }
+            CommitSlider(title: "Rotation", value: t.rotation, range: -180...180, unit: "°",
+                         fieldRange: -3600...3600) { v in
+                editTransform("Rotate") { $0.rotation = v }
+            }
+            LabeledContent("Background") {
+                HStack(spacing: 8) {
+                    if first.settings.background != nil {
+                        Button("Use show's") { edit("Change Background") { $0.background = nil } }
+                            .buttonStyle(.link)
+                            .fixedSize()
+                    }
+                    SettledColorPicker(title: "Background", colour: first.settings.background ?? show.defaults.background) { c in
+                        edit("Change Background") { $0.background = c }
+                    }
+                    .labelsHidden()
+                }
+            }
+            HStack {
+                Spacer()
+                Button("Reset Transform") { edit("Reset Transform") { $0.transform = nil } }
+                    .disabled(first.settings.transform == nil)
+            }
+        } header: {
+            Text("Transform")
+        } footer: {
+            mixedNote(mixed { $0.fit } || mixed { $0.transform } || mixed { $0.background })
+        }
+    }
+
+    /// Rotation's own section: a checkbox, then Angles or Speed, acceleration,
+    /// the pivot pads, and freeze. Turning it off keeps its settings.
+    private func rotationSection(_ first: Slide) -> some View {
+        let r = first.settings.rotation
+        let on = r?.enabled ?? false
+        func editRotation(_ action: String, _ change: @escaping (inout Rotation) -> Void) {
+            edit(action) { s in
+                var x = s.rotation ?? Rotation()
+                change(&x)
+                s.rotation = x
+            }
+        }
+        return Section {
+            Toggle("Rotation", isOn: Binding(get: { on }, set: { v in
+                editRotation(v ? "Turn On Rotation" : "Turn Off Rotation") { $0.enabled = v }
+            }))
+            if let r, r.enabled {
+                Picker("Mode", selection: Binding(get: { r.mode }, set: { m in
+                    editRotation("Change Rotation Mode") { $0.mode = m }
+                })) {
+                    Text("Angles").tag(Rotation.Mode.angles)
+                    Text("Speed").tag(Rotation.Mode.speed)
+                }
+                .pickerStyle(.segmented)
+
+                CommitSlider(title: "Start angle", value: r.startAngle, range: -360...360, unit: "°",
+                             fieldRange: -36000...36000) { v in
+                    editRotation("Change Start Angle") { $0.startAngle = v }
+                }
+                switch r.mode {
+                case .angles:
+                    CommitSlider(title: "End angle", value: r.endAngle, range: -360...360, unit: "°",
+                                 fieldRange: -36000...36000) { v in
+                        editRotation("Change End Angle") { $0.endAngle = v }
+                    }
+                case .speed:
+                    CommitSlider(title: "Speed", value: r.speed, range: -360...360, unit: "°/s",
+                                 fieldRange: -3600...3600) { v in
+                        editRotation("Change Speed") { $0.speed = v }
+                    }
+                }
+                if let note = rotationNote(first, r) {
+                    Text(note).font(.caption).foregroundStyle(.secondary)
+                }
+
+                AccelerationSlider(value: r.acceleration) { a in
+                    editRotation("Change Acceleration") { $0.acceleration = a }
+                }
+
+                if let item = model.itemsByID[first.itemID] {
+                    let size = CGSize(width: item.pixelWidth, height: item.pixelHeight)
+                    HStack(alignment: .top, spacing: 16) {
+                        Spacer(minLength: 0)
+                        PolarPad(title: r.pivotLocked ? "Pivot" : "Start pivot", point: r.pivotStart,
+                                 imageSize: size) { p in
+                            editRotation("Move Pivot") { $0.pivotStart = p }
+                        }
+                        if !r.pivotLocked {
+                            PolarPad(title: "End pivot", point: r.pivotEnd, imageSize: size) { p in
+                                editRotation("Move Pivot") { $0.pivotEnd = p }
+                            }
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    Toggle("Lock start and end pivot", isOn: Binding(get: { r.pivotLocked }, set: { v in
+                        // Unlocking starts the end pivot where the start is, so nothing jumps.
+                        editRotation(v ? "Lock Pivot" : "Unlock Pivot") { x in
+                            x.pivotLocked = v
+                            if !v { x.pivotEnd = x.pivotStart }
+                        }
+                    }))
+                }
+
+                Toggle("Freeze on transition", isOn: Binding(get: { r.freezeOnTransition }, set: { v in
+                    editRotation("Change Freeze on Transition") { $0.freezeOnTransition = v }
+                }))
+                .help("Hold the start angle through the transition in and the end angle through the transition out")
+            }
+        } footer: { mixedNote(mixed { $0.rotation }) }
+    }
+
+    /// The other half of the numbers: the speed that Angles gives, or the
+    /// angle that Speed ends on, over the time this slide actually turns.
+    private func rotationNote(_ slide: Slide, _ r: Rotation) -> String? {
+        guard let rs = timeline.slides.first(where: { $0.slide.id == slide.id }) else { return nil }
+        // Frozen, it turns only while on screen alone: its length less the
+        // transition in (the transition out is outside its length already).
+        let span = r.freezeOnTransition ? max(rs.length - rs.transitionIn.duration, 0) : rs.visibleSpan
+        guard span > 0 else { return nil }
+        let secs = formatSeconds(span)
+        switch r.mode {
+        case .angles:
+            let speed = (r.endAngle - r.startAngle) / span
+            return "About \(String(format: "%.1f", speed))°/s over \(secs)."
+        case .speed:
+            return "Ends at \(String(format: "%.1f", r.startAngle + r.sweep(span: span)))° after \(secs). Trimming the slide changes this."
+        }
     }
 
     @ViewBuilder

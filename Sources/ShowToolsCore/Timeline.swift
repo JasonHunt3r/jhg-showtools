@@ -17,7 +17,7 @@ public struct ResolvedSlide: Sendable {
     public let transform: Transform
     /// Nil when the slide has no rotation or its checkbox is off.
     public let rotation: Rotation?
-    public let background: RGBColor
+    public let background: SRGBColor
     /// Seconds into the media where playback starts (video and animation).
     public let clipStart: Double
     /// How long the slide is on screen in total: its own length plus the
