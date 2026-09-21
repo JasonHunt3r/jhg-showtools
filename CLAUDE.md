@@ -92,6 +92,11 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   the scratchpad. `log show` returns nothing from this app in Claude's
   sandbox, so a "no log lines" check proves nothing. Remove probes before
   committing.
+- In a `List`, rows drag with `.itemProvider`, never `.onDrag`. `.onDrag`
+  turns a click on the row's content into drag tracking, so the row won't
+  select or double-click (only its empty edges do), and a drag carries one
+  row, not the selection. Measured in a harness, 2026-09-21. (The Library
+  grid isn't a List, and its tiles' `.onDrag` is fine.)
 - SwiftUI hosting views hit-test all their content, clipped or not. Edit
   Show's columns use `ColumnHost`, which takes the mouse only inside its
   frame. Keep it, or content wider than its column steals the next column's
