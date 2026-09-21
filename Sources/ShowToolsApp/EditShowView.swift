@@ -8,6 +8,7 @@ struct EditShowView: View {
     let timeline: ShowTimeline
     @Binding var selection: Set<Int64>
     let mutate: ShowMutator
+    @Binding var inspectorShown: Bool
     @Environment(AppModel.self) private var model
     @State private var engine: PlaybackEngine?
     @AppStorage("storylineZoom") private var pps: Double = 24
@@ -17,20 +18,30 @@ struct EditShowView: View {
         // the placeholder's onDisappear would shut down the engine it made way for.
         ZStack {
             if let engine, engine.showID == show.id {
-                HSplitView {
-                    VStack(spacing: 0) {
+                // The columns sit on top; the transport and storyline run the
+                // full width underneath them.
+                VSplitView {
+                    HSplitView {
                         PreviewStage(engine: engine, title: show.name)
-                            .frame(minHeight: 220)
+                            .frame(minWidth: 420, minHeight: 220)
+                        OrderList(show: show, timeline: timeline, engine: engine,
+                                  selection: $selection, mutate: mutate,
+                                  openInspector: { inspectorShown = true })
+                            .frame(minWidth: 180, idealWidth: 230, maxWidth: 360)
+                        if inspectorShown {
+                            SlideInspector(show: show, timeline: timeline, selection: selection, mutate: mutate)
+                                .frame(minWidth: 260, idealWidth: 290, maxWidth: 420)
+                        }
+                    }
+                    VStack(spacing: 0) {
                         TransportRow(engine: engine, pps: $pps, fit: fitStoryline)
                         Divider()
                         StorylineView(show: show, timeline: timeline, engine: engine,
-                                      selection: $selection, pps: $pps, mutate: mutate)
-                            .frame(height: StorylineView.blockHeight + StorylineView.rulerHeight + 36)
+                                      selection: $selection, pps: $pps, mutate: mutate,
+                                      openInspector: { inspectorShown = true })
                     }
-                    .frame(minWidth: 480)
-                    OrderList(show: show, timeline: timeline, engine: engine,
-                              selection: $selection, mutate: mutate)
-                        .frame(minWidth: 180, idealWidth: 230, maxWidth: 360)
+                    .frame(minHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 80,
+                           idealHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 90)
                 }
                 .onDeleteCommand { SlideActions.remove(selection, selection: $selection, mutate: mutate) }
                 .background(shortcuts(engine))
@@ -230,6 +241,7 @@ struct OrderList: View {
     let engine: PlaybackEngine
     @Binding var selection: Set<Int64>
     let mutate: ShowMutator
+    let openInspector: () -> Void
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -262,7 +274,9 @@ struct OrderList: View {
             Button("Duplicate") { SlideActions.duplicate(ids, mutate: mutate) }
             Button("Remove from Show") { SlideActions.remove(ids, selection: $selection, mutate: mutate) }
         } primaryAction: { ids in
+            // Double-click: show it, and open the inspector on it.
             if let id = ids.first { engine.showSlide(id: id) }
+            openInspector()
         }
         .onChange(of: selection) { _, ids in
             // Picking one slide in the list shows it in the preview.

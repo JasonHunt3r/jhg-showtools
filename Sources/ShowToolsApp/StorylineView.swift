@@ -17,6 +17,7 @@ struct StorylineView: View {
     /// Points per second: the zoom.
     @Binding var pps: Double
     let mutate: ShowMutator
+    let openInspector: () -> Void
     @Environment(AppModel.self) private var model
 
     static let blockHeight: CGFloat = 64
@@ -31,8 +32,26 @@ struct StorylineView: View {
         var target: Int
     }
     @State private var moving: Moving?
-    @State private var trimming: (id: Int64, length: Double)?
     @State private var magnifyBase: Double?
+
+    /// Final Cut's three edits at a cut, by where the pointer grabs it.
+    enum EdgeKind: Equatable {
+        /// Left of the cut: move the left clip's end. What follows ripples.
+        case trimEnd(Int64)
+        /// Right of the cut: move the right clip's start. What follows ripples.
+        case trimStart(Int64)
+        /// On the cut: move it, the left clip gaining what the right one loses.
+        /// The show's total length doesn't change.
+        case roll(Int64, Int64)
+    }
+    private struct EdgeEdit {
+        var kind: EdgeKind
+        /// Seconds the cut has moved; positive is to the right.
+        var delta: Double
+        var cutX: CGFloat
+    }
+    @State private var edge: EdgeEdit?
+    @State private var hoveredEdge: EdgeKind?
 
     // MARK: Layout
 
@@ -43,10 +62,17 @@ struct StorylineView: View {
         var id: Int64 { slide.slide.id }
     }
 
-    /// Lengths with any trim in progress applied.
+    /// Lengths with any edge edit in progress applied.
     private func length(_ r: ResolvedSlide) -> Double {
-        if let t = trimming, t.id == r.slide.id { return t.length }
-        return r.length
+        guard let e = edge else { return r.length }
+        let id = r.slide.id
+        switch e.kind {
+        case .trimEnd(let a) where a == id: return r.length + e.delta
+        case .trimStart(let b) where b == id: return r.length - e.delta
+        case .roll(let a, _) where a == id: return r.length + e.delta
+        case .roll(_, let b) where b == id: return r.length - e.delta
+        default: return r.length
+        }
     }
 
     /// Blocks in the order they'd sit if the drag in progress were dropped:
@@ -94,6 +120,7 @@ struct StorylineView: View {
                                 .id(p.id)
                         }
                         transitionMarkers(placed)
+                        if moving == nil { cutHandles(placed) }
                         // The group being dragged follows the pointer.
                         if let m = moving, let first = group.first {
                             let groupWidth = group.reduce(0) { $0 + $1.width }
@@ -139,7 +166,6 @@ struct StorylineView: View {
             .contentShape(Rectangle())
             .onTapGesture { click(p.id) }
             .gesture(moveGesture(p))
-            .overlay(alignment: .trailing) { trimHandle(p) }
             .modifier(HoverInfo(slide: p.slide, length: length(p.slide)))
             .contextMenu {
                 let ids = selection.contains(p.id) ? selection : [p.id]
@@ -162,6 +188,9 @@ struct StorylineView: View {
             selection = [id]
         }
         engine.showSlide(id: id)
+        // Checked on the event rather than with a double-tap gesture, which
+        // would hold every single click back while it waits for a second.
+        if (NSApp.currentEvent?.clickCount ?? 1) >= 2 { openInspector() }
     }
 
     private func moveGesture(_ p: Placed) -> some Gesture {
@@ -205,31 +234,175 @@ struct StorylineView: View {
         return i
     }
 
-    private func trimHandle(_ p: Placed) -> some View {
-        Rectangle()
-            .fill(Color.clear)
-            .frame(width: 8)
-            .contentShape(Rectangle())
-            .onHover { inside in
-                if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+    // MARK: Cuts
+
+    /// Three grab zones at every cut (and a trim-end zone after the last
+    /// slide): left of the cut trims the left clip's end, on the cut rolls
+    /// it, right of the cut trims the right clip's start.
+    private func cutHandles(_ placed: [Placed]) -> some View {
+        ForEach(Array(placed.enumerated()), id: \.element.id) { i, p in
+            let next = i + 1 < placed.count ? placed[i + 1] : nil
+            let x = p.x + p.width
+            // Zones shrink with tiny blocks so a cut stays reachable.
+            let side = min(9, max(3, p.width / 3))
+            let rightSide = next.map { min(9, max(3, $0.width / 3)) } ?? 0
+            let roll: CGFloat = next == nil ? 0 : 6
+            ZStack(alignment: .topLeading) {
+                zone(.trimEnd(p.id), cutX: x, width: side, offset: x - roll / 2 - side, slide: p.slide)
+                if let next {
+                    zone(.roll(p.id, next.id), cutX: x, width: roll, offset: x - roll / 2, slide: p.slide)
+                    zone(.trimStart(next.id), cutX: x, width: rightSide, offset: x + roll / 2, slide: next.slide)
+                }
             }
-            .highPriorityGesture(
-                DragGesture(minimumDistance: 1, coordinateSpace: .named("storyline"))
-                    .onChanged { g in
-                        let raw = p.slide.length + Double(g.translation.width) / pps
-                        trimming = (p.id, max(0.5, (raw * 10).rounded() / 10))
-                    }
-                    .onEnded { _ in
-                        if let t = trimming, abs(t.length - p.slide.length) > 0.001 {
-                            mutate("Change Length") { s in
-                                if let i = s.slides.firstIndex(where: { $0.id == t.id }) {
-                                    s.slides[i].settings.length = .seconds(t.length)
-                                }
-                            }
-                        }
-                        trimming = nil
-                    })
-            .help("Drag to change the slide's length")
+        }
+        .overlay(alignment: .topLeading) { edgeReadout }
+    }
+
+    private func zone(_ kind: EdgeKind, cutX: CGFloat, width: CGFloat, offset: CGFloat,
+                      slide: ResolvedSlide) -> some View {
+        // The layout already reflects an edit in progress (lengths change as
+        // you drag), so zones sit where the blocks put them — no extra shift.
+        let active = hoveredEdge == kind || edge?.kind == kind
+        return ZStack {
+            Rectangle().fill(Color.white.opacity(0.001))
+            if active { EdgeBracket(kind: kind) }
+        }
+        .frame(width: max(width, 1), height: Self.blockHeight)
+        .contentShape(Rectangle())
+        .offset(x: offset, y: 12)
+        .onHover { inside in
+            if inside {
+                hoveredEdge = kind
+                cursor(for: kind).push()
+            } else {
+                if hoveredEdge == kind { hoveredEdge = nil }
+                NSCursor.pop()
+            }
+        }
+        .gesture(edgeGesture(kind, cutX: cutX))
+        .help(help(for: kind))
+    }
+
+    private func cursor(for kind: EdgeKind) -> NSCursor {
+        switch kind {
+        case .trimEnd: .resizeLeft
+        case .trimStart: .resizeRight
+        case .roll: .resizeLeftRight
+        }
+    }
+
+    private func help(for kind: EdgeKind) -> String {
+        switch kind {
+        case .trimEnd: "Drag to change where this slide ends"
+        case .trimStart: "Drag to change where this slide starts"
+        case .roll: "Drag to move the cut: one slide grows as the other shrinks"
+        }
+    }
+
+    private func edgeGesture(_ kind: EdgeKind, cutX: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 1, coordinateSpace: .named("storyline"))
+            .onChanged { g in
+                let raw = Double(g.translation.width) / pps
+                // The cut's position when the drag began: the view (and so
+                // `cutX`) moves as the edit reshapes the layout.
+                let origin = edge?.kind == kind ? edge!.cutX : cutX
+                edge = EdgeEdit(kind: kind, delta: clampedDelta(kind, (raw * 10).rounded() / 10), cutX: origin)
+            }
+            .onEnded { _ in
+                if let e = edge, e.delta != 0 { commit(e) }
+                edge = nil
+            }
+    }
+
+    private func resolved(_ id: Int64) -> ResolvedSlide? { timeline.slides.first { $0.slide.id == id } }
+
+    /// Keeps every slide at least half a second long, and a video's start
+    /// within its clip.
+    private func clampedDelta(_ kind: EdgeKind, _ d: Double) -> Double {
+        let minLength = 0.5
+        func startRoom(_ r: ResolvedSlide) -> ClosedRange<Double> {
+            // How far a start can move: not past the slide's own end, and a
+            // video's start not before its first frame.
+            let lower = r.item.kind == .image ? -.infinity : -r.clipStart
+            return lower...(r.length - minLength)
+        }
+        switch kind {
+        case .trimEnd(let a):
+            guard let ra = resolved(a) else { return 0 }
+            return max(d, minLength - ra.length)
+        case .trimStart(let b):
+            guard let rb = resolved(b) else { return 0 }
+            let r = startRoom(rb)
+            return min(max(d, r.lowerBound), r.upperBound)
+        case .roll(let a, let b):
+            guard let ra = resolved(a), let rb = resolved(b) else { return 0 }
+            let r = startRoom(rb)
+            return min(max(d, max(minLength - ra.length, r.lowerBound)), r.upperBound)
+        }
+    }
+
+    private func commit(_ e: EdgeEdit) {
+        func setLength(_ s: inout Show, _ id: Int64, _ length: Double) {
+            if let i = s.slides.firstIndex(where: { $0.id == id }) {
+                s.slides[i].settings.length = .seconds((length * 100).rounded() / 100)
+            }
+        }
+        /// Moving a start later skips into a video; for a still it just shortens.
+        func shiftStart(_ s: inout Show, _ r: ResolvedSlide, by d: Double) {
+            guard r.item.kind != .image, let i = s.slides.firstIndex(where: { $0.id == r.slide.id }) else { return }
+            let v = max(r.clipStart + d, 0)
+            s.slides[i].settings.clipStart = v < 0.001 ? nil : v
+        }
+        switch e.kind {
+        case .trimEnd(let a):
+            guard let ra = resolved(a) else { return }
+            mutate("Trim End") { setLength(&$0, a, ra.length + e.delta) }
+        case .trimStart(let b):
+            guard let rb = resolved(b) else { return }
+            mutate("Trim Start") { s in
+                setLength(&s, b, rb.length - e.delta)
+                shiftStart(&s, rb, by: e.delta)
+            }
+        case .roll(let a, let b):
+            guard let ra = resolved(a), let rb = resolved(b) else { return }
+            mutate("Roll Edit") { s in
+                setLength(&s, a, ra.length + e.delta)
+                setLength(&s, b, rb.length - e.delta)
+                shiftStart(&s, rb, by: e.delta)
+            }
+        }
+    }
+
+    /// While dragging a cut: how far it has moved and the lengths it makes.
+    @ViewBuilder private var edgeReadout: some View {
+        if let e = edge {
+            let text: String = switch e.kind {
+            case .trimEnd(let a): "\(signed(e.delta)) · \(formatSeconds(resolved(a).map { $0.length + e.delta } ?? 0))"
+            case .trimStart(let b): "\(signed(-e.delta)) · \(formatSeconds(resolved(b).map { $0.length - e.delta } ?? 0))"
+            case .roll(let a, let b):
+                "\(formatSeconds(resolved(a).map { $0.length + e.delta } ?? 0)) | \(formatSeconds(resolved(b).map { $0.length - e.delta } ?? 0))"
+            }
+            Text(text)
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .background(.yellow, in: RoundedRectangle(cornerRadius: 4))
+                .foregroundStyle(.black)
+                .fixedSize()
+                // A trimmed start keeps its place (what follows ripples in);
+                // trimming an end or rolling moves the cut itself.
+                .offset(x: e.cutX + (isTrimStart(e.kind) ? 0 : CGFloat(e.delta * pps)) - 30,
+                        y: Self.blockHeight + 12)
+                .allowsHitTesting(false)
+        }
+    }
+
+    private func isTrimStart(_ k: EdgeKind) -> Bool {
+        if case .trimStart = k { return true }
+        return false
+    }
+
+    private func signed(_ d: Double) -> String {
+        (d >= 0 ? "+" : "−") + formatSeconds(abs(d))
     }
 
     /// A marker on each cut, as wide as the transition into the next slide.
@@ -293,7 +466,7 @@ struct StoryBlock: View {
             RoundedRectangle(cornerRadius: 5).fill(tint.opacity(0.55))
             if item.kind == .video, let url {
                 VideoStrip(item: item, url: url, height: thumbH, tileWidth: thumbW, width: width - 8,
-                           pps: pps, length: length)
+                           pps: pps, length: length, clipStart: slide.clipStart)
                     .padding(.leading, 4)
             } else {
                 HStack(spacing: 6) {
@@ -330,6 +503,7 @@ struct VideoStrip: View {
     let width: CGFloat
     let pps: Double
     let length: Double
+    let clipStart: Double
     @State private var frames: [NSImage]?
 
     var body: some View {
@@ -338,7 +512,7 @@ struct VideoStrip: View {
                 let count = max(1, Int((width / tileWidth).rounded(.up)))
                 let duration = max(item.duration ?? length, 0.01)
                 ForEach(0..<count, id: \.self) { i in
-                    let t = Double(CGFloat(i) * tileWidth) / pps
+                    let t = clipStart + Double(CGFloat(i) * tileWidth) / pps
                     // Past the clip's end the video holds its last frame.
                     let f = min(Int(min(t, duration) / duration * Double(frames.count)), frames.count - 1)
                     Image(nsImage: frames[f]).resizable()
@@ -356,7 +530,7 @@ struct VideoStrip: View {
     }
 }
 
-/// Slide info after the pointer rests on a block for two seconds.
+/// Slide info after the pointer rests on a block for a second.
 struct HoverInfo: ViewModifier {
     let slide: ResolvedSlide
     let length: Double
@@ -369,7 +543,7 @@ struct HoverInfo: ViewModifier {
                 pending?.cancel()
                 if inside {
                     pending = Task {
-                        try? await Task.sleep(for: .seconds(2))
+                        try? await Task.sleep(for: .seconds(1))
                         if !Task.isCancelled { shown = true }
                     }
                 } else {
@@ -462,5 +636,36 @@ struct Playhead: View {
             .offset(x: x - 6)
             .allowsHitTesting(false)
         }
+    }
+}
+
+/// Final Cut's yellow edit brackets: "]" on a clip's end, "[" on a start,
+/// both for a roll.
+struct EdgeBracket: View {
+    let kind: StorylineView.EdgeKind
+
+    var body: some View {
+        HStack(spacing: 0) {
+            switch kind {
+            case .trimEnd: bracket(opening: false)
+            case .trimStart: bracket(opening: true)
+            case .roll: bracket(opening: false); bracket(opening: true)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func bracket(opening: Bool) -> some View {
+        Canvas { ctx, size in
+            var p = Path()
+            let x: CGFloat = opening ? 1.5 : size.width - 1.5
+            let tip: CGFloat = opening ? size.width : 0
+            p.move(to: CGPoint(x: tip, y: 1.5))
+            p.addLine(to: CGPoint(x: x, y: 1.5))
+            p.addLine(to: CGPoint(x: x, y: size.height - 1.5))
+            p.addLine(to: CGPoint(x: tip, y: size.height - 1.5))
+            ctx.stroke(p, with: .color(.yellow), lineWidth: 3)
+        }
+        .frame(width: 5)
     }
 }

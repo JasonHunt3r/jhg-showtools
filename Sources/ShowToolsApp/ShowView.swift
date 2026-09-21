@@ -14,7 +14,7 @@ struct ShowView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
     @State private var selection: Set<Int64> = []
-    @State private var inspectorShown = true
+    @AppStorage("inspectorShown") private var inspectorShown = true
     @AppStorage("editMode") private var mode: EditMode = .slides
 
     private var show: Show { model.show(showID) ?? Show(id: showID, name: "") }
@@ -30,9 +30,11 @@ struct ShowView: View {
         Group {
             switch mode {
             case .slides:
-                EditSlidesView(show: show, timeline: timeline, selection: $selection, mutate: mutate)
+                EditSlidesView(show: show, timeline: timeline, selection: $selection, mutate: mutate,
+                               openInspector: { inspectorShown = true })
             case .show:
-                EditShowView(show: show, timeline: timeline, selection: $selection, mutate: mutate)
+                EditShowView(show: show, timeline: timeline, selection: $selection, mutate: mutate,
+                             inspectorShown: $inspectorShown)
             }
         }
         .navigationTitle(show.name)
@@ -57,10 +59,12 @@ struct ShowView: View {
                 .help("Play full screen (⌥⌘P)")
                 .disabled(show.slides.isEmpty)
                 Button { inspectorShown.toggle() } label: { Label("Inspector", systemImage: "sidebar.right") }
-                    .help("Show or hide the inspector")
+                    .keyboardShortcut("i", modifiers: [.command, .option])
+                    .help("Show or hide the inspector (⌥⌘I) — or double-click a slide")
             }
         }
-        .inspector(isPresented: $inspectorShown) {
+        // Edit Show lays its inspector out itself, above the storyline.
+        .inspector(isPresented: mode == .slides ? $inspectorShown : .constant(false)) {
             SlideInspector(show: show, timeline: timeline, selection: selection, mutate: mutate)
                 .inspectorColumnWidth(min: 260, ideal: 290, max: 400)
         }
@@ -118,6 +122,7 @@ struct EditSlidesView: View {
     let timeline: ShowTimeline
     @Binding var selection: Set<Int64>
     let mutate: ShowMutator
+    let openInspector: () -> Void
     @Environment(AppModel.self) private var model
     @State private var dropTargeted = false
 
@@ -150,7 +155,7 @@ struct EditSlidesView: View {
                 let i = show.slides.firstIndex { ids.contains($0.id) }
                 Player.open(show: show, model: model, fullScreen: false, startAt: i)
             }
-        }
+        } primaryAction: { _ in openInspector() }
         .overlay {
             if show.slides.isEmpty {
                 ContentUnavailableView("No slides yet", systemImage: "rectangle.stack",

@@ -114,3 +114,14 @@ final class TimelineTests: XCTestCase {
         XCTAssertEqual(px[0], 255, "centre should be image")
     }
 }
+
+final class ClipStartTests: XCTestCase {
+    func testClipLengthIsWhatRemainsAfterTheTrimmedFront() {
+        let item = MediaItem(id: 1, relativePath: "v.mov", hash: "v", kind: .video, pixelWidth: 1280,
+                             pixelHeight: 720, duration: 10, ingestedAt: Date(), sourcePath: "")
+        let s = Show(id: 1, name: "v", slides: [Slide(id: 1, itemID: 1, settings: SlideSettings(clipStart: 3))])
+        let t = ShowTimeline(show: s, items: [1: item])
+        XCTAssertEqual(t.slides[0].length, 7)
+        XCTAssertEqual(t.slides[0].clipStart, 3)
+    }
+}

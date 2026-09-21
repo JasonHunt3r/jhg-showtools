@@ -14,6 +14,8 @@ public struct ResolvedSlide: Sendable {
     public let transitionIn: Transition
     public let kenBurns: KenBurns?
     public let fit: Fit
+    /// Seconds into the media where playback starts (video and animation).
+    public let clipStart: Double
     /// How long the slide is on screen in total: its own length plus the
     /// transition out of it, during which it is still visible underneath.
     public internal(set) var visibleSpan: Double
@@ -84,7 +86,7 @@ public struct ShowTimeline: Sendable {
                 ?? (item.kind == .video && d.videoUsesClipLength ? .clip : .seconds(d.length))
             switch spec {
             case .seconds(let s): return max(s, 0.1)
-            case .clip: return max(item.duration ?? d.length, 0.1)
+            case .clip: return max((item.duration ?? d.length) - (slide.settings.clipStart ?? 0), 0.1)
             }
         }
 
@@ -104,7 +106,9 @@ public struct ShowTimeline: Sendable {
             resolved.append(ResolvedSlide(
                 index: i, slide: slide, item: item, start: t, length: lengths[i],
                 transitionIn: transition, kenBurns: kb,
-                fit: slide.settings.fit ?? d.fit, visibleSpan: lengths[i]))
+                fit: slide.settings.fit ?? d.fit,
+                clipStart: item.kind == .image ? 0 : max(slide.settings.clipStart ?? 0, 0),
+                visibleSpan: lengths[i]))
             t += lengths[i]
         }
 

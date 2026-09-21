@@ -181,13 +181,17 @@ public struct SlideSettings: Codable, Hashable, Sendable {
     public var transition: Transition?
     public var kenBurns: KenBurnsSetting?
     public var fit: Fit?
+    /// Seconds into a video (or animation) where this slide starts playing
+    /// it — set by trimming the front of its block. Nil means the beginning.
+    public var clipStart: Double?
 
     public init(length: SlideLength? = nil, transition: Transition? = nil,
-                kenBurns: KenBurnsSetting? = nil, fit: Fit? = nil) {
+                kenBurns: KenBurnsSetting? = nil, fit: Fit? = nil, clipStart: Double? = nil) {
         self.length = length
         self.transition = transition
         self.kenBurns = kenBurns
         self.fit = fit
+        self.clipStart = clipStart
     }
 
     /// Field by field, for the same reason as `ShowDefaults`.
@@ -197,6 +201,7 @@ public struct SlideSettings: Codable, Hashable, Sendable {
         transition = (try? c.decodeIfPresent(Transition.self, forKey: .transition)) ?? nil
         kenBurns = (try? c.decodeIfPresent(KenBurnsSetting.self, forKey: .kenBurns)) ?? nil
         fit = (try? c.decodeIfPresent(Fit.self, forKey: .fit)) ?? nil
+        clipStart = (try? c.decodeIfPresent(Double.self, forKey: .clipStart)) ?? nil
     }
 }
 

@@ -167,11 +167,20 @@ for ripping through slides and their details.
   - a transition shows as a marker on the cut, as wide as the transition is long
   - **magnetic:** blocks always sit end to end. Dragging reorders (a
     multi-selection moves as a group) and the rest close up
-  - **trim** by dragging a block's right edge; what follows shifts along
+  - **three grab zones on every cut** (Final Cut edits), each with its own
+    cursor and a yellow bracket: left of the cut **trims the left clip's
+    end**, on the cut **rolls** it (one clip grows as the other shrinks, so the
+    total length stays the same), and right of the cut **trims the right
+    clip's start**. For video, trimming a start skips into the clip
+    (`clipStart`). A readout shows the change while you drag
+  - layout (changed 2026-09-21): the transport and storyline run the full
+    width along the bottom; the preview, order list and inspector sit above
+    them in resizable columns. Double-click a slide, or press ⌥⌘I, to open
+    the inspector
   - a playhead that follows the scrubber; click or drag the ruler to move it
   - zoom with ⌘+ / ⌘−, pinch, and ⇧Z to fit the whole show
   - J / K / L for reverse, pause and play; pressing L twice doubles the speed
-  - hovering over a block for about 2 seconds shows its info
+  - hovering over a block for 1 second shows its info
 - **Order list** on the right: thumbnail plus filename, drag to reorder,
   and it's the same order as the storyline
 - **Both modes:** multi-select editing shows "mixed" values; a **Ken Burns

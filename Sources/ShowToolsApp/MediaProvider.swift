@@ -55,7 +55,7 @@ final class MediaProvider {
             return nil
         case .animatedImage:
             guard let a = animations[item.id], a.total > 0 else { request(item); return nil }
-            let t = layer.localTime.truncatingRemainder(dividingBy: a.total)
+            let t = (layer.slide.clipStart + layer.localTime).truncatingRemainder(dividingBy: a.total)
             var lo = 0, hi = a.ends.count - 1
             while lo < hi {
                 let mid = (lo + hi) / 2
@@ -64,7 +64,7 @@ final class MediaProvider {
             return a.frames[lo]
         case .video:
             return slot(for: layer.slide)?.image(localTime: layer.localTime, slideLength: layer.slide.length,
-                                                 playing: playing)
+                                                 clipStart: layer.slide.clipStart, playing: playing)
         }
     }
 
@@ -183,15 +183,17 @@ final class VideoSlot {
         }
     }
 
-    /// A video plays once and holds its last frame — through the transition
-    /// out of it, too. It loops only when its slide is longer than the clip.
-    func image(localTime: Double, slideLength: Double, playing: Bool) -> CIImage? {
+    /// A video plays once from its clip start and holds its last frame —
+    /// through the transition out of it, too. It loops (back to the clip
+    /// start) only when its slide is longer than what's left of the clip.
+    func image(localTime: Double, slideLength: Double, clipStart: Double, playing: Bool) -> CIImage? {
         let lastFrame = max(duration - 0.04, 0)
-        let loops = slideLength > duration + 0.1
+        let span = max(duration - clipStart, 0.04)
+        let loops = slideLength > span + 0.1
         let target = duration <= 0 ? localTime
-            : loops && localTime < slideLength ? localTime.truncatingRemainder(dividingBy: duration)
-            : min(localTime, lastFrame)
-        let holding = localTime >= (loops ? slideLength : lastFrame)
+            : loops && localTime < slideLength ? clipStart + localTime.truncatingRemainder(dividingBy: span)
+            : min(clipStart + localTime, lastFrame)
+        let holding = localTime >= (loops ? slideLength : span - 0.04)
         let current = player.currentTime().seconds
 
         if !seeking {
