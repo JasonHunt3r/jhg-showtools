@@ -113,6 +113,14 @@ struct PreviewStage: View {
     /// The previous slide's last frame over the selected image.
     @AppStorage("onionSkin") private var onionOn = true
     @AppStorage("onionOpacity") private var onionOpacity: Double = 0.5
+    /// What the handles edit, when the slide has Rotation on.
+    @State private var editTarget: TransformOverlay.Target = .transform
+
+    /// Rotation mode is only offered for a slide with Rotation on.
+    private var rotationAvailable: Bool {
+        guard let id = imageSlideID else { return false }
+        return engine.show.slides.first(where: { $0.id == id })?.settings.rotation?.enabled == true
+    }
 
     private var stage: ShowCanvas.Stage {
         ShowCanvas.Stage(zoom: CGFloat(workZoom), onionSlideID: onionOn ? imageSlideID : nil,
@@ -128,6 +136,7 @@ struct PreviewStage: View {
             // Over the whole stage, so handles past the picture's edge show.
             GeometryReader { g in
                 TransformOverlay(engine: engine, frame: Self.pictureRect(in: g.size, zoom: CGFloat(workZoom)),
+                                 target: rotationAvailable ? editTarget : .transform,
                                  imageSlideID: $imageSlideID, selection: $selection, mutate: mutate)
             }
             // The buttons sit above the handles so they stay clickable.
@@ -183,6 +192,8 @@ struct PreviewStage: View {
             guard ProcessInfo.processInfo.environment["SHOWTOOLS_DEV_IMAGE"] != nil else { return }
             try? await Task.sleep(for: .seconds(1))
             imageSlideID = selection.first
+            // SHOWTOOLS_DEV_IMAGE=rotation opens it in Rotation mode.
+            if ProcessInfo.processInfo.environment["SHOWTOOLS_DEV_IMAGE"] == "rotation" { editTarget = .rotation }
         }
     }
 
@@ -201,6 +212,17 @@ struct PreviewStage: View {
             .menuStyle(.borderlessButton)
             .fixedSize()
             .help("Zoom out to see and grab an image past the frame's edge (or pinch)")
+
+            if rotationAvailable {
+                Picker("", selection: $editTarget) {
+                    Text("Transform").tag(TransformOverlay.Target.transform)
+                    Text("Rotation").tag(TransformOverlay.Target.rotation)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                .help("What the handles on the image edit: its place, or its Rotation (green start, red end)")
+            }
 
             Toggle(isOn: $onionOn) { Image(systemName: "square.on.square.dashed") }
                 .toggleStyle(.button)

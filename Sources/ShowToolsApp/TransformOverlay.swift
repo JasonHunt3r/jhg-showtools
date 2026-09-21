@@ -16,9 +16,14 @@ import ShowToolsCore
 /// It covers the whole stage, not just the picture, so handles on an image
 /// that hangs past the frame can still be seen and grabbed.
 struct TransformOverlay: View {
+    /// What the handles edit: the still placement, or the Rotation effect
+    /// (only offered when the slide has Rotation on).
+    enum Target: Hashable { case transform, rotation }
+
     let engine: PlaybackEngine
     /// The picture's rect within this view.
     let frame: CGRect
+    var target: Target = .transform
     @Binding var imageSlideID: Int64?
     @Binding var selection: Set<Int64>
     let mutate: ShowMutator
@@ -27,6 +32,9 @@ struct TransformOverlay: View {
     @State private var live: Transform?
     @State private var liveSlideID: Int64?
     @State private var drag: Drag?
+    /// Rotation mode's drag and the Rotation it's drawing live.
+    @State private var rotDrag: RotDrag?
+    @State private var liveRotation: Rotation?
     /// A run of key presses, committed a second after the last one.
     @State private var run: Task<Void, Never>?
     @State private var runAction = ""
@@ -49,9 +57,12 @@ struct TransformOverlay: View {
         // Read so the handles follow seeks and edits.
         let _ = engine.seekCount
         let _ = engine.revision
-        let geo = imageSlideID.flatMap { selectedGeo($0) }
+        let rot = target == .rotation ? imageSlideID.flatMap { rotationGeo($0) } : nil
+        let geo = rot == nil ? imageSlideID.flatMap { selectedGeo($0) } : nil
         ZStack {
-            if let geo, !engine.isPlaying { handles(geo) }
+            if !engine.isPlaying {
+                if let rot { rotationHandles(rot) } else if let geo { handles(geo) }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
@@ -162,7 +173,17 @@ struct TransformOverlay: View {
     private var dragGesture: some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { g in
-                if drag == nil { begin(at: g.startLocation) }
+                if drag == nil, rotDrag == nil { begin(at: g.startLocation) }
+                if var r = rotDrag {
+                    if !r.moved {
+                        guard hypot(g.translation.width, g.translation.height) >= 2 else { return }
+                        r.moved = true
+                    }
+                    let new = applyRotation(&r, to: g.location, modifiers: NSEvent.modifierFlags)
+                    rotDrag = r
+                    setLiveRotation(new, slideID: r.geo.slideID)
+                    return
+                }
                 guard var d = drag, d.zone != nil else { return }
                 if !d.moved {
                     guard hypot(g.translation.width, g.translation.height) >= 2 else { return }
@@ -172,6 +193,13 @@ struct TransformOverlay: View {
                 setLive(apply(d, to: g.location, modifiers: NSEvent.modifierFlags), slideID: d.geo.slideID)
             }
             .onEnded { _ in
+                if let r = rotDrag {
+                    rotDrag = nil
+                    if r.moved, let new = liveRotation {
+                        commitRotation(new, slideID: r.geo.slideID, action: rotationActionName(r.zone, r.start))
+                    }
+                    return
+                }
                 defer { drag = nil }
                 guard let d = drag else { return }
                 guard let zone = d.zone else { deselect(); return }
@@ -182,7 +210,16 @@ struct TransformOverlay: View {
     private func begin(at p: CGPoint) {
         commitRun()
         if engine.isPlaying { engine.pause() }
-        if let id = imageSlideID, let g = selectedGeo(id), let z = zone(g, at: p) {
+        if target == .rotation, let id = imageSlideID, let g = rotationGeo(id), let z = rotationZone(g, at: p) {
+            let pivot = g.ends[z.end].pivot
+            rotDrag = RotDrag(zone: z, start: g.rotation, geo: g,
+                              lastAtan: atan2(p.y - pivot.y, p.x - pivot.x))
+            return
+        }
+        // In Rotation mode the Transform's corner and anchor handles aren't
+        // drawn, so only a drag on the image itself (a move) reaches them.
+        if let id = imageSlideID, let g = selectedGeo(id), let z = zone(g, at: p),
+           target == .transform || z == .move {
             drag = Drag(zone: z, start: g.transform, geo: g, startPoint: p)
             return
         }
@@ -243,7 +280,15 @@ struct TransformOverlay: View {
     }
 
     private func cursor(for p: CGPoint) -> NSCursor {
+        if target == .rotation, let id = imageSlideID, !engine.isPlaying, let g = rotationGeo(id) {
+            switch rotationZone(g, at: p) {
+            case .angle?: return Self.rotateCursor
+            case .pivot?: return .pointingHand
+            case nil: break
+            }
+        }
         guard let id = imageSlideID, !engine.isPlaying, let g = selectedGeo(id) else { return .arrow }
+        if target == .rotation { return g.contains(p) ? (drag == nil ? .openHand : .closedHand) : .arrow }
         switch zone(g, at: p) {
         case .move?: return drag == nil ? .openHand : .closedHand
         case .scale?: return .crosshair
@@ -284,7 +329,9 @@ struct TransformOverlay: View {
     // MARK: Keys
 
     private func key(_ press: KeyPress) -> KeyPress.Result {
-        guard let id = imageSlideID, !engine.isPlaying, let g = selectedGeo(id) else { return .ignored }
+        // Keys edit the Transform only; Rotation is set with its arms.
+        guard target == .transform, let id = imageSlideID, !engine.isPlaying,
+              let g = selectedGeo(id) else { return .ignored }
         var t = g.transform
         let big = press.modifiers.contains(.shift)
         let turn: Double = big ? 15 : 1
@@ -387,6 +434,186 @@ struct TransformOverlay: View {
             cross.move(to: CGPoint(x: a.x - 10, y: a.y)); cross.addLine(to: CGPoint(x: a.x + 10, y: a.y))
             cross.move(to: CGPoint(x: a.x, y: a.y - 10)); cross.addLine(to: CGPoint(x: a.x, y: a.y + 10))
             outlined(cross)
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+// MARK: - Rotation mode
+
+extension TransformOverlay {
+    /// One end of the Rotation effect, as it would sit on screen.
+    struct RotEnd {
+        /// The image's outline at this end's angle.
+        let quad: [CGPoint]
+        let pivot: CGPoint
+        /// The arm's knob: out from the pivot along the image's "up".
+        let knob: CGPoint
+        /// Image pixels → picture pixels without the spin, which leaves the
+        /// pivot where it is: inverted, it turns a pointer into an image point.
+        let still: CGAffineTransform
+    }
+
+    struct RotGeo {
+        let slideID: Int64
+        let rotation: Rotation
+        /// Seconds the rotation turns for (Speed mode's end depends on it).
+        let span: Double
+        /// Start, then end.
+        let ends: [RotEnd]
+        let W: CGFloat, H: CGFloat
+        let frame: CGRect
+
+        func imagePoint(atView v: CGPoint, end: Int) -> ImagePoint {
+            let picture = CGPoint(x: v.x - frame.minX, y: frame.minY + frame.height - v.y)
+            let ci = picture.applying(ends[end].still.inverted())
+            return ImagePoint(x: Double(ci.x / W), y: Double(1 - ci.y / H))
+        }
+    }
+
+    enum RotZone: Equatable {
+        case angle(end: Int), pivot(end: Int)
+        var end: Int { switch self { case .angle(let e), .pivot(let e): e } }
+    }
+
+    struct RotDrag {
+        let zone: RotZone
+        let start: Rotation
+        let geo: RotGeo
+        /// The pointer's angle round the pivot last time, and the whole turn
+        /// so far: summed step by step, so dragging round twice is 720°.
+        var lastAtan: CGFloat
+        var turned: CGFloat = 0
+        var moved = false
+    }
+
+    func rotationGeo(_ id: Int64) -> RotGeo? {
+        guard let r = engine.timeline.slides.first(where: { $0.slide.id == id }), let rot = r.rotation else { return nil }
+        let W = CGFloat(r.item.pixelWidth), H = CGFloat(r.item.pixelHeight)
+        guard W > 0, H > 0, frame.width > 0, frame.height > 0 else { return nil }
+        // As the inspector's note works it out: frozen, it turns only while
+        // the slide is on screen alone.
+        let span = rot.freezeOnTransition ? max(r.length - r.transitionIn.duration, 0) : r.visibleSpan
+        let e = CGRect(x: 0, y: 0, width: W, height: H)
+        func view(_ p: CGPoint) -> CGPoint { CGPoint(x: frame.minX + p.x, y: frame.minY + frame.height - p.y) }
+        func end(_ progress: Double) -> RotEnd? {
+            let kb = r.kenBurns?.frame(at: progress) ?? .centred
+            let pivot = rot.pivot(at: progress), angle = rot.angle(at: progress, span: span)
+            guard let still = Compositor.placement(imageExtent: e, fit: r.fit, kb: kb, transform: r.transform,
+                                                   spin: nil, outputSize: frame.size),
+                  let turned = Compositor.placement(imageExtent: e, fit: r.fit, kb: kb, transform: r.transform,
+                                                    spin: (angle: angle, pivot: pivot), outputSize: frame.size)
+            else { return nil }
+            let quad = [CGPoint(x: 0, y: H), CGPoint(x: W, y: H), CGPoint(x: W, y: 0), .zero]
+                .map { view($0.applying(turned)) }
+            let pv = view(CGPoint(x: CGFloat(pivot.x) * W, y: CGFloat(1 - pivot.y) * H).applying(still))
+            let th = CGFloat(angle + r.transform.rotation) * .pi / 180
+            return RotEnd(quad: quad, pivot: pv, knob: CGPoint(x: pv.x + 70 * sin(th), y: pv.y - 70 * cos(th)),
+                          still: still)
+        }
+        guard let s = end(0), let f = end(1) else { return nil }
+        return RotGeo(slideID: id, rotation: rot, span: span, ends: [s, f], W: W, H: H, frame: frame)
+    }
+
+    func rotationZone(_ g: RotGeo, at p: CGPoint) -> RotZone? {
+        func near(_ a: CGPoint, _ r: CGFloat) -> Bool { hypot(a.x - p.x, a.y - p.y) <= r }
+        // The end first: when both arms lie together, it's usually the one being set.
+        if near(g.ends[1].knob, 9) { return .angle(end: 1) }
+        if near(g.ends[0].knob, 9) { return .angle(end: 0) }
+        if !g.rotation.pivotLocked, near(g.ends[1].pivot, 9) { return .pivot(end: 1) }
+        if near(g.ends[0].pivot, 9) { return .pivot(end: 0) }
+        return nil
+    }
+
+    func applyRotation(_ d: inout RotDrag, to p: CGPoint, modifiers: NSEvent.ModifierFlags) -> Rotation {
+        var rot = d.start
+        switch d.zone {
+        case .angle(let end):
+            let pivot = d.geo.ends[end].pivot
+            let a = atan2(p.y - pivot.y, p.x - pivot.x)
+            var step = a - d.lastAtan
+            if step > .pi { step -= 2 * .pi } else if step < -.pi { step += 2 * .pi }
+            d.turned += step
+            d.lastAtan = a
+            let from = end == 0 ? d.start.startAngle : d.start.angle(at: 1, span: d.geo.span)
+            var value = from + Double(d.turned) * 180 / .pi
+            if modifiers.contains(.shift) { value = (value / 15).rounded() * 15 }
+            if end == 0 {
+                rot.startAngle = value
+            } else if rot.mode == .angles {
+                rot.endAngle = value
+            } else if d.geo.span > 0 {
+                rot.speed = (value - rot.startAngle) / d.geo.span
+            }
+        case .pivot(let end):
+            let point = d.geo.imagePoint(atView: p, end: end)
+            if end == 0 || rot.pivotLocked { rot.pivotStart = point } else { rot.pivotEnd = point }
+        }
+        return rot
+    }
+
+    func rotationActionName(_ z: RotZone, _ r: Rotation) -> String {
+        switch z {
+        case .angle(end: 0): "Change Start Angle"
+        case .angle: r.mode == .angles ? "Change End Angle" : "Change Speed"
+        case .pivot: "Move Pivot"
+        }
+    }
+
+    func setLiveRotation(_ r: Rotation, slideID: Int64) {
+        liveRotation = r
+        var s = engine.show
+        guard let i = s.slides.firstIndex(where: { $0.id == slideID }) else { return }
+        s.slides[i].settings.rotation = r
+        engine.showLiveEdit(s)
+    }
+
+    func commitRotation(_ r: Rotation, slideID: Int64, action: String) {
+        controlLog.notice("\(action, privacy: .public) slide \(slideID): start \(r.startAngle) end \(r.endAngle) speed \(r.speed)")
+        mutate(action) { s in
+            guard let i = s.slides.firstIndex(where: { $0.id == slideID }) else { return }
+            s.slides[i].settings.rotation = r
+        }
+        liveRotation = nil
+        engine.endLiveEdit()
+    }
+
+    /// The Ken Burns editor's colours: green for the start, red for the end.
+    func rotationHandles(_ g: RotGeo) -> some View {
+        Canvas { ctx, _ in
+            func outlined(_ path: Path, _ colour: Color, width: CGFloat = 1.5) {
+                ctx.stroke(path, with: .color(.black.opacity(0.6)), lineWidth: width + 2)
+                ctx.stroke(path, with: .color(colour), lineWidth: width)
+            }
+            func crosshair(_ a: CGPoint, _ colour: Color) {
+                var cross = Path()
+                cross.addEllipse(in: CGRect(x: a.x - 5, y: a.y - 5, width: 10, height: 10))
+                cross.move(to: CGPoint(x: a.x - 10, y: a.y)); cross.addLine(to: CGPoint(x: a.x + 10, y: a.y))
+                cross.move(to: CGPoint(x: a.x, y: a.y - 10)); cross.addLine(to: CGPoint(x: a.x, y: a.y + 10))
+                outlined(cross, colour, width: 1)
+            }
+            let colours: [Color] = [.green, .red]
+            for i in [0, 1] {
+                let e = g.ends[i], c = colours[i]
+                var quad = Path()
+                quad.addLines(e.quad)
+                quad.closeSubpath()
+                outlined(quad, c.opacity(0.9))
+                var arm = Path()
+                arm.move(to: e.pivot); arm.addLine(to: e.knob)
+                outlined(arm, c)
+                let knob = Path(ellipseIn: CGRect(x: e.knob.x - 6, y: e.knob.y - 6, width: 12, height: 12))
+                ctx.fill(knob, with: .color(c))
+                ctx.stroke(knob, with: .color(.black.opacity(0.7)), lineWidth: 1)
+                ctx.draw(Text(i == 0 ? "Start" : "End").font(.caption2.weight(.semibold)).foregroundColor(c),
+                         at: CGPoint(x: e.knob.x, y: e.knob.y - 14))
+            }
+            if g.rotation.pivotLocked {
+                crosshair(g.ends[0].pivot, .white)
+            } else {
+                crosshair(g.ends[0].pivot, .green)
+                crosshair(g.ends[1].pivot, .red)
+            }
         }
         .allowsHitTesting(false)
     }

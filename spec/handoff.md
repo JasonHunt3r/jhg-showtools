@@ -51,10 +51,14 @@ screenshots:
   out in the margin; the onion toggle and its opacity slider. The onion
   skin skips video slides for now (asking for another video's frame would
   seek its player)
+- **Rotation mode (2026-09-21):** checked by screenshot (outlines and arms
+  land where the maths says). Try: the Transform/Rotation switch, dragging
+  each arm (Shift snaps to 15°; going round twice should give 720°), Speed
+  mode's red arm setting the speed, and dragging the pivots, locked and not
 - **Soft-at-this-zoom warning (2026-09-21):** checked by screenshot; the
   flags on the test library are all correct for a 2560×1664 screen
 
-## Next: Phase 2a (framing, rotation, match cuts), then 2c Layers
+## Next: Phase 2c Layers (2a is built, bar presets, which were deferred)
 
 **Superseded 2026-09-21:** 2a now comes first, and 2c is settled at two picture layers. See `spec/plan.md`. The text below is the original 2c note.
 

@@ -221,7 +221,9 @@ slide A so that the transition joins them seamlessly.
   that combine. 2a's effects: **Ken Burns** and **Rotation**. The stack is
   also where later effects plug in
 - **Rotation**, which works with Ken Burns or on its own. It has its **own
-  interface** (its own inspector section and its own on-image editor), and
+  interface** (its own inspector section and its own on-image editor: built
+  2026-09-21 as the preview's Rotation mode, with green start and red end
+  outlines, an arm per end to turn it, and pivot crosshairs), and
   it isn't folded into the Ken Burns editor (settled 2026-09-21). It has two modes,
   chosen per slide:
   - **Speed:** a speed slider (°/s). Note that trimming the slide then
@@ -275,7 +277,8 @@ slide A so that the transition joins them seamlessly.
   That makes a match cut through a dissolve exact. (Built in the model
   2026-09-21.) How to choose the frame a match cut lines up on is to be
   revisited only if eyeballing it proves hard in use
-- **Presets** set several effects at once. They're a starting point, not a
+- **Presets** (deferred 2026-09-21: "we'll do something like that later")
+  set several effects at once. They're a starting point, not a
   separate effect type. **Flush** is the first one: accelerating rotation
   plus zoom and pan, "down the hole"
 - **Zoomable work area** (built 2026-09-21: a zoom menu and pinch on the

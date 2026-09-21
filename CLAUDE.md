@@ -31,7 +31,8 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   launch, so it can be screenshotted without clicking (UI scripting isn't
   permitted on this Mac). `SHOWTOOLS_DEV_SHOW="<showID>[:<slideIndex>]"`
   selects a show (and a slide). `SHOWTOOLS_DEV_IMAGE=1` also selects that
-  slide's image in the Edit Show preview, so its handles show. The mode comes from the `editMode` default:
+  slide's image in the Edit Show preview, so its handles show
+  (`SHOWTOOLS_DEV_IMAGE=rotation` shows its Rotation handles). The mode comes from the `editMode` default:
   `defaults write com.jhg.showtools editMode show`.
 - Every show edit goes through a `ShowMutator` with an undo name. Drags
   (reorder, trim, Ken Burns) commit once, on release, so each is one undo step.
