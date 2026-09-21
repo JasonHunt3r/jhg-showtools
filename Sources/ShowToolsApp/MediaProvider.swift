@@ -30,6 +30,8 @@ final class MediaProvider {
     private var animations: [Int64: Animation] = [:]
     private var loading: Set<Int64> = []
     private var videos: [Int64: VideoSlot] = [:]   // keyed by slide id: each use plays on its own
+    /// Called when newly decoded media arrives, so an idle view redraws.
+    var onChange: (() -> Void)?
 
     init(maxPixels: Int, urlFor: @escaping (MediaItem) -> URL?) {
         self.maxPixels = maxPixels
@@ -124,6 +126,7 @@ final class MediaProvider {
                 } else {
                     self.stills[id] = images[0]
                 }
+                self.onChange?()
             }
         }
     }

@@ -5,14 +5,15 @@ import ShowToolsCore
 /// on "Show default"; editing several slides writes the value to all of them.
 struct SlideInspector: View {
     let show: Show
+    let timeline: ShowTimeline
     let selection: Set<Int64>
-    let mutate: ((inout Show) -> Void) -> Void
+    let mutate: ShowMutator
     @Environment(AppModel.self) private var model
 
     private var selected: [Slide] { show.slides.filter { selection.contains($0.id) } }
 
-    private func edit(_ change: @escaping (inout SlideSettings) -> Void) {
-        mutate { s in
+    private func edit(_ action: String, _ change: @escaping (inout SlideSettings) -> Void) {
+        mutate(action) { s in
             for i in s.slides.indices where selection.contains(s.slides[i].id) {
                 change(&s.slides[i].settings)
             }
@@ -67,7 +68,7 @@ struct SlideInspector: View {
         let hasClip = selected.allSatisfy { model.itemsByID[$0.itemID]?.kind != .image }
         return Section {
             Picker("Length", selection: Binding(get: { mode }, set: { m in
-                edit {
+                edit("Change Length") {
                     switch m {
                     case .inherit: $0.length = nil
                     case .seconds: $0.length = .seconds(show.defaults.length)
@@ -81,7 +82,7 @@ struct SlideInspector: View {
             }
             if case .seconds(let v) = s.length {
                 LabeledContent("Seconds") {
-                    SecondsField(value: v) { new in edit { $0.length = .seconds(new) } }
+                    SecondsField(value: v) { new in edit("Change Length") { $0.length = .seconds(new) } }
                 }
             }
         } footer: { mixedNote(mixed { $0.length }) }
@@ -91,14 +92,14 @@ struct SlideInspector: View {
         let t = first.settings.transition
         return Section {
             Picker("Transition in", selection: Binding(get: { t != nil }, set: { custom in
-                edit { $0.transition = custom ? show.defaults.transition : nil }
+                edit("Change Transition") { $0.transition = custom ? show.defaults.transition : nil }
             })) {
                 Text("Show default (\(show.defaults.transition.style.title))").tag(false)
                 Text("Custom").tag(true)
             }
             if let t {
                 LabeledContent("Style") {
-                    TransitionPicker(transition: t) { new in edit { $0.transition = new } }
+                    TransitionPicker(transition: t) { new in edit("Change Transition") { $0.transition = new } }
                 }
             }
         } footer: { mixedNote(mixed { $0.transition }) }
@@ -116,32 +117,42 @@ struct SlideInspector: View {
         let defaultTitle = show.defaults.kenBurns == .auto ? "Auto" : "Off"
         return Section {
             Picker("Ken Burns", selection: Binding(get: { mode }, set: { m in
-                edit {
+                let seed = customStart(for: first)
+                edit("Change Ken Burns") {
                     switch m {
                     case .inherit: $0.kenBurns = nil
                     case .off: $0.kenBurns = .off
                     case .auto: $0.kenBurns = .auto
-                    case .custom: break
+                    case .custom: $0.kenBurns = .custom(seed)
                     }
                 }
             })) {
                 Text("Show default (\(defaultTitle))").tag(KBMode.inherit)
                 Text("Off").tag(KBMode.off)
                 Text("Auto").tag(KBMode.auto)
-                if mode == .custom { Text("Custom").tag(KBMode.custom) }
+                Text("Custom").tag(KBMode.custom)
             }
-        } footer: {
-            VStack(alignment: .leading) {
-                mixedNote(mixed { $0.kenBurns })
-                Text("Drawing a custom start and end frame comes with the Phase 2 editor.")
-                    .foregroundStyle(.secondary)
+            if case .custom(let kb) = first.settings.kenBurns, let item = model.itemsByID[first.itemID] {
+                KenBurnsEditor(item: item, url: model.url(for: item),
+                               fit: first.settings.fit ?? show.defaults.fit, kb: kb) { new in
+                    edit("Edit Ken Burns") { $0.kenBurns = .custom(new) }
+                }
             }
+        } footer: { mixedNote(mixed { $0.kenBurns }) }
+    }
+
+    /// Custom starts from whatever the slide does now, so switching to it
+    /// never jumps: an Auto move is kept, Off becomes a gentle push in.
+    private func customStart(for slide: Slide) -> KenBurns {
+        if let r = timeline.slides.first(where: { $0.slide.id == slide.id }), let kb = r.kenBurns {
+            return kb
         }
+        return KenBurns(start: .centred, end: KenBurnsFrame(x: 0.5, y: 0.5, zoom: 1.25))
     }
 
     private func fitSection(_ first: Slide) -> some View {
         Section {
-            Picker("Fit", selection: Binding(get: { first.settings.fit }, set: { f in edit { $0.fit = f } })) {
+            Picker("Fit", selection: Binding(get: { first.settings.fit }, set: { f in edit("Change Fit") { $0.fit = f } })) {
                 Text("Show default (\(show.defaults.fit.title))").tag(Fit?.none)
                 ForEach(Fit.allCases, id: \.self) { Text($0.title).tag(Fit?.some($0)) }
             }

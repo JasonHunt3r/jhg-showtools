@@ -13,7 +13,9 @@ live on the desktop of each attached monitor.
 
 - Not a product. It's built for Jason's own Mac: no signing, no notarization,
   no App Store.
-- Not a video editor. There's no multi-track compositing, titles or colour grading.
+- Not a full video editor. Layering is in scope (Phase 2c); colour grading,
+  audio mixing and effects plugins are not. (Changed 2026-09-21: this line
+  used to rule out multi-track compositing.)
 
 ---
 
@@ -134,20 +136,59 @@ the music when a track is loaded and the system clock when it isn't.
   fold renders as a plain dissolve. Page Curl renders flat, so it's offered
   as "Page Turn" (darkened back, peels from the far edge)
 
-### Phase 2: Composer
-- **Slide list panel (the output order):** thumbnails in play order, drag and
-  drop to reorder, multi-select, remove, duplicate. You can also add the same
-  library item again
-- **Removing a slide** (Delete) takes it out of this show only. The first
-  time, a standard macOS alert explains that the image is **not** being moved
-  to the Trash and stays in the library. The alert has the system's own
-  "Do not show this message again" checkbox (`NSAlert`'s suppression button,
-  the one AppKit provides for exactly this case), and once it's ticked,
-  removals happen silently. ⌘Z undoes a removal
-- **Inspector panel:** edit the selected slide(s). Editing several at once is
-  allowed, and fields that differ show as "mixed"
-- **Ken Burns editor:** drag the start and end frame rectangles directly on the image
-- Preview a single slide with its transition in and out
+### Phase 2: Composer — two modes — BUILT 2026-09-21
+Decided 2026-09-21. Timelines follow Final Cut's conventions.
+
+**Edit Slides** is the Phase 1 view: a detailed slide list and the inspector,
+for ripping through slides and their details.
+
+**Edit Show** is new:
+```
+┌──────────────────────────────────────────────────────┬─ Order ────────┐
+│              [ large live preview ]         ⤢ pop out│ ▣ 1 beach.jpg  │
+│   in-frame play toggle + per-slide progress line     │ ▣ 2 sunset.jpg │
+│ ▶ ━━━━━━━━━━●━━━━━━━━━━━━━━━━━  0:42 / 12:10 scrubber │ ▣ 3 dog.jpg    │
+│ ruler ·····|·····|·····|·····|                       │  drag to       │
+│ [▐▌sunset 8s ][▐▌dog 4s][▐▌cliff 12s       ] storyline│  reorder       │
+└──────────────────────────────────────────────────────┴────────────────┘
+```
+- **Preview:** the show plays large (drawn with the same renderer as the
+  player). A livery-style play toggle sits in the frame, with a progress line
+  that drains across each slide. **Pop out** moves the preview into its own
+  window, for a second monitor or full screen, and it stays in sync.
+- **Scrubber (CutSim transport):** play button, a slider across the whole
+  show, and the time. Scrubbing plays transitions too.
+- **Storyline (Final Cut-style):**
+  - a block's width is the slide's length, on a zoomable pixels-per-second scale
+  - blocks are all the same height, and each thumbnail sits at the image's
+    true proportions, so portrait and landscape can be told apart at a glance
+  - a still's thumbnail doesn't repeat across its block (repeating a still is
+    noise); video shows frames across its block
+  - a transition shows as a marker on the cut, as wide as the transition is long
+  - **magnetic:** blocks always sit end to end. Dragging reorders (a
+    multi-selection moves as a group) and the rest close up
+  - **trim** by dragging a block's right edge; what follows shifts along
+  - a playhead that follows the scrubber; click or drag the ruler to move it
+  - zoom with ⌘+ / ⌘−, pinch, and ⇧Z to fit the whole show
+  - J / K / L for reverse, pause and play; pressing L twice doubles the speed
+  - hovering over a block for about 2 seconds shows its info
+- **Order list** on the right: thumbnail plus filename, drag to reorder,
+  and it's the same order as the storyline
+- **Both modes:** multi-select editing shows "mixed" values; a **Ken Burns
+  editor** where you drag the start and end frames on the image; **⌘Z / ⇧⌘Z**
+  undo and redo for every show edit
+
+### Phase 2c: Layers (straight after Phase 2)
+Final Cut's model: the storyline stays simple and magnetic. Anything layered
+is a **connected clip** stacked above it and attached to a storyline slide,
+so it moves and trims with that slide. Each connected clip has opacity,
+position and scale, a blend mode, fade in and out, and alpha from PNGs and
+HEICs with transparency. Uses: logos and watermarks, frames and borders,
+title cards, picture-in-picture and collages, free-form overlaps, and
+textures or light leaks.
+- The renderer already builds the storyline picture first and composites it
+  last, so connected clips are an extra compositing step, not a rewrite
+- Setlist export (Phase 4) gets a separate section for connected clips
 
 ### Phase 2b: Library manager
 - Browse the whole library: thumbnail grid, sort and filter (type, date, size,

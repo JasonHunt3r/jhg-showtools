@@ -202,13 +202,18 @@ public final class Library {
 
             let insert = try db.prepare(
                 "INSERT INTO slides (show_id, position, item_id, settings) VALUES (?, ?, ?, ?)")
-            let update = try db.prepare(
-                "UPDATE slides SET position = ?, item_id = ?, settings = ? WHERE id = ? AND show_id = ?")
+            // An existing id is written back even if its row is gone: that's
+            // how undo restores a removed slide with its identity intact.
+            let upsert = try db.prepare("""
+                INSERT INTO slides (id, show_id, position, item_id, settings) VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET show_id = excluded.show_id, position = excluded.position,
+                    item_id = excluded.item_id, settings = excluded.settings
+                """)
             for (pos, slide) in show.slides.enumerated() {
                 let settings = try json(slide.settings)
                 if slide.id > 0 {
-                    try update.bind(.int(Int64(pos)), .int(slide.itemID), .text(settings),
-                                    .int(slide.id), .int(show.id)).run()
+                    try upsert.bind(.int(slide.id), .int(show.id), .int(Int64(pos)), .int(slide.itemID),
+                                    .text(settings)).run()
                 } else {
                     try insert.bind(.int(show.id), .int(Int64(pos)), .int(slide.itemID),
                                     .text(settings)).run()

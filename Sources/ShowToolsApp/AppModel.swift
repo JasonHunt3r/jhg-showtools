@@ -20,6 +20,8 @@ final class AppModel {
     var shows: [Show] = []
 
     var sidebar: SidebarItem? = .library
+    /// Developer hook only: a slide for the show view to select on appearing.
+    var devSelection: Int64?
 
     struct ImportStatus {
         var total = 0
@@ -196,19 +198,32 @@ final class AppModel {
     }
 
     /// Saves a changed show. New slides come back with their ids.
-    func update(_ show: Show) {
+    ///
+    /// With an undo manager, the version being replaced is registered as the
+    /// undo step (and undoing registers the redo). Restoring a snapshot puts
+    /// removed slides back with their original ids and settings.
+    func update(_ show: Show, undo: UndoManager? = nil, action: String? = nil) {
         guard let lib = library, let i = shows.firstIndex(where: { $0.id == show.id }) else { return }
+        let before = shows[i]
+        guard before != show else { return }
         do {
             shows[i] = try lib.saveShow(show)
         } catch {
             loadError = "\(error)"
+            return
+        }
+        if let undo {
+            undo.registerUndo(withTarget: self) { model in
+                MainActor.assumeIsolated { model.update(before, undo: undo, action: action) }
+            }
+            if let action { undo.setActionName(action) }
         }
     }
 
-    func append(_ itemIDs: [Int64], to showID: Int64) {
-        guard var show = show(showID) else { return }
+    func append(_ itemIDs: [Int64], to showID: Int64, undo: UndoManager? = nil) {
+        guard var show = show(showID), !itemIDs.isEmpty else { return }
         show.slides += itemIDs.map { Slide(id: 0, itemID: $0) }
-        update(show)
+        update(show, undo: undo, action: "Add Slides")
     }
 
     func deleteShow(_ id: Int64) {

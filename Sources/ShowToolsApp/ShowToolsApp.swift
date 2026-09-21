@@ -9,7 +9,7 @@ struct ShowToolsApp: App {
         Window("ShowTools", id: "main") {
             MainView()
                 .environment(model)
-                .frame(minWidth: 900, minHeight: 560)
+                .frame(minWidth: 1100, minHeight: 700)
                 .task { DevHooks.run(model) }
         }
         .defaultSize(width: 1320, height: 820)
@@ -101,9 +101,19 @@ struct SettingsView: View {
 /// the environment variable is set.
 ///
 ///   SHOWTOOLS_DEV_PLAY="<showID>:<slideIndex>[:full]"
+///   SHOWTOOLS_DEV_SHOW="<showID>[:<slideIndex>]"   select a show (and a slide)
 @MainActor
 enum DevHooks {
     static func run(_ model: AppModel) {
+        if let spec = ProcessInfo.processInfo.environment["SHOWTOOLS_DEV_SHOW"] {
+            let parts = spec.split(separator: ":")
+            if let id = parts.first.flatMap({ Int64($0) }), let show = model.show(id) {
+                model.sidebar = .show(id)
+                if parts.count > 1, let i = Int(parts[1]), show.slides.indices.contains(i) {
+                    model.devSelection = show.slides[i].id
+                }
+            }
+        }
         guard let spec = ProcessInfo.processInfo.environment["SHOWTOOLS_DEV_PLAY"] else { return }
         let parts = spec.split(separator: ":")
         guard let id = parts.first.flatMap({ Int64($0) }), let show = model.show(id) else { return }

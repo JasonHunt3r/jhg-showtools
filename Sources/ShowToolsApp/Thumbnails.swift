@@ -24,6 +24,48 @@ final class Thumbnails {
         return img
     }
 
+    // MARK: Video filmstrip
+
+    static let stripFrames = 12
+    private var strips: [Int64: [NSImage]] = [:]
+    private var stripLoading: Set<Int64> = []
+
+    /// Evenly spaced frames across a video, for its storyline block. Nil
+    /// until they're ready; `onReady` runs when they arrive.
+    func strip(_ item: MediaItem, url: URL, onReady: @escaping @MainActor () -> Void) -> [NSImage]? {
+        if let s = strips[item.id] { return s }
+        guard !stripLoading.contains(item.id) else { return nil }
+        stripLoading.insert(item.id)
+        let duration = item.duration ?? 0
+        Task {
+            let frames = await Task.detached(priority: .utility) {
+                Handoff(value: await Self.videoFrames(url, duration: duration, count: Self.stripFrames))
+            }.value.value
+            strips[item.id] = frames.map { NSImage(cgImage: $0, size: NSSize(width: $0.width, height: $0.height)) }
+            stripLoading.remove(item.id)
+            onReady()
+        }
+        return nil
+    }
+
+    nonisolated static func videoFrames(_ url: URL, duration: Double, count: Int) async -> [CGImage] {
+        let gen = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+        gen.appliesPreferredTrackTransform = true
+        gen.maximumSize = CGSize(width: 160, height: 160)
+        gen.requestedTimeToleranceBefore = CMTime(seconds: 0.25, preferredTimescale: 600)
+        gen.requestedTimeToleranceAfter = CMTime(seconds: 0.25, preferredTimescale: 600)
+        var out: [CGImage] = []
+        for i in 0..<count {
+            let t = duration * (Double(i) + 0.5) / Double(count)
+            if let img = try? await gen.image(at: CMTime(seconds: t, preferredTimescale: 600)).image {
+                out.append(img)
+            } else if let last = out.last {
+                out.append(last)
+            }
+        }
+        return out
+    }
+
     nonisolated static func imageThumb(_ url: URL, maxPixels: Int = 320) -> CGImage? {
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
         let opts: [CFString: Any] = [

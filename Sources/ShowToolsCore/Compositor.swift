@@ -36,16 +36,18 @@ public enum Compositor {
 
     // MARK: Framing
 
-    /// The part of the image to show, scaled to fill `size` exactly.
+    /// The part of the image that fills the output, in image pixels with
+    /// the origin at the **top left** (as the Ken Burns editor draws it).
     ///
     /// Works per axis: the base framing (fill, fit or stretch) sets how much
     /// of the image the output covers; Ken Burns zoom narrows that; the
     /// centre is then clamped so a fill never shows past the image's edge,
     /// while a fit centres whatever is smaller than the frame (letterbox).
-    public static func placed(_ image: CIImage, fit: Fit, kb: KenBurnsFrame,
-                              in size: CGSize) -> CIImage {
-        let W = image.extent.width, H = image.extent.height
-        guard W > 0, H > 0, size.width > 0, size.height > 0 else { return image }
+    /// The region can be larger than the image (fit), never smaller than zero.
+    public static func viewRegion(imageSize: CGSize, fit: Fit, kb: KenBurnsFrame,
+                                  outputSize size: CGSize) -> CGRect {
+        let W = imageSize.width, H = imageSize.height
+        guard W > 0, H > 0, size.width > 0, size.height > 0 else { return .zero }
 
         var regionW: CGFloat, regionH: CGFloat
         switch fit {
@@ -67,14 +69,23 @@ public enum Compositor {
             let c = min(max(centre, region / 2), span - region / 2)
             return c - region / 2
         }
-        // Ken Burns y is measured from the top; Core Image's from the bottom.
-        let x0 = axisOrigin(centre: CGFloat(kb.x) * W, region: regionW, span: W)
-        let y0 = axisOrigin(centre: CGFloat(1 - kb.y) * H, region: regionH, span: H)
+        return CGRect(x: axisOrigin(centre: CGFloat(kb.x) * W, region: regionW, span: W),
+                      y: axisOrigin(centre: CGFloat(kb.y) * H, region: regionH, span: H),
+                      width: regionW, height: regionH)
+    }
 
-        let t = CGAffineTransform(translationX: -(image.extent.minX + x0),
+    /// The part of the image to show, scaled to fill `size` exactly.
+    public static func placed(_ image: CIImage, fit: Fit, kb: KenBurnsFrame,
+                              in size: CGSize) -> CIImage {
+        let W = image.extent.width, H = image.extent.height
+        let r = viewRegion(imageSize: CGSize(width: W, height: H), fit: fit, kb: kb, outputSize: size)
+        guard r.width > 0, r.height > 0 else { return image }
+        // Core Image measures y from the bottom.
+        let y0 = H - r.maxY
+        let t = CGAffineTransform(translationX: -(image.extent.minX + r.minX),
                                   y: -(image.extent.minY + y0))
-            .concatenating(CGAffineTransform(scaleX: size.width / regionW,
-                                             y: size.height / regionH))
+            .concatenating(CGAffineTransform(scaleX: size.width / r.width,
+                                             y: size.height / r.height))
         return image.transformed(by: t)
             .cropped(to: CGRect(origin: .zero, size: size))
     }

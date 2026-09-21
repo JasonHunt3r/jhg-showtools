@@ -115,3 +115,44 @@ final class DecodingTests: XCTestCase {
         XCTAssertNil(s.transition)
     }
 }
+
+final class UndoSupportTests: XCTestCase {
+    func testSavingAnOldSnapshotRestoresRemovedSlidesWithTheirIDs() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("st-undo-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let lib = try Library(root: dir)
+        let probe = MediaProbe(kind: .image, width: 10, height: 10)
+        let a = try lib.insertItem(relativePath: "a.jpg", hash: "a", probe: probe, sourcePath: "")
+        var show = try lib.createShow(name: "S", itemIDs: [a.id, a.id, a.id])
+        show.slides[1].settings.length = .seconds(7)
+        show = try lib.saveShow(show)
+        let before = show
+
+        show.slides.remove(at: 1)
+        try lib.saveShow(show)
+        XCTAssertEqual(try lib.allShows()[0].slides.count, 2)
+
+        try lib.saveShow(before)   // what undo does
+        let restored = try lib.allShows()[0]
+        XCTAssertEqual(restored.slides.map(\.id), before.slides.map(\.id))
+        XCTAssertEqual(restored.slides[1].settings.length, .seconds(7))
+    }
+}
+
+final class FramingTests: XCTestCase {
+    func testViewRegionFillLandscapeIntoWideOutput() {
+        let r = Compositor.viewRegion(imageSize: CGSize(width: 4000, height: 3000), fit: .fill,
+                                      kb: .centred, outputSize: CGSize(width: 1600, height: 900))
+        XCTAssertEqual(r.width, 4000, accuracy: 0.01)
+        XCTAssertEqual(r.height, 2250, accuracy: 0.01)
+        XCTAssertEqual(r.minY, 375, accuracy: 0.01)
+    }
+
+    func testZoomAndTopLeftCentreClampsInsideImage() {
+        let r = Compositor.viewRegion(imageSize: CGSize(width: 4000, height: 3000), fit: .fill,
+                                      kb: KenBurnsFrame(x: 0, y: 0, zoom: 2),
+                                      outputSize: CGSize(width: 1600, height: 900))
+        XCTAssertEqual(r.origin, .zero)
+        XCTAssertEqual(r.width, 2000, accuracy: 0.01)
+    }
+}
