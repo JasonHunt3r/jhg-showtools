@@ -237,6 +237,32 @@ final class AppModel {
         }
     }
 
+    /// Star ratings belong to files, so this isn't a show edit; it has its
+    /// own undo, which puts each file's previous rating back.
+    func setRating(_ rating: Int, for itemIDs: Set<Int64>, undo: UndoManager?) {
+        let r = min(max(rating, 0), 5)
+        applyRatings(itemIDs.map { ($0, r) }, undo: undo)
+    }
+
+    private func applyRatings(_ changes: [(Int64, Int)], undo: UndoManager?) {
+        guard let lib = library else { return }
+        let before = changes.map { ($0.0, itemsByID[$0.0]?.rating ?? 0) }
+        do {
+            for (id, r) in changes { try lib.setRating(r, for: [id]) }
+        } catch {
+            loadError = "\(error)"
+            return
+        }
+        for (id, r) in changes {
+            itemsByID[id]?.rating = r
+            if let i = items.firstIndex(where: { $0.id == id }) { items[i].rating = r }
+        }
+        undo?.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated { model.applyRatings(before, undo: undo) }
+        }
+        undo?.setActionName("Rate")
+    }
+
     func timeline(for show: Show) -> ShowTimeline {
         ShowTimeline(show: show, items: itemsByID)
     }

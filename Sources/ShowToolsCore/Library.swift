@@ -99,6 +99,16 @@ public final class Library {
                     """)
             }
         }
+        // 2 (2026-09-21): star ratings on files. Additive: every existing
+        // file starts unrated, and nothing else changes.
+        if db.userVersion < 2 {
+            try db.transaction {
+                try db.exec("""
+                    ALTER TABLE items ADD COLUMN rating INTEGER NOT NULL DEFAULT 0;
+                    PRAGMA user_version = 2;
+                    """)
+            }
+        }
     }
 
     public func url(for item: MediaItem) -> URL {
@@ -109,7 +119,7 @@ public final class Library {
 
     public func allItems() throws -> [MediaItem] {
         let s = try db.prepare("""
-            SELECT id, rel_path, hash, kind, width, height, duration, ingested_at, source_path
+            SELECT id, rel_path, hash, kind, width, height, duration, ingested_at, source_path, rating
             FROM items ORDER BY ingested_at, id
             """)
         var out: [MediaItem] = []
@@ -120,9 +130,19 @@ public final class Library {
                 pixelWidth: Int(s.int(4)), pixelHeight: Int(s.int(5)),
                 duration: s.isNull(6) ? nil : s.double(6),
                 ingestedAt: Date(timeIntervalSince1970: s.double(7)),
-                sourcePath: s.text(8)))
+                sourcePath: s.text(8), rating: Int(s.int(9))))
         }
         return out
+    }
+
+    /// Sets the star rating (0…5) on several files at once.
+    public func setRating(_ rating: Int, for itemIDs: [Int64]) throws {
+        let r = Int64(min(max(rating, 0), 5))
+        try db.transaction {
+            for id in itemIDs {
+                try db.prepare("UPDATE items SET rating = ? WHERE id = ?").bind(.int(r), .int(id)).run()
+            }
+        }
     }
 
     public func itemID(forHash hash: String) throws -> Int64? {

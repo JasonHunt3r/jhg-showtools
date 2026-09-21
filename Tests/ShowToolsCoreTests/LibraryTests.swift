@@ -156,3 +156,42 @@ final class FramingTests: XCTestCase {
         XCTAssertEqual(r.width, 2000, accuracy: 0.01)
     }
 }
+
+extension LibraryTests {
+    /// A library written before ratings existed (schema version 1), opened by
+    /// this build: the file comes through unrated and nothing else changes.
+    func testAVersionOneLibraryUpgradesToRatings() throws {
+        let root = dir.appendingPathComponent("Old.noindex")
+        try FileManager.default.createDirectory(at: root.appendingPathComponent("Media"),
+                                                withIntermediateDirectories: true)
+        do {
+            let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
+            try db.exec("""
+                CREATE TABLE items (id INTEGER PRIMARY KEY AUTOINCREMENT, rel_path TEXT NOT NULL UNIQUE,
+                    hash TEXT NOT NULL UNIQUE, kind TEXT NOT NULL, width INTEGER NOT NULL,
+                    height INTEGER NOT NULL, duration REAL, ingested_at REAL NOT NULL,
+                    source_path TEXT NOT NULL);
+                CREATE TABLE shows (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
+                    defaults TEXT NOT NULL, created_at REAL NOT NULL);
+                CREATE TABLE slides (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    show_id INTEGER NOT NULL REFERENCES shows(id) ON DELETE CASCADE,
+                    position INTEGER NOT NULL, item_id INTEGER NOT NULL REFERENCES items(id),
+                    settings TEXT NOT NULL);
+                INSERT INTO items (rel_path, hash, kind, width, height, duration, ingested_at, source_path)
+                    VALUES ('a.jpg', 'h1', 'image', 400, 300, NULL, 0, '/x/a.jpg');
+                PRAGMA user_version = 1;
+                """)
+        }
+        let lib = try Library(root: root)
+        let items = try lib.allItems()
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items[0].relativePath, "a.jpg")
+        XCTAssertEqual(items[0].pixelWidth, 400)
+        XCTAssertEqual(items[0].rating, 0)
+
+        try lib.setRating(4, for: [items[0].id])
+        XCTAssertEqual(try Library(root: root).allItems()[0].rating, 4)
+        try lib.setRating(9, for: [items[0].id])                  // clamped
+        XCTAssertEqual(try Library(root: root).allItems()[0].rating, 5)
+    }
+}

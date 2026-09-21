@@ -9,6 +9,7 @@ struct SlideInspector: View {
     let selection: Set<Int64>
     let mutate: ShowMutator
     @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
 
     private var selected: [Slide] { show.slides.filter { selection.contains($0.id) } }
 
@@ -39,6 +40,12 @@ struct SlideInspector: View {
                     } else {
                         Text("\(selected.count) slides selected").font(.headline)
                         Text("Changes apply to all of them.").foregroundStyle(.secondary)
+                    }
+                    // The file's rating, the same in every show that uses it.
+                    LabeledContent("Rating") {
+                        StarRating(rating: model.itemsByID[first.itemID]?.rating ?? 0) { r in
+                            model.setRating(r, for: Set(selected.map(\.itemID)), undo: undoManager)
+                        }
                     }
                 }
 
@@ -340,6 +347,30 @@ struct SlideInspector: View {
             Text("Mixed — the selected slides differ. Showing the first one's value.")
                 .foregroundStyle(.orange)
         }
+    }
+}
+
+/// Five stars: click one to rate, click the current rating's star again to
+/// clear it. Hovering shows what a click would set.
+struct StarRating: View {
+    let rating: Int
+    let set: (Int) -> Void
+    @State private var hover: Int?
+
+    var body: some View {
+        let shown = hover ?? rating
+        HStack(spacing: 2) {
+            ForEach(1...5, id: \.self) { n in
+                Image(systemName: n <= shown ? "star.fill" : "star")
+                    .foregroundStyle(n <= shown ? Color.yellow : Color.secondary)
+                    .frame(width: 16, height: 16)
+                    .contentShape(Rectangle())
+                    .onHover { inside in hover = inside ? n : (hover == n ? nil : hover) }
+                    .onTapGesture { set(n == rating ? 0 : n) }
+            }
+        }
+        .help(rating == 0 ? "Not rated. Click a star to rate."
+                          : "\(rating) star\(rating == 1 ? "" : "s"). Click the last star again to clear.")
     }
 }
 

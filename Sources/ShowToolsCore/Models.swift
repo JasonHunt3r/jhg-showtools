@@ -28,9 +28,14 @@ public struct MediaItem: Identifiable, Hashable, Sendable {
     /// Where the file was copied from. Informational only; may no longer exist.
     public var sourcePath: String
 
+    /// Stars, 0 (unrated) to 5. Belongs to the file, like tags will: the
+    /// same in every show that uses it.
+    public var rating: Int
+
     public init(id: Int64, relativePath: String, hash: String, kind: MediaKind,
                 pixelWidth: Int, pixelHeight: Int, duration: Double?,
-                ingestedAt: Date, sourcePath: String) {
+                ingestedAt: Date, sourcePath: String, rating: Int = 0) {
+        self.rating = rating
         self.id = id
         self.relativePath = relativePath
         self.hash = hash
