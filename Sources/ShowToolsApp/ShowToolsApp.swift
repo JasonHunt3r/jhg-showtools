@@ -38,6 +38,23 @@ struct AppCommands: Commands {
                 .keyboardShortcut("i", modifiers: [.command, .shift])
             Button("Add to Library…") { runImportPanel(model, intoCollection: false) }
                 .keyboardShortcut("i", modifiers: [.command, .shift, .option])
+            Divider()
+            // Libraries switch one at a time, as Photos does (plan, 2b).
+            Button("Open Library…") { runOpenLibraryPanel(model) }
+                .keyboardShortcut("o", modifiers: [.command, .option])
+            Menu("Open Recent Library") {
+                ForEach(model.recentLibraries, id: \.self) { url in
+                    Button(url.deletingPathExtension().lastPathComponent) {
+                        Task { await model.openLibrary(at: url) }
+                    }
+                }
+                if !model.recentLibraries.isEmpty { Divider() }
+                Button("Clear Menu") { model.clearRecentLibraries() }
+                    .disabled(model.recentLibraries.isEmpty)
+            }
+            Button("New Library…") { runNewLibraryPanel(model) }
+            Button("Open Master Library") { Task { await model.openLibrary(at: model.masterURL) } }
+                .disabled(model.isOnMaster)
         }
 
         CommandMenu("Show") {
@@ -67,6 +84,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Library") {
+                LabeledContent("Name", value: model.libraryName)
                 LabeledContent("Location") {
                     HStack {
                         Text(model.library?.root.path(percentEncoded: false) ?? "—")
@@ -85,6 +103,13 @@ struct SettingsView: View {
                 Text(model.libraryHiddenFromSpotlight
                      ? "Hidden: the library folder ends in “.noindex”, so Spotlight skips its file names, image details and the text in pictures."
                      : "Searchable: Spotlight can find library files by name, image details and the text in pictures.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Toggle("Private library", isOn: Binding(
+                    get: { model.libraryIsPrivate },
+                    set: { on in Task { await model.setPrivate(on) } }))
+                    .disabled(model.library == nil)
+                Text("Opening a private library asks for Touch ID or your Mac's password, and it's never listed in Open Recent. Turning this off asks too. It locks ShowTools' door only: the photos are still ordinary files to anyone using this Mac account. To lock the files themselves, keep the library in an encrypted disk image (Disk Utility can make one).")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

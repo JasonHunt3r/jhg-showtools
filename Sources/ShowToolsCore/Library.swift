@@ -152,6 +152,37 @@ public final class Library {
                 try db.exec("PRAGMA user_version = 4")
             }
         }
+        // 5 (2026-09-21): the library's own settings, starting with whether
+        // it's private. Kept in the library so it holds wherever it's opened.
+        if db.userVersion < 5 {
+            try db.transaction {
+                try db.exec("""
+                    CREATE TABLE library_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                    PRAGMA user_version = 5;
+                    """)
+            }
+        }
+    }
+
+    // MARK: The library itself
+
+    /// Its name: the folder's, without ".noindex".
+    public var name: String {
+        (isHidden ? root.deletingPathExtension() : root).lastPathComponent
+    }
+
+    /// A private library asks for Touch ID or the Mac's password before it
+    /// opens, and isn't listed in Open Recent (the app does both). It guards
+    /// the door in ShowTools only; the files are still ordinary files.
+    public var isPrivate: Bool {
+        (try? db.prepare("SELECT value FROM library_settings WHERE key = 'private'").firstText()) == "1"
+    }
+
+    public func setPrivate(_ on: Bool) throws {
+        try db.prepare("""
+            INSERT INTO library_settings (key, value) VALUES ('private', ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """).bind(.text(on ? "1" : "0")).run()
     }
 
     public static let startingCollectionName = "Untitled Collection"

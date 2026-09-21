@@ -114,6 +114,11 @@ final class Statement {
         return try step() ? Int(int(0)) : nil
     }
 
+    func firstText() throws -> String? {
+        defer { sqlite3_reset(stmt) }
+        return try step() ? text(0) : nil
+    }
+
     func int(_ col: Int32) -> Int64 { sqlite3_column_int64(stmt, col) }
     func double(_ col: Int32) -> Double { sqlite3_column_double(stmt, col) }
     func isNull(_ col: Int32) -> Bool { sqlite3_column_type(stmt, col) == SQLITE_NULL }

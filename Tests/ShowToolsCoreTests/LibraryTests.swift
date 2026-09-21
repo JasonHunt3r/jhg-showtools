@@ -305,3 +305,19 @@ extension LibraryTests {
         XCTAssertEqual(try lib.allItems().count, 3)                          // files stay
     }
 }
+
+// MARK: - The library itself (schema 5)
+
+extension LibraryTests {
+    func testPrivateFlagLivesInTheLibrary() throws {
+        let root = dir.appendingPathComponent("Secret.noindex")
+        let lib = try Library(root: root)
+        XCTAssertEqual(lib.name, "Secret")
+        XCTAssertFalse(lib.isPrivate)
+        try lib.setPrivate(true)
+        XCTAssertTrue(try Library(root: root).isPrivate)       // held in the library, wherever it opens
+        try lib.setPrivate(false)
+        XCTAssertFalse(try Library(root: root).isPrivate)
+        XCTAssertEqual(try Library(root: dir.appendingPathComponent("Plain")).name, "Plain")
+    }
+}

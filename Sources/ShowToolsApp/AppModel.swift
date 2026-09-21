@@ -43,14 +43,116 @@ final class AppModel {
     }
     var importStatus: ImportStatus?
 
+    /// A private library waiting to be unlocked: the master, at launch.
+    private(set) var locked: Library?
+    /// Open Recent, newest first. Private libraries never appear here.
+    private(set) var recentLibraries: [URL] = []
+    /// Whether the open library is private (kept here so views update).
+    private(set) var libraryIsPrivate = false
+    private static let recentKey = "recentLibraries"
+
+    /// The app always starts on the master library (plan, 2b). If the master
+    /// is private, it waits, locked, for Unlock rather than asking before
+    /// there's even a window.
     init() {
-        open(at: LibraryLocation.resolve())
+        recentLibraries = (UserDefaults.standard.stringArray(forKey: Self.recentKey) ?? [])
+            .map { URL(fileURLWithPath: $0) }
+            .filter { FileManager.default.fileExists(atPath: $0.path) }
+        do {
+            let lib = try Library(root: masterURL)
+            if lib.isPrivate { locked = lib } else { load(lib) }
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
+    /// The master library's folder (under either name, as Spotlight's
+    /// setting leaves it).
+    var masterURL: URL { LibraryLocation.resolve() }
+
+    var isOnMaster: Bool {
+        library?.root.standardizedFileURL == masterURL.standardizedFileURL
+    }
+
+    var libraryName: String { library?.name ?? locked?.name ?? "Library" }
+
+    /// Opens another library in place of this one. A private one asks for
+    /// Touch ID or the password first; if that fails, nothing changes.
+    func openLibrary(at url: URL) async {
+        let lib: Library
+        do {
+            lib = try Library(root: url)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Couldn't open that library."
+            alert.informativeText = "\(error)"
+            alert.runModal()
+            return
+        }
+        if lib.isPrivate, !(await DeviceOwner.confirm("open the private library “\(lib.name)”")) { return }
+        switchTo(lib)
+    }
+
+    func unlock() async {
+        guard let lib = locked, await DeviceOwner.confirm("open the private library “\(lib.name)”") else { return }
+        switchTo(lib)
+    }
+
+    /// Turning privacy on needs nothing; turning it off asks.
+    func setPrivate(_ on: Bool) async {
+        guard let lib = library, on != libraryIsPrivate else { return }
+        if !on, !(await DeviceOwner.confirm("stop “\(lib.name)” being private")) { return }
+        do {
+            try lib.setPrivate(on)
+            libraryIsPrivate = on
+            if on { forgetRecent(lib.root) } else if !isOnMaster { remember(lib.root) }
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
+    func clearRecentLibraries() {
+        recentLibraries = []
+        UserDefaults.standard.set([String](), forKey: Self.recentKey)
+    }
+
+    /// Everything from the old library goes: player windows, and the
+    /// thumbnail cache (its numbers only mean anything within one library).
+    private func switchTo(_ lib: Library) {
+        Player.closeAll()
+        Thumbnails.shared.clear()
+        sidebar = .library
+        library = nil
+        locked = nil
+        load(lib)
+        if !lib.isPrivate, !isOnMaster { remember(lib.root) }
+    }
+
+    private func remember(_ url: URL) {
+        recentLibraries.removeAll { $0.standardizedFileURL == url.standardizedFileURL }
+        recentLibraries.insert(url, at: 0)
+        recentLibraries = Array(recentLibraries.prefix(10))
+        UserDefaults.standard.set(recentLibraries.map(\.path), forKey: Self.recentKey)
+    }
+
+    private func forgetRecent(_ url: URL) {
+        recentLibraries.removeAll { $0.standardizedFileURL == url.standardizedFileURL }
+        UserDefaults.standard.set(recentLibraries.map(\.path), forKey: Self.recentKey)
     }
 
     private func open(at url: URL) {
         do {
-            let lib = try Library(root: url)
+            load(try Library(root: url))
+        } catch {
+            library = nil
+            loadError = "\(error)"
+        }
+    }
+
+    private func load(_ lib: Library) {
+        do {
             library = lib
+            libraryIsPrivate = lib.isPrivate
             items = try lib.allItems()
             itemsByID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
             shows = try lib.allShows()
@@ -74,7 +176,10 @@ final class AppModel {
     func setSpotlightIndexing(_ indexed: Bool) {
         guard let lib = library, lib.isHidden == indexed else { return }
         let from = lib.root
-        let to = indexed ? LibraryLocation.visibleURL : LibraryLocation.hiddenURL
+        // The open library's own folder, renamed in place. (It used to build
+        // the master's path, which would have moved an alternate library
+        // into the master's place.)
+        let to = indexed ? from.deletingPathExtension() : from.appendingPathExtension("noindex")
         library = nil      // closes the database before the move
         do {
             try FileManager.default.moveItem(at: from, to: to)
@@ -128,8 +233,11 @@ final class AppModel {
     /// up as files on disk to import; promised files land in a temporary
     /// folder first and are deleted after they're copied in.
     func importProviders(_ providers: [NSItemProvider]) async -> [Int64] {
-        let staging = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ShowTools-drop-\(UUID().uuidString)")
+        // Staged inside the library's own folder, so copies from Photos never
+        // pass through the system's temporary folder (matters for a private
+        // library). Removed when the import is done.
+        let staging = (library?.root ?? FileManager.default.temporaryDirectory)
+            .appendingPathComponent(".staging-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: staging) }
 

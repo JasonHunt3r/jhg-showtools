@@ -99,6 +99,13 @@ screenshots:
   collection, New Collection, Library Only) and File ▸ Add to Library…;
   the grid's search, filters (incl. Not in Any Collection) and sort;
   dragging a multi-selection onto a collection and onto a show
+- **Libraries (2026-09-21):** the locked screen checked by screenshot (a
+  private master opens locked, nothing of it showing). Try: File ▸ Open
+  Library…, New Library… (makes a .noindex folder), Open Recent Library
+  (private ones never listed), Open Master Library; Settings ▸ Library ▸
+  Private library (off asks for Touch ID or the password); Unlock on the
+  locked screen. Also that Settings ▸ Let Spotlight index the library, with
+  an alternate library open, renames *that* library's folder in place
 - **Soft-at-this-zoom warning (2026-09-21):** checked by screenshot; the
   flags on the test library are all correct for a 2560×1664 screen
 

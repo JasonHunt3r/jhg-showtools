@@ -12,6 +12,12 @@ final class Thumbnails {
 
     func cached(_ id: Int64) -> NSImage? { cache.object(forKey: NSNumber(value: id)) }
 
+    /// On switching libraries: ids only mean anything within one.
+    func clear() {
+        cache.removeAllObjects()
+        strips.removeAll()
+    }
+
     func load(_ item: MediaItem, url: URL) async -> NSImage? {
         if let hit = cached(item.id) { return hit }
         let kind = item.kind

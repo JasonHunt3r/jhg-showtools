@@ -40,6 +40,8 @@ final class Player: NSObject, NSWindowDelegate {
         p.present(fullScreen: false, on: NSScreen.screens.first { $0 != editorScreen })
     }
 
+    static func closeAll() { open.forEach { $0.window.close() } }
+
     static func closeWindows(for engine: PlaybackEngine) {
         open.filter { $0.engine === engine }.forEach { $0.window.close() }
     }

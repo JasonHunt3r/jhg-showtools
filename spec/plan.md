@@ -392,7 +392,9 @@ to the Collection Browser and the library.
   also holds the **search field and filtering tools** for the list.
 - **Libraries switch, one at a time** (as Photos does): File ▸ Open
   Library…, New Library…, and **Open Recent**. The app always starts on the
-  master library.
+  master library; if the master is private it opens on a locked screen
+  with Unlock (built 2026-09-21), rather than asking before there's a
+  window.
 - **Private libraries:** a library can be marked private. A private library
   is **left out of Open Recent**, is **never reopened automatically**, and
   opening it asks for **Touch ID or the Mac's login password**

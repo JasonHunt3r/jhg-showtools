@@ -21,7 +21,10 @@ struct MainView: View {
         @Bindable var model = model
         NavigationSplitView {
             List(selection: $model.sidebar) {
-                Label("Library", systemImage: "photo.on.rectangle.angled")
+                // An alternate library shows its own name here.
+                Label(model.isOnMaster ? "Library" : model.libraryName,
+                      systemImage: model.libraryIsPrivate || model.locked != nil
+                          ? "lock.rectangle.stack" : "photo.on.rectangle.angled")
                     .badge(model.items.count)
                     .tag(SidebarItem.library)
 
@@ -74,6 +77,11 @@ struct MainView: View {
             }
         }
         .overlay(alignment: .bottom) { ImportBanner() }
+        .overlay {
+            if let locked = model.locked {
+                LockedLibraryView(name: locked.name)
+            }
+        }
         .overlay {
             if let err = model.loadError {
                 ContentUnavailableView("Library problem", systemImage: "exclamationmark.triangle",
