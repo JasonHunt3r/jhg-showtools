@@ -347,11 +347,15 @@ lane images over it; hatched where freeze on transition holds still), then
 the effects' controls. Built 2026-09-21. The bars may become draggable
 later; they aren't, because most timings come from other settings.
 
-### Frame strip (asked 2026-09-21, not built)
-A strip of rendered frames of the finished picture above the play bar;
-drag its top edge taller for bigger frames. Open: whether it follows the
-play bar's timescale (the whole show) or the storyline's (zoom and
-scroll).
+### Frame strip (built 2026-09-21)
+A strip of rendered frames of the finished picture (slides, transitions,
+lane images) above the play bar. It can **follow the storyline** (frames
+over their moments, scrolling with the blocks; the default) or show the
+**whole show**, chosen from a small menu on the strip. Drag its top edge
+for bigger frames, which then each cover more time, so fewer show. Click a
+frame to go there. **View ▸ Show Frame Strip (⌥⌘F)**. Frames render in the
+background through the Compositor from small copies of the files, cached by
+time. Video shows its first frame for now.
 
 ### Plugin seam (internal, our own plugins only)
 Tools that make or alter media sit behind one interface: library media in,

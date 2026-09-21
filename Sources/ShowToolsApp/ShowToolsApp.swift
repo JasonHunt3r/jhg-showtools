@@ -25,6 +25,7 @@ struct ShowToolsApp: App {
 struct AppCommands: Commands {
     let model: AppModel
     @FocusedValue(\.activeShowID) private var activeShowID
+    @AppStorage("frameStripShown") private var frameStripShown = true
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -55,6 +56,12 @@ struct AppCommands: Commands {
             Button("New Library…") { runNewLibraryPanel(model) }
             Button("Open Master Library") { Task { await model.openLibrary(at: model.masterURL) } }
                 .disabled(model.isOnMaster)
+        }
+
+        CommandGroup(before: .toolbar) {
+            Toggle("Show Frame Strip", isOn: $frameStripShown)
+                .keyboardShortcut("f", modifiers: [.command, .option])
+            Divider()
         }
 
         CommandMenu("Show") {

@@ -17,6 +17,9 @@ struct EditShowView: View {
     /// The image selected in the lane's images row.
     @State private var selectedOverlay: UUID?
     @AppStorage("storylineZoom") private var pps: Double = 24
+    @State private var storylineOffset: CGFloat = 0
+    @AppStorage("frameStripShown") private var frameStripShown = true
+    @AppStorage("frameStripHeight") private var frameStripHeight: Double = 64
 
     var body: some View {
         // A ZStack, not a Group: modifiers on a Group apply to each child, so
@@ -38,16 +41,20 @@ struct EditShowView: View {
                                                   mutate: mutate))
                         .frame(minHeight: 220)
                     VStack(spacing: 0) {
+                        if frameStripShown {
+                            FrameStrip(show: show, timeline: timeline, engine: engine, pps: pps,
+                                       scrollOffset: storylineOffset, inset: StorylineView.inset)
+                        }
                         TransportRow(engine: engine, pps: $pps, fit: fitStoryline)
                         Divider()
                         StorylineView(show: show, timeline: timeline, engine: engine,
                                       selection: $selection, selectedTransition: $selectedTransition,
                                       selectedOverlay: $selectedOverlay,
-                                      pps: $pps, mutate: mutate,
+                                      pps: $pps, scrollOffset: $storylineOffset, mutate: mutate,
                                       openInspector: { inspectorShown = true })
                     }
-                    .frame(minHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 80 + 56,
-                           idealHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 90 + 56)
+                    .frame(minHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 80 + 56 + stripHeight,
+                           idealHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 90 + 56 + stripHeight)
                 }
                 .onDeleteCommand {
                     // What's selected in the lane goes first: an image is
@@ -120,6 +127,10 @@ struct EditShowView: View {
     }
 
     @State private var visibleWidth: CGFloat = 800
+
+    private var stripHeight: CGFloat {
+        frameStripShown ? CGFloat(frameStripHeight) + FrameStrip.handle : 0
+    }
 
     private func fitStoryline() {
         guard timeline.duration > 0 else { return }

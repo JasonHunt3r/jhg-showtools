@@ -20,6 +20,8 @@ struct StorylineView: View {
     @Binding var selectedOverlay: UUID?
     /// Points per second: the zoom.
     @Binding var pps: Double
+    /// How far the storyline is scrolled, for the frame strip to follow.
+    @Binding var scrollOffset: CGFloat
     let mutate: ShowMutator
     let openInspector: () -> Void
     @Environment(AppModel.self) private var model
@@ -188,7 +190,13 @@ struct StorylineView: View {
                 .overlay(alignment: .topLeading) { Playhead(engine: engine, timeline: timeline, pps: pps, inset: Self.inset) }
                 .coordinateSpace(name: "storyline")
                 .padding(.vertical, 6)
+                .background(GeometryReader { g in
+                    Color.clear.preference(key: StorylineScrollKey.self,
+                                           value: -g.frame(in: .named("storylineScroll")).minX)
+                })
             }
+            .coordinateSpace(name: "storylineScroll")
+            .onPreferenceChange(StorylineScrollKey.self) { scrollOffset = $0 }
             .onChange(of: engine.currentIndex) { _, i in
                 // Keep the playing slide in view.
                 guard engine.isPlaying, timeline.slides.indices.contains(i) else { return }
@@ -916,4 +924,10 @@ struct StorylineDrop: DropDelegate {
         perform(info.itemProviders(for: ItemDrag.accepted), location)
         return true
     }
+}
+
+/// The storyline's horizontal scroll, reported for the frame strip.
+struct StorylineScrollKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
