@@ -60,7 +60,7 @@ screenshots:
 
 ## Next: Phase 2c Layers (2a is built, bar presets, which were deferred)
 
-**Superseded 2026-09-21:** 2a now comes first, and 2c is settled at two picture layers. See `spec/plan.md`. The text below is the original 2c note.
+2c is settled at two picture layers (storyline plus one connected clip per slide), stored as a list. See `spec/plan.md`. The text below is the original 2c note.
 
 Designed and approved in `spec/plan.md`: Final Cut's model, with **connected
 clips** stacked above the storyline and attached to a slide, so they move and
