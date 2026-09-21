@@ -67,14 +67,21 @@ struct MainView: View {
                 .padding(8)
             }
         } detail: {
-            switch model.sidebar {
-            case .show(let id) where model.show(id) != nil:
-                ShowView(showID: id)
-            case .collection(let id) where model.collection(id) != nil:
-                LibraryGridView(collectionID: id)
-            default:
-                LibraryGridView()
+            // A fresh detail for each library. Ids restart at 1 in every
+            // library, so views kept across a switch (grid tiles, their
+            // thumbnails, the selection) would show the old library's files
+            // under the new one's names.
+            ZStack {
+                switch model.sidebar {
+                case .show(let id) where model.show(id) != nil:
+                    ShowView(showID: id)
+                case .collection(let id) where model.collection(id) != nil:
+                    LibraryGridView(collectionID: id)
+                default:
+                    LibraryGridView()
+                }
             }
+            .id(model.libraryGeneration)
         }
         // Another library's undo steps mean nothing here (see libraryGeneration).
         .onChange(of: model.libraryGeneration) { undoManager?.removeAllActions() }

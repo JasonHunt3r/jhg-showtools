@@ -12,19 +12,26 @@ final class Thumbnails {
 
     func cached(_ id: Int64) -> NSImage? { cache.object(forKey: NSNumber(value: id)) }
 
+    /// Bumped by `clear()`. A load that was under way when the library
+    /// changed finishes against an id the new library uses for another
+    /// file, so it checks this and is thrown away.
+    private var generation = 0
+
     /// On switching libraries: ids only mean anything within one.
     func clear() {
+        generation += 1
         cache.removeAllObjects()
         strips.removeAll()
+        stripLoading.removeAll()
     }
 
     func load(_ item: MediaItem, url: URL) async -> NSImage? {
         if let hit = cached(item.id) { return hit }
-        let kind = item.kind
+        let kind = item.kind, started = generation
         let cg = await Task.detached(priority: .userInitiated) {
             kind == .video ? await Self.videoFrame(url) : Self.imageThumb(url)
         }.value
-        guard let cg else { return nil }
+        guard let cg, generation == started else { return nil }
         let img = NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
         cache.setObject(img, forKey: NSNumber(value: item.id))
         return img
@@ -42,11 +49,12 @@ final class Thumbnails {
         if let s = strips[item.id] { return s }
         guard !stripLoading.contains(item.id) else { return nil }
         stripLoading.insert(item.id)
-        let duration = item.duration ?? 0
+        let duration = item.duration ?? 0, started = generation
         Task {
             let frames = await Task.detached(priority: .utility) {
                 Handoff(value: await Self.videoFrames(url, duration: duration, count: Self.stripFrames))
             }.value.value
+            guard generation == started else { return }
             strips[item.id] = frames.map { NSImage(cgImage: $0, size: NSSize(width: $0.width, height: $0.height)) }
             stripLoading.remove(item.id)
             onReady()

@@ -129,15 +129,28 @@ struct EditShowView: View {
         pps = min(max(Double(visibleWidth - StorylineView.inset * 2 - 40) / timeline.duration, 2), 400)
     }
 
-    /// Keyboard shortcuts with no visible button: Final Cut's J/K/L and zoom.
+    /// Keyboard shortcuts with no visible button: Final Cut's J/K/L, space,
+    /// ⇧Z and zoom.
+    ///
+    /// The single keys aren't `.keyboardShortcut`s: those become window key
+    /// equivalents, which AppKit offers before the focused text field, so
+    /// typing "j" or a space into Search would shuttle or play instead
+    /// (audit M4). `SingleKeys` lets them through to any text being edited.
     private func shortcuts(_ engine: PlaybackEngine) -> some View {
         ZStack {
-            Button("") { engine.shuttle(-1) }.keyboardShortcut("j", modifiers: [])
-            Button("") { engine.shuttle(0) }.keyboardShortcut("k", modifiers: [])
-            Button("") { engine.shuttle(1) }.keyboardShortcut("l", modifiers: [])
             Button("") { pps = min(pps * 1.5, 400) }.keyboardShortcut("=", modifiers: .command)
             Button("") { pps = max(pps / 1.5, 2) }.keyboardShortcut("-", modifiers: .command)
-            Button("") { fitStoryline() }.keyboardShortcut("z", modifiers: .shift)
+            SingleKeys { event in
+                switch (event.keyCode, event.charactersIgnoringModifiers?.lowercased(), event.plainModifiers) {
+                case (49, _, []): engine.togglePlay()                  // space
+                case (_, "j", []): engine.shuttle(-1)
+                case (_, "k", []): engine.shuttle(0)
+                case (_, "l", []): engine.shuttle(1)
+                case (_, "z", [.shift]): fitStoryline()
+                default: return false
+                }
+                return true
+            }
         }
         .opacity(0)
         .allowsHitTesting(false)
@@ -511,7 +524,8 @@ struct TransportRow: View {
             Button { engine.togglePlay() } label: {
                 Image(systemName: engine.isPlaying ? "pause.fill" : "play.fill").frame(width: 14)
             }
-            .keyboardShortcut(.space, modifiers: [])
+            // Space is handled by EditShowView's SingleKeys, not a shortcut,
+            // so it can still be typed into text fields.
             .help(engine.isPlaying ? "Pause (space)" : "Play (space)")
             Button { engine.step(1) } label: { Image(systemName: "forward.end.fill") }
                 .help("Next slide")
@@ -559,3 +573,61 @@ func formatClock(_ s: Double) -> String {
     return String(format: "%d:%04.1f", m, t - Double(m * 60))
 }
 
+
+// MARK: - Single-key commands
+
+/// Keys with no modifier (or only Shift) for the window this sits in,
+/// taken before AppKit dispatches them, except while text is being edited:
+/// then the key goes to the text. `handle` returns true for a key it used.
+/// Held keys don't repeat the command (a held space would flicker between
+/// play and pause).
+struct SingleKeys: NSViewRepresentable {
+    let handle: (NSEvent) -> Bool
+
+    func makeNSView(context: Context) -> KeyView { KeyView() }
+    func updateNSView(_ view: KeyView, context: Context) { view.handle = handle }
+
+    final class KeyView: NSView {
+        var handle: ((NSEvent) -> Bool)?
+        private var monitor: Any?
+        /// The key last used, so its auto-repeats are swallowed too.
+        private var held: UInt16?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+            guard window != nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+                let swallow = MainActor.assumeIsolated { self?.swallows(event) ?? false }
+                return swallow ? nil : event
+            }
+        }
+
+        /// True for a key this used (or a repeat of it): AppKit never sees it.
+        private func swallows(_ event: NSEvent) -> Bool {
+            guard let window, event.window === window, window.attachedSheet == nil,
+                  !(window.firstResponder is NSText) else { return false }
+            if event.type == .keyUp {
+                if event.keyCode == held { held = nil }
+                return false
+            }
+            if event.isARepeat { return event.keyCode == held }
+            guard handle?(event) == true else { return false }
+            held = event.keyCode
+            return true
+        }
+
+        isolated deinit {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+        }
+    }
+}
+
+extension NSEvent {
+    /// The modifiers a shortcut cares about: not Caps Lock, not the flags
+    /// the arrow and keypad keys carry.
+    var plainModifiers: NSEvent.ModifierFlags {
+        modifierFlags.intersection(.deviceIndependentFlagsMask).subtracting([.capsLock, .numericPad, .function])
+    }
+}
