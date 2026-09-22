@@ -90,6 +90,11 @@ Library schema is now **version 5**: 2 ratings, 3 overlays, 4 collections, 5 lib
   slide's end (Claude)
 
 ### Built but not yet tried by hand
+
+**Most of this list was run by Claude on 2026-09-21: results in
+`spec/hands-on-2026-09-21.md`.** What's left below is what it couldn't
+reach (Finder/Photos drags, Touch ID, pinch, a second screen, cursors,
+looks), plus Speed mode and the pivot lock (below the inspector's fold).
 Everything below has only been seen in screenshots, or not at all. Claude
 can now work through most of it with `tools/axtool.swift`; what still needs
 Jason's hands is cross-app drags (Finder, Photos), Touch ID, pinch, a
@@ -110,6 +115,19 @@ pass can go area by area:
 
 ## Next
 
+0. **Fix the hands-on findings** (summary at the end of `spec/hands-on-2026-09-21.md`):
+   - **Half-speed drags in the lane:** transition sections (edges, middle) and
+     lane images (move, trim) follow the pointer at half speed. Their
+     `DragGesture`s (StorylineView.swift `transitionDrag`, ImagesRow.swift
+     `drag`) measure in the moving view's local space; use
+     `coordinateSpace: .named("storyline")` like the trim edges. Recheck
+     with axtool: 40 pt at 80 pt/s should give 0.5 s.
+   - **Delete on a selected transition** does nothing while the keyboard is
+     in the sidebar; clicking a section doesn't move it.
+   - **Esc** doesn't deselect a lane image selected in its row (only the
+     picture's overlay handles Esc).
+   - Then check **Speed mode** and the **pivot lock** (scroll the inspector
+     with `axtool scroll`).
 1. **Suggested: a hands-on pass with Jason's own photos**, in a separate library (File ▸ New Library…) so the master isn't used. Claude can take most of the list above first with axtool, leaving Jason the parts that need hands and eyes; it also sets up the parked stickiness question.
 2. **The rest of 2b:**
    - Delete the Photos way (Delete asks, ⌘Delete trashes, ⌘Z restores)

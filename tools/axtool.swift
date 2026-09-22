@@ -12,14 +12,17 @@
 //   axtool menustate <pid> <menu> <item> an item's title and whether enabled
 //   axtool focused <pid>                 the element that has the keyboard
 //   axtool front <pid>                   bring that app forward (do before input)
+//   axtool move <x> <y>                  move the pointer (hover)
 //   axtool click <x> <y> [right|double|cmd|shift]
-//   axtool drag <x1> <y1> <x2> <y2>
+//   axtool drag <x1> <y1> <x2> <y2> [opt|shift|cmd]
+//   axtool scroll <x> <y> <lines>        scroll wheel at a point (negative = down)
 //   axtool type <text>
 //   axtool key <name> [cmd,shift,opt,ctrl]   return, escape, delete, space,
 //                                        tab, left, right, up, down, or a letter
 //
 // Screen points, top-left origin, as `dump` prints them. click, drag, type
-// and key refuse to run unless ShowTools is the frontmost app.
+// and key refuse to run unless ShowTools is the frontmost app, and click and
+// drag refuse any point outside its windows.
 import ApplicationServices
 import AppKit
 
@@ -139,9 +142,38 @@ func requireShowToolsInFront() {
     }
 }
 
+/// A click or drag must also land inside one of ShowTools' windows: being in
+/// front isn't enough (a bad coordinate once clicked another app's window).
+func requireInsideShowTools(_ points: [CGPoint]) {
+    let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier ?? 0
+    let wins = (attr(AXUIElementCreateApplication(pid), kAXWindowsAttribute) as? [AXUIElement] ?? []).compactMap(frame)
+    for p in points where !wins.contains(where: { $0.contains(p) }) {
+        print("REFUSED: \(Int(p.x)),\(Int(p.y)) is outside ShowTools' windows")
+        exit(2)
+    }
+}
+
 let a = CommandLine.arguments
 guard a.count >= 2 else { print("see the header of axtool.swift"); exit(1) }
-if ["click", "drag", "type", "key"].contains(a[1]) { requireShowToolsInFront() }
+if ["click", "drag", "type", "key", "scroll", "move"].contains(a[1]) { requireShowToolsInFront() }
+if a[1] == "move", a.count >= 4, let x = Double(a[2]), let y = Double(a[3]) {
+    requireInsideShowTools([CGPoint(x: x, y: y)])
+}
+if a[1] == "scroll", a.count >= 5, let x = Double(a[2]), let y = Double(a[3]) {
+    requireInsideShowTools([CGPoint(x: x, y: y)])
+}
+if (a[1] == "click" && a.count < 4) || (a[1] == "drag" && a.count < 6) {
+    print("REFUSED: missing coordinates"); exit(2)
+}
+if a[1] == "click", a.count >= 4, let x = Double(a[2]), let y = Double(a[3]) {
+    requireInsideShowTools([CGPoint(x: x, y: y)])
+}
+if a[1] == "drag", a.count >= 6, let x1 = Double(a[2]), let y1 = Double(a[3]), let x2 = Double(a[4]), let y2 = Double(a[5]) {
+    requireInsideShowTools([CGPoint(x: x1, y: y1), CGPoint(x: x2, y: y2)])
+}
+if ["click", "drag"].contains(a[1]), a.count >= 4, Double(a[2]) == nil || Double(a[3]) == nil {
+    print("REFUSED: bad coordinates \(a[2...].joined(separator: " "))"); exit(2)
+}
 let app = { AXUIElementCreateApplication(pid_t(a[2])!) }
 switch a[1] {
 case "dump":
@@ -180,14 +212,29 @@ case "click":
     }
 case "drag":
     let p = CGPoint(x: Double(a[2])!, y: Double(a[3])!), q = CGPoint(x: Double(a[4])!, y: Double(a[5])!)
-    post(.mouseMoved, p)
-    post(.leftMouseDown, p)
+    // A modifier held through the drag: the key goes down first, as a hand's would.
+    let mod: (CGKeyCode, CGEventFlags)? = a.count > 6 ? ["opt": (58, .maskAlternate), "shift": (56, .maskShift),
+                                                         "cmd": (55, .maskCommand)][a[6]] ?? nil : nil
+    if let (code, _) = mod { CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: true)?.post(tap: .cghidEventTap) }
+    let f = mod?.1 ?? []
+    post(.mouseMoved, p, flags: f)
+    post(.leftMouseDown, p, flags: f)
     for i in 1...20 {
         let t = Double(i) / 20
-        post(.leftMouseDragged, CGPoint(x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t))
+        post(.leftMouseDragged, CGPoint(x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t), flags: f)
     }
     usleep(200_000)
-    post(.leftMouseUp, q)
+    post(.leftMouseUp, q, flags: f)
+    if let (code, _) = mod { CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: false)?.post(tap: .cghidEventTap) }
+case "move":
+    post(.mouseMoved, CGPoint(x: Double(a[2])!, y: Double(a[3])!))
+case "scroll":
+    let p = CGPoint(x: Double(a[2])!, y: Double(a[3])!)
+    post(.mouseMoved, p)
+    let e = CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 1, wheel1: Int32(a[4])!, wheel2: 0, wheel3: 0)
+    e?.location = p
+    e?.post(tap: .cghidEventTap)
+    usleep(300_000)
 case "type":
     type(a[2])
 case "key":
