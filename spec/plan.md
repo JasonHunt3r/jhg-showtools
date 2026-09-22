@@ -489,7 +489,10 @@ to the Collection Browser and the library.
   colour**. Slides already have their own background colour (in the
   Inspector); the show-wide default, fixed at black until now, gets a
   control in the Edit Slides header bar. With loop on, the whole show
-  restarts after its longest row ends.
+  restarts after its longest row ends. When something runs past the
+  slides, the loop's restart is a cut from the background into the first
+  slide (there's no last slide to transition from), and the last slide
+  cuts to the background (built 2026-09-21; a fade could come later).
 - **The waveform** is decoded once and cached.
 - **Scrubbing scrubs the show.** It's silent by default. A button in the
   music row's header turns scrub audio on.

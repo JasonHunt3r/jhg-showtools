@@ -31,6 +31,57 @@ final class TimelineTests: XCTestCase {
         XCTAssertEqual(t.duration, 13)
     }
 
+    /// Plan, Phase 3: the show is as long as its longest row, and after
+    /// the last slide the show's background colour shows.
+    func testAnImageOrSongPastTheLastSlideLengthensTheShow() {
+        var (s, items) = show([4, 4])
+        s.defaults.background = SRGBColor(red: 0.2, green: 0.4, blue: 0.6)
+        items[9] = item(9)
+        items[10] = item(10, kind: .audio, duration: 100)
+        s.overlays = [OverlayClip(itemID: 9, start: 6, length: 5)]            // ends at 11
+        var t = ShowTimeline(show: s, items: items)
+        XCTAssertEqual(t.slidesEnd, 8)
+        XCTAssertEqual(t.duration, 11)
+        guard case .background(let c, let after) = t.frame(at: 9) else { return XCTFail("expected the background") }
+        XCTAssertEqual(c, s.defaults.background)
+        XCTAssertEqual(after, 1)
+        XCTAssertEqual(t.frame(at: 9).currentIndex, 1)
+
+        s.music = [AudioClip(itemID: 10, start: 2, length: 20)]              // ends at 22
+        t = ShowTimeline(show: s, items: items)
+        XCTAssertEqual(t.duration, 22)
+        // A clip whose file is missing doesn't count.
+        s.music = [AudioClip(itemID: 99, start: 2, length: 50)]
+        XCTAssertEqual(ShowTimeline(show: s, items: items).duration, 11)
+    }
+
+    /// Looping with time after the slides: the wrap is a cut from the
+    /// background, not a transition from the last slide into the first.
+    func testALoopWithATailWrapsWithoutATransition() {
+        var (s, items) = show([4, 4], loop: true)
+        items[9] = item(9)
+        let direct = ShowTimeline(show: s, items: items)
+        XCTAssertTrue(direct.wrapsDirectly)
+        // (These tests' dissolve starts at its join and runs into the slide.)
+        guard case .transition(let from, let to, _, _) = direct.frame(at: 8.5) else {
+            return XCTFail("the wrap dissolves from the last slide into the first")
+        }
+        XCTAssertEqual([from.slide.index, to.slide.index], [1, 0])
+
+        s.overlays = [OverlayClip(itemID: 9, start: 7, length: 3)]           // ends at 10
+        let tail = ShowTimeline(show: s, items: items)
+        XCTAssertFalse(tail.wrapsDirectly)
+        XCTAssertEqual(tail.duration, 10)
+        guard case .still(let last) = tail.frame(at: 7.9) else { return XCTFail("expected the last slide alone") }
+        XCTAssertEqual(last.slide.index, 1)
+        XCTAssertEqual(last.transitionOutPlays, 0)
+        guard case .background = tail.frame(at: 9) else { return XCTFail("expected the background") }
+        // The next pass starts on slide 0, with no transition into it.
+        guard case .still(let first) = tail.frame(at: 10.5) else { return XCTFail("expected the first slide alone") }
+        XCTAssertEqual(first.slide.index, 0)
+        XCTAssertEqual(first.transitionInPlays, 0)
+    }
+
     func testTransitionOverlapsStartOfIncomingSlide() {
         let (s, items) = show([4, 4])
         let t = ShowTimeline(show: s, items: items)

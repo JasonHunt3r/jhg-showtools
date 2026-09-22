@@ -351,7 +351,7 @@ struct CollectionBrowser: View {
         guard let id = ids.first, let kind = model.itemsByID[id]?.kind, kind.isPicture, kind != .video else { return }
         let t = timeline.wrap(engine.now)
         guard var clip = OverlayPlacement.place(itemID: id, at: t, length: ImagesRow.newLength,
-                                                in: show.overlays, duration: timeline.duration,
+                                                in: show.overlays, duration: ImagesRow.open,
                                                 shortest: ImagesRow.shortest)
         else { NSSound.beep(); return }
         clip.transform.scale = 0.5

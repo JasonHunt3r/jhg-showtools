@@ -189,8 +189,10 @@ struct StorylineView: View {
         return (placed, placed.filter { p in group.contains { $0.slide.id == p.id } })
     }
 
+    /// The slides (with any trim in progress), or the longest row if one
+    /// runs past them, plus room to drop things beyond the end.
     private var contentWidth: CGFloat {
-        CGFloat(timeline.slides.reduce(0) { $0 + length($1) } * pps) + Self.inset * 2 + 200
+        CGFloat(max(timeline.slides.reduce(0) { $0 + length($1) }, timeline.duration) * pps) + Self.inset * 2 + 200
     }
 
     // MARK: Body
@@ -645,7 +647,9 @@ struct StorylineView: View {
     /// the wrap from the last slide into the first is a join too, at the end.
     private func joins(_ placed: [Placed]) -> [(incoming: Placed, x: CGFloat, time: Double)] {
         var out = placed.indices.dropFirst().map { (incoming: placed[$0], x: placed[$0].x, time: placed[$0].slide.start) }
-        if timeline.loops, placed.count > 1, let last = placed.last {
+        // (Only when the slides run to the show's end: past them, the wrap
+        // is a cut from the background.)
+        if timeline.wrapsDirectly, placed.count > 1, let last = placed.last {
             out.append((incoming: placed[0], x: last.x + last.width, time: timeline.duration))
         }
         return out

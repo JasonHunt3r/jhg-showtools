@@ -155,7 +155,7 @@ extension EffectsTests {
             switch tl.frame(at: t) {
             case .still(let l): l
             case .transition(let from, _, _, _): from
-            case .empty: nil
+            case .empty, .background: nil
             }
         }
         let loose = twoSlides(SlideSettings(length: .seconds(4), rotation: r))
@@ -192,7 +192,7 @@ extension EffectsTests {
             switch tl.frame(at: t) {
             case .still(let l): l.slide.index == 0 ? l : nil
             case .transition(let from, let to, _, _): from.slide.index == 0 ? from : to.slide.index == 0 ? to : nil
-            case .empty: nil
+            case .empty, .background: nil
             }
         }
         // First pass: nothing comes in, so A turns from the very start.
@@ -432,6 +432,7 @@ final class TransitionLeadTests: XCTestCase {
     func describe(_ s: FrameState) -> String {
         switch s {
         case .empty: "empty"
+        case .background: "background"
         case .still(let l): "still \(l.slide.index)"
         case .transition(let a, let b, _, let p): "\(a.slide.index)→\(b.slide.index) \(String(format: "%.2f", p))"
         }

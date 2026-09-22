@@ -80,6 +80,8 @@ public enum Compositor {
         switch state {
         case .empty:
             return black
+        case .background(let c, _):
+            return CIImage(color: CIColor(red: c.red, green: c.green, blue: c.blue)).cropped(to: out)
         case .still(let layer):
             return place(layer)
         case .transition(let from, let to, let t, let progress):

@@ -28,6 +28,9 @@ struct ImagesRow: View {
     /// A new image's length.
     static let newLength = 5.0
     static let shortest = 0.2
+    /// Images aren't held inside the show's length: one placed or dragged
+    /// past the end makes the show longer (plan, Phase 3).
+    static let open = Double.infinity
 
     private struct ClipEdit {
         enum Part { case move, start, end }
@@ -70,7 +73,7 @@ struct ImagesRow: View {
         .contextMenu {
             let t = time(at: hoverX)
             Button("Place Image Here…") { placing = PlaceRequest(time: t) }
-                .disabled(OverlayPlacement.freeSpan(at: t, in: show.overlays, duration: timeline.duration) == nil)
+                .disabled(OverlayPlacement.freeSpan(at: t, in: show.overlays, duration: Self.open) == nil)
         }
         .onDrop(of: ItemDrag.accepted, isTargeted: $dropTargeted) { providers, location in
             let t = time(at: location.x)
@@ -97,7 +100,7 @@ struct ImagesRow: View {
     }
 
     private func time(at x: CGFloat) -> Double {
-        min(max(Double(x - inset) / pps, 0), timeline.duration)
+        max(Double(x - inset) / pps, 0)
     }
 
     /// Several files dropped at once go end to end from where they landed,
@@ -111,7 +114,7 @@ struct ImagesRow: View {
                 // No video in the lane yet, and songs never: skip them, and place the rest.
                 guard let kind = model.itemsByID[id]?.kind, kind.isPicture, kind != .video else { continue }
                 guard var clip = OverlayPlacement.place(itemID: id, at: at, length: Self.newLength,
-                                                        in: s.overlays, duration: timeline.duration,
+                                                        in: s.overlays, duration: Self.open,
                                                         shortest: Self.shortest)
                 else { break }                                      // no room left
                 // Half size, centred: visibly over the picture, and easy to grab.
@@ -194,7 +197,7 @@ struct ImagesRow: View {
                 let id = o.clip.id
                 if edit?.id != id {
                     let room = OverlayPlacement.freeSpan(at: o.start, in: show.overlays,
-                                                         duration: timeline.duration, ignoring: id)
+                                                         duration: Self.open, ignoring: id)
                         ?? o.start...o.end
                     edit = ClipEdit(id: id, part: part, start0: o.start, length0: o.clip.length,
                                     start: o.start, length: o.clip.length, room: room)

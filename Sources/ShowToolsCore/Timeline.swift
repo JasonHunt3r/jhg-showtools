@@ -110,19 +110,25 @@ public enum FrameState: Sendable {
     case empty
     case still(Layer)
     case transition(from: Layer, to: Layer, style: Transition, progress: Double)
+    /// After the last slide, while another row (the images or the music)
+    /// runs on: the show's background colour (plan, Phase 3). `after` is
+    /// the last slide's index.
+    case background(SRGBColor, after: Int)
 
-    /// The slide that owns this moment: the incoming one mid-transition.
+    /// The slide that owns this moment: the incoming one mid-transition,
+    /// and the last one once the slides have run out.
     public var currentIndex: Int? {
         switch self {
         case .empty: nil
         case .still(let l): l.slide.index
         case .transition(_, let to, _, _): to.slide.index
+        case .background(_, let after): after
         }
     }
 
     public var layers: [Layer] {
         switch self {
-        case .empty: []
+        case .empty, .background: []
         case .still(let l): [l]
         case .transition(let a, let b, _, _): [a, b]
         }
@@ -148,8 +154,20 @@ public struct OverlayLayer: Sendable {
 
 public struct ShowTimeline: Sendable {
     public let slides: [ResolvedSlide]
+    /// The show's length: as long as its longest row (plan, Phase 3), so
+    /// an image or song running past the last slide makes the show longer.
     public let duration: Double
+    /// Where the slides end. Past it, until `duration`, the show's
+    /// background colour shows.
+    public let slidesEnd: Double
     public let loops: Bool
+    /// A looping show whose slides run to its very end: the loop's wrap is a
+    /// join from the last slide into the first, with its transition. When
+    /// another row runs on past the slides, the slides have ended before
+    /// the wrap, so it's a cut from the background instead.
+    public let wrapsDirectly: Bool
+    /// The show's background colour, for the time after the last slide.
+    public let background: SRGBColor
     /// The images row, earliest first. Clips whose file is missing, or that
     /// have no length, are left out.
     public let overlays: [ResolvedOverlay]
@@ -172,10 +190,18 @@ public struct ShowTimeline: Sendable {
             }
         }
 
+        // The show's length is its longest row's. Clips whose file is
+        // missing don't count, as they don't draw or play.
+        let slidesEnd = lengths.reduce(0, +)
+        let lanesEnd = show.overlays.filter { $0.length > 0 && items[$0.itemID] != nil }.map { $0.start + $0.length }
+            + show.music.filter { $0.length > 0 && items[$0.itemID] != nil }.map(\.end)
+        let end = max(slidesEnd, lanesEnd.max() ?? 0)
+        let wrapJoin = d.loop && end <= slidesEnd + 1e-9
+
         for (i, (slide, item)) in present.enumerated() {
             var transition = slide.settings.transition ?? d.transition
             // A transition can't outlast either slide it joins.
-            let prevLength = i > 0 ? lengths[i - 1] : (show.defaults.loop ? lengths.last ?? 0 : 0)
+            let prevLength = i > 0 ? lengths[i - 1] : (wrapJoin ? lengths.last ?? 0 : 0)
             let limit = min(lengths[i], prevLength > 0 ? prevLength : lengths[i])
             transition.duration = transition.style == .cut ? 0 : min(max(transition.duration, 0), limit)
 
@@ -203,14 +229,14 @@ public struct ShowTimeline: Sendable {
         /// How far slide `p`'s transition in runs past its join. Slide 0's
         /// never plays in a show that doesn't loop, so it takes no room.
         func tail(_ p: Int) -> Double {
-            guard p > 0 || show.defaults.loop else { return 0 }
+            guard p > 0 || wrapJoin else { return 0 }
             return resolved[p].transitionIn.duration - resolved[p].transitionIn.lead
         }
         /// True if the lead had to shrink.
         func fitLead(_ i: Int) -> Bool {
             let p = i > 0 ? i - 1 : resolved.count - 1
             var tr = resolved[i].transitionIn
-            let room = i > 0 || show.defaults.loop ? resolved[p].length - tail(p) : 0
+            let room = i > 0 || wrapJoin ? resolved[p].length - tail(p) : 0
             let fitted = min(max(tr.lead, 0), tr.duration, max(room, 0))
             guard fitted != tr.lead else { return false }
             tr.lead = fitted
@@ -232,7 +258,7 @@ public struct ShowTimeline: Sendable {
         // Each slide stays visible through the transition out of it.
         for i in resolved.indices {
             let next = i + 1 < resolved.count ? resolved[i + 1]
-                     : (show.defaults.loop ? resolved.first : nil)
+                     : (wrapJoin ? resolved.first : nil)
             let out = next?.transitionIn
             resolved[i].transitionOut = out?.duration ?? 0
             resolved[i].visibleSpan = resolved[i].length + resolved[i].transitionIn.lead
@@ -240,8 +266,11 @@ public struct ShowTimeline: Sendable {
         }
 
         slides = resolved
-        duration = t
+        self.slidesEnd = t
+        duration = end
         loops = show.defaults.loop
+        wrapsDirectly = wrapJoin
+        background = d.background
         overlays = show.overlays
             .compactMap { c in c.length > 0 ? items[c.itemID].map { ResolvedOverlay(clip: c, item: $0) } : nil }
             .sorted { $0.start < $1.start }
@@ -291,16 +320,17 @@ public struct ShowTimeline: Sendable {
     public func frame(at t: Double) -> FrameState {
         guard !slides.isEmpty else { return .empty }
         let local = wrap(t)
-        let i = index(at: t)
         let n = slides.count
+        if local >= slidesEnd, duration > slidesEnd { return .background(background, after: n - 1) }
+        let i = index(at: t)
         let cur = slides[i]
 
         // The transition out of this slide, when it has already begun.
-        if n > 1, i + 1 < n || loops {
+        if n > 1, i + 1 < n || wrapsDirectly {
             let ni = (i + 1) % n
             let next = slides[ni]
             let d = next.transitionIn.duration
-            let begins = (i + 1 < n ? next.start : duration) - next.transitionIn.lead
+            let begins = (i + 1 < n ? next.start : slidesEnd) - next.transitionIn.lead
             if d > 0, local >= begins {
                 let into = local - begins
                 return .transition(
@@ -316,7 +346,7 @@ public struct ShowTimeline: Sendable {
         // once the show has wrapped.
         let into = local - cur.visibleStart
         let d = cur.transitionIn.duration
-        let hasPrevious = i > 0 || (loops && t >= duration)
+        let hasPrevious = i > 0 || (wrapsDirectly && t >= duration)
         if n > 1, d > 0, into < d, hasPrevious {
             let prevIndex = i > 0 ? i - 1 : n - 1
             let prev = slides[prevIndex]
@@ -338,8 +368,8 @@ public struct ShowTimeline: Sendable {
         let multiple = slides.count > 1
         // Into slide 0 only once the show has wrapped (or as the last slide
         // hands over to it, which the caller says).
-        let inPlays = transitionInPlays ?? (multiple && (i > 0 || (loops && t >= duration)))
-        let outPlays = multiple && (i < slides.count - 1 || loops)
+        let inPlays = transitionInPlays ?? (multiple && (i > 0 || (wrapsDirectly && t >= duration)))
+        let outPlays = multiple && (i < slides.count - 1 || wrapsDirectly)
         return Layer(slide: s, localTime: localTime,
                      transitionInPlays: inPlays ? s.transitionIn.duration : 0,
                      transitionOutPlays: outPlays ? s.transitionOut : 0)

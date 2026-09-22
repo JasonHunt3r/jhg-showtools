@@ -69,6 +69,7 @@ case "render":
                                        colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)
         let desc: String = switch state {
         case .empty: "empty"
+        case .background(_, let after): "background after #\(after + 1)"
         case .still(let l): "still #\(l.slide.index + 1) kb=\(String(format: "%.2f", l.kenBurnsFrame.zoom))"
         case .transition(let a, let b, let tr, let p): "\(tr.style.rawValue) #\(a.slide.index + 1)→#\(b.slide.index + 1) \(String(format: "%.2f", p))"
         }

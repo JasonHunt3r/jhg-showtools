@@ -268,6 +268,15 @@ struct DefaultsBar: View {
                     }
                     .labelsHidden().fixedSize()
                 }
+                labelled("Background") {
+                    // Behind every slide that hasn't its own, and after the
+                    // last slide while an image or song runs on (plan, Phase 3).
+                    SettledColorPicker(title: "", colour: d.background) { c in
+                        mutate("Change Default Background") { $0.defaults.background = c }
+                    }
+                    .labelsHidden()
+                    .help("The show's background: behind slides that don't set their own, and after the last slide")
+                }
                 Toggle("Loop", isOn: Binding(get: { d.loop }, set: { v in mutate("Change Loop") { $0.defaults.loop = v } }))
                 Toggle("Videos play in full", isOn: Binding(get: { d.videoUsesClipLength },
                                                             set: { v in mutate("Change Video Length") { $0.defaults.videoUsesClipLength = v } }))
