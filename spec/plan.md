@@ -822,6 +822,18 @@ hands-on round trip on a scratch library, including an edit in Numbers.
 - Photos-library browsing inside the app. Deferred until the app has taken
   shape; the permission question gets worked out then. Drag-and-drop from
   Photos works from Phase 1 regardless
+- **A guided first run** (Jason, 2026-09-22), to be fleshed out with App
+  Claude; brief in `spec/first-run-brief.md`. Not a separate tutorial:
+  each *first encounter* teaches itself, one step leading to the next. A
+  welcome when everything is empty (its button: add images); the first
+  visit to the empty collection explains collections, with a Rename this
+  collection button (default name maybe "My First Collection") that goes
+  once it's renamed, leaving Import; the inspector's first opening shows a
+  cover ("This is the inspector, it's for…", Got it) that closes the window
+  if nothing is selected or uncovers the clicked file's info. After the
+  first time, empty places say something plain, as they do now. Needs the
+  rules of organisation and the lingo (library, collection, show, slide,
+  song…) stated first, since they never have been
 - **A collage maker** (Jason, 2026-09-21b), parked here to think through
   rather than build straight away. Two ideas so far, which may turn out to
   be the same feature seen two ways:
