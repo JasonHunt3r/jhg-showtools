@@ -44,7 +44,7 @@ struct EditShowView: View {
                                                   mutate: mutate, close: { inspectorShown = false }))
                         .frame(minHeight: 220)
                     VStack(spacing: 0) {
-                        TransportRow(engine: engine, pps: $pps, fit: fitStoryline)
+                        TransportRow(engine: engine, show: show, pps: $pps, fit: fitStoryline)
                         Divider()
                         StorylineView(show: show, timeline: timeline, engine: engine,
                                       selection: $selection, selectedTransition: $selectedTransition,
@@ -167,7 +167,7 @@ struct EditShowView: View {
         ZStack {
             Button("") { pps = min(pps * 1.5, 400) }.keyboardShortcut("=", modifiers: .command)
             Button("") { pps = max(pps / 1.5, 2) }.keyboardShortcut("-", modifiers: .command)
-            Button("") { engine.loopPlayback.toggle() }.keyboardShortcut("l", modifiers: .command)
+            Button("") { engine.updateEditor { $0.loopPlayback.toggle() } }.keyboardShortcut("l", modifiers: .command)
             SingleKeys { event in
                 switch (event.keyCode, event.charactersIgnoringModifiers?.lowercased(), event.plainModifiers) {
                 case (49, _, []): engine.togglePlay()                  // space
@@ -551,10 +551,17 @@ struct SlideProgress: View {
 /// CutSim's transport: play, a scrubber across the whole show, the time.
 struct TransportRow: View {
     let engine: PlaybackEngine
+    /// The saved show, for its editing state (the engine's copy isn't observed).
+    let show: Show
     @Binding var pps: Double
     let fit: () -> Void
     @AppStorage("snapping") private var snapping = true
-    @AppStorage("rangeLines") private var rangeLines = true
+
+    /// A switch in the show's editing state, saved with no undo step.
+    private func editor(_ key: WritableKeyPath<ShowEditorState, Bool>) -> Binding<Bool> {
+        Binding(get: { show.editor[keyPath: key] },
+                set: { v in engine.updateEditor { $0[keyPath: key] = v } })
+    }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -594,16 +601,14 @@ struct TransportRow: View {
 Group {
                 Toggle(isOn: $snapping) { Image(systemName: "arrow.left.and.line.vertical.and.arrow.right") }
                     .help(snapping ? "Snapping is on: edges land on markers (N)" : "Snapping is off (N)")
-                Toggle(isOn: Binding(get: { engine.rangeOn }, set: { engine.rangeOn = $0 })) {
-                    Image(systemName: "timeline.selection")
-                }
-                .disabled(engine.rangeIn == nil && engine.rangeOut == nil)
-                .help("Use the range (set it with I and O; ⌥X clears it)")
-                Toggle(isOn: $rangeLines) { Image(systemName: "arrow.down.to.line.compact") }
-                    .help("Show the range and the markers as lines through every row")
-                Toggle(isOn: Binding(get: { engine.loopPlayback }, set: { engine.loopPlayback = $0 })) {
-                    Image(systemName: "repeat")
-                }
+                Toggle(isOn: editor(\.rangeOn)) { Image(systemName: "timeline.selection") }
+                    .disabled(show.editor.rangeIn == nil && show.editor.rangeOut == nil)
+                    .help("Use the range (set it with I and O; ⌥X clears it)")
+                Toggle(isOn: editor(\.rangeLines)) { Image(systemName: "arrow.down.to.line.compact") }
+                    .help("The range's ends as lines through every row (double-click an end for its own)")
+                Toggle(isOn: editor(\.markerLines)) { Image(systemName: "flag") }
+                    .help("The markers as lines through every row (double-click a marker for its own)")
+                Toggle(isOn: editor(\.loopPlayback)) { Image(systemName: "repeat") }
                 .help("Loop playback: the range, or the whole show (⌘L)")
             }
             // Icons that light up when on, not checkboxes.

@@ -124,7 +124,7 @@ public final class Library {
     }
 
     /// The schema version `migrate` brings a library up to.
-    public static let schemaVersion = 9
+    public static let schemaVersion = 10
 
     /// Before an existing library is upgraded, a copy of its database as it
     /// was, beside it: `Library.sqlite.v<N>.bak`. Upgrades are additive and
@@ -275,6 +275,16 @@ public final class Library {
                 try db.exec("""
                     ALTER TABLE shows ADD COLUMN markers TEXT NOT NULL DEFAULT '[]';
                     PRAGMA user_version = 9;
+                    """)
+            }
+        }
+        // 10 (2026-09-21): each show's editing state (range, loop, lines), so
+        // it opens as it was left. Additive: '{}' reads as the defaults.
+        if db.userVersion < 10 {
+            try db.transaction {
+                try db.exec("""
+                    ALTER TABLE shows ADD COLUMN editor TEXT NOT NULL DEFAULT '{}';
+                    PRAGMA user_version = 10;
                     """)
             }
         }
@@ -594,7 +604,7 @@ public final class Library {
     }
 
     public func allShows() throws -> [Show] {
-        let s = try db.prepare("SELECT id, name, defaults, overlays, collection_id, rows, music, markers FROM shows ORDER BY created_at, id")
+        let s = try db.prepare("SELECT id, name, defaults, overlays, collection_id, rows, music, markers, editor FROM shows ORDER BY created_at, id")
         var shows: [Show] = []
         while try s.step() {
             shows.append(Show(id: s.int(0), name: s.text(1),
@@ -603,7 +613,8 @@ public final class Library {
                               collectionID: s.isNull(4) ? nil : s.int(4),
                               rows: TimelineRow.decodeList(s.text(5)),
                               music: AudioClip.decodeList(s.text(6)),
-                              markers: Marker.decodeList(s.text(7))))
+                              markers: Marker.decodeList(s.text(7)),
+                              editor: decode(ShowEditorState.self, s.text(8)) ?? ShowEditorState()))
         }
         let sl = try db.prepare("SELECT id, item_id, settings FROM slides WHERE show_id = ? ORDER BY position")
         for i in shows.indices {
@@ -637,10 +648,11 @@ public final class Library {
     public func saveShow(_ show: Show) throws -> Show {
         try db.transaction {
             var show = show
-            try db.prepare("UPDATE shows SET name = ?, defaults = ?, overlays = ?, collection_id = ?, rows = ?, music = ?, markers = ? WHERE id = ?")
+            try db.prepare("UPDATE shows SET name = ?, defaults = ?, overlays = ?, collection_id = ?, rows = ?, music = ?, markers = ?, editor = ? WHERE id = ?")
                 .bind(.text(show.name), .text(try json(show.defaults)), .text(try json(show.overlays)),
                       show.collectionID.map { .int($0) } ?? .null, .text(try json(show.rows)),
-                      .text(try json(show.music)), .text(try json(show.markers)), .int(show.id)).run()
+                      .text(try json(show.music)), .text(try json(show.markers)), .text(try json(show.editor)),
+                      .int(show.id)).run()
 
             let insert = try db.prepare(
                 "INSERT INTO slides (show_id, position, item_id, settings) VALUES (?, ?, ?, ?)")

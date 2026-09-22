@@ -131,12 +131,36 @@ final class MusicTests: XCTestCase {
         XCTAssertNil(Snap.nearest(3, in: [1.5, 4], within: 0.1))
     }
 
+    func testEditorStateRoundTripsAndAVersionNineLibraryGetsTheDefaults() throws {
+        let root = dir.appendingPathComponent("Nine.noindex")
+        do { _ = try Library(root: root).createShow(name: "Old") }
+        do {
+            let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
+            try db.exec("ALTER TABLE shows DROP COLUMN editor; PRAGMA user_version = 9;")
+        }
+        let lib = try Library(root: root)
+        var show = try XCTUnwrap(lib.allShows().first)
+        XCTAssertEqual(show.editor, ShowEditorState())
+        show.editor.rangeIn = 2; show.editor.rangeOut = 5; show.editor.loopPlayback = true
+        show.editor.markerLines = false; show.editor.rangeOutLine = false
+        var m = Marker(time: 3); m.showsLine = false
+        show.markers = [m]
+        try lib.saveShow(show)
+        let back = try lib.allShows()[0]
+        XCTAssertEqual(back.editor, show.editor)
+        XCTAssertEqual(back.markers, [m])
+        // One bad field falls back alone.
+        let e = try JSONDecoder().decode(ShowEditorState.self, from: Data(#"{"rangeIn":1,"loopPlayback":"x"}"#.utf8))
+        XCTAssertEqual(e.rangeIn, 1)
+        XCTAssertFalse(e.loopPlayback)
+    }
+
     func testAVersionEightLibraryGetsNoMarkers() throws {
         let root = dir.appendingPathComponent("Eight.noindex")
         do { _ = try Library(root: root).createShow(name: "Old") }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("ALTER TABLE shows DROP COLUMN markers; PRAGMA user_version = 8;")
+            try db.exec("ALTER TABLE shows DROP COLUMN editor; ALTER TABLE shows DROP COLUMN markers; PRAGMA user_version = 8;")
         }
         let lib = try Library(root: root)
         var show = try XCTUnwrap(lib.allShows().first)
@@ -151,7 +175,7 @@ final class MusicTests: XCTestCase {
         do { _ = try Library(root: root).createShow(name: "Old") }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("ALTER TABLE shows DROP COLUMN markers; ALTER TABLE shows DROP COLUMN music; PRAGMA user_version = 7;")
+            try db.exec("ALTER TABLE shows DROP COLUMN editor; ALTER TABLE shows DROP COLUMN markers; ALTER TABLE shows DROP COLUMN music; PRAGMA user_version = 7;")
         }
         let lib = try Library(root: root)
         var show = try XCTUnwrap(lib.allShows().first)

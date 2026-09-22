@@ -65,15 +65,10 @@ final class PlaybackEngine {
     /// Bumped on every seek, so a paused playhead redraws where it landed.
     private(set) var seekCount = 0
 
-    // The range (plan, Phase 3): Final Cut's in and out points, set at the
-    // playhead with I and O. Editing state, like Final Cut's; not saved.
-    private(set) var rangeIn: Double?
-    private(set) var rangeOut: Double?
-    /// Off keeps the in and out points but ignores them (the transport's
-    /// range button).
-    var rangeOn = true
-    /// ⌘L: playback loops inside the range, or the whole show without one.
-    var loopPlayback = false { didSet { touch() } }
+    // The range and loop playback live in the show's editing state
+    // (`Show.editor`), saved with it but not undone. Views read them from
+    // the saved show, which SwiftUI observes; the engine's copy follows
+    // at once when they're changed here.
 
     @ObservationIgnored let clock = PlaybackClock()
     @ObservationIgnored private let music = MusicPlayer()
@@ -191,7 +186,7 @@ final class PlaybackEngine {
     func play() {
         if !timeline.loops, clock.now >= timeline.duration - 0.01 { clock.seek(0) }
         // Looping a range from outside it starts at its beginning.
-        if loopPlayback, let r = range, !r.contains(timeline.wrap(clock.now)) { clock.seek(r.lowerBound) }
+        if show.editor.loopPlayback, let r = range, !r.contains(timeline.wrap(clock.now)) { clock.seek(r.lowerBound) }
         if let first = timeline.frame(at: clock.now).layers.last?.slide, !media.isReady(first) {
             waitingToStart = true
             media.prepare(around: first.index, in: timeline, visible: [])
@@ -273,39 +268,49 @@ final class PlaybackEngine {
 
     /// The in-to-out span, when it's on and set. With only one end set, the
     /// other is the show's start or end, as in Final Cut.
-    var range: ClosedRange<Double>? {
-        guard rangeOn, rangeIn != nil || rangeOut != nil else { return nil }
-        let lo = rangeIn ?? 0, hi = rangeOut ?? duration
+    var range: ClosedRange<Double>? { Self.range(of: show.editor, duration: duration) }
+
+    static func range(of e: ShowEditorState, duration: Double) -> ClosedRange<Double>? {
+        guard e.rangeOn, e.rangeIn != nil || e.rangeOut != nil else { return nil }
+        let lo = e.rangeIn ?? 0, hi = e.rangeOut ?? duration
         return hi > lo ? lo...hi : nil
     }
 
-    func setRangeIn() {
-        let t = timeline.wrap(clock.now)
-        rangeIn = t
-        if let o = rangeOut, o <= t { rangeOut = nil }
-        rangeOn = true
+    /// Saves a change to the show's editing state (no undo step), and
+    /// takes it up at once rather than on the next tick.
+    func updateEditor(_ change: (inout ShowEditorState) -> Void) {
+        model?.updateEditor(showID, change)
+        if !isEditingLive, let latest = model?.show(showID), latest != show { reload(latest) }
         touch()
+    }
+
+    func setRangeIn() {
+        let t = (timeline.wrap(clock.now) * 100).rounded() / 100
+        updateEditor { e in
+            e.rangeIn = t
+            if let o = e.rangeOut, o <= t { e.rangeOut = nil }
+            e.rangeOn = true
+        }
     }
 
     func setRangeOut() {
-        let t = timeline.wrap(clock.now)
-        rangeOut = t
-        if let i = rangeIn, i >= t { rangeIn = nil }
-        rangeOn = true
-        touch()
+        let t = (timeline.wrap(clock.now) * 100).rounded() / 100
+        updateEditor { e in
+            e.rangeOut = t
+            if let i = e.rangeIn, i >= t { e.rangeIn = nil }
+            e.rangeOn = true
+        }
     }
 
     func clearRange() {
-        rangeIn = nil
-        rangeOut = nil
-        touch()
+        updateEditor { $0.rangeIn = nil; $0.rangeOut = nil }
     }
 
     /// With loop playback on, reaching the range's end (or the show's, with
     /// no range) goes back to its start. Checked every frame drawn and every
     /// tick, so it overshoots by a frame at most.
     private func keepInLoop() {
-        guard loopPlayback, clock.playing, clock.rate > 0, duration > 0 else { return }
+        guard show.editor.loopPlayback, clock.playing, clock.rate > 0, duration > 0 else { return }
         let region = range ?? 0...duration
         let local = timeline.wrap(clock.now)
         let atShowEnd = !timeline.loops && clock.now >= duration - 0.001

@@ -31,9 +31,6 @@ struct StorylineView: View {
     @Environment(AppModel.self) private var model
     /// N: edges land on markers (plan, Phase 3). App-wide, like Final Cut's.
     @AppStorage("snapping") private var snapping = true
-    /// The range's ends (and the markers) as lines down through every row,
-    /// or only on the ruler.
-    @AppStorage("rangeLines") private var rangeLines = true
 
     /// Markers being dragged: which, and how far.
     private struct MarkerDrag {
@@ -330,39 +327,66 @@ struct StorylineView: View {
 
     // MARK: Markers and the range
 
+    /// The show's editing state (range, lines), from the saved show, which
+    /// SwiftUI observes.
+    private var editor: ShowEditorState { show.editor }
+
     /// Blue, like Final Cut's range: the span shaded on the ruler, a
     /// triangle at each end. Faded while the range is switched off.
+    /// Double-click a triangle for its line through the rows; ⌥-double-
+    /// click for both ends' lines.
     @ViewBuilder private var rangeOnRuler: some View {
-        let on = engine.rangeOn
-        let lo = engine.rangeIn ?? 0, hi = engine.rangeOut ?? timeline.duration
-        if engine.rangeIn != nil || engine.rangeOut != nil, hi > lo {
+        let e = editor
+        let lo = e.rangeIn ?? 0, hi = e.rangeOut ?? timeline.duration
+        if e.rangeIn != nil || e.rangeOut != nil, hi > lo {
             let x0 = Self.inset + CGFloat(lo * pps), x1 = Self.inset + CGFloat(hi * pps)
             ZStack(alignment: .topLeading) {
-                Rectangle().fill(Color.blue.opacity(on ? 0.28 : 0.1))
+                Rectangle().fill(Color.blue.opacity(e.rangeOn ? 0.28 : 0.1))
                     .frame(width: x1 - x0, height: Self.rulerHeight)
                     .offset(x: x0)
-                if engine.rangeIn != nil { rangeEnd(x0, pointsRight: true, on: on) }
-                if engine.rangeOut != nil { rangeEnd(x1, pointsRight: false, on: on) }
+                    .allowsHitTesting(false)
+                if e.rangeIn != nil { rangeEnd(x0, isIn: true, on: e.rangeOn) }
+                if e.rangeOut != nil { rangeEnd(x1, isIn: false, on: e.rangeOn) }
             }
-            .allowsHitTesting(false)
         }
     }
 
-    private func rangeEnd(_ x: CGFloat, pointsRight: Bool, on: Bool) -> some View {
-        Path { p in
-            let h = Self.rulerHeight, w: CGFloat = 7
-            p.move(to: CGPoint(x: 0, y: h - 10))
-            p.addLine(to: CGPoint(x: 0, y: h))
-            p.addLine(to: CGPoint(x: pointsRight ? w : -w, y: h))
+    private func rangeEnd(_ x: CGFloat, isIn: Bool, on: Bool) -> some View {
+        let w: CGFloat = 7, h = Self.rulerHeight
+        return Path { p in
+            p.move(to: CGPoint(x: 0, y: 0))
+            p.addLine(to: CGPoint(x: 0, y: 10))
+            p.addLine(to: CGPoint(x: isIn ? w : -w, y: 10))
             p.closeSubpath()
         }
         .fill(Color.blue.opacity(on ? 1 : 0.4))
-        .offset(x: x)
+        .frame(width: w, height: 10)
+        .padding(.horizontal, 2)
+        .contentShape(Rectangle())
+        .offset(x: isIn ? x - 2 : x - w - 2, y: h - 10)
+        .onTapGesture {
+            guard (NSApp.currentEvent?.clickCount ?? 1) >= 2 else { return }
+            if NSEvent.modifierFlags.contains(.option) {
+                engine.updateEditor { $0.rangeLines.toggle() }
+            } else {
+                // Its own line; with the range's lines off, this turns them
+                // back on to show it.
+                engine.updateEditor { e in
+                    let showing = e.rangeLines && (isIn ? e.rangeInLine : e.rangeOutLine)
+                    if !e.rangeLines { e.rangeLines = true }
+                    if isIn { e.rangeInLine = !showing } else { e.rangeOutLine = !showing }
+                }
+            }
+        }
+        .help((isIn ? "Range start" : "Range end")
+              + ". Double-click to show or hide its line; ⌥-double-click for both ends.")
     }
 
     /// Markers on the ruler: click to select (⌘ or ⇧ adds), drag to move
     /// (a selected one takes the rest of the selection with it), Delete to
-    /// remove. One undo step per drag.
+    /// remove; double-click for its own line through the rows, ⌥-double-
+    /// click for every marker's. Moving, removing and a marker's own line
+    /// are undoable; the all-markers switch is editing state, and isn't.
     private var markersOnRuler: some View {
         ForEach(markerTimes, id: \.marker.id) { m, t in
             let selected = selectedMarkers.contains(m.id)
@@ -373,20 +397,35 @@ struct StorylineView: View {
                 .padding(.horizontal, 3)
                 .contentShape(Rectangle())
                 .offset(x: Self.inset + CGFloat(t * pps) - 7.5, y: Self.rulerHeight - 11)
-                .onTapGesture { clickMarker(m.id) }
+                .onTapGesture { clickMarker(m) }
                 .gesture(markerDragGesture(m.id))
-                .help("Marker at \(formatClock(t)). Drag to move; Delete removes it.")
+                .help("Marker at \(formatClock(t)). Drag to move; Delete removes it; double-click for its line.")
         }
     }
 
-    private func clickMarker(_ id: UUID) {
+    private func clickMarker(_ m: Marker) {
+        focused = true
+        if (NSApp.currentEvent?.clickCount ?? 1) >= 2 {
+            if NSEvent.modifierFlags.contains(.option) {
+                engine.updateEditor { $0.markerLines.toggle() }
+                return
+            }
+            let showing = editor.markerLines && m.showsLine
+            // With every marker's line off, this turns them back on to show it.
+            if !editor.markerLines { engine.updateEditor { $0.markerLines = true } }
+            if m.showsLine == showing {
+                mutate(showing ? "Hide Marker Line" : "Show Marker Line") { s in
+                    if let i = s.markers.firstIndex(where: { $0.id == m.id }) { s.markers[i].showsLine = !showing }
+                }
+            }
+            return
+        }
         let mods = NSEvent.modifierFlags
         if mods.contains(.command) || mods.contains(.shift) {
-            if selectedMarkers.contains(id) { selectedMarkers.remove(id) } else { selectedMarkers.insert(id) }
+            if selectedMarkers.contains(m.id) { selectedMarkers.remove(m.id) } else { selectedMarkers.insert(m.id) }
         } else {
-            selectedMarkers = [id]
+            selectedMarkers = [m.id]
         }
-        focused = true
     }
 
     private func markerDragGesture(_ id: UUID) -> some Gesture {
@@ -405,31 +444,34 @@ struct StorylineView: View {
                 guard d.dt != 0 else { return }
                 mutate(d.ids.count == 1 ? "Move Marker" : "Move Markers") { s in
                     for i in s.markers.indices where d.ids.contains(s.markers[i].id) {
-                        s.markers[i].time = max(s.markers[i].time + d.dt, 0)
+                        s.markers[i].time = max(((s.markers[i].time + d.dt) * 100).rounded() / 100, 0)
                     }
                 }
             }
     }
 
-    /// With lines on: the range's ends in blue and the markers in faint
-    /// orange, down through every row, so an edge can be lined up by eye.
-    @ViewBuilder private var linesThroughRows: some View {
-        if rangeLines {
-            ZStack(alignment: .topLeading) {
-                ForEach(markerTimes, id: \.marker.id) { _, t in
+    /// Lines down through every row, two kinds switched separately (and
+    /// each marker or range end on its own): the markers in faint orange,
+    /// the range's ends in blue, so an edge can be lined up by eye.
+    private var linesThroughRows: some View {
+        let e = editor
+        return ZStack(alignment: .topLeading) {
+            if e.markerLines {
+                ForEach(markerTimes.filter { $0.marker.showsLine }, id: \.marker.id) { _, t in
                     Rectangle().fill(Color.orange.opacity(0.45)).frame(width: 1)
                         .offset(x: Self.inset + CGFloat(t * pps))
                 }
-                if engine.rangeOn {
-                    ForEach([engine.rangeIn, engine.rangeOut].compactMap { $0 }, id: \.self) { t in
-                        Rectangle().fill(Color.blue.opacity(0.8)).frame(width: 1.5)
-                            .offset(x: Self.inset + CGFloat(t * pps))
-                    }
+            }
+            if e.rangeOn, e.rangeLines {
+                let ends = [e.rangeInLine ? e.rangeIn : nil, e.rangeOutLine ? e.rangeOut : nil].compactMap { $0 }
+                ForEach(ends, id: \.self) { t in
+                    Rectangle().fill(Color.blue.opacity(0.8)).frame(width: 1.5)
+                        .offset(x: Self.inset + CGFloat(t * pps))
                 }
             }
-            .padding(.top, Self.rulerHeight + 6)
-            .allowsHitTesting(false)
         }
+        .padding(.top, Self.rulerHeight + 6)
+        .allowsHitTesting(false)
     }
 
     // MARK: Rows

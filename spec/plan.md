@@ -516,10 +516,15 @@ to the Collection Browser and the library.
 - **The range:** I and O set in and out points, drawn as two blue markers
   on the ruler with the span between them shaded (Final Cut's convention).
   A toggle extends them as lines down through every row; off, they're
-  just the triangles on the ruler. (Built 2026-09-21: the same toggle
-  draws the markers' lines too. The range is editing state, like Final
-  Cut's, so it isn't saved with the show. The transport bar has buttons
-  for snapping, the range on/off, the lines, and loop playback.)
+  just the triangles on the ruler.
+- **Lines, two kinds (Jason, 2026-09-21):** the markers' lines and the
+  range's lines each have their own switch in the transport bar.
+  Double-click one marker (or one end of the range) for just its line;
+  ⌥-double-click for every one of that kind.
+- **The show's editing state is saved with it** (Jason, 2026-09-21), so a
+  show opens the way it was left, like its row order: the range and
+  whether it's on, loop playback, and the lines. It isn't undoable (undo
+  keeps it as it is), but marker edits, a marker's own line included, are.
   It's multi-purpose by context: the part detection applies to, and, with
   loop on (⌘L), the region playback loops inside while editing. Option-X
   clears it, and a header button turns it off without losing it.

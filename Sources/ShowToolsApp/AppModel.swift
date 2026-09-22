@@ -502,11 +502,23 @@ final class AppModel {
             undo.registerUndo(withTarget: self) { model in
                 MainActor.assumeIsolated {
                     guard model.libraryGeneration == generation else { return }
-                    model.update(before, undo: undo, action: action)
+                    // The editing state (range, loop, lines) isn't an edit:
+                    // undo keeps it as it is now.
+                    var restore = before
+                    if let now = model.show(before.id) { restore.editor = now.editor }
+                    model.update(restore, undo: undo, action: action)
                 }
             }
             if let action { undo.setActionName(action) }
         }
+    }
+
+    /// Changes a show's editing state (range, loop, lines) and saves it,
+    /// with no undo step (plan, Phase 3).
+    func updateEditor(_ showID: Int64, _ change: (inout ShowEditorState) -> Void) {
+        guard var s = show(showID) else { return }
+        change(&s.editor)
+        update(s)
     }
 
     /// The ones that can be slides or lane images: songs can't.

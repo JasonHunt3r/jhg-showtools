@@ -118,6 +118,8 @@ public struct Marker: Codable, Hashable, Identifiable, Sendable {
     public var id: UUID = UUID()
     /// Seconds from the start of the show.
     public var time: Double
+    /// Its own line down through the rows (with the show's marker lines on).
+    public var showsLine = true
 
     public init(time: Double) { self.time = time }
 
@@ -127,6 +129,7 @@ public struct Marker: Codable, Hashable, Identifiable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         time = try c.decode(Double.self, forKey: .time)
         id = ((try? c.decodeIfPresent(UUID.self, forKey: .id)) ?? nil) ?? UUID()
+        showsLine = ((try? c.decodeIfPresent(Bool.self, forKey: .showsLine)) ?? nil) ?? true
     }
 
     public static func decodeList(_ json: String) -> [Marker] {

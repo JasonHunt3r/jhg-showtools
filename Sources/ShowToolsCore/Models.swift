@@ -353,11 +353,15 @@ public struct Show: Identifiable, Hashable, Sendable {
     /// where they are when slides or songs change, and move only when
     /// selected and dragged (plan, Phase 3).
     public var markers: [Marker]
+    /// Where the show was left while editing it: the range, loop playback,
+    /// which lines show. Saved with the show so it opens as it was left,
+    /// but never part of undo (plan, Phase 3).
+    public var editor: ShowEditorState
 
     public init(id: Int64, name: String, defaults: ShowDefaults = ShowDefaults(),
                 slides: [Slide] = [], overlays: [OverlayClip] = [], collectionID: Int64? = nil,
                 rows: [TimelineRow] = TimelineRow.defaultOrder(), music: [AudioClip] = [],
-                markers: [Marker] = []) {
+                markers: [Marker] = [], editor: ShowEditorState = ShowEditorState()) {
         self.id = id
         self.name = name
         self.defaults = defaults
@@ -367,6 +371,44 @@ public struct Show: Identifiable, Hashable, Sendable {
         self.rows = TimelineRow.normalized(rows)
         self.music = music
         self.markers = markers
+        self.editor = editor
+    }
+}
+
+/// A show's editing state (plan, Phase 3): kept with the show, so it opens
+/// the way it was left, like its row order; unlike an edit, it's not undone.
+public struct ShowEditorState: Codable, Hashable, Sendable {
+    /// Final Cut's in and out points, set with I and O.
+    public var rangeIn: Double?
+    public var rangeOut: Double?
+    /// Off keeps the points but ignores them.
+    public var rangeOn = true
+    /// ⌘L: playback loops inside the range, or the whole show without one.
+    public var loopPlayback = false
+    /// The markers' lines down through the rows, all together. Each marker
+    /// can also hide its own (`Marker.showsLine`).
+    public var markerLines = true
+    /// The range's lines, both ends together, and each end on its own.
+    public var rangeLines = true
+    public var rangeInLine = true
+    public var rangeOutLine = true
+
+    public init() {}
+
+    /// Field by field, like every saved type.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func get<T: Decodable>(_ k: CodingKeys, _ fallback: T) -> T {
+            ((try? c.decodeIfPresent(T.self, forKey: k)) ?? nil) ?? fallback
+        }
+        rangeIn = (try? c.decodeIfPresent(Double.self, forKey: .rangeIn)) ?? nil
+        rangeOut = (try? c.decodeIfPresent(Double.self, forKey: .rangeOut)) ?? nil
+        rangeOn = get(.rangeOn, true)
+        loopPlayback = get(.loopPlayback, false)
+        markerLines = get(.markerLines, true)
+        rangeLines = get(.rangeLines, true)
+        rangeInLine = get(.rangeInLine, true)
+        rangeOutLine = get(.rangeOutLine, true)
     }
 }
 
