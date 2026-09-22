@@ -22,8 +22,9 @@ Undo and Redo in the Edit menu already carry each edit's name ("Undo Add
 Marker"). Accessibility reports a stale plain "Undo", so check menu wording
 with a screenshot of the open menu, not with `axtool`.
 
-**Next: step 7, the rhythm patterns** (below and in the plan). Ask Jason
-first, as for every step.
+**Step 7 (rhythm patterns) is built too**, 7a–7g, all on 2026-09-22 (see
+"Step 7" below). **Next: the end of Phase 3**, settling image stickiness
+with Jason (below), then Phase 3b, the duplicate finder. Ask first.
 
 ## Where it stands
 
@@ -34,7 +35,7 @@ first, as for every step.
 | **2a** Framing, rotation, match cuts | **Built**, except presets (Flush), which are deferred |
 | **2b** Library manager | **Built** |
 | **2c** The lane: transitions row + images row | **Built** |
-| **3** Music + timeline | **Steps 1–6 of 7 built**; 6 (beat detection) tested on macOS 27, 2026-09-22. Step 7 (rhythm patterns) is next |
+| **3** Music + timeline | **All 7 steps built** (6 and 7 on 2026-09-22). Left: settle image stickiness with Jason |
 | 3b–5 | Not started |
 
 Library schema is now **version 12** (rhythm patterns 11, their note length 12; 2026-09-22). Every upgrade is additive and tested
@@ -289,6 +290,10 @@ ahead with 7x" from Jason before each one:
   ears on real music.
 
 ## Still needs Jason's hands
+- **The Rhythm tool** (step 7): the panel's look (the space around the
+  form, the notation's size: a staff space is 5.5 pt), Listen by ear on
+  real music, Space stopping Listen, and whether 145 BPM is right for
+  Fly Me to the Moon (or double).
 - **Listening:** music sync, fades, crossfades; Bluetooth headphones'
   delay (the output latency is subtracted, but it's untested).
 - **Dragging a song in from Finder or Music.**
