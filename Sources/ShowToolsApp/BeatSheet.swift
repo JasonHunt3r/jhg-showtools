@@ -17,13 +17,14 @@ struct BeatSheet: View {
     }
 
     enum Kind: String, CaseIterable, Identifiable {
-        case beats, bars, seconds
+        case beats, bars, seconds, pattern
         var id: String { rawValue }
         var title: String {
             switch self {
             case .beats: "Every N beats"
             case .bars: "Every N bars"
             case .seconds: "About every…"
+            case .pattern: "Pattern"
             }
         }
     }
@@ -43,12 +44,16 @@ struct BeatSheet: View {
     @AppStorage("beatTempo") private var tempo: SongRhythm.Tempo = .asDetected
     @AppStorage("beatFit") private var fitSlides = true
     @State private var barShift = 0
+    // The pattern is the Rhythm tool's: shared, so Edit… changes it here too.
+    @AppStorage("rhythmPattern") private var patternText = "h q q"
+    @AppStorage("rhythmQuarter") private var beatsPerQuarter = 4.0
 
     private var plan: BeatPlan {
         let mode: BeatPlan.Mode = switch kind {
         case .beats: .beats(max(every, 1))
         case .bars: .bars(max(every, 1))
         case .seconds: .seconds(max(seconds, 0.25))
+        case .pattern: .pattern(RhythmPattern(text: patternText), beatsPerQuarter: beatsPerQuarter)
         }
         return BeatPlan(mode: mode, tempo: tempo, barShift: barShift)
     }
@@ -151,7 +156,24 @@ struct BeatSheet: View {
             Picker("Markers", selection: $kind) {
                 ForEach(Kind.allCases) { Text($0.title).tag($0) }
             }
-            if kind == .seconds {
+            if kind == .pattern {
+                LabeledContent("Pattern") {
+                    HStack {
+                        Text(patternText.isEmpty ? "None" : patternText)
+                            .font(.system(.body, design: .monospaced))
+                            .lineLimit(1).truncationMode(.tail)
+                        Button("Edit…") { RhythmTool.shared.editPattern(model: model) }
+                    }
+                }
+                Picker("A quarter note =", selection: $beatsPerQuarter) {
+                    Text("¼ beat").tag(0.25)
+                    Text("½ beat").tag(0.5)
+                    Text("1 beat").tag(1.0)
+                    Text("2 beats").tag(2.0)
+                    Text("4 beats (a bar)").tag(4.0)
+                    Text("8 beats").tag(8.0)
+                }
+            } else if kind == .seconds {
                 LabeledContent("Seconds") {
                     SecondsField(value: seconds) { seconds = min(max($0, 0.25), 60) }
                 }
@@ -178,7 +200,7 @@ struct BeatSheet: View {
         }
         .formStyle(.grouped)
         .scrollDisabled(true)
-        .frame(height: 230)
+        .frame(height: kind == .pattern ? 270 : 230)
     }
 
     private func apply() {
@@ -196,6 +218,7 @@ struct BeatSheet: View {
 
     private func close() {
         preview = []
+        RhythmTool.shared.endEditingPattern()
         dismiss()
     }
 }

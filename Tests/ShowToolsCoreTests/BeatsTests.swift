@@ -35,6 +35,19 @@ final class BeatsTests: XCTestCase {
         XCTAssertEqual(BeatPlan(mode: .bars(1), tempo: .half, barShift: 1).markers(r, from: 0, to: 12), [2, 6, 10])
     }
 
+    func testAPatternStartsOnBeatOneAndFollowsTheTempoAndBarShift() {
+        let p = RhythmPattern(text: "h q q")
+        // From 1.6: the first bar start is 3.0. A quarter = 1 beat (0.5 s).
+        XCTAssertEqual(BeatPlan(mode: .pattern(p, beatsPerQuarter: 1)).markers(r, from: 1.6, to: 7),
+                       [3, 4, 4.5, 5, 6, 6.5, 7])
+        // ÷2: beats every second, bars every 4 s from 1: starts at 5.
+        XCTAssertEqual(BeatPlan(mode: .pattern(p, beatsPerQuarter: 1), tempo: .half).markers(r, from: 1.6, to: 9),
+                       [5, 7, 8, 9])
+        // Bar starts one beat later: 1.5, so from 1.6 the next is 3.5.
+        XCTAssertEqual(BeatPlan(mode: .pattern(p, beatsPerQuarter: 1), barShift: 1).markers(r, from: 1.6, to: 5),
+                       [3.5, 4.5, 5])
+    }
+
     func testAboutEverySecondsLandsOnBeats() {
         // Every 1.3 s from the first beat: 1, 2.3→2.5, 3.6→3.5, 4.9→5.
         XCTAssertEqual(BeatPlan(mode: .seconds(1.3)).markers(r, from: 0, to: 5), [1, 2.5, 3.5, 5])

@@ -247,11 +247,20 @@ ahead with 7x" from Jason before each one:
   Triplet (refuses with a note if a lit square falls between the new
   steps); 1–8 bars. The feel last chosen is tried first, so an empty
   triplet grid stays triplet. Checked in a scratch copy.
-  **Ask Jason:** the grid spells a gap longest-first, so adding an empty
-  bar after a quarter turns `q` into `w rq` (same timing). Would he rather
-  keep the note and pad with rests (`q rw`)?
-- **7e Detect Beats' Pattern mode:** the pattern's text plus Edit…, which
-  opens the panel; teal markers on the detected beats.
+- **7e Detect Beats' Pattern mode: BUILT** (2026-09-22). `BeatPlan.Mode.pattern`
+  (core, tested): the song's detected beats with ×2/÷2, starting on the
+  first bar start in the range after "bar starts" (the Rhythm panel starts
+  at the range start instead; Detect Beats knows the bars). The sheet's
+  Markers menu has Pattern: the letters, "A quarter note =", and Edit…,
+  which opens the Rhythm panel in an editing mode (the pattern and Done,
+  no Apply). Pattern and note length are shared with the panel
+  (`rhythmPattern`, `rhythmQuarter`), so the sheet follows edits live.
+  Closing the sheet closes a panel it opened, and returns one that was
+  already open to normal. Checked in a scratch copy on Aerial
+  Boundaries: `q e e` gave 13 teal markers, each on a detected bar or
+  beat; one ⌘Z.
+- **Grid spelling settled** (`e3c5740`): a note never runs past its bar
+  line; rests fill the rest, split at bar lines (`q rw`).
 - **7f Saved patterns:** the built-ins, and Jason's named patterns stored
   in the library (schema 11, an additive migration).
 - **7g Listen:** loop the range with a click on each note, over the song.

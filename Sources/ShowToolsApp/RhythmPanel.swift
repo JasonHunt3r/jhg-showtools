@@ -21,6 +21,7 @@ final class RhythmTool {
     @ObservationIgnored private var panel: RhythmPanel?
 
     func open(showID: Int64, model: AppModel, undoManager: UndoManager?) {
+        editingPattern = false
         self.showID = showID
         if let undoManager { self.undoManager = undoManager }
         if let panel { panel.front(); return }
@@ -38,7 +39,30 @@ final class RhythmTool {
         panel?.useUndoManager(self.undoManager)
     }
 
+    /// Opened from Detect Beats' Edit…: only the pattern, and Done. The
+    /// sheet reads the pattern as it changes (they share it).
+    private(set) var editingPattern = false
+
+    /// Whether Edit… found the panel already open (then it stays open after).
+    @ObservationIgnored private var wasOpenBeforeEditing = false
+
+    func editPattern(model: AppModel) {
+        if !editingPattern { wasOpenBeforeEditing = isOpen }
+        editingPattern = true
+        if let panel { panel.front(); return }
+        let p = RhythmPanel(model: model, tool: self)
+        panel = p
+        p.front()
+    }
+
+    /// Detect Beats closed: a panel it opened goes with it.
+    func endEditingPattern() {
+        guard editingPattern else { return }
+        if wasOpenBeforeEditing { editingPattern = false } else { panel?.close() }
+    }
+
     fileprivate func closed() {
+        editingPattern = false
         panel = nil
         preview = []
     }
@@ -78,6 +102,8 @@ private final class RhythmPanel: NSObject, NSWindowDelegate {
     }
 
     func useUndoManager(_ u: UndoManager?) { window.sharedUndoManager = u }
+
+    func close() { window.close() }
 
     func windowWillClose(_ notification: Notification) { tool.closed() }
 }
@@ -147,7 +173,9 @@ struct RhythmPanelContent: View {
 
     var body: some View {
         Group {
-            if let s = setup {
+            if tool.editingPattern {
+                editingContent
+            } else if let s = setup {
                 content(s)
                     .onAppear { tool.preview = times(s) }
                     .onChange(of: times(s)) { _, t in tool.preview = t }
@@ -165,6 +193,40 @@ struct RhythmPanelContent: View {
         .frame(width: 380)
     }
 
+    /// For Detect Beats: the pattern alone, and Done.
+    private var editingContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("The pattern for Detect Beats").foregroundStyle(.secondary)
+            patternEditor
+            HStack {
+                Spacer()
+                Button("Done") { tool.endEditingPattern() }
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(16)
+        .onAppear { tool.preview = [] }
+    }
+
+    /// Notes or Grid.
+    @ViewBuilder private var patternEditor: some View {
+        Picker("", selection: $view) {
+            Text("Notes").tag(PatternView.notes)
+            Text("Grid").tag(PatternView.grid)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        switch view {
+        case .notes:
+            patternField
+            RhythmNotationView(pattern: parsed.pattern)
+                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
+            legend
+        case .grid:
+            RhythmGridView(text: $text)
+        }
+    }
+
     @ViewBuilder private func content(_ s: Setup) -> some View {
         let t = times(s)
         VStack(alignment: .leading, spacing: 12) {
@@ -172,21 +234,7 @@ struct RhythmPanelContent: View {
                  + (PlaybackEngine.range(of: s.show.editor, duration: s.timeline.duration) != nil ? " (the range)" : ""))
                 .foregroundStyle(.secondary)
 
-            Picker("", selection: $view) {
-                Text("Notes").tag(PatternView.notes)
-                Text("Grid").tag(PatternView.grid)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            switch view {
-            case .notes:
-                patternField
-                RhythmNotationView(pattern: parsed.pattern)
-                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
-                legend
-            case .grid:
-                RhythmGridView(text: $text)
-            }
+            patternEditor
 
             Form {
                 tempoRow(s)

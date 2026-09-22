@@ -105,6 +105,10 @@ public struct BeatPlan: Codable, Hashable, Sendable {
         case bars(Int)
         /// About every so many seconds, each landing on the nearest beat.
         case seconds(Double)
+        /// A rhythm pattern (step 7), from the first bar start in the range,
+        /// counted on the detected beats; `beatsPerQuarter` is "a quarter
+        /// note = N beats".
+        case pattern(RhythmPattern, beatsPerQuarter: Double)
     }
     public var mode: Mode = .bars(1)
     public var tempo: SongRhythm.Tempo = .asDetected
@@ -130,6 +134,11 @@ public struct BeatPlan: Codable, Hashable, Sendable {
         case .bars(let n):
             guard n > 0 else { return [] }
             return stride(from: 0, to: bars.count, by: n).map { bars[$0] }
+        case .pattern(let p, let perQuarter):
+            // Beat 1 in reach, after "bar starts"; else the first beat.
+            guard let start = bars.first ?? beats.first else { return [] }
+            return RhythmPlacement.markers(p, beatsPerQuarter: perQuarter, pulse: .beats(r.beats(tempo)),
+                                           from: start, to: to)
         case .seconds(let x):
             guard x > 0, !beats.isEmpty else { return [] }
             var out: [Double] = []
