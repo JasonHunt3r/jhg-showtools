@@ -193,7 +193,7 @@ files are both in the show keeps both ("1 stays"), Keep One disabled.
 | **3** Music + timeline | **All 7 steps built** (6 and 7 on 2026-09-22). Left: settle image stickiness with Jason |
 | **3b** Find Similar (was "duplicate finder") | **Built** 2026-09-22: Delete by context, Group/Show Similar, Keep One |
 | **4** Setlist export / import | **Built** 2026-09-22 (4a–4d); risks recorded under "Phase 4: open risks" |
-| 5 BGTools (desktop companion app) | **Building**, own spec `spec/bgtools.md`: questions settled, B1 (shared player), B2 (skeleton), B3 (settings and modes), B4a (the window), B4b (the panel), B5 (Control Center tiles) built 2026-09-22; next B6, pausing and private libraries |
+| 5 BGTools (desktop companion app) | **Building**, own spec `spec/bgtools.md`: questions settled, B1 (shared player), B2 (skeleton), B3 (settings and modes), B4a (the window), B4b (the panel), B5 (tiles), B6 (pausing, private libraries, the 40%→2% redraw fix) built 2026-09-22; next B7, ShowTools installs BGTools |
 
 Library schema is now **version 12**. Every upgrade is additive and tested
 by opening a library of the version before (7 rows, 8 music, 9 markers,

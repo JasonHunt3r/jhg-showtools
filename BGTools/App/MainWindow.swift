@@ -424,8 +424,11 @@ struct SettingEditor: View {
             }
             if reader == nil {
                 Note("This library can't be opened: see ~/Library/Logs/BGTools.log.")
+            } else if desktop.isLocked(setting) {
+                Note("This library is private, so it won't play until you unlock it. It locks again whenever the Mac sleeps or the screen locks.")
+                Button("Unlock…") { Task { await desktop.unlock(setting) } }
             } else if reader?.isPrivate == true {
-                Note("This library is private. Playing private libraries on the desktop comes later (it will ask for Touch ID).")
+                Note("Private, and unlocked until the Mac sleeps or the screen locks.")
             }
             Picker("Plays", selection: Binding(get: { kind }, set: { k in onChange(with(k, contents)) })) {
                 ForEach(Kind.allCases) { Text($0.rawValue).tag($0) }

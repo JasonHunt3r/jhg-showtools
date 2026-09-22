@@ -402,6 +402,10 @@ public final class PlaybackEngine {
     // MARK: Drawing
 
     @ObservationIgnored private var drawnSize: [ObjectIdentifier: CGSize] = [:]
+    /// The motionless frame each view last drew (its slide index), so it
+    /// isn't drawn again and again: a still picture on the desktop cost
+    /// 40% of a core before this (measured 2026-09-22).
+    @ObservationIgnored private var drawnStill: [ObjectIdentifier: Int] = [:]
 
     public func render(_ view: MTKView) {
         let key = ObjectIdentifier(view)
@@ -420,6 +424,12 @@ public final class PlaybackEngine {
             syncMusic()
         }
         let overlay = timeline.overlay(at: t)
+        // Nothing moving, nothing new to draw: skip this frame.
+        let motionless = state.isMotionless && overlay == nil && (view as? ShowCanvas)?.stage == nil
+        if motionless, !settling, let i = state.currentIndex, drawnStill[key] == i {
+            return
+        }
+        drawnStill[key] = motionless ? state.currentIndex : nil
         if let i = state.currentIndex {
             media.prepare(around: i, in: timeline, visible: state.layers, alsoKeep: overlaysNear(t))
         }
@@ -512,12 +522,14 @@ public final class PlaybackEngine {
                      transitionOutPlays: prev.transitionOut)
     }
 
-    public func makeView() -> ShowCanvas {
+    /// `fps`: the desktop draws at 30, where 60 costs twice the power for
+    /// no visible gain (measured 2026-09-22); the app's previews use 60.
+    public func makeView(fps: Int = 60) -> ShowCanvas {
         let v = ShowCanvas(frame: NSRect(x: 0, y: 0, width: 640, height: 360), device: device)
         v.framebufferOnly = false
         v.colorPixelFormat = .bgra8Unorm
         v.colorspace = CGColorSpace(name: CGColorSpace.sRGB)
-        v.preferredFramesPerSecond = 60
+        v.preferredFramesPerSecond = fps
         v.engine = self
         v.delegate = v
         touch()

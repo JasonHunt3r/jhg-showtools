@@ -19,6 +19,16 @@ final class Player: ShowSource {
     @ObservationIgnored private var pass = 0
     @ObservationIgnored private var timer: Timer?
 
+    /// Paused while none of its screens can be seen (B6): the engine stops
+    /// its clock, its videos and, shortly after, its drawing.
+    @ObservationIgnored var paused = false {
+        didSet {
+            guard paused != oldValue else { return }
+            paused ? engine.pause() : engine.play()
+            Log.write("\(paused ? "paused" : "playing") \(built?.show.name ?? "nothing")")
+        }
+    }
+
     /// Only one screen is heard: the controller sets this on the player
     /// for the main display's current Space.
     @ObservationIgnored var audible = false {
@@ -78,7 +88,7 @@ final class Player: ShowSource {
             built = built.flatMap { DesktopShow.refresh($0, effective, from: reader.contents) } ?? pick()
         }
         // At the end of a pass, the random modes pick again from the top.
-        guard setting.mode.rerollsEachPass, engine.duration > 0 else { return }
+        guard !paused, setting.mode.rerollsEachPass, engine.duration > 0 else { return }
         let p = Int(engine.now / engine.duration)
         if p != pass {
             built = pick()

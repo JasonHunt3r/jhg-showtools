@@ -1,5 +1,6 @@
 import AppKit
 import WidgetKit
+import LocalAuthentication
 import BGToolsCore
 import ShowToolsCore
 import ShowToolsPlayback
@@ -33,6 +34,8 @@ struct ScreenInfo: Identifiable, Hashable {
 /// player's engine; under All same, many windows show the same one.
 @MainActor
 final class DesktopWindow {
+    /// The desktop's frame rate: half the app's, half the power.
+    static let fps = 30
     let key: ScreenKey
     let window: NSWindow
     private(set) weak var engine: PlaybackEngine?
@@ -56,7 +59,7 @@ final class DesktopWindow {
             window.contentView = NSView()
             return
         }
-        let canvas = engine.makeView()
+        let canvas = engine.makeView(fps: DesktopWindow.fps)
         canvas.frame = NSRect(origin: .zero, size: window.frame.size)
         canvas.autoresizingMask = [.width, .height]
         window.contentView = canvas
@@ -98,6 +101,17 @@ final class DesktopController {
     @ObservationIgnored private var pending: DispatchWorkItem?
     @ObservationIgnored private var lastLayout = ""
     @ObservationIgnored private var watch: Timer?
+    /// Nothing can be seen: the Mac or its displays are asleep, or the
+    /// screen is locked. Low Power Mode holds the picture too (Jason).
+    private var asleep = false
+    private var locked = false
+    private var lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+    /// Private libraries unlocked in this run only: cleared on sleep or
+    /// lock, never restored at launch (Jason: "we don't want to forget
+    /// we've got a racy BG running the next time we open the lid").
+    private(set) var unlocked: Set<String> = []
+    /// The last public setting a screen played, to fall back on.
+    @ObservationIgnored private var lastPublic: [String: ScreenSetting] = [:]
 
     init(store: DesktopSettingsStore) {
         self.store = store
@@ -112,7 +126,29 @@ final class DesktopController {
             MainActor.assumeIsolated {
                 self?.updateCurrent()
                 self?.updateSound()
+                self?.updatePaused()
                 self?.soon("space changed")
+            }
+        }
+        for (name, note) in [("asleep", NSWorkspace.screensDidSleepNotification),
+                             ("awake", NSWorkspace.screensDidWakeNotification),
+                             ("sleep", NSWorkspace.willSleepNotification),
+                             ("wake", NSWorkspace.didWakeNotification)] {
+            wc.addObserver(forName: note, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.setUnseen(asleep: name == "asleep" || name == "sleep") }
+            }
+        }
+        // The screen lock has no public notification; this one is the
+        // long-standing distributed notification macOS posts.
+        for (name, locked) in [("com.apple.screenIsLocked", true), ("com.apple.screenIsUnlocked", false)] {
+            DistributedNotificationCenter.default().addObserver(forName: Notification.Name(name), object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.setUnseen(locked: locked) }
+            }
+        }
+        nc.addObserver(forName: Notification.Name.NSProcessInfoPowerStateDidChange, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+                self?.updatePaused()
             }
         }
         // Settings edited elsewhere (by hand, for now) are taken up.
@@ -121,6 +157,60 @@ final class DesktopController {
         }
         rebuild(reason: "launch")
         publishForTiles()
+    }
+
+    /// Asleep, locked, or awake again. Sleep and lock also drop every
+    /// private library, so nothing private is there when the lid opens.
+    private func setUnseen(asleep: Bool? = nil, locked: Bool? = nil) {
+        if let asleep { self.asleep = asleep }
+        if let locked { self.locked = locked }
+        Log.write("asleep \(self.asleep), locked \(self.locked)")
+        if self.asleep || self.locked, !unlocked.isEmpty {
+            unlocked = []
+            Log.write("private libraries locked again")
+            apply()
+        }
+        updatePaused()
+    }
+
+    /// Pauses every player none of whose screens can be seen: the Mac
+    /// asleep or locked, Low Power Mode, or its Space isn't the one its
+    /// display is showing (which covers a full-screen app, since that's a
+    /// Space of its own).
+    private func updatePaused() {
+        let stopped = asleep || locked || lowPower
+        var live: Set<String> = []
+        if !stopped {
+            for info in screens where info.isCurrent {
+                live.insert(settings.allSame ? "all" : info.id)
+            }
+        }
+        for (id, p) in players { p.paused = !live.contains(id) }
+    }
+
+    /// Whether a screen's library may play: a private one needs Touch ID
+    /// in this run (spec question 11).
+    func isLocked(_ setting: ScreenSetting) -> Bool {
+        guard let reader = readers[setting.library] ?? reader(for: setting.library) else { return false }
+        return reader.isPrivate && !unlocked.contains(setting.library)
+    }
+
+    /// Asks for Touch ID (or the Mac's password) and, if it's Jason, plays
+    /// that library until the Mac sleeps or locks.
+    func unlock(_ setting: ScreenSetting) async {
+        let name = readers[setting.library]?.name ?? "this library"
+        let context = LAContext()
+        var error: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error),
+              (try? await context.evaluatePolicy(.deviceOwnerAuthentication,
+                                                 localizedReason: "play the private library “\(name)” on the desktop")) == true
+        else {
+            Log.write("private library \(name) not unlocked")
+            return
+        }
+        unlocked.insert(setting.library)
+        Log.write("private library \(name) unlocked for this run")
+        apply()
     }
 
     /// Replaces the settings (the panel, the tiles) and saves them.
@@ -240,7 +330,16 @@ final class DesktopController {
         }
         var needed: [String: ScreenSetting] = [:]
         for key in windows.keys {
-            guard let s = settings.setting(for: key.id) else { continue }
+            guard var s = settings.setting(for: key.id) else { continue }
+            if isLocked(s) {
+                // A private library that isn't unlocked: the screen's last
+                // public setting, or the "new screens" default.
+                guard let fallback = [lastPublic[key.id], settings.newScreens].compactMap({ $0 }).first(where: { !isLocked($0) })
+                else { continue }
+                s = fallback
+            } else {
+                lastPublic[key.id] = s
+            }
             needed[settings.allSame ? "all" : key.id] = s
         }
         for (id, p) in players where needed[id] != p.setting || (p.usesRandomDefaults && settings.randomDefaults != p.randomDefaults) {
@@ -261,6 +360,7 @@ final class DesktopController {
             readers[path] = nil
         }
         updateSound()
+        updatePaused()
     }
 
     /// The libraries to offer: ShowTools' own and any a setting names.
@@ -280,6 +380,7 @@ final class DesktopController {
     func summary(for screenID: String) -> String {
         guard settings.on else { return "Off" }
         guard let s = settings.setting(for: screenID) else { return "Wallpaper" }
+        if isLocked(s) { return "Private · locked" }
         let what = Self.describe(s.mode, in: readers[s.library]?.contents)
         let source = settings.allSame ? "All same" : settings.screens[screenID] == nil ? "New screens" : nil
         return [what, s.stillsOnly ? "stills" : nil, source].compactMap { $0 }.joined(separator: " · ")

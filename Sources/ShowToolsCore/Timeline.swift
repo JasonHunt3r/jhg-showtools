@@ -126,6 +126,14 @@ public enum FrameState: Sendable {
         }
     }
 
+    /// Nothing in this frame moves: one still picture, no transition, no
+    /// Ken Burns. A view that has already drawn it can skip frames until
+    /// the slide changes, which is most of a desktop show's life.
+    public var isMotionless: Bool {
+        guard case .still(let l) = self else { return false }
+        return l.slide.item.kind == .image && l.slide.kenBurns == nil
+    }
+
     public var layers: [Layer] {
         switch self {
         case .empty, .background: []

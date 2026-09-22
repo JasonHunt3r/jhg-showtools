@@ -264,8 +264,24 @@ New with BGTools:
   number bump and `killall chronod` before Control Center lists them.
   The probe app and its tiles are gone; BGTools is installed in
   `~/Applications` (where tiles load from).
-- **B6 Pausing and private libraries.** Sleep/lock, Low Power Mode,
-  inactive Spaces; Touch ID for a private library, dropped on sleep/lock.
+- **B6 Pausing and private libraries. BUILT 2026-09-22.** A player pauses
+  unless one of its screens is the Space its display is showing, and
+  everything pauses when the Mac or its displays sleep, the screen locks
+  (`com.apple.screenIsLocked`, the old distributed notification: there's no
+  public one) or Low Power Mode is on. A private library needs Touch ID in
+  BGTools' window ("Unlock…"); until then that screen plays its last
+  public setting, or the "new screens" default (checked: it fell back at
+  launch). Sleep or lock clears every unlock, and none is restored at
+  launch.
+  **Power, measured on the way** (the "curiosity" that turned out to
+  matter): one desktop window redrawing cost **40% of a core even on a
+  motionless still**, because every frame was recomposed. Now
+  `FrameState.isMotionless` (a still picture, no transition, no Ken Burns,
+  no lane image) lets a view skip frames until the slide changes: **40% →
+  ~2%**. The desktop also draws at 30 fps rather than 60
+  (`makeView(fps:)`), worth about 7 points on its own. **Ken Burns still
+  costs ~40%**, since it really does move every frame — worth a look
+  before it's left on by default.
 - **B7 ShowTools installs it.** Copy to `~/Applications` (newer build
   replaces it), launch at login with `SMAppService`, tell BGTools when the
   library moves.
