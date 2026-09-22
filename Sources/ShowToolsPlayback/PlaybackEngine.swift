@@ -167,6 +167,14 @@ public final class PlaybackEngine {
         touch()
     }
 
+    /// Takes up the source's show now and plays it from the top: for a
+    /// different show, where keeping the place (as an edit does) would land
+    /// somewhere arbitrary.
+    public func restartWithLatest() {
+        if let latest = model?.show(showID), latest != show { reload(latest) }
+        seek(0)
+    }
+
     /// Draws `edited` in place of the saved show, for a live edit that
     /// doesn't change timing (a Transform). Call `endLiveEdit` once it's
     /// committed, or abandoned.

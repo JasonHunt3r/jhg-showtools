@@ -20,9 +20,11 @@ own spec: `spec/bgtools.md`.
   app's types. Anything the app uses from here must be `public`.
 - `BGTools/`: the desktop companion app (spec `spec/bgtools.md`), an
   XcodeGen project using this package; `BGTools/build.sh` → `build/BGTools.app`.
-  It opens libraries with `Library(readingOnly:)` only. Test it with
-  `open -n --env BGTOOLS_LIBRARY=<scratch library> build/BGTools.app`;
-  it logs to `~/Library/Logs/BGTools.log`.
+  It opens libraries with `Library(readingOnly:)` only. Its settings and
+  the show each mode builds are in `Sources/BGToolsCore` (tested). Test it
+  with `open -n --env BGTOOLS_SETTINGS=<scratch settings.json> build/BGTools.app`,
+  the settings pointing at a scratch library (never the real one); it
+  re-reads the file when it changes and logs to `~/Library/Logs/BGTools.log`.
 - `Sources/ShowToolsApp/`: the SwiftUI/AppKit app. `PlaybackEngine` owns a
   show's clock, media and drawing, and any number of `ShowCanvas` views
   show it (the Edit Show preview and its pop-out share one engine). A paused

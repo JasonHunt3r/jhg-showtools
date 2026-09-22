@@ -28,6 +28,8 @@ targets:
         product: ShowToolsCore
       - package: ShowTools
         product: ShowToolsPlayback
+      - package: ShowTools
+        product: BGToolsCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jhg.bgtools

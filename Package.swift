@@ -7,14 +7,17 @@ let package = Package(
     products: [
         .library(name: "ShowToolsCore", targets: ["ShowToolsCore"]),
         .library(name: "ShowToolsPlayback", targets: ["ShowToolsPlayback"]),
+        .library(name: "BGToolsCore", targets: ["BGToolsCore"]),
         .executable(name: "ShowToolsApp", targets: ["ShowToolsApp"]),
         .executable(name: "stcli", targets: ["stcli"]),
     ],
     targets: [
         .target(name: "ShowToolsCore", linkerSettings: [.linkedLibrary("sqlite3")]),
         .target(name: "ShowToolsPlayback", dependencies: ["ShowToolsCore"]),
+        .target(name: "BGToolsCore", dependencies: ["ShowToolsCore"]),
         .executableTarget(name: "ShowToolsApp", dependencies: ["ShowToolsCore", "ShowToolsPlayback"]),
         .executableTarget(name: "stcli", dependencies: ["ShowToolsCore"]),
         .testTarget(name: "ShowToolsCoreTests", dependencies: ["ShowToolsCore"]),
+        .testTarget(name: "BGToolsCoreTests", dependencies: ["BGToolsCore", "ShowToolsCore"]),
     ]
 )

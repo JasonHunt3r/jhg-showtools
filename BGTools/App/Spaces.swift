@@ -43,6 +43,19 @@ enum Spaces {
         return out
     }
 
+    /// The uuid of the Space each display is showing now, by display UUID.
+    static func current() -> [String: String] {
+        guard let connFn, let copyFn else { return [:] }
+        let displays = copyFn(connFn()).takeRetainedValue() as? [[String: Any]] ?? []
+        var out: [String: String] = [:]
+        for d in displays {
+            guard let display = d["Display Identifier"] as? String,
+                  let cur = d["Current Space"] as? [String: Any] else { continue }
+            out[display] = cur["uuid"] as? String ?? ""
+        }
+        return out
+    }
+
     /// Puts the window on one Space only.
     static func move(_ window: NSWindow, to space: Int) {
         guard let connFn, let addFn, let removeFn else { return }

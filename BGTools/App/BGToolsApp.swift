@@ -1,14 +1,12 @@
 import AppKit
-import ShowToolsCore
+import BGToolsCore
 
-/// B2 skeleton: plays one show on every monitor and Space. Which library
-/// and show come from the environment for now, and a library is required:
-/// tests never use the real one (CLAUDE.md).
-///   BGTOOLS_LIBRARY=<library folder>  BGTOOLS_SHOW=<show id or name>
+/// BGTools: ShowTools shows as the desktop picture (spec/bgtools.md).
+/// What each monitor and Space plays is in its settings file;
+/// `BGTOOLS_SETTINGS` points tests at their own (never the real library).
 @main
 @MainActor
 final class BGToolsApp: NSObject, NSApplicationDelegate {
-    private var reader: LibraryReader?
     private var desktop: DesktopController?
 
     static func main() {
@@ -20,30 +18,12 @@ final class BGToolsApp: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ note: Notification) {
-        let env = ProcessInfo.processInfo.environment
         Log.write("launch pid \(getpid())")
-        guard let path = env["BGTOOLS_LIBRARY"] else {
-            Log.write("no BGTOOLS_LIBRARY: nothing to play")
-            return
-        }
-        do {
-            let reader = try LibraryReader(root: URL(fileURLWithPath: path))
-            self.reader = reader
-            let wanted = env["BGTOOLS_SHOW"]
-            guard let show = reader.shows.first(where: { wanted == nil || "\($0.id)" == wanted || $0.name == wanted }) else {
-                Log.write("no show \(wanted ?? "(first)") in \(path)")
-                return
-            }
-            Log.write("playing \"\(show.name)\" (#\(show.id))")
-            desktop = DesktopController(source: reader, showID: show.id)
-        } catch {
-            Log.write("can't open \(path): \(error)")
-        }
+        desktop = DesktopController(store: .standard())
     }
 
     func applicationWillTerminate(_ note: Notification) {
         desktop?.closeAll()
-        reader?.close()
         Log.write("quit")
     }
 }

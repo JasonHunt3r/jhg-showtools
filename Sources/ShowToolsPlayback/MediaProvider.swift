@@ -35,6 +35,11 @@ public final class MediaProvider {
     private var videos: [Int64: VideoSlot] = [:]   // keyed by slide id: each use plays on its own
     /// Called when newly decoded media arrives, so an idle view redraws.
     public var onChange: (() -> Void)?
+    /// Videos play without their sound (BGTools' desktop, unless its sound
+    /// switch is on). Takes effect on videos playing now, too.
+    public var muteVideo = false {
+        didSet { videos.values.forEach { $0.muted = muteVideo } }
+    }
 
     public init(maxPixels: Int, urlFor: @escaping (MediaItem) -> URL?) {
         self.maxPixels = maxPixels
@@ -132,6 +137,7 @@ public final class MediaProvider {
         if let v = videos[slide.slide.id] { return v }
         guard let url = urlFor(slide.item) else { return nil }
         let v = VideoSlot(url: url, duration: slide.item.duration ?? 0)
+        v.muted = muteVideo
         videos[slide.slide.id] = v
         return v
     }
@@ -193,6 +199,10 @@ public final class VideoSlot {
     private var transform: CGAffineTransform = .identity
     private var last: CIImage?
     private var seeking = false
+    public var muted: Bool {
+        get { player.isMuted }
+        set { player.isMuted = newValue }
+    }
 
     public init(url: URL, duration: Double) {
         let asset = AVURLAsset(url: url)

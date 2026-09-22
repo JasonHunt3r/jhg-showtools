@@ -215,7 +215,16 @@ New with BGTools:
   windows per display and Space (uuid keys, one rebuild per burst of
   notices) playing one show from `BGTOOLS_LIBRARY` (a scratch library;
   never the real one in tests).
-- **B3 Settings and modes.** Each monitor's and Space's setting (library,
+- **B3 Settings and modes. BUILT 2026-09-22** (`BGToolsCore`:
+  `DesktopSettings`, `DesktopShow`; 12 tests. In the app a `Player` per
+  screen, one for all under All same; checked on 4 Spaces with a test
+  settings file: every mode, Stills only, All same in sync and back,
+  re-picks each pass). No UI yet: the settings file
+  (`~/Library/Application Support/BGTools/settings.json`, or
+  `BGTOOLS_SETTINGS`) is read, and re-read when it changes. Found: hidden
+  Spaces keep drawing (B6 pauses them); a new pick must restart the engine
+  from the top (`restartWithLatest`), since keeping the place by slide id
+  lands anywhere when slide ids are item ids. Each monitor's and Space's setting (library,
   mode, show or collection, Stills only, sound), All same, the "new
   screens" default, the desktop defaults; random modes build a show on the
   fly with those defaults.
