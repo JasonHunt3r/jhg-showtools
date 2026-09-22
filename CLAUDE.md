@@ -28,7 +28,7 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   (Edit Show's right column), `CollectionAdd` (the in-app drag type and the
   "add to collection?" question), `Libraries` (open/new/private),
   `Fingerprints` (Vision feature prints for Find Similar, cached in
-  `<library>/Cache/Prints` by hash), `FrameStrip`, `EffectsTimeline`, `EffectControls` (sliders, pads), `RhythmPanel`
+  `<library>/Cache/Prints` by hash), `KeepOneSheet` (Keep One on a similar group), `FrameStrip`, `EffectsTimeline`, `EffectControls` (sliders, pads), `RhythmPanel`
   (the Rhythm tool: a floating panel, `RhythmTool.shared` holds its show,
   undo manager and ruler preview), `RhythmNotationView` (a pattern as notation:
   Bravura's glyph outlines in a `Canvas`, placed by `RhythmNotation.layout`), `RhythmGridView`

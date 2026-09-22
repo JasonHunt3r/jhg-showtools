@@ -60,7 +60,19 @@ Close–Loose slider (0.15–0.75, default 0.45); **Show Similar** on a
 picture's right-click ("Like “name”" with ✕). Checked in a scratch copy:
 the Golden Gate photo and its 5 variants group; 10 → 27 of 51 grouped
 from default to Loose; Show Similar lists the variants closest first.
-**Next: Keep One.** Ask first.
+**Keep One is BUILT** (2026-09-22). `KeepOne` (core, 3 tests): suggested
+keeper = most pixels, then best rating, then first added; a file any show
+uses stays (Library and collection alike); only files going to the Trash
+hand on tags (keeper's first) and a higher rating. `AppModel.keepOne` runs
+it in one undo group (removeFromCollection, or setTags + setRating +
+deleteItems). `KeepOneSheet`: a "Keep One…" button on each group header;
+cards with size, file size, format, date, rating, shows; Keep / To Trash /
+Leaves / Stays badges; a summary line. Checked: the Golden Gate group,
+5 to the Trash, keeper took "bridge" and 4 stars, one ⌘Z brought all back
+(files out of the Trash, tags and ratings as before); a group whose
+files are both in the show keeps both ("1 stays"), Keep One disabled.
+**Phase 3b is done.** Next: ask Jason (image stickiness, end of Phase 3;
+or Phase 4, setlist export).
 
 ## Where it stands
 

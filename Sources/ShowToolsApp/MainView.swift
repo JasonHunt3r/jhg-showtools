@@ -310,6 +310,12 @@ struct LibraryGridView: View {
     /// count, from close (copies, crops) to loose (a series, look-alikes).
     @AppStorage("similarWithin") private var within: Double = 0.45
     @State private var index: SimilarityIndex?
+    /// Keep One's group, while its sheet is open.
+    @State private var keepGroup: KeepGroup?
+    struct KeepGroup: Identifiable {
+        let items: [MediaItem]
+        var id: Int64 { items.first?.id ?? 0 }
+    }
     static let closest = 0.15, loosest = 0.75
     @AppStorage("gridTileSize") private var tileSize: Double = 150
 
@@ -562,6 +568,12 @@ struct LibraryGridView: View {
         } message: { ids in
             Text(deleteDialogMessage(ids))
         }
+        .sheet(item: $keepGroup) { g in
+            KeepOneSheet(group: g.items, collectionID: collectionID, undoManager: undoManager) { removed in
+                selection.subtract(removed)
+                keepGroup = nil
+            }
+        }
         .sheet(item: Binding(get: { renameIDs.map(IdentifiedIDs.init) },
                              set: { renameIDs = $0?.ids })) { wrapped in
             BatchRenameSheet(itemIDs: wrapped.ids, undoManager: undoManager)
@@ -628,8 +640,15 @@ struct LibraryGridView: View {
                                     ForEach(group) { item in tile(item) }
                                 }
                             } header: {
-                                Text("\(group.count) alike").font(.headline).foregroundStyle(.secondary)
-                                    .accessibilityLabel("Group \(n + 1), \(group.count) alike")
+                                HStack {
+                                    Text("\(group.count) alike").font(.headline).foregroundStyle(.secondary)
+                                        .accessibilityLabel("Group \(n + 1), \(group.count) alike")
+                                    Button("Keep One…") { keepGroup = KeepGroup(items: group) }
+                                        .controlSize(.small)
+                                        .help("Choose one of these to keep; the others "
+                                              + (collectionID == nil ? "go to the Trash" : "leave this collection"))
+                                        .accessibilityLabel("Keep One of group \(n + 1)")
+                                }
                             }
                         }
                     }

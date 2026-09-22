@@ -59,3 +59,41 @@ final class SimilarTests: XCTestCase {
         XCTAssertEqual(idx.groups(within: 0.3).last, [598, 599])
     }
 }
+
+final class KeepOneTests: XCTestCase {
+    func item(_ id: Int64, _ w: Int, _ h: Int, rating: Int = 0, tags: [String] = [], added: Double = 0) -> MediaItem {
+        MediaItem(id: id, relativePath: "\(id).jpg", hash: "h\(id)", kind: .image, pixelWidth: w, pixelHeight: h,
+                  duration: nil, ingestedAt: Date(timeIntervalSince1970: added), sourcePath: "", rating: rating, tags: tags)
+    }
+
+    func testTheLargestIsSuggestedThenTheBestRatedThenTheFirstAdded() {
+        XCTAssertEqual(KeepOne.suggestedKeeper([item(1, 800, 600), item(2, 4000, 3000), item(3, 1000, 1000)])?.id, 2)
+        XCTAssertEqual(KeepOne.suggestedKeeper([item(1, 10, 10, rating: 2), item(2, 10, 10, rating: 4)])?.id, 2)
+        XCTAssertEqual(KeepOne.suggestedKeeper([item(1, 10, 10, added: 5), item(2, 10, 10, added: 1)])?.id, 2)
+        XCTAssertNil(KeepOne.suggestedKeeper([]))
+    }
+
+    func testFilesAShowUsesStayAndTrashedOnesHandOnTagsAndRating() {
+        let keeper = item(1, 10, 10, rating: 2, tags: ["beach"])
+        let group = [keeper, item(2, 10, 10, rating: 5, tags: ["sunset", "beach"]), item(3, 10, 10, rating: 4, tags: ["used"]),
+                     item(4, 10, 10, tags: ["dog"])]
+        let p = KeepOne.plan(keeper: keeper, group: group, used: [3], trashing: true)
+        XCTAssertEqual(p.remove, [2, 4])
+        XCTAssertEqual(p.keptBecauseUsed, [3])
+        XCTAssertEqual(p.tags, ["beach", "sunset", "dog"], "not the kept one's")
+        XCTAssertEqual(p.rating, 5)
+    }
+
+    func testOutOfACollectionNothingIsHandedOn() {
+        let keeper = item(1, 10, 10, rating: 1)
+        let p = KeepOne.plan(keeper: keeper, group: [keeper, item(2, 10, 10, rating: 5, tags: ["x"])], used: [], trashing: false)
+        XCTAssertEqual(p.remove, [2])
+        XCTAssertNil(p.tags)
+        XCTAssertNil(p.rating)
+        // Nothing better to hand on: no change.
+        let q = KeepOne.plan(keeper: item(1, 10, 10, rating: 5, tags: ["a"]), group: [item(1, 10, 10, rating: 5, tags: ["a"]),
+                              item(2, 10, 10, rating: 3, tags: ["a"])], used: [], trashing: true)
+        XCTAssertNil(q.tags)
+        XCTAssertNil(q.rating)
+    }
+}

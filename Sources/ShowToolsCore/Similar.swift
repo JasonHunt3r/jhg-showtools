@@ -92,3 +92,43 @@ public struct SimilarityIndex: Sendable {
             .map { (id: $0.a == id ? $0.b : $0.a, distance: $0.distance) }
     }
 }
+
+/// Keep One (plan, Phase 3b): choosing one picture of a group, such as a
+/// series that got imported, and letting the others go.
+public enum KeepOne {
+    /// The one to suggest: the most pixels, then the highest rating, then
+    /// the one added first.
+    public static func suggestedKeeper(_ items: [MediaItem]) -> MediaItem? {
+        items.min { a, b in
+            let pa = a.pixelWidth * a.pixelHeight, pb = b.pixelWidth * b.pixelHeight
+            if pa != pb { return pa > pb }
+            if a.rating != b.rating { return a.rating > b.rating }
+            return a.ingestedAt < b.ingestedAt
+        }
+    }
+
+    public struct Plan: Equatable, Sendable {
+        /// What goes (out of the collection, or to the Trash).
+        public var remove: [Int64]
+        /// What stays because a show uses it.
+        public var keptBecauseUsed: [Int64]
+        /// The keeper's tags afterwards, if they change: its own, then the
+        /// trashed ones' (only files going to the Trash hand theirs on).
+        public var tags: [String]?
+        /// The keeper's rating afterwards, if it goes up.
+        public var rating: Int?
+    }
+
+    public static func plan(keeper: MediaItem, group: [MediaItem], used: Set<Int64>, trashing: Bool) -> Plan {
+        let others = group.filter { $0.id != keeper.id }
+        let going = others.filter { !used.contains($0.id) }
+        var plan = Plan(remove: going.map(\.id), keptBecauseUsed: others.filter { used.contains($0.id) }.map(\.id))
+        guard trashing else { return plan }
+        var tags = keeper.tags
+        for t in going.flatMap(\.tags) where !tags.contains(t) { tags.append(t) }
+        if tags != keeper.tags { plan.tags = tags }
+        let best = going.map(\.rating).max() ?? 0
+        if best > keeper.rating { plan.rating = best }
+        return plan
+    }
+}

@@ -772,6 +772,28 @@ final class AppModel {
 
     /// Shows that use any of these files, in a slide or in the lane's
     /// images row — for the Delete prompt (and later, the Info panel).
+    /// Keep One (plan, Phase 3b): keeps `keeper` of `group`. In a
+    /// collection the others leave it; in the Library they go to the Trash
+    /// and hand the keeper their tags and best rating. A file a show uses
+    /// stays either way. One undo step. Returns the plan it carried out.
+    @discardableResult
+    func keepOne(_ keeper: MediaItem, of group: [MediaItem], collectionID: Int64?, undo: UndoManager?) -> KeepOne.Plan {
+        let used = Set(group.map(\.id).filter { !showsUsing([$0]).isEmpty })
+        let plan = KeepOne.plan(keeper: keeper, group: group, used: used, trashing: collectionID == nil)
+        guard !plan.remove.isEmpty else { return plan }
+        undo?.beginUndoGrouping()
+        if let cid = collectionID {
+            removeFromCollection(plan.remove, cid, undo: undo)
+        } else {
+            if let tags = plan.tags { setTags([keeper.id: tags], undo: undo) }
+            if let rating = plan.rating { setRating(rating, for: [keeper.id], undo: undo) }
+            deleteItems(plan.remove, undo: undo)
+        }
+        undo?.setActionName("Keep One")
+        undo?.endUndoGrouping()
+        return plan
+    }
+
     func showsUsing(_ itemIDs: Set<Int64>) -> [Show] {
         shows.filter { show in
             show.slides.contains { itemIDs.contains($0.itemID) }
