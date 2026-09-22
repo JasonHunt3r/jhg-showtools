@@ -241,7 +241,16 @@ New with BGTools:
   launch only those the settings name. Checked by driving it with axtool
   (`AXTOOL_APP=bgtools`) on the test settings. Private libraries show a
   note until B6.
-- **B4b The panel.** `bgtools://open` shows it without activating other
+- **B4b The panel. BUILT 2026-09-22.** A borderless, non-activating
+  panel with the popover blur, at the top right of the screen the pointer
+  is on, sized by its content and kept in the corner. A row per Space (live
+  thumbnail, current one outlined, what it plays; ▾ picks a show,
+  shuffled show, collection, random show or all files; ⏭ next; ⚙ Stills
+  only, Sound, "Open in BGTools…"), All same collapsing them into one;
+  New screens (a menu), Random pictures (→ window), "Open BGTools…".
+  `bgtools://open` toggles it (tested); Escape closes it (tested); a
+  click anywhere else closes it (a global mouse monitor: for Jason to
+  try). Was: `bgtools://open` shows it without activating other
   windows; rows per monitor and Space.
 - **B5 Control Center.** Open BGTools, Desktop Show on/off (via
   `bgtools://` URLs, measured).

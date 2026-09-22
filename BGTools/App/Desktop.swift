@@ -259,18 +259,21 @@ final class DesktopController {
     func summary(for screenID: String) -> String {
         guard settings.on else { return "Off" }
         guard let s = settings.setting(for: screenID) else { return "Wallpaper" }
-        let contents = readers[s.library]?.contents
-        func showName(_ id: Int64) -> String { contents?.shows.first { $0.id == id }?.name ?? "a show" }
-        let what: String
-        switch s.mode {
-        case .show(let id): what = showName(id)
-        case .shuffled(let id): what = "\(showName(id)), shuffled"
-        case .collection(let id): what = "Random from \(contents?.collections.first { $0.id == id }?.name ?? "a collection")"
-        case .randomShow: what = "A random show"
-        case .allFiles: what = "Random from all files"
-        }
+        let what = Self.describe(s.mode, in: readers[s.library]?.contents)
         let source = settings.allSame ? "All same" : settings.screens[screenID] == nil ? "New screens" : nil
         return [what, s.stillsOnly ? "stills" : nil, source].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// A mode in words, naming its show or collection when the library's read.
+    static func describe(_ mode: PlayMode, in contents: DesktopShow.Library?) -> String {
+        func showName(_ id: Int64) -> String { contents?.shows.first { $0.id == id }?.name ?? "a show" }
+        switch mode {
+        case .show(let id): return showName(id)
+        case .shuffled(let id): return "\(showName(id)), shuffled"
+        case .collection(let id): return "Random from \(contents?.collections.first { $0.id == id }?.name ?? "a collection")"
+        case .randomShow: return "A random show"
+        case .allFiles: return "Random from all files"
+        }
     }
 
     /// The player a screen shows (All same's under All same).

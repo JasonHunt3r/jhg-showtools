@@ -16,11 +16,13 @@ enum Selection: Hashable {
 /// settings on the right.
 struct MainWindow: View {
     @Environment(DesktopController.self) private var desktop
-    @State private var selection: Selection?
+    @Environment(WindowState.self) private var state
 
     var body: some View {
+        @Bindable var state = state
+        let selection = state.selection
         NavigationSplitView {
-            Sidebar(selection: $selection)
+            Sidebar(selection: $state.selection)
                 .navigationSplitViewColumnWidth(min: 240, ideal: 270, max: 360)
         } detail: {
             switch selection {
@@ -46,8 +48,8 @@ struct MainWindow: View {
         }
         .frame(minWidth: 760, minHeight: 520)
         .onAppear {
-            if selection == nil, let current = desktop.screens.first(where: { $0.isMainDisplay && $0.isCurrent }) {
-                selection = .screen(current.id)
+            if state.selection == nil, let current = desktop.screens.first(where: { $0.isMainDisplay && $0.isCurrent }) {
+                state.selection = .screen(current.id)
             }
         }
     }

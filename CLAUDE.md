@@ -25,7 +25,8 @@ own spec: `spec/bgtools.md`.
   with `open -n --env BGTOOLS_SETTINGS=<scratch settings.json> build/BGTools.app`,
   the settings pointing at a scratch library (never the real one); it
   re-reads the file when it changes and logs to `~/Library/Logs/BGTools.log`.
-  `BGTOOLS_OPEN_WINDOW=1` opens its window at launch; `AXTOOL_APP=bgtools`
+  `BGTOOLS_OPEN_WINDOW=1` opens its window at launch, `BGTOOLS_OPEN_PANEL=1`
+  its panel; `AXTOOL_APP=bgtools`
   lets axtool drive it.
 - `Sources/ShowToolsApp/`: the SwiftUI/AppKit app. `PlaybackEngine` owns a
   show's clock, media and drawing, and any number of `ShowCanvas` views

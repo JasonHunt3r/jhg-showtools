@@ -10,6 +10,8 @@ import BGToolsCore
 final class BGToolsApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var desktop: DesktopController?
     private var window: NSWindow?
+    private let windowState = WindowState()
+    private var panel: PanelController?
 
     static func main() {
         let app = NSApplication.shared
@@ -21,8 +23,12 @@ final class BGToolsApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_ note: Notification) {
         Log.write("launch pid \(getpid())")
-        desktop = DesktopController(store: .standard())
-        if ProcessInfo.processInfo.environment["BGTOOLS_OPEN_WINDOW"] != nil { showWindow() }
+        let desktop = DesktopController(store: .standard())
+        self.desktop = desktop
+        panel = PanelController(desktop: desktop, windowState: windowState) { [weak self] in self?.showWindow() }
+        let env = ProcessInfo.processInfo.environment
+        if env["BGTOOLS_OPEN_WINDOW"] != nil { showWindow() }
+        if env["BGTOOLS_OPEN_PANEL"] != nil { panel?.open() }
     }
 
     /// Opening BGTools again (Finder, Spotlight, `open`) shows its window.
@@ -31,12 +37,13 @@ final class BGToolsApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
         return false
     }
 
-    /// `bgtools://window` opens the window (the panel's button, later a
-    /// Control Center tile).
+    /// `bgtools://open` shows the panel (the Control Center tile, B5);
+    /// `bgtools://window` opens the window.
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls where url.scheme == "bgtools" {
             Log.write("url \(url)")
             if url.host == "window" { showWindow() }
+            if url.host == "open" { panel?.toggle() }
         }
     }
 
@@ -48,7 +55,7 @@ final class BGToolsApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
                              backing: .buffered, defer: false)
             w.title = "BGTools"
             w.isReleasedWhenClosed = false
-            w.contentView = NSHostingView(rootView: MainWindow().environment(desktop))
+            w.contentView = NSHostingView(rootView: MainWindow().environment(desktop).environment(windowState))
             w.center()
             w.setFrameAutosaveName("BGToolsMain")
             w.delegate = self
@@ -63,7 +70,7 @@ final class BGToolsApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        desktop?.keepReaders = false
+        if panel?.isOpen != true { desktop?.keepReaders = false }
         NSApp.setActivationPolicy(.accessory)
     }
 
