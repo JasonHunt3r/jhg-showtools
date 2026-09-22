@@ -19,15 +19,14 @@ measurements and what each step did. BGTools is installed in
   now costs ~2%). Decide whether it should be on by default for random
   desktop pictures.
 - **Telling BGTools when a library moves** (B7 left it open).
-- **Packaging (being decided 2026-09-22):** Jason would rather one app
-  held both, so deleting ShowTools takes BGTools with it. Measured: a
-  nested helper in `Contents/Library/LoginItems` runs, takes
-  `bgtools://` URLs and can be registered at login, but **its own
-  Control Center tiles never register**. `tools/nest-probe` then proved
-  the way round it: an **Xcode-built host app** carries the tile
-  extension itself, the helper nested inside, and a tile press reaches
-  the nested helper. So the move is to build ShowTools with XcodeGen too.
-  (`tools/nest-probe/remove.sh` takes the probe out.)
+- **NEXT: port the packaging to Xcode — `spec/xcode-port.md`.** Jason
+  wants one app to hold both, so deleting ShowTools takes BGTools with
+  it. Measured: a nested helper runs, takes `bgtools://` URLs and can be
+  registered at login, but **its own tiles never register**;
+  `tools/nest-probe` proved that an **Xcode-built host** can carry the
+  tile extension itself and reach the nested helper (Jason pressed the
+  tile). The plan has the steps (P1–P7), the risks and what to check.
+  The probe is still installed: `tools/nest-probe/remove.sh`.
 - Parked: image stickiness, a guided first run, video export ("Later" in
   the plan; the render hook is built in).
 

@@ -1,0 +1,73 @@
+# Phase 5 follow-up (Jason, 2026-09-22): can one app hold everything?
+# A helper app nested in Contents/Library/LoginItems keeps working, but its
+# own Control Center tiles never register (measured). This asks whether an
+# Xcode-built HOST app can carry both: the tile in the host, the helper
+# nested, the tile reaching the helper by URL.
+#   tools/nest-probe/build.sh
+name: NestProbe
+options:
+  bundleIdPrefix: com.jhg
+  deploymentTarget:
+    macOS: "26.0"
+settings:
+  base:
+    CURRENT_PROJECT_VERSION: "3"
+    MARKETING_VERSION: "0.3"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    SWIFT_VERSION: "6.0"
+    ENABLE_HARDENED_RUNTIME: NO
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+targets:
+  NestHost:
+    type: application
+    platform: macOS
+    sources: [Host]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jhg.nestprobe
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: NestProbe
+    dependencies:
+      - target: NestControls
+        embed: true
+      - target: NestHelper
+        embed: true
+        copy:
+          destination: wrapper
+          subpath: Contents/Library/LoginItems
+  NestHelper:
+    type: application
+    platform: macOS
+    sources: [Helper]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jhg.nestprobe.helper
+        GENERATE_INFOPLIST_FILE: YES
+    info:
+      path: Helper/Info.plist
+      properties:
+        CFBundleDisplayName: NestHelper
+        LSUIElement: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.jhg.nestprobe.helper
+            CFBundleURLSchemes: [nesthelper]
+  NestControls:
+    type: app-extension
+    platform: macOS
+    sources: [Controls]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jhg.nestprobe.controls
+        GENERATE_INFOPLIST_FILE: YES
+    info:
+      path: Controls/Info.plist
+      properties:
+        CFBundleDisplayName: NestProbe
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Controls/NestControls.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
