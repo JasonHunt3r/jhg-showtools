@@ -35,9 +35,15 @@ collection column; Remove from Collection and Delete Collection are
 undoable (a deleted collection comes back with its shows, same ids:
 `Library.snapshotCollection` / `restoreCollection`; transactions now nest).
 Checked in a scratch copy, and a DB backup was taken first.
-**Open:** clicking a grid tile didn't give the grid the keyboard with
-axtool's clicks (Tab did; Library and collection alike, so not new).
-Ask Jason for one real click, then Delete, before calling it a bug.
+**Fixed (Jason confirmed the bug by hand):** a click on a grid tile never
+gave the grid the keyboard, so Delete did nothing in the Library or a
+collection (Tab worked). Three SwiftUI focus changes didn't fix it
+(focus on the grid only, focus set a turn later, onDeleteCommand moved
+onto the grid; none proven to matter). What works: Delete and ⌘Delete
+are caught by `SingleKeys` like ⌘Delete already was, only with a
+selection, never while text is edited or a list (the sidebar) has the
+keyboard. Checked: collection Delete + ⌘Z, Library Delete asks, typing
+in Search and the sidebar unaffected.
 **Find Similar is BUILT** (2026-09-22). Measured first (scratch script
 over the macOS aerial screensaver stills plus variants): Vision's distance
 is plain Euclidean on the 768-float unit print; shrinking to **299 px**

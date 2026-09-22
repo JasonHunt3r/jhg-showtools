@@ -527,22 +527,28 @@ struct LibraryGridView: View {
                     .disabled(selection.isEmpty)
             }
         }
-        .focusable()
-        .focused($focused)
         // Delete by context (plan, Phase 3b; Photos' convention). In the
         // Library: Delete asks, then Trash; ⌘Delete skips the question. In a
         // collection: Delete takes them out of it (undoable); ⌘Delete deletes
         // them from the library, and asks first.
-        .onDeleteCommand {
-            if let cid = collectionID {
-                removeFromCollection(orderedSelection, cid)
-            } else {
-                requestDelete(orderedSelection, confirm: true)
-            }
-        }
+        // Delete and ⌘Delete are taken here, before AppKit, rather than
+        // through SwiftUI focus: a click on a tile never gave the grid the
+        // keyboard (Jason's click and axtool's alike, 2026-09-22; setting
+        // the focus on click, and moving the handlers, didn't change it).
+        // Not while text is edited (SingleKeys), not while a list (the
+        // sidebar) has the keyboard, and only with something selected.
         .background(SingleKeys { event in
-            guard event.keyCode == 51, event.plainModifiers == [.command] else { return false }
-            requestDelete(orderedSelection, confirm: collectionID != nil)
+            guard event.keyCode == 51 || event.keyCode == 117, !selection.isEmpty,
+                  !(NSApp.keyWindow?.firstResponder is NSTableView) else { return false }
+            switch event.plainModifiers {
+            case []:
+                if let cid = collectionID { removeFromCollection(orderedSelection, cid) }
+                else { requestDelete(orderedSelection, confirm: true) }
+            case [.command]:
+                requestDelete(orderedSelection, confirm: collectionID != nil)
+            default:
+                return false
+            }
             return true
         }.opacity(0).allowsHitTesting(false))
         .confirmationDialog(deleteDialogTitle,
@@ -640,7 +646,20 @@ struct LibraryGridView: View {
             }
         }
         .background(Color(nsColor: .textBackgroundColor).opacity(0.001))
-        .onTapGesture { selection = [] }
+        .onTapGesture { selection = []; focused = true }
+        // The grid, not the bar above it with Search, is what takes the
+        // keyboard (by Tab; Delete itself is caught by SingleKeys, above).
+        .focusable()
+        .focused($focused)
+        .focusEffectDisabled()
+        // Edit ▸ Delete, when the grid has the keyboard.
+        .onDeleteCommand {
+            if let cid = collectionID {
+                removeFromCollection(orderedSelection, cid)
+            } else {
+                requestDelete(orderedSelection, confirm: true)
+            }
+        }
     }
 
     /// Nothing alike at this setting (or not worked out yet).
