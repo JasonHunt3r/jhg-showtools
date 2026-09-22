@@ -189,7 +189,7 @@ for ripping through slides and their details.
   editor** where you drag the start and end frames on the image; **⌘Z / ⇧⌘Z**
   undo and redo for every show edit
 
-### Phase 2a: Framing, rotation and match cuts (added 2026-09-21, before 2c)
+### Phase 2a: Framing, rotation and match cuts (added 2026-09-21, before 2c) — BUILT 2026-09-21, except presets (Flush), deferred
 The main reason for this phase is **match cuts**: lining slide B up against
 slide A so that the transition joins them seamlessly.
 
@@ -291,7 +291,7 @@ slide A so that the transition joins them seamlessly.
   deliberately left alone until it has been seen (the zoomed-out work area
   is how to see it); the second layer (2c) may turn out to be the answer
 
-### Phase 2c: The lane — transitions and image layers (after 2a)
+### Phase 2c: The lane — transitions and image layers (after 2a) — BUILT 2026-09-21
 Redesigned with Jason 2026-09-21 (this replaces the earlier "connected clip
 on a slide" design). Above the storyline runs a **lane** with two rows:
 
@@ -369,7 +369,7 @@ App Store rules forbid downloading or running code that adds features after
 review, so any add-ons would ship inside the app. The upscaling engine is
 chosen later, after checking what macOS actually offers.
 
-### Phase 2b: Library manager
+### Phase 2b: Library manager — BUILT 2026-09-21
 **Starts with Collections (Jason, 2026-09-21).** The app is organised the
 way Final Cut is (Library → Event → Project), with ShowTools' own names:
 

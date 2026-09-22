@@ -1,4 +1,4 @@
-# ShowTools — handoff, 2026-09-21 (end of the audit day)
+# ShowTools — handoff, 2026-09-21 (end of day two)
 
 For the next session. Read `CLAUDE.md` (rules) and `spec/plan.md` (every
 decision, phase by phase) first. This file is the state of play. The repo
@@ -12,208 +12,112 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 | 1 Library + player | Built |
 | 2 Composer (Edit Slides / Edit Show) | Built |
 | **2a** Framing, rotation, match cuts | **Built**, except presets (Flush), which are deferred |
-| **2c** The lane: transitions row + images row | **Built**, except the parked items below |
 | **2b** Library manager | **Built** |
-| 3–5 | Not started |
+| **2c** The lane: transitions row + images row | **Built** |
+| **3** Music + timeline | **Not started — start here** |
+| 3b–5 | Not started |
 
-Built this session (2026-09-21, day two):
-- **2a:**
-  - a **Transform** on every slide (position, zoom below 1×, rotation, anchor, background colour), with Fit now the default for new shows
-  - **handles** on the preview (move, corner scale, Option for centre, rotate outside a corner, Shift snaps to 15°, anchor crosshair)
-  - the **key map** (arrows 1/10 px; Option+←/→ rotate; Option+↑/↓ zoom; a run of presses is one undo step)
-  - a **zoomable work area**, with the overhang dimmed
-  - the **onion skin** (the previous slide's last frame)
-  - the **soft-at-this-zoom** warning
-  - **Rotation** (Angles or Speed, centre-zero acceleration, start/end pivots with a lock, freeze on transition) with its own on-picture **Rotation mode**, green start and red end
-  - Ken Burns gains acceleration and freeze
-- **2c, the lane:**
-  - transitions carry a **lead** (they can start before their join)
-  - a **transitions row**: sections across joins, draggable edges, a cut is an empty join with a +, and new shows default to a 2 s dissolve centred on the join
-  - an **images row** (overlay clips on the show's clock): drop, place, move, trim, select with handles, and opacity, blend, fit and fades
-- **2b:**
-  - five-star **ratings** on files
-  - **Library → Collection → Show** in the sidebar
-  - the **Collection Browser** (the show's uses first, numbered and in order of appearance; then the rest; E/W/Q; dragging)
-  - the **"isn't in the collection, add it?"** question, with its "Always add without asking" setting
-  - **Import into a collection / Add to Library**
-  - a Photos-style **Library grid** (search, filters, sort, drag)
-  - **libraries**: open, new, recent, master, and **private** (Touch ID or password)
-- **Inspector:** the slide, then **Effects** with a display-only timeline of what acts when.
-- **Frame strip:** rendered frames of the finished picture under the picture, in the viewer column only, sized by a grabbable bar; follows the storyline or shows the whole show; ⌥⌘F.
+Everything through 2b/2c is built, audited, and checked by hand (Jason and/or
+Claude with `tools/axtool.swift`). The detailed build history for each phase
+lives in git log and in memory (session AARs); this file only tracks what's
+still open.
 
-### Audit and hands-on pass, 2026-09-21 (overnight, then the next day)
+## Recently completed (2026-09-21, third session that day)
 
-A full audit ran overnight (build and tests, a read of every file, dead
-code, real-library safety, docs against code); the day after went on fixing
-it and checking by hand. Everything is in `spec/audit-2026-09-21.md`, and
-everything it found is fixed and pushed (commits after `2cbfce3`, up to `d4b67e7`):
-- **High:** undo steps replayed into another library after a switch (ids
-  restart at 1 in each); the grid kept the old library's thumbnails after a switch.
-- **Medium:** short slides let two transitions overlap (measured); imports
-  could run at once, and a failed one left a stray copy in `Media/`;
-  J/K/L/space/⇧Z could eat typing in text fields; the show name saved on
-  every keystroke.
-- **Safety:** a launch with a `SHOWTOOLS_` variable but no
-  `SHOWTOOLS_LIBRARY` opens nothing; a library is backed up
-  (`Library.sqlite.v<N>.bak`) before any upgrade; and the first plain launch
-  after a crashed test copy opens nothing (`TestLaunchRecord`), because the
-  crash reporter's Reopen relaunches without the test's environment.
-- **Low:** nine edge cases, and `KenBurnsFrame`, `ImagePoint` and `SRGBColor`
-  now decode field by field.
-- **Found during the hands-on pass, fixed:**
-  - a **crash**: `ColumnsSplitView` was its own delegate, and asked about
-    `toggleSidebar:` it recursed until the stack overflowed (seen twice, from
-    Accessibility reads of the menus; proven in a harness)
-  - **Collection Browser rows didn't select** on a click on their content, and
-    a multi-row drag carried one file: `.onDrag` on List rows. Now `.itemProvider`.
-    Double-click on a use toggles the inspector again (lost when the browser
-    replaced the order list). Jason confirmed all three by hand.
+Picked up from small requests plus the rest of Phase 2b:
+- **Inspector polish:** a header bar (icon, selection name/length, a
+  circled-X close) like the collection list's; its two section headers
+  (Transform, Effects) now pin to the top of the column while their content
+  scrolls under them (`LazyVStack(pinnedViews: [.sectionHeaders])` in place
+  of `Form`, which doesn't support pinning).
+- **Library delete**, the Photos convention: Delete asks (naming how many
+  shows use the file); ⌘Delete and a context-menu item skip the prompt;
+  either way the file goes to the Trash, its slides *and lane images* are
+  stripped from every show that had it, and ⌘Z restores all of it, file
+  included.
+- **Batch rename:** Finder's Rename Items modes (Replace Text, Add Text,
+  Format with index/counter/date and a start number), live preview, from
+  the grid's context menu or File ▸ Rename….
+- **Info panel:** a floating panel (⌘I, or the grid's toolbar/context menu)
+  following the grid's selection live. Read-only metadata read fresh from
+  the file (dimensions, size, format, date, camera, lens, exposure, GPS);
+  rating; tags (schema 6) added/removed for the whole selection at once,
+  feeding the grid's search; a Settings toggle also writes them as Finder
+  tags.
+- **Relink by hash**, closing out 2b: File ▸ Relink Missing Files… finds a
+  file Finder moved or renamed behind the app's back and points its row at
+  the new location, matched by content hash.
 
-**Claude can now click in the app.** Accessibility is granted to the Claude
-app, and `tools/axtool.swift` reads the UI and sends real mouse and key
-events (rules in CLAUDE.md). It drove eight of the audit's nine hands-on
-checks; all nine pass.
+Library schema is now **version 6** (5 library settings, 6 tags on items).
+Every upgrade is additive and tested by opening the previous version.
 
-Library schema is now **version 5**: 2 ratings, 3 overlays, 4 collections, 5 library settings. Every upgrade is additive and tested by opening the previous version. The master library upgrades itself the first time this build opens it.
+**Recurring lesson, worth knowing before building anything else with a
+`.sheet` or a floating panel:** a separate window's own `\.undoManager`
+isn't the presenting window's, and even the *right* `UndoManager` passed in
+isn't enough by itself — AppKit vends every window its own, and ⌘Z asks
+whichever window is *key*. A panel is key right after you finish typing
+into it, the normal moment to press ⌘Z. Both traps are written up in full,
+with the fix, in `spec/macos_panels_guide.md` (in the sibling `jhg-cutcheck`
+repo, shared across projects) and in memory.
 
-### Confirmed by hand (Jason, or Claude with axtool)
-- Moving and rotating an image with the handles saves correctly
-- Zooming and rescaling with the mouse
-- The frame strip's placement under the picture, its height limits, and the grabbable bar ("looks good")
-- The inspector with the column fix restored ("cool")
-- The inspector's Effects section and the frame strip's link menu
-- Audit day: every audit check (see the audit file); Collection Browser rows
-  select, double-click toggles the inspector, and a multi-row drag arrives
-  whole (Jason); J/K/L, space and ⇧Z in Edit Show; renaming a show; File ▸
-  Import… with its "Import into:" menu; File ▸ Open Library…, Open Recent and
-  Open Master; Place Image Here… and its collection question; trimming a
-  slide's end (Claude)
+Full detail on all of the above — what was checked by hand, exact bugs
+found and fixed (a coordinate-math bug in relink caught by a test before it
+reached the app; a thumbnail-retry bug found only by looking at the
+screen) — is in git log (`832abb5`, `1d3f2f3`, `e072613`, `5bb0433`) and in
+memory (session AAR).
 
-### Built but not yet tried by hand
+## Still needs Jason's hands
 
-**Most of this list was run by Claude on 2026-09-21: results in
-`spec/hands-on-2026-09-21.md`.** What's left below is what it couldn't
-reach (Finder/Photos drags, Touch ID, pinch, a second screen, cursors,
-looks), plus Speed mode and the pivot lock (below the inspector's fold).
-Everything below has only been seen in screenshots, or not at all. Claude
-can now work through most of it with `tools/axtool.swift`; what still needs
-Jason's hands is cross-app drags (Finder, Photos), Touch ID, pinch, a
-second screen, and whether things look and feel right. Grouped so a test
-pass can go area by area:
-- **Handles and keys:** the cursor for each zone, corner scale with and without Option, Shift-snapped rotation, dragging the anchor, the arrow keys, ⌘Z undoing one drag or one run of nudges
-- **Work area and onion skin:** the zoom menu and pinch, grabbing handles out in the margin, the onion toggle and its opacity
-- **Rotation mode:** the Transform/Rotation switch, dragging each arm (going round twice should give 720°), Speed mode's red arm, the pivots locked and unlocked
-- **Inspector sliders:** Transform, Rotation, acceleration, pivot pads, freeze. Each should be one undo step per drag, and the preview only updates on release
-- **Transitions row:** dragging edges and the middle (snaps to centred), + at a cut, Delete on a selected transition (makes a cut, doesn't delete slides), the controls over the picture, Use Show Default
-- **Images row:** it opening when dragged over, drops from Finder and Photos, right-click Place Image Here…, moving and trimming (no overlaps), selecting in the row and on the picture, its bar, Delete, Esc
-- **Collections and browser:** + New, rename and delete (deleting a collection warns about its shows), a collection's grid, New Collection from Items / Add to / Remove from Collection, the browser's arrow, search and filters, E/W/Q, and a storyline selection highlighting its entry
-- **Dragging:** browser rows onto the storyline (insertion line); grid tiles onto collections and shows; Finder and Photos files onto all of those; the add-to-collection question, its Cancel, and "Always add…" switching on the Settings preference
-- **Import and grid:** File ▸ Add to Library…, the grid's search, filters and sort
-- **Libraries:** New, Open Recent's never listing private libraries, Settings ▸ Private library (turning it off asks), Unlock on the locked screen, and the Spotlight setting with an alternate library open (it should rename *that* folder)
-- **Frame strip:** Follow Storyline while scrolling and zooming, Whole Show, clicking a frame, ⌥⌘F
-- **From Phase 2, still untried:** trimming a video's start, pinch on the storyline, the 1-second hover info, popping out the preview onto a second screen, dragging from the Photos app
+Claude has checked almost everything reachable with `axtool` (mouse, keys,
+menus). What's left needs real hardware or real judgement:
+- **Cross-app drags:** dropping files from Finder and from Photos onto the
+  storyline, the images row, the grid, a collection.
+- **Touch ID / the Mac's password:** opening a private library, and the
+  locked screen's Unlock.
+- **Pinch:** the work area's zoom, and the storyline.
+- **A second screen:** popping the preview out onto it.
+- **Look and feel:** cursors per handle zone, whether the sticky headers and
+  inspector bar read right, whether the lane's drags feel right now that
+  they're fixed.
+- **One confirmation:** a real ⌘Z with the Info panel itself focused, right
+  after editing a tag (axtool's synthetic version of this specific case
+  didn't reach Undo, even though the same undo works via the menu and via
+  ⌘Z with the main window focused — see the gotcha above; likely a
+  synthetic-event quirk, not a real bug, but worth one real keypress).
 
-## Next
+**Suggested next step before diving into Phase 3:** a hands-on pass with
+Jason's own photos, in a separate library (File ▸ New Library…) so the
+master isn't touched. It's also when the parked "image stickiness"
+question (below) gets settled.
 
-0. ~~Fix the hands-on findings~~ **Done** (the lane's half-speed drags;
-   Delete and Esc now reach the storyline, which takes the keyboard when
-   clicked; Speed mode and the pivot lock checked). Results at the end of
-   `spec/hands-on-2026-09-21.md`, including an Undo glitch seen once and
-   not reproduced.
-1. **Suggested: a hands-on pass with Jason's own photos**, in a separate library (File ▸ New Library…) so the master isn't used. Claude can take most of the list above first with axtool, leaving Jason the parts that need hands and eyes; it also sets up the parked stickiness question.
-2. **The rest of 2b:**
-   - ~~Delete the Photos way~~ **Built** (2026-09-21, session 3b): Delete asks
-     first, naming how many shows use the file; ⌘Delete (and the grid's
-     context menu) skip or keep the prompt as the plan says; either way the
-     file moves to the Trash, its slides *and lane images* are removed from
-     every show that had it, and ⌘Z puts all of it back — the file from the
-     Trash, the database rows with their original ids, the show's slide
-     order and its overlays. `Library.deleteItems`/`restoreItems` do the
-     database side (tested); `AppModel.deleteItems` does the Trash move and
-     the undo/redo. Checked by hand with axtool: plain Delete, ⌘Delete, the
-     context menu, and undo, including a file that was a lane image.
-   - ~~Finder-style batch rename~~ **Built** (2026-09-21, session 3b):
-     Replace Text, Add Text and Format (name + index/counter/date, a start
-     number), with a live preview, from the grid's context menu or File ▸
-     Rename… (published through a `FocusedValue`, since the sheet needs the
-     grid's own selection). `BatchRename` computes the names (tested, pure
-     logic, no filesystem); `Library.renameItems` moves the files and
-     updates their rows, numbering a name already taken rather than ever
-     overwriting (tested); undo/redo are symmetric, like `deleteItems`'s.
-     **Gotcha, worth knowing for the next sheet:** a `.sheet` is a separate
-     window, and its own `\.undoManager` isn't necessarily the presenting
-     window's — the rename's undo silently did nothing until the caller's
-     `undoManager` was passed in explicitly instead of read from the
-     sheet's own environment. Checked by hand with axtool: a two-file
-     rename, its preview, Rename, ⌘Z, and ⌘⇧Z.
-   - ~~an Info panel~~ **Built** (2026-09-21, session 3b): a floating
-     panel (`spec/macos_panels_guide.md`'s recipe — one panel, so no
-     snapping needed), ⌘I or the grid's toolbar/context menu, following
-     the grid's selection live via `AppModel.infoPanelSelection`.
-     Read-only metadata (`MediaMetadata`, read fresh from the file, never
-     cached: dimensions, size, format, date taken, camera, lens, exposure,
-     GPS as an Apple Maps link) for one file; rating; tags, added or
-     removed for the whole selection at once (schema 6: a `tags` column,
-     JSON, decoded into `MediaItem.tags`), feeding the grid's search.
-     Settings ▸ Tags has "Also write tags as Finder tags"
-     (off by default; confirmed by hand with `xattr`).
-     **Two undo gotchas found here, both fixed — worth knowing for any
-     future panel or sheet:**
-     1. The same one rename hit: a separate window's own `\.undoManager`
-        isn't the presenting window's. Fixed the same way — pass it in
-        explicitly rather than read it from the panel's own environment.
-     2. **New:** passing the right `UndoManager` into `registerUndo` isn't
-        enough by itself. AppKit vends **every** window its own
-        `UndoManager` unless told otherwise, and ⌘Z (or Edit ▸ Undo) asks
-        *the key window's* one — so with the floating panel key (the
-        normal case, right after typing a tag), a correctly-registered
-        step went nowhere. Fixed by overriding the panel's own
-        `undoManager` to return the shared one. **`URLResourceValues.tagNames`'s
-        setter is unavailable at our deployment target on the SDK in this
-        environment** (a macOS 26+ restriction that showed up while
-        building on macOS 14 as the target); used `NSURL.setResourceValue(_:forKey:)`
-        instead, which isn't restricted.
-     Checked by hand with axtool: single- and multi-file selection
-     following live, adding/removing a tag (on one and on two at once),
-     the search field matching a tag, undo/redo **via the menu** (both
-     directions), and undo via ⌘Z **with the main window key**. ⌘Z sent as
-     a synthetic key event specifically while the *panel* was key did not
-     reach Undo in axtool's hands, even though the same action through the
-     menu worked correctly — likely a synthetic-CGEvent-versus-panel
-     quirk rather than a real one (menu invocation exercises the exact
-     same code path a real keypress does), but **worth Jason confirming
-     once with an actual ⌘Z while the Info panel has focus.**
-   - ~~relink by hash~~ **Built** (2026-09-21, session 3b), closing out 2b.
-     `Library.relinkMissingItems`: every item whose file isn't where its
-     row says gets checked against every file actually under `Media/`,
-     hashed once; a match (hash is `UNIQUE` in the schema, so never
-     ambiguous between two items) points the row at the new path.
-     File ▸ Relink Missing Files… (not scoped to a selection, so no
-     FocusedValue needed) reports "N relinked", "M still missing — no
-     file with a matching hash was found", or "No missing files were
-     found." Not undoable — it only ever repairs a broken reference back
-     to a real file. Tested (a file moved into a new subfolder and
-     renamed is found; one with no match anywhere is reported, not
-     guessed at). A bug surfaced and fixed along the way: `Ingest.collect`'s
-     enumerator can hand back a path resolved differently than
-     `mediaURL`'s own string form (`/tmp` vs `/private/tmp`, caught by the
-     test before it ever reached the app), which broke a naive
-     string-prefix strip; fixed by resolving both sides first.
-     **Also found and fixed while checking this by hand, not really about
-     relink itself:** `ThumbnailView`'s `.task(id: item.id)` never retried
-     a thumbnail that had failed to load earlier in the same session,
-     because an item's id doesn't change when its file is relinked — only
-     its path does. Now keyed on the URL instead, so a relinked file's
-     thumbnail appears immediately rather than needing a restart. Checked
-     by hand with axtool: a file moved into a new folder and renamed
-     (relinked, its thumbnail reappearing live), nothing missing (correct
-     message), and a file deleted outright with no match anywhere.
-3. **Phase 3:** music and waveform. Then 3b duplicate finder, 4 setlist export, 5 live desktop.
+## Starting Phase 3: music + timeline
+
+Per `spec/plan.md`:
+- Add a song (File ▸ Import a track, or similar) and draw its waveform on
+  a timeline under the storyline.
+- Slides appear as blocks under the waveform; dragging a block's edge
+  changes that slide's length (this already exists for the plain
+  storyline — the waveform is a new ruler-like element alongside it, not a
+  replacement).
+- **Alignment aids:** markers dropped by hand while listening (a keystroke
+  on the beat); slide edges snap to markers. Automatic beat detection is
+  explicitly deferred ("may come later if the markers turn out to be a
+  chore") — don't build it first.
+- Scrubbing the timeline scrubs the show (the engine's clock already
+  becomes the music's clock once a track is loaded — see `Timeline.swift`'s
+  clock note — so this should mostly fall out of that).
+
+Suggested first questions to raise with Jason before writing code (per
+`feedback_ask_for_clarity`/`feedback_verify_mental_model` in memory —
+restate the flow back before coding): where a track lives in the data model
+(per-show, stored how), what the waveform is drawn from (decode once and
+cache, or on the fly), and what a "marker" actually is (a time value only,
+or does it carry anything else).
 
 ## How to work on it
 
 ```sh
-swift test                                  # 81 core tests
+swift test                                  # 93 core tests
 ./make-app.sh                               # → build/ShowTools.app
 tools/make-test-library.sh /tmp/STTest      # scratch library + generated media
 open -n --env SHOWTOOLS_LIBRARY=/tmp/STTest/TestLib.noindex build/ShowTools.app
@@ -221,9 +125,11 @@ open -n --env SHOWTOOLS_LIBRARY=/tmp/STTest/TestLib.noindex build/ShowTools.app
 - **Never** run against the real library. Always set `SHOWTOOLS_LIBRARY`.
 - Dev hooks are listed in `CLAUDE.md` (show, slide, image, rotation mode, transition, lane image, play).
 - Screenshots: `swiftc tools/list-windows.swift` gives window ids, then `screencapture -x -o -l <id>`. `tools/contact-sheet.swift` tiles a folder of PNGs.
+- **Get click/type coordinates from `ax find`/`ax dump` (Accessibility), never by eyeballing a screenshot** — especially one resized with `sips`, whose pixels don't match real screen points. Screenshots are for looking, not measuring; this exact mistake mis-clicked tiles twice in one session.
 - Frames: `stcli render <lib> <showID> 960x540 <outdir> <t>…` draws through the real Compositor, lane images included.
 - Driving the app: `swiftc -O tools/axtool.swift -o <scratch>/ax`, then `ax front <pid>`, `ax find <pid> <text>`, `ax click x y`, `ax type …`, `ax menu <pid> File "Import…"`. It refuses input unless ShowTools is frontmost. Read the UI with `find`/`dump` before taking screenshots. Close test copies with `kill` or ⌘Q, not `kill -9`.
-- Reading the menus through Accessibility validates every item, like opening them; that's how the split-view crash surfaced. A crashed copy's crash dialog has a Reopen button: it launches without `SHOWTOOLS_LIBRARY` (now refused once, by design).
+- Reading the menus through Accessibility validates every item, like opening them; that's how a past split-view crash surfaced. A crashed copy's crash dialog has a Reopen button: it launches without `SHOWTOOLS_LIBRARY` (refused once, by design).
+- Don't shell out to `osascript`/Finder for anything `ls`/`sqlite3`/`xattr` can already answer — it can pop a real macOS permission dialog outside the app, which `axtool` correctly refuses to touch.
 - **Tell Jason before restarting the app.** He often has it open and is trying things.
 
 ## Ask Jason later
@@ -237,16 +143,12 @@ open -n --env SHOWTOOLS_LIBRARY=/tmp/STTest/TestLib.noindex build/ShowTools.app
 - Inspector sliders have no live preview while dragging; they update on release.
 - Accordion was dropped, and Page Curl is offered as "Page Turn".
 
-## Lessons from the audit day (details in memory)
-- **Driving the Mac's UI is driving Jason's Mac.** Events go to whatever is in front: typed paths landed in his editor once. axtool now refuses unless ShowTools is frontmost. A crash relaunch dropped the scratch-library environment and created an empty real library; that's guarded now too.
-- **Synthetic clicks aren't proof of a bug, or of a fix.** Browser rows ignored every synthetic click, and Jason's real clicks found the pattern (only the edges selected). A harness with both versions side by side then settled it in one run.
-- **Harnesses first for AppKit questions:** the self-delegating split view crashed in a ten-line harness on the first try, and the `.onDrag` vs `.itemProvider` harness answered select, ⌘-click, double-click and multi-drag at once.
-- **Test the tests:** every new test was run against the old code first and failed there (the overlap test caught a second case nobody had found).
-
-## Lessons from day two (details in memory)
-- **When Jason reports breakage right after a layout change, that change is what he means.** "The inspector isn't opening and the list won't scroll", straight after the frame strip went in, meant "put the strip under the picture". I fixed a real but different bug, he said undo, the revert then went too far, and it was reapplied. Ask before fixing symptoms.
-- **Measure with probes.** A frame and hit-test dump, written to a file, found the 28 pt inspector overhang in one run, after two wrong guesses. `log show` returns nothing from this app in Claude's sandbox, so write probes to a file.
-- **SwiftUI hosting views hit-test all their content, clipped or not.** Hence `ColumnHost`, which refuses the mouse outside its own frame.
-- **Swift decoding traps:** adding a field to a synthesized-Codable type (KenBurns, Transition) would have dropped every saved value. Every model type now decodes field by field.
-- **More name collisions:** `RGBColor` (QuickDraw) became `SRGBColor`, and `Collection` (Swift) became `MediaCollection`.
-- **Core Image mixes in linear light,** so a 50% mix encodes to about 0.735 sRGB. Tests expect that.
+## Lessons (details in memory)
+- **Driving the Mac's UI is driving Jason's Mac.** Events go to whatever is in front. axtool refuses unless ShowTools is frontmost, and refuses a crash-relaunch that dropped its scratch-library environment.
+- **Synthetic clicks (and synthetic key events) aren't proof of a bug, or of a fix.** Settle a disagreement with a harness or, failing that, one real keypress/click from Jason.
+- **Harnesses first for AppKit questions.** A ten-line standalone harness answers an AppKit behaviour question faster and more certainly than reasoning about it.
+- **Test the tests.** A new test should be run against the old code first, and fail there.
+- **When Jason reports breakage right after a layout change, that change is what he means.** Ask before fixing symptoms.
+- **Measure with probes**, written to a file — `log show` returns nothing from this app in Claude's sandbox.
+- **Swift decoding traps:** every model type saved as JSON decodes field by field, never synthesized `Codable` — one unreadable field would otherwise drop every saved value, permanently on the next save.
+- **A separate window's `\.undoManager` isn't the presenting window's, and registering on the right one isn't enough — the *key* window's own `undoManager` is what ⌘Z asks.** See "Recently completed" above; full write-up in `spec/macos_panels_guide.md`.
