@@ -85,6 +85,15 @@ struct AppCommands: Commands {
             Divider()
         }
 
+        CommandGroup(after: .toolbar) {
+            // Phase 5: the desktop is BGTools' job, and ShowTools installs
+            // it (spec/bgtools.md).
+            Button(BGToolsInstall.isInstalled ? "Desktop Show…" : "Set Up Desktop Show…") {
+                do { try BGToolsInstall.openDesktop() } catch { NSAlert(error: error).runModal() }
+            }
+            Divider()
+        }
+
         CommandMenu("Show") {
             Button("Play") { play(fullScreen: false) }
                 .keyboardShortcut("p", modifiers: [.command, .option, .shift])

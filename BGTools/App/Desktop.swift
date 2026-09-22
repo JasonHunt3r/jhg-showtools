@@ -293,7 +293,9 @@ final class DesktopController {
 
     private func rebuild(reason: String) {
         let all = wanted()
-        let want = settings.on ? all : []
+        // A screen with nothing to play gets no window at all, so the
+        // normal wallpaper shows through rather than black.
+        let want = settings.on ? all.filter { settings.setting(for: $0.0.id) != nil } : []
         let layout = want.map { "\($0.0)@\($0.2 ?? -1)\($0.1.frame)" }.joined(separator: " ")
         guard layout != lastLayout else { return }   // a Space switch alone changes nothing
         lastLayout = layout

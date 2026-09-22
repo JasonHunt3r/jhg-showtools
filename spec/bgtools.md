@@ -282,9 +282,20 @@ New with BGTools:
   (`makeView(fps:)`), worth about 7 points on its own. **Ken Burns still
   costs ~40%**, since it really does move every frame — worth a look
   before it's left on by default.
-- **B7 ShowTools installs it.** Copy to `~/Applications` (newer build
-  replaces it), launch at login with `SMAppService`, tell BGTools when the
-  library moves.
+- **B7 ShowTools installs it. BUILT 2026-09-22.** `make-app.sh` builds
+  BGTools (when XcodeGen is there) into `ShowTools.app/Contents/Resources`.
+  **View ▸ Desktop Show…** (or "Set Up Desktop Show…" the first time)
+  copies it to `~/Applications` and opens its window; it replaces the copy
+  when the carried one is a different version **or newer** (versions rarely
+  change while it's being built), quitting a running BGTools first and
+  swapping the bundle whole. BGTools registers itself at login on its first
+  run from `~/Applications` (`SMAppService.mainApp`), with an "Open at
+  login" switch in its window's ⋯ menu. Checked end to end: the menu item
+  installed it, it launched, registered, and opened its window. A screen
+  with nothing chosen now gets **no window at all** (it was black before),
+  so the normal wallpaper shows.
+  **Left open:** telling BGTools when a library moves. Until then a moved
+  library reads as "can't be opened" and is chosen again by hand.
 
 ## Originally (2026-09-20)
 

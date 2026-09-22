@@ -40,6 +40,15 @@ struct MainWindow: View {
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Toggle("Open at login", isOn: Binding(get: { LoginItem.isOn }, set: { LoginItem.setOn($0) }))
+                    Divider()
+                    Button("Quit BGTools") { NSApp.terminate(nil) }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Toggle("Desktop Show", isOn: Binding(get: { desktop.settings.on },
                                                      set: { on in desktop.update { $0.on = on } }))
                     .toggleStyle(.switch)

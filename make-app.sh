@@ -19,6 +19,17 @@ cp ".build/$CONFIG/ShowToolsApp" "$APP/Contents/MacOS/ShowTools"
 # notation. ATSApplicationFontsPath below loads it for the app alone.
 cp -R Resources/Fonts "$APP/Contents/Resources/Fonts"
 
+# BGTools, the desktop companion (spec/bgtools.md). ShowTools carries it and
+# copies it to ~/Applications when the desktop is first turned on. Building
+# it needs Xcode and XcodeGen; without them the app is built without it and
+# "Set Up Desktop Show…" says so.
+if command -v xcodegen >/dev/null 2>&1; then
+    BGTools/build.sh >/dev/null
+    cp -R build/BGTools.app "$APP/Contents/Resources/BGTools.app"
+else
+    echo "note: XcodeGen isn't installed, so this build carries no BGTools"
+fi
+
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

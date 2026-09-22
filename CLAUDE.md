@@ -57,7 +57,9 @@ own spec: `spec/bgtools.md`.
 - `Sources/stcli/`: dev CLI. `ingest`, `show` (creates a show; it doesn't print one), and `render` (writes frames
   through the Compositor to PNG, which is how transitions get checked by eye).
 - `make-app.sh`: builds `build/ShowTools.app` (a SwiftPM binary wrapped in a
-  bundle, the same approach as CutSim).
+  bundle, the same approach as CutSim), carrying BGTools in its Resources
+  when XcodeGen is installed. View ▸ Desktop Show… copies BGTools to
+  `~/Applications` and opens it.
 - `tools/`: `make-test-library.sh <dir>` builds a scratch library with
   generated media and a test show. There are also a window lister and a
   contact-sheet tool, for checking screenshots.
