@@ -32,6 +32,8 @@ real show.
 - `MetadataStrip.swift`: measured before it was written (see the plan's
   Privacy bullet). Each stripped copy is read back; a failure falls back to
   an unstripped copy, listed in `Result.notStripped` for 4c to show.
+  Songs keep their tags (Jason): only personal ones come off
+  (`MetadataStrip.isPersonal`).
 - `Library.identifier()`: a random id kept in `library_settings` (no
   schema change), so an export knows which library and show it came from.
 - 4b must: add a `kenBurnsSeed` to `SlideSettings` (field by field) and

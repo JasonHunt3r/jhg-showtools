@@ -759,7 +759,11 @@ name order, every slide on the defaults. In effect, "New Show from Folder".
   tests; HEIC is lossy in principle, at quality 1.0); video and songs are
   remuxed, samples untouched (a real song decoded sample-for-sample the
   same). Orientation, animation timing and an AAC song's gapless figures
-  are kept. Every copy is read back: anything else left in it and the file
+  are kept. **Songs keep their tags** (Jason, 2026-09-22): title, artist,
+  album and the rest stay; only a purchased song's Apple ID, owner,
+  purchase date, store and account type, and any location or recording
+  date, come off. (`.forSharing()` was tried and dropped title and artist
+  too.) Jason's two test songs kept all 17 tags, sample-exact. Every copy is read back: anything else left in it and the file
   is copied unstripped instead, listed in the export's result for the panel
   to show. A stripped copy has a new hash, so `show.json` records
   each file's *library* hash as well: import matches on that first, so a
@@ -773,6 +777,8 @@ name order, every slide on the defaults. In effect, "New Show from Folder".
 - Menu names: File ▸ Export Show… (⇧⌘E) and Import Show…. File already has
   "Import…" (files into the collection) and "Add to Library…", so the names
   must not blur with those. Check Apple's conventions before settling
+- Whether Numbers can save the TSV back as TSV (it may only export CSV):
+  "we'll find out" (Jason, 2026-09-22), in 4e
 
 **Build steps:** 4a core export, 4b core import, 4c Export Show… panel,
 4d Import Show… panel (and the collection checkbox on Import…), 4e a

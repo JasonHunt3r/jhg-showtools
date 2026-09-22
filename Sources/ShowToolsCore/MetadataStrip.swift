@@ -17,6 +17,10 @@ import UniformTypeIdentifiers
 ///   (samples copied untouched, no metadata written). A remuxed song decodes
 ///   sample-for-sample the same, with the same duration: no drift against
 ///   beats placed on it.
+/// - Songs keep their tags (Jason, 2026-09-22): title, artist, album and the
+///   rest say nothing about him. Only what identifies a person or a place
+///   comes off (`isPersonal`). `.forSharing()` was tried for this and
+///   dropped the title, artist and album too, so the rule is explicit.
 ///
 /// Every stripped copy is read back and checked; anything but orientation
 /// and structural fields left in it is a failure, never a silent pass.
@@ -45,9 +49,14 @@ public enum MetadataStrip {
                 try stripImage(src, to: dst)
                 let left = imageMetadata(dst)
                 if !left.isEmpty { throw Failure.leftBehind(left) }
-            case .video, .audio:
+            case .video:
                 try await remux(src, to: dst)
                 let left = try await avMetadata(dst).filter { !harmlessAVTags.contains($0) }
+                if !left.isEmpty { throw Failure.leftBehind(left) }
+            case .audio:
+                let tags = try await containerMetadata(src).filter { !isPersonal($0) }
+                try await remux(src, to: dst, metadata: tags)
+                let left = try await avMetadata(dst).filter(isPersonal)
                 if !left.isEmpty { throw Failure.leftBehind(left) }
             }
         } catch {
@@ -151,7 +160,7 @@ public enum MetadataStrip {
     /// Copies the video and sound samples untouched into a new file of the
     /// same type, writing no metadata. Other tracks (timecode, timed
     /// metadata, which on a phone can carry location) are left out.
-    static func remux(_ src: URL, to dst: URL) async throws {
+    static func remux(_ src: URL, to dst: URL, metadata: [AVMetadataItem] = []) async throws {
         guard let uti = UTType(filenameExtension: src.pathExtension) else {
             throw Failure.unsupported(src.pathExtension.uppercased())
         }
@@ -162,7 +171,7 @@ public enum MetadataStrip {
         do { writer = try AVAssetWriter(outputURL: dst, fileType: type) } catch {
             throw Failure.unsupported(src.pathExtension.uppercased())
         }
-        writer.metadata = []
+        writer.metadata = metadata
         var pairs: [(output: AVAssetReaderTrackOutput, input: AVAssetWriterInput)] = []
         for t in try await asset.load(.tracks) where t.mediaType == .video || t.mediaType == .audio {
             let o = AVAssetReaderTrackOutput(track: t, outputSettings: nil)
@@ -214,6 +223,30 @@ public enum MetadataStrip {
     /// What the writer adds itself: an AAC song's gapless-playback figures
     /// (encoder delay and padding), which keep it sample-exact.
     static let harmlessAVTags: Set<String> = ["itlk/com.apple.iTunes.iTunSMPB"]
+
+    /// A song's tags that identify a person or a place: a purchased song's
+    /// Apple ID, owner, purchase date, store and account type, and any
+    /// location or recording date (a voice memo carries those).
+    static let personalSongTags: Set<String> = [
+        "itsk/apID", "itsk/ownr", "itsk/purd", "itsk/sfID", "itsk/akID",
+        "udta/%A9xyz", "mdta/com.apple.quicktime.creationdate", "udta/date",
+    ]
+
+    static func isPersonal(_ id: String) -> Bool {
+        personalSongTags.contains(id) || id.localizedCaseInsensitiveContains("location")
+    }
+
+    static func isPersonal(_ item: AVMetadataItem) -> Bool {
+        isPersonal(item.identifier?.rawValue ?? "")
+            || item.commonKey == .commonKeyLocation
+    }
+
+    static func containerMetadata(_ url: URL) async throws -> [AVMetadataItem] {
+        let a = AVURLAsset(url: url)
+        var out: [AVMetadataItem] = []
+        for f in try await a.load(.availableMetadataFormats) { out += try await a.loadMetadata(for: f) }
+        return out
+    }
 
     /// Every metadata item in the file, container and tracks, by identifier.
     public static func avMetadata(_ url: URL) async throws -> [String] {

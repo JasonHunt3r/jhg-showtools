@@ -133,13 +133,34 @@ final class SetlistTests: XCTestCase {
         XCTAssertEqual(d0, d1, accuracy: 0.001)
     }
 
-    func testASongKeepsItsLength() async throws {
-        let src = try writeSong()
+    /// A song tagged as a purchase: its title and artist, and the buyer's
+    /// Apple ID, name and purchase date.
+    func writeTaggedSong() async throws -> URL {
+        let plain = try writeSong("plain.m4a")
+        func item(_ key: String, _ v: String) -> AVMetadataItem {
+            let m = AVMutableMetadataItem()
+            m.identifier = AVMetadataItem.identifier(forKey: key as NSString, keySpace: .iTunes)
+            m.value = v as NSString
+            return m
+        }
+        let url = dir.appendingPathComponent("song.m4a")
+        try await MetadataStrip.remux(plain, to: url, metadata: [
+            item("\u{A9}nam", "Fly Me to the Moon"), item("\u{A9}ART", "Someone"),
+            item("apID", "someone@example.com"), item("ownr", "Some One"),
+            item("purd", "2024-01-02 03:04:05")])
+        return url
+    }
+
+    func testASongKeepsItsTagsAndLengthButNotWhoBoughtIt() async throws {
+        let src = try await writeTaggedSong()
+        let before = try await MetadataStrip.avMetadata(src)
+        XCTAssertTrue(before.contains("itsk/apID"), "\(before)")
         let out = dir.appendingPathComponent("stripped.m4a")
         try await MetadataStrip.strip(src, to: out, kind: .audio)
-        // Only the gapless-playback figures, which the writer adds itself.
-        let after = try await MetadataStrip.avMetadata(out)
-        XCTAssertEqual(after, ["itlk/com.apple.iTunes.iTunSMPB"])
+        let after = Set(try await MetadataStrip.avMetadata(out))
+        XCTAssertTrue(after.contains("itsk/%A9nam"), "\(after)")
+        XCTAssertTrue(after.contains("itsk/%A9ART"), "\(after)")
+        XCTAssertTrue(after.isDisjoint(with: ["itsk/apID", "itsk/ownr", "itsk/purd"]), "\(after)")
         let d0 = try await AVURLAsset(url: src).load(.duration).seconds
         let d1 = try await AVURLAsset(url: out).load(.duration).seconds
         XCTAssertEqual(d0, d1, accuracy: 0.0001)
