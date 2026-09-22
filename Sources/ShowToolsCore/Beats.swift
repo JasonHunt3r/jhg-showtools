@@ -37,6 +37,7 @@ public struct SongRhythm: Codable, Hashable, Sendable {
     /// Detectors are most often wrong by a factor of two: they hear 60 BPM
     /// in a 120 BPM song. ×2 puts a beat halfway between each pair; ÷2
     /// keeps every other beat, counting from the bar starts so beat 1 stays.
+    /// The bar starts follow (`bars(_:)`).
     public enum Tempo: String, Codable, CaseIterable, Sendable {
         case asDetected, double, half
     }
@@ -59,10 +60,33 @@ public struct SongRhythm: Codable, Hashable, Sendable {
         }
     }
 
+    /// The bar starts with the same correction. A detector that heard half
+    /// the tempo also heard bars twice as long, so ×2 puts a bar start
+    /// halfway between each pair (on the beat nearest there), and ÷2 keeps
+    /// every other one, from the first.
+    public func bars(_ tempo: Tempo) -> [Double] {
+        switch tempo {
+        case .asDetected:
+            return bars
+        case .double:
+            let bs = beats(.double)
+            var out: [Double] = []
+            for (i, b) in bars.enumerated() {
+                out.append(b)
+                guard i + 1 < bars.count else { continue }
+                let mid = (b + bars[i + 1]) / 2
+                out.append(bs.min(by: { abs($0 - mid) < abs($1 - mid) }) ?? mid)
+            }
+            return out
+        case .half:
+            return bars.enumerated().filter { $0.offset % 2 == 0 }.map(\.element)
+        }
+    }
+
     /// The bar starts moved along by `shift` beats: "bar starts here" for a
     /// detector that put beat 1 on the wrong beat.
     public func bars(shiftedBy shift: Int, tempo: Tempo) -> [Double] {
-        let bs = beats(tempo)
+        let bars = bars(tempo), bs = beats(tempo)
         guard shift != 0, !bs.isEmpty else { return bars }
         return bars.compactMap { bar in
             guard let i = bs.firstIndex(where: { $0 >= bar - 0.02 }) else { return nil }

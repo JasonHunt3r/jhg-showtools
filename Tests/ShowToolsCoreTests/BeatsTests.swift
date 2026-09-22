@@ -26,6 +26,15 @@ final class BeatsTests: XCTestCase {
         XCTAssertEqual(BeatPlan(mode: .beats(1), tempo: .half).markers(r, from: 0, to: 4), [1, 2, 3, 4])
     }
 
+    func testTempoCorrectionsMoveTheBarsToo() {
+        // Heard at half speed: each detected bar was two, so ×2 halves them.
+        XCTAssertEqual(BeatPlan(mode: .bars(1), tempo: .double).markers(r, from: 0, to: 6), [1, 2, 3, 4, 5, 6])
+        // Heard at double speed: every other bar start, from the first.
+        XCTAssertEqual(BeatPlan(mode: .bars(1), tempo: .half).markers(r, from: 0, to: 12), [1, 5, 9])
+        // "Bar starts here" counts corrected beats: one ÷2 beat is 1 s.
+        XCTAssertEqual(BeatPlan(mode: .bars(1), tempo: .half, barShift: 1).markers(r, from: 0, to: 12), [2, 6, 10])
+    }
+
     func testAboutEverySecondsLandsOnBeats() {
         // Every 1.3 s from the first beat: 1, 2.3→2.5, 3.6→3.5, 4.9→5.
         XCTAssertEqual(BeatPlan(mode: .seconds(1.3)).markers(r, from: 0, to: 5), [1, 2.5, 3.5, 5])
