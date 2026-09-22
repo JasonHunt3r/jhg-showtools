@@ -798,6 +798,52 @@ Songs in such a folder aren't placed; the import lists them to add by hand
 hands-on round trip on a scratch library, including an edit in Numbers.
 
 ### Phase 5: Live desktop
+
+**Rethought with Jason 2026-09-22 (not yet final; the list below is the
+2026-09-20 plan).** ShowTools has become a heavy editor, so the desktop
+gets its own small app, **BGTools**: menu-bar-only (no Dock icon, no
+editor), built in this package on the same renderer (`frame(at:)` →
+`Compositor`). It **reads the library itself, read-only** (Jason: "why
+couldn't the menubar extension also use and access the library?"), rather
+than being sent packages: edits show up by themselves, and random from a
+collection or the library works as planned. That needs a read-only way in
+that never migrates or writes (`Library.init` migrates, and `identifier()`
+writes), refuses a newer schema, notices changes (SQLite's data_version),
+skips files deleted under it, follows the library when it moves, and
+decides what a private library does on the desktop (its lock is only
+ShowTools' door). SQLite is in WAL mode (`Database.swift`), which allows
+one process writing while others read.
+
+Research, 2026-09-22:
+- **Control Center's Displays menu is Apple's own**; no way was found for
+  another app to add items inside it (Jason wanted it there because his
+  menu bar is crowded). macOS 26+ lets apps add **Controls** (a button or a
+  toggle, `ControlWidgetButton` / `ControlWidgetToggle`, macOS 26.0) to
+  Control Center or the menu bar, beside Apple's modules. They're built as
+  a widget extension; whether one loads without proper signing, built
+  without Xcode, is unknown. MacStories documented a Tahoe bug that hid
+  third-party controls until the widget gallery was opened. With a crowded
+  menu bar, a Control Center toggle plus an optional menu bar icon (macOS
+  26+ can hide any app's icon) may be the right shape
+- **A window below the desktop icons** is an established technique: the
+  desktop window level sits under the icons, and Plash (open source) does
+  it on Sonoma, Sequoia and Tahoe with a "Show on all spaces" option. To
+  check on macOS 27: full-screen Spaces, Mission Control, Sonoma's "click
+  wallpaper to reveal desktop", sleep and wake
+- **Launch at login**: `SMAppService` cares about code signing, and
+  ad-hoc-signed apps are reported not to register reliably. The fallback
+  that always works unsigned is a LaunchAgent plist in
+  `~/Library/LaunchAgents`
+- **Power** of live Core Image transitions against a looping HEVC video:
+  nothing trustworthy found; to be measured
+
+Next: a throwaway test program (`tools/desktop-probe/`) checking, in
+order: the window below the icons on every monitor and Space; clicks
+passing through; a Control Center toggle loading (moved up for the crowded
+menu bar); a menu bar icon with a section per monitor; two processes
+reading a scratch library while one writes; launch at login; power, live
+against video. Never against the real library.
+
 - One borderless window per monitor at desktop level, behind icons and all
   other windows, on every Space
 - **Per monitor:** pick a show, and a play mode:
