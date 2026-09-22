@@ -633,3 +633,42 @@ final class TestLaunchRecordTests: XCTestCase {
         XCTAssertTrue(r.crashRelaunchProblem()?.contains("/tmp/B.noindex") == true)
     }
 }
+
+// MARK: - Undoing collection deletions (Phase 3b)
+
+extension LibraryTests {
+    private func insertItem(_ lib: Library, _ name: String) throws -> Int64 {
+        let probe = MediaProbe(kind: .image, width: 10, height: 10)
+        return try lib.insertItem(relativePath: "\(name).jpg", hash: name, probe: probe, sourcePath: "").id
+    }
+
+    func testRemovingFromACollectionCanBePutBackInOrder() throws {
+        let lib = try Library(root: dir.appendingPathComponent("U.noindex"))
+        let ids = try (1...3).map { i -> Int64 in try insertItem(lib, "\(i)") }
+        let c = try lib.createCollection(name: "C")
+        for id in ids { try lib.addItems([id], toCollection: c.id); usleep(2000) }
+        let removed = try lib.removeItems([ids[0], ids[2]], fromCollection: c.id)
+        XCTAssertEqual(try lib.allCollections().first { $0.id == c.id }?.itemIDs, [ids[1]])
+        try lib.restoreItems(removed, toCollection: c.id)
+        XCTAssertEqual(try lib.allCollections().first { $0.id == c.id }?.itemIDs, ids, "back in the order they were added")
+    }
+
+    func testADeletedCollectionComesBackWithItsShowsAndIds() throws {
+        let lib = try Library(root: dir.appendingPathComponent("V.noindex"))
+        let a = try insertItem(lib, "a"), b = try insertItem(lib, "b")
+        let c = try lib.createCollection(name: "Trip")
+        var show = try lib.createShow(name: "Beach", collectionID: c.id, itemIDs: [a, b])
+        show.markers = [Marker(time: 3)]
+        show = try lib.saveShow(show)
+        let snap = try XCTUnwrap(lib.snapshotCollection(id: c.id))
+        try lib.deleteCollection(id: c.id)
+        XCTAssertTrue(try lib.allShows().isEmpty, "its shows went with it")
+        try lib.restoreCollection(snap)
+        let back = try XCTUnwrap(lib.allShows().first)
+        XCTAssertEqual(back.id, show.id)
+        XCTAssertEqual(back.slides.map(\.id), show.slides.map(\.id), "slides keep their ids")
+        XCTAssertEqual(back.markers.map(\.time), [3])
+        XCTAssertEqual(try lib.allCollections().first { $0.id == c.id }?.itemIDs, [a, b])
+        XCTAssertEqual(try lib.allCollections().first { $0.id == c.id }?.name, "Trip")
+    }
+}

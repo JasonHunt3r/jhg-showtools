@@ -38,6 +38,10 @@ struct CollectionBrowser: View {
         case file(Int64)
     }
     @State private var picked: Set<Pick> = []
+    @Environment(\.undoManager) private var undoManager
+    /// ⌘Delete's question: files to delete from the library.
+    @State private var confirmDelete: [Int64]?
+    @FocusState private var listFocused: Bool
     @State private var search = ""
     @AppStorage("browserUse") private var use: UseFilter = .all
     @AppStorage("browserMinRating") private var minRating = 0
@@ -220,6 +224,11 @@ struct CollectionBrowser: View {
             Button("Insert at Playhead  (W)") { insertAtPlayhead(chosen) }
             Button("Place in Images Row at Playhead  (Q)") { placeAtPlayhead(chosen) }
             Divider()
+            if let cid = collection?.id {
+                Button("Remove from Collection") { model.removeFromCollection(chosen, cid, undo: undoManager) }
+            }
+            Button("Delete from Library…") { confirmDelete = chosen }
+            Divider()
             Button("Show in Finder") {
                 NSWorkspace.shared.activateFileViewerSelecting(
                     chosen.compactMap { model.itemsByID[$0] }.compactMap(model.url(for:)))
@@ -228,6 +237,34 @@ struct CollectionBrowser: View {
             // Double-clicking a use toggles the inspector, as the order list
             // before this did. A file not in the show has nothing to inspect.
             if picks.contains(where: { if case .file = $0 { false } else { true } }) { inspectorShown.toggle() }
+        }
+        // Delete by context (plan, Phase 3b): Delete takes the picked files
+        // out of this collection (undoable); ⌘Delete deletes them from the
+        // library, and asks first.
+        .onDeleteCommand {
+            guard let cid = collection?.id else { return }
+            let files = ordered(picked)
+            guard !files.isEmpty else { return }
+            model.removeFromCollection(files, cid, undo: undoManager)
+        }
+        .focused($listFocused)
+        // ⌘Delete never reaches onKeyPress inside a List; take it before
+        // AppKit does, as the Library grid does, while the list has the keys.
+        .background(SingleKeys { event in
+            guard listFocused, event.keyCode == 51, event.plainModifiers == [.command], !picked.isEmpty
+            else { return false }
+            confirmDelete = ordered(picked)
+            return true
+        }.opacity(0).allowsHitTesting(false))
+        .confirmationDialog(deleteTitle,
+                            isPresented: Binding(get: { confirmDelete != nil }, set: { if !$0 { confirmDelete = nil } }),
+                            presenting: confirmDelete) { ids in
+            Button(ids.count == 1 ? "Move to Trash" : "Move \(ids.count) Items to Trash", role: .destructive) {
+                model.deleteItems(ids, undo: undoManager)
+                picked = []
+            }
+        } message: { ids in
+            Text(deleteMessage(ids))
         }
         .onKeyPress(keys: ["e", "w", "q"]) { press in
             guard press.modifiers.isEmpty, !picked.isEmpty else { return .ignored }
@@ -297,6 +334,23 @@ struct CollectionBrowser: View {
                     .help("Use \(use) of this file in the show")
             }
         }
+    }
+
+    private var deleteTitle: String {
+        guard let ids = confirmDelete else { return "" }
+        if ids.count == 1, let item = model.itemsByID[ids[0]] { return "Move “\(item.fileName)” to the Trash?" }
+        return "Move \(ids.count) items to the Trash?"
+    }
+
+    private func deleteMessage(_ ids: [Int64]) -> String {
+        let them = ids.count == 1 ? "it" : "them"
+        let n = model.showsUsing(Set(ids)).count
+        var text = "This deletes \(them) from the library, not just this collection. "
+        if n > 0 {
+            let shows = n == 1 ? "1 show" : "\(n) shows"
+            text += "Used in \(shows): every slide and lane image using \(them) will be removed. "
+        }
+        return text + "You can undo this."
     }
 
     /// The files behind the picked entries, once each, in the order the list

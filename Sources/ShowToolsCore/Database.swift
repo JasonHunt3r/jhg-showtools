@@ -42,7 +42,10 @@ final class Database {
     }
 
     /// Run `body` in a transaction; roll back if it throws.
+    /// Inside another transaction, it joins that one: the outer one commits
+    /// or rolls back the lot.
     func transaction<T>(_ body: () throws -> T) throws -> T {
+        if sqlite3_get_autocommit(handle) == 0 { return try body() }
         try exec("BEGIN IMMEDIATE")
         do {
             let r = try body()

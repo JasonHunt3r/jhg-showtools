@@ -411,10 +411,77 @@ public final class Library {
         }
     }
 
-    public func removeItems(_ itemIDs: [Int64], fromCollection id: Int64) throws {
+    /// Takes files out of a collection, and returns when each had been
+    /// added, so undo can put them back in their places.
+    @discardableResult
+    public func removeItems(_ itemIDs: [Int64], fromCollection id: Int64) throws -> [(itemID: Int64, addedAt: Double)] {
         try db.transaction {
+            let q = try db.prepare("SELECT added_at FROM collection_items WHERE collection_id = ? AND item_id = ?")
             let s = try db.prepare("DELETE FROM collection_items WHERE collection_id = ? AND item_id = ?")
-            for item in itemIDs { try s.bind(.int(id), .int(item)).run() }
+            var removed: [(itemID: Int64, addedAt: Double)] = []
+            for item in itemIDs {
+                q.bind(.int(id), .int(item))
+                if try q.step() { removed.append((item, q.double(0))) }
+                try s.bind(.int(id), .int(item)).run()
+            }
+            return removed
+        }
+    }
+
+    /// Puts files back in a collection as they were: undoing a removal.
+    /// Files no longer in the library are skipped.
+    public func restoreItems(_ entries: [(itemID: Int64, addedAt: Double)], toCollection id: Int64) throws {
+        try db.transaction {
+            let s = try db.prepare("""
+                INSERT OR IGNORE INTO collection_items (collection_id, item_id, added_at)
+                SELECT ?, id, ? FROM items WHERE id = ?
+                """)
+            for e in entries { try s.bind(.int(id), .double(e.addedAt), .int(e.itemID)).run() }
+        }
+    }
+
+    /// Everything deleting a collection takes with it, to put back on undo.
+    public struct CollectionSnapshot: Sendable {
+        public let id: Int64
+        public let name: String
+        public let createdAt: Double
+        public let members: [(itemID: Int64, addedAt: Double)]
+        public let shows: [(show: Show, createdAt: Double)]
+    }
+
+    public func snapshotCollection(id: Int64) throws -> CollectionSnapshot? {
+        let c = try db.prepare("SELECT name, created_at FROM collections WHERE id = ?").bind(.int(id))
+        guard try c.step() else { return nil }
+        let name = c.text(0), createdAt = c.double(1)
+        let m = try db.prepare("SELECT item_id, added_at FROM collection_items WHERE collection_id = ?").bind(.int(id))
+        var members: [(itemID: Int64, addedAt: Double)] = []
+        while try m.step() { members.append((m.int(0), m.double(1))) }
+        let times = try db.prepare("SELECT id, created_at FROM shows WHERE collection_id = ?").bind(.int(id))
+        var created: [Int64: Double] = [:]
+        while try times.step() { created[times.int(0)] = times.double(1) }
+        let shows = try allShows().filter { $0.collectionID == id }.map { ($0, created[$0.id] ?? 0) }
+        return CollectionSnapshot(id: id, name: name, createdAt: createdAt, members: members, shows: shows)
+    }
+
+    /// Undoes `deleteCollection`: the collection, its files in their order,
+    /// and its shows, all with their old ids, so undo steps recorded
+    /// against them still find them. Slides of files deleted since are left out.
+    public func restoreCollection(_ snap: CollectionSnapshot) throws {
+        try db.transaction {
+            try db.prepare("INSERT INTO collections (id, name, created_at) VALUES (?, ?, ?)")
+                .bind(.int(snap.id), .text(snap.name), .double(snap.createdAt)).run()
+            try restoreItems(snap.members, toCollection: snap.id)
+            let exists = try db.prepare("SELECT 1 FROM items WHERE id = ?")
+            for (show, createdAt) in snap.shows {
+                try db.prepare("INSERT INTO shows (id, name, defaults, created_at, collection_id) VALUES (?, ?, '{}', ?, ?)")
+                    .bind(.int(show.id), .text(show.name), .double(createdAt), .int(snap.id)).run()
+                var s = show
+                s.slides = try s.slides.filter { slide in
+                    exists.bind(.int(slide.itemID))
+                    return try exists.step()
+                }
+                try saveShow(s)
+            }
         }
     }
 

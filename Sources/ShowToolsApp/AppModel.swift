@@ -459,9 +459,10 @@ final class AppModel {
     }
 
     /// Its shows go with it; the files stay in the library.
-    func deleteCollection(_ id: Int64) {
+    func deleteCollection(_ id: Int64, undo: UndoManager? = nil) {
         guard let lib = library else { return }
         do {
+            let snap = try lib.snapshotCollection(id: id)
             try lib.deleteCollection(id: id)
             collections = try lib.allCollections()
             shows = try lib.allShows()
@@ -470,16 +471,65 @@ final class AppModel {
             case .show(let s) where show(s) == nil: sidebar = .library
             default: break
             }
+            // Undo brings it back with its shows (Jason, Phase 3b).
+            guard let undo, let snap else { return }
+            let generation = libraryGeneration
+            undo.registerUndo(withTarget: self) { model in
+                MainActor.assumeIsolated {
+                    guard model.libraryGeneration == generation else { return }
+                    model.restoreCollection(snap, undo: undo)
+                }
+            }
+            undo.setActionName("Delete Collection")
         } catch {
             loadError = "\(error)"
         }
     }
 
-    func removeFromCollection(_ itemIDs: [Int64], _ collectionID: Int64) {
+    private func restoreCollection(_ snap: Library.CollectionSnapshot, undo: UndoManager) {
         guard let lib = library else { return }
         do {
-            try lib.removeItems(itemIDs, fromCollection: collectionID)
+            try lib.restoreCollection(snap)
             collections = try lib.allCollections()
+            shows = try lib.allShows()
+            let generation = libraryGeneration
+            undo.registerUndo(withTarget: self) { model in
+                MainActor.assumeIsolated {
+                    guard model.libraryGeneration == generation else { return }
+                    model.deleteCollection(snap.id, undo: undo)
+                }
+            }
+            undo.setActionName("Delete Collection")
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
+    /// Takes files out of a collection; they stay in the library and in
+    /// any show. Undo puts them back in their places.
+    func removeFromCollection(_ itemIDs: [Int64], _ collectionID: Int64, undo: UndoManager? = nil) {
+        guard let lib = library else { return }
+        do {
+            let removed = try lib.removeItems(itemIDs, fromCollection: collectionID)
+            collections = try lib.allCollections()
+            guard let undo, !removed.isEmpty else { return }
+            let generation = libraryGeneration
+            undo.registerUndo(withTarget: self) { model in
+                MainActor.assumeIsolated {
+                    guard model.libraryGeneration == generation, let lib = model.library else { return }
+                    do {
+                        try lib.restoreItems(removed, toCollection: collectionID)
+                        model.collections = try lib.allCollections()
+                    } catch {
+                        model.loadError = "\(error)"
+                    }
+                    undo.registerUndo(withTarget: model) { model in
+                        MainActor.assumeIsolated { model.removeFromCollection(removed.map(\.itemID), collectionID, undo: undo) }
+                    }
+                    undo.setActionName("Remove from Collection")
+                }
+            }
+            undo.setActionName("Remove from Collection")
         } catch {
             loadError = "\(error)"
         }

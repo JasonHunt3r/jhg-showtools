@@ -102,11 +102,11 @@ struct MainView: View {
                             isPresented: Binding(get: { confirmDeleteCollection != nil },
                                                  set: { if !$0 { confirmDeleteCollection = nil } }),
                             presenting: confirmDeleteCollection) { c in
-            Button("Delete Collection", role: .destructive) { model.deleteCollection(c.id) }
+            Button("Delete Collection", role: .destructive) { model.deleteCollection(c.id, undo: undoManager) }
         } message: { c in
             let n = model.shows.filter { $0.collectionID == c.id }.count
-            Text(n == 0 ? "The images stay in the library."
-                 : "Its \(n == 1 ? "show" : "\(n) shows") will be deleted too. The images stay in the library.")
+            Text(n == 0 ? "The images stay in the library. You can undo this."
+                 : "Its \(n == 1 ? "show" : "\(n) shows") will be deleted too. The images stay in the library. You can undo this.")
         }
         .alert(renamingTitle, isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField("Name", text: $draftName)
@@ -450,10 +450,20 @@ struct LibraryGridView: View {
         }
         .focusable()
         .focused($focused)
-        .onDeleteCommand { requestDelete(orderedSelection, confirm: true) }
+        // Delete by context (plan, Phase 3b; Photos' convention). In the
+        // Library: Delete asks, then Trash; ⌘Delete skips the question. In a
+        // collection: Delete takes them out of it (undoable); ⌘Delete deletes
+        // them from the library, and asks first.
+        .onDeleteCommand {
+            if let cid = collectionID {
+                removeFromCollection(orderedSelection, cid)
+            } else {
+                requestDelete(orderedSelection, confirm: true)
+            }
+        }
         .background(SingleKeys { event in
             guard event.keyCode == 51, event.plainModifiers == [.command] else { return false }
-            requestDelete(orderedSelection, confirm: false)
+            requestDelete(orderedSelection, confirm: collectionID != nil)
             return true
         }.opacity(0).allowsHitTesting(false))
         .confirmationDialog(deleteDialogTitle,
@@ -494,9 +504,17 @@ struct LibraryGridView: View {
     private func deleteDialogMessage(_ ids: [Int64]) -> String {
         let plural = ids.count == 1 ? "" : "s"
         let n = model.showsUsing(Set(ids)).count
-        guard n > 0 else { return "The file\(plural) will be moved to the Trash." }
-        return "Used in \(n == 1 ? "1 show" : "\(n) shows"). Every slide and lane image using "
+        // In a collection, say plainly that this is more than leaving it.
+        let scope = collectionID == nil ? "" : "This deletes \(ids.count == 1 ? "it" : "them") from the library, not just this collection. "
+        guard n > 0 else { return scope + "The file\(plural) will be moved to the Trash." }
+        return scope + "Used in \(n == 1 ? "1 show" : "\(n) shows"). Every slide and lane image using "
             + "\(ids.count == 1 ? "it" : "them") will be removed, and the file\(plural) moved to the Trash."
+    }
+
+    private func removeFromCollection(_ ids: [Int64], _ cid: Int64) {
+        guard !ids.isEmpty else { return }
+        model.removeFromCollection(ids, cid, undo: undoManager)
+        selection.subtract(ids)
     }
 
     /// Delete asks first; ⌘Delete (above) skips straight to it.
@@ -553,10 +571,7 @@ struct LibraryGridView: View {
             }
             addToCollectionMenu(ids: ids)
             if let cid = collectionID {
-                Button("Remove from Collection") {
-                    model.removeFromCollection(ids, cid)
-                    selection.subtract(ids)
-                }
+                Button("Remove from Collection") { removeFromCollection(ids, cid) }
                 .help("Take them out of this collection. They stay in the library and in any show that uses them.")
             }
             Divider()

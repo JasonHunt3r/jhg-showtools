@@ -23,8 +23,23 @@ Marker"). Accessibility reports a stale plain "Undo", so check menu wording
 with a screenshot of the open menu, not with `axtool`.
 
 **Step 7 (rhythm patterns) is built too**, 7a–7g, all on 2026-09-22 (see
-"Step 7" below). **Next: the end of Phase 3**, settling image stickiness
-with Jason (below), then Phase 3b, the duplicate finder. Ask first.
+"Step 7" below). Image stickiness (end of Phase 3) is still to settle.
+
+**Phase 3b was replanned with Jason** (plan: "Find Similar, and Delete by
+context"): exact duplicates can't exist (unique hash, import skips them),
+so it's Group Similar / Show Similar with a slider, and Keep One for a
+series. **Step 1, Delete by context, is BUILT** (2026-09-22): in a
+collection Delete removes from the collection (undoable) and ⌘Delete
+deletes from the library after asking, in the grid and in Edit Show's
+collection column; Remove from Collection and Delete Collection are
+undoable (a deleted collection comes back with its shows, same ids:
+`Library.snapshotCollection` / `restoreCollection`; transactions now nest).
+Checked in a scratch copy, and a DB backup was taken first.
+**Open:** clicking a grid tile didn't give the grid the keyboard with
+axtool's clicks (Tab did; Library and collection alike, so not new).
+Ask Jason for one real click, then Delete, before calling it a bug.
+**Next: Find Similar** (fingerprints, Group Similar, Show Similar), then
+Keep One. Ask first.
 
 ## Where it stands
 
