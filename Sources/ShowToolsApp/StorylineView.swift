@@ -68,6 +68,9 @@ struct StorylineView: View {
     }
     @State private var moving: Moving?
     @State private var magnifyBase: Double?
+    /// A click anywhere in the storyline brings the keyboard here, so
+    /// Delete and Esc act on what was just selected, not the sidebar.
+    @FocusState private var focused: Bool
 
     /// Final Cut's three edits at a cut, by where the pointer grabs it.
     enum EdgeKind: Equatable {
@@ -151,7 +154,7 @@ struct StorylineView: View {
                                   width: contentWidth, height: imagesRowHeight,
                                   dropTargeted: $imagesDropTargeted, selectedOverlay: $selectedOverlay,
                                   mutate: mutate,
-                                  didSelect: { selection = []; selectedTransition = nil })
+                                  didSelect: { selection = []; selectedTransition = nil; focused = true })
                         ForEach(placed) { p in
                             let isMoving = moving?.ids.contains(p.id) == true
                             block(p)
@@ -212,6 +215,14 @@ struct StorylineView: View {
             }
             .onEnded { _ in magnifyBase = nil })
         .background(Color(nsColor: .underPageBackgroundColor))
+        .focusable()
+        .focusEffectDisabled()
+        .focused($focused)
+        .onKeyPress(.escape) {
+            guard selectedOverlay != nil else { return .ignored }
+            selectedOverlay = nil
+            return .handled
+        }
     }
 
     // MARK: Blocks
@@ -248,6 +259,7 @@ struct StorylineView: View {
         }
         selectedTransition = nil
         selectedOverlay = nil
+        focused = true
         engine.showSlide(id: id)
         // Checked on the event rather than with a double-tap gesture, which
         // would hold every single click back while it waits for a second.
@@ -572,7 +584,7 @@ struct StorylineView: View {
     /// Edges move independently, but the section always touches or covers
     /// its join, and an overlap can't outlast either slide it joins.
     private func transitionDrag(_ r: ResolvedSlide, part: TransitionEdit.Part) -> some Gesture {
-        DragGesture(minimumDistance: 2)
+        DragGesture(minimumDistance: 2, coordinateSpace: .named("storyline"))
             .onChanged { g in
                 let id = r.slide.id
                 if transitionEdit?.id != id {
@@ -613,6 +625,7 @@ struct StorylineView: View {
                                                                  direction: base.direction, lead: e.lead)
                 }
                 selectedTransition = e.id
+                focused = true
             }
     }
 
@@ -637,6 +650,7 @@ struct StorylineView: View {
                 s.slides[i].settings.transition = s.defaults.transition.style == .cut ? .newShowDefault : nil
             }
             selectedTransition = id
+            focused = true
         }
         .help("Cut. Click + to add a transition here.")
         .offset(x: joinX - 11, y: laneTop + 1)
@@ -647,6 +661,7 @@ struct StorylineView: View {
         selectedTransition = id
         selectedOverlay = nil
         selection = []
+        focused = true
         engine.pause()
         engine.seek(time)
     }

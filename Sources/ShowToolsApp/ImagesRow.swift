@@ -183,7 +183,7 @@ struct ImagesRow: View {
     }
 
     private func drag(_ o: ResolvedOverlay, part: ClipEdit.Part) -> some Gesture {
-        DragGesture(minimumDistance: 2)
+        DragGesture(minimumDistance: 2, coordinateSpace: .named("storyline"))
             .onChanged { g in
                 let id = o.clip.id
                 if edit?.id != id {

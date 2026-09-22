@@ -115,19 +115,11 @@ pass can go area by area:
 
 ## Next
 
-0. **Fix the hands-on findings** (summary at the end of `spec/hands-on-2026-09-21.md`):
-   - **Half-speed drags in the lane:** transition sections (edges, middle) and
-     lane images (move, trim) follow the pointer at half speed. Their
-     `DragGesture`s (StorylineView.swift `transitionDrag`, ImagesRow.swift
-     `drag`) measure in the moving view's local space; use
-     `coordinateSpace: .named("storyline")` like the trim edges. Recheck
-     with axtool: 40 pt at 80 pt/s should give 0.5 s.
-   - **Delete on a selected transition** does nothing while the keyboard is
-     in the sidebar; clicking a section doesn't move it.
-   - **Esc** doesn't deselect a lane image selected in its row (only the
-     picture's overlay handles Esc).
-   - Then check **Speed mode** and the **pivot lock** (scroll the inspector
-     with `axtool scroll`).
+0. ~~Fix the hands-on findings~~ **Done** (the lane's half-speed drags;
+   Delete and Esc now reach the storyline, which takes the keyboard when
+   clicked; Speed mode and the pivot lock checked). Results at the end of
+   `spec/hands-on-2026-09-21.md`, including an Undo glitch seen once and
+   not reproduced.
 1. **Suggested: a hands-on pass with Jason's own photos**, in a separate library (File ▸ New Library…) so the master isn't used. Claude can take most of the list above first with axtool, leaving Jason the parts that need hands and eyes; it also sets up the parked stickiness question.
 2. **The rest of 2b:**
    - Delete the Photos way (Delete asks, ⌘Delete trashes, ⌘Z restores)
