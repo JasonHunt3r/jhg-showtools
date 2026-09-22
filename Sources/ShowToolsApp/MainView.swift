@@ -234,12 +234,18 @@ struct LibraryGridView: View {
     /// Nil shows the whole library.
     var collectionID: Int64? = nil
     @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
     @State private var selection: Set<Int64> = []
     @State private var search = ""
     @AppStorage("gridKind") private var kind: KindFilter = .all
     @AppStorage("gridMinRating") private var minRating = 0
     @AppStorage("gridUncollected") private var onlyUncollected = false
     @AppStorage("gridSort") private var sort: SortOrder = .added
+    /// The grid takes the keyboard on a click, so Delete and ⌘Delete reach
+    /// it even before anything's been clicked in this session.
+    @FocusState private var focused: Bool
+    /// What Delete is about to send to the Trash — nil until it's confirmed.
+    @State private var confirmDeleteIDs: [Int64]?
 
     enum KindFilter: String, CaseIterable {
         case all, stills, animations, videos
@@ -416,6 +422,50 @@ struct LibraryGridView: View {
                     .disabled(selection.isEmpty)
             }
         }
+        .focusable()
+        .focused($focused)
+        .onDeleteCommand { requestDelete(orderedSelection, confirm: true) }
+        .background(SingleKeys { event in
+            guard event.keyCode == 51, event.plainModifiers == [.command] else { return false }
+            requestDelete(orderedSelection, confirm: false)
+            return true
+        }.opacity(0).allowsHitTesting(false))
+        .confirmationDialog(deleteDialogTitle,
+                            isPresented: Binding(get: { confirmDeleteIDs != nil },
+                                                 set: { if !$0 { confirmDeleteIDs = nil } }),
+                            presenting: confirmDeleteIDs) { ids in
+            Button(ids.count == 1 ? "Move to Trash" : "Move \(ids.count) Items to Trash", role: .destructive) {
+                model.deleteItems(ids, undo: undoManager)
+                selection.subtract(ids)
+            }
+        } message: { ids in
+            Text(deleteDialogMessage(ids))
+        }
+    }
+
+    private var deleteDialogTitle: String {
+        guard let ids = confirmDeleteIDs else { return "" }
+        if ids.count == 1, let item = model.itemsByID[ids[0]] { return "Move “\(item.fileName)” to the Trash?" }
+        return "Move \(ids.count) items to the Trash?"
+    }
+
+    private func deleteDialogMessage(_ ids: [Int64]) -> String {
+        let plural = ids.count == 1 ? "" : "s"
+        let n = model.showsUsing(Set(ids)).count
+        guard n > 0 else { return "The file\(plural) will be moved to the Trash." }
+        return "Used in \(n == 1 ? "1 show" : "\(n) shows"). Every slide and lane image using "
+            + "\(ids.count == 1 ? "it" : "them") will be removed, and the file\(plural) moved to the Trash."
+    }
+
+    /// Delete asks first; ⌘Delete (above) skips straight to it.
+    private func requestDelete(_ ids: [Int64], confirm: Bool) {
+        guard !ids.isEmpty else { return }
+        if confirm {
+            confirmDeleteIDs = ids
+        } else {
+            model.deleteItems(ids, undo: undoManager)
+            selection.subtract(ids)
+        }
     }
 
     private var grid: some View {
@@ -472,6 +522,8 @@ struct LibraryGridView: View {
                 let urls = ids.compactMap { model.itemsByID[$0] }.compactMap(model.url(for:))
                 NSWorkspace.shared.activateFileViewerSelecting(urls)
             }
+            Divider()
+            Button("Move to Trash…", role: .destructive) { requestDelete(ids, confirm: true) }
         }
     }
 
@@ -518,6 +570,7 @@ struct LibraryGridView: View {
             selection = [id]
             anchor = id
         }
+        focused = true
     }
 }
 

@@ -322,6 +322,36 @@ extension LibraryTests {
         XCTAssertNil(try lib.allShows().first { $0.id == show.id })
         XCTAssertEqual(try lib.allItems().count, 3)                          // files stay
     }
+
+    /// Deleting a file removes every slide that used it (even several in
+    /// the same show) and its collection memberships; restoring puts every
+    /// row back with its original id, so the show's slide order — and
+    /// anything else keyed on those ids — comes back exactly as it was.
+    func testDeleteItemsRemovesSlidesAndRestoreItemsPutsThemBack() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let probe = MediaProbe(kind: .image, width: 10, height: 10)
+        let a = try lib.insertItem(relativePath: "a.jpg", hash: "a", probe: probe, sourcePath: "")
+        let b = try lib.insertItem(relativePath: "b.jpg", hash: "b", probe: probe, sourcePath: "")
+        let wedding = try lib.createCollection(name: "Wedding")
+        try lib.addItems([a.id, b.id], toCollection: wedding.id)
+        let show = try lib.createShow(name: "Ceremony", collectionID: wedding.id, itemIDs: [a.id, b.id, a.id])
+        let originalSlideIDs = try lib.allShows().first { $0.id == show.id }!.slides.map(\.id)
+
+        let deleted = try lib.deleteItems([a.id])
+        XCTAssertEqual(deleted.count, 1)
+        XCTAssertEqual(deleted[0].slides.count, 2)                            // a appeared twice
+        XCTAssertEqual(deleted[0].collectionIDs, [wedding.id])
+        XCTAssertNil(try lib.itemID(forHash: "a"))
+        XCTAssertEqual(try lib.allShows().first { $0.id == show.id }?.slides.map(\.itemID), [b.id])
+        XCTAssertEqual(try lib.allCollections().first { $0.id == wedding.id }?.itemIDs, [b.id])
+
+        try lib.restoreItems(deleted)
+        XCTAssertEqual(try lib.itemID(forHash: "a"), a.id)
+        let restored = try lib.allShows().first { $0.id == show.id }!
+        XCTAssertEqual(restored.slides.map(\.itemID), [a.id, b.id, a.id])     // same order as before
+        XCTAssertEqual(restored.slides.map(\.id), originalSlideIDs)          // same slide identities
+        XCTAssertEqual(Set(try lib.allCollections().first { $0.id == wedding.id }!.itemIDs), Set([a.id, b.id]))
+    }
 }
 
 // MARK: - The library itself (schema 5)

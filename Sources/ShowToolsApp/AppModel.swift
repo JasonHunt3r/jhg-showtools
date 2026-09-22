@@ -598,6 +598,114 @@ final class AppModel {
         undo?.setActionName("Rate")
     }
 
+    /// Shows that use any of these files, in a slide or in the lane's
+    /// images row — for the Delete prompt (and later, the Info panel).
+    func showsUsing(_ itemIDs: Set<Int64>) -> [Show] {
+        shows.filter { show in
+            show.slides.contains { itemIDs.contains($0.itemID) }
+                || show.overlays.contains { itemIDs.contains($0.itemID) }
+        }
+    }
+
+    /// Library delete, the Photos convention: Delete asks first (naming how
+    /// many shows use the file(s)); ⌘Delete skips the prompt (both in
+    /// `LibraryGridView`). Either way the file goes to the macOS Trash, its
+    /// library entry goes, and every slide (and lane image) using it is
+    /// removed from every show that had it. ⌘Z undoes it while the file is
+    /// still in the Trash.
+    func deleteItems(_ itemIDs: [Int64], undo: UndoManager?) {
+        guard let lib = library, !itemIDs.isEmpty else { return }
+        let idSet = Set(itemIDs)
+
+        // The lane's images aren't in the `slides` table (deleteItems below
+        // only cleans that up), so they're stripped here, one show save
+        // each, same as any other show edit — captured first, so undo can
+        // put them back.
+        var strippedOverlays: [Int64: [OverlayClip]] = [:]
+        for show in shows where show.overlays.contains(where: { idSet.contains($0.itemID) }) {
+            var s = show
+            strippedOverlays[s.id] = s.overlays.filter { idSet.contains($0.itemID) }
+            s.overlays.removeAll { idSet.contains($0.itemID) }
+            do { s = try lib.saveShow(s) } catch { loadError = "\(error)"; return }
+            if let i = shows.firstIndex(where: { $0.id == s.id }) { shows[i] = s }
+        }
+
+        var trashedURLs: [Int64: URL] = [:]
+        for id in itemIDs {
+            guard let item = itemsByID[id] else { continue }
+            var placed: NSURL?
+            if (try? FileManager.default.trashItem(at: lib.url(for: item), resultingItemURL: &placed)) != nil,
+               let url = placed as URL? {
+                trashedURLs[id] = url
+            }
+        }
+
+        let deleted: [Library.DeletedItem]
+        do {
+            deleted = try lib.deleteItems(itemIDs)
+        } catch {
+            loadError = "\(error)"
+            return
+        }
+        items.removeAll { idSet.contains($0.id) }
+        for id in itemIDs { itemsByID[id] = nil }
+        shows = (try? lib.allShows()) ?? shows
+        collections = (try? lib.allCollections()) ?? collections
+
+        let generation = libraryGeneration
+        undo?.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated {
+                guard model.libraryGeneration == generation else { return }
+                model.restoreDeletedItems(deleted, overlays: strippedOverlays, trashedURLs: trashedURLs, undo: undo)
+            }
+        }
+        undo?.setActionName(itemIDs.count == 1 ? "Delete Item" : "Delete Items")
+    }
+
+    /// `deleteItems`'s undo: the file back from the Trash, the database rows
+    /// back with their original ids, and the lane images put back in each
+    /// show's overlays. Registers a redo the same way `update` does — which,
+    /// calling `deleteItems` again, re-derives what to strip from `shows` as
+    /// it now stands, rather than needing it passed back in.
+    private func restoreDeletedItems(_ deleted: [Library.DeletedItem], overlays: [Int64: [OverlayClip]],
+                                     trashedURLs: [Int64: URL], undo: UndoManager?) {
+        guard let lib = library else { return }
+        for d in deleted {
+            guard let trashed = trashedURLs[d.item.id] else { continue }
+            let original = lib.url(for: d.item)
+            try? FileManager.default.createDirectory(at: original.deletingLastPathComponent(),
+                                                     withIntermediateDirectories: true)
+            try? FileManager.default.moveItem(at: trashed, to: original)
+        }
+        do {
+            try lib.restoreItems(deleted)
+        } catch {
+            loadError = "\(error)"
+            return
+        }
+        items = (try? lib.allItems()) ?? items
+        itemsByID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+        shows = (try? lib.allShows()) ?? shows
+        for (showID, clips) in overlays {
+            guard var s = shows.first(where: { $0.id == showID }), !clips.isEmpty else { continue }
+            s.overlays += clips
+            do {
+                s = try lib.saveShow(s)
+                if let i = shows.firstIndex(where: { $0.id == showID }) { shows[i] = s }
+            } catch { loadError = "\(error)" }
+        }
+        collections = (try? lib.allCollections()) ?? collections
+
+        let generation = libraryGeneration
+        undo?.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated {
+                guard model.libraryGeneration == generation else { return }
+                model.deleteItems(deleted.map(\.item.id), undo: undo)
+            }
+        }
+        undo?.setActionName(deleted.count == 1 ? "Delete Item" : "Delete Items")
+    }
+
     func timeline(for show: Show) -> ShowTimeline {
         ShowTimeline(show: show, items: itemsByID)
     }

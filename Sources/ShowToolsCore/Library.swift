@@ -362,6 +362,82 @@ public final class Library {
                            duration: probe.duration, ingestedAt: now, sourcePath: sourcePath)
     }
 
+    /// What deleting a file from the library takes with it, kept so it can
+    /// all go back: the file's own row, its collection memberships, and
+    /// every slide (in every show) that used it. The lane's images
+    /// (`shows.overlays`) aren't a `slides` row, so the caller — which
+    /// already has each show in memory — restores those itself.
+    public struct DeletedItem: Sendable {
+        public let item: MediaItem
+        public let collectionIDs: [Int64]
+        public let slides: [(showID: Int64, slideID: Int64, position: Int64, settings: String)]
+    }
+
+    /// Removes files from the library: every slide that used them (across
+    /// every show), their collection memberships (cascades from the item
+    /// row), then the items themselves. `slides.item_id` has no cascade —
+    /// on purpose, so a bug elsewhere can't silently drop a slide — so the
+    /// slide rows must go first. Only the database changes; the caller
+    /// moves the files themselves to the Trash.
+    public func deleteItems(_ itemIDs: [Int64]) throws -> [DeletedItem] {
+        try db.transaction {
+            var out: [DeletedItem] = []
+            for id in itemIDs {
+                let s = try db.prepare("""
+                    SELECT id, rel_path, hash, kind, width, height, duration, ingested_at, source_path, rating
+                    FROM items WHERE id = ?
+                    """).bind(.int(id))
+                guard try s.step() else { continue }
+                let item = MediaItem(id: s.int(0), relativePath: s.text(1), hash: s.text(2),
+                                      kind: MediaKind(rawValue: s.text(3)) ?? .image,
+                                      pixelWidth: Int(s.int(4)), pixelHeight: Int(s.int(5)),
+                                      duration: s.isNull(6) ? nil : s.double(6),
+                                      ingestedAt: Date(timeIntervalSince1970: s.double(7)),
+                                      sourcePath: s.text(8), rating: Int(s.int(9)))
+                let cs = try db.prepare("SELECT collection_id FROM collection_items WHERE item_id = ?").bind(.int(id))
+                var collectionIDs: [Int64] = []
+                while try cs.step() { collectionIDs.append(cs.int(0)) }
+                let sl = try db.prepare("SELECT id, show_id, position, settings FROM slides WHERE item_id = ?")
+                    .bind(.int(id))
+                var slides: [(showID: Int64, slideID: Int64, position: Int64, settings: String)] = []
+                while try sl.step() {
+                    slides.append((showID: sl.int(1), slideID: sl.int(0), position: sl.int(2), settings: sl.text(3)))
+                }
+                try db.prepare("DELETE FROM slides WHERE item_id = ?").bind(.int(id)).run()
+                try db.prepare("DELETE FROM items WHERE id = ?").bind(.int(id)).run()
+                out.append(DeletedItem(item: item, collectionIDs: collectionIDs, slides: slides))
+            }
+            return out
+        }
+    }
+
+    /// Undoes `deleteItems`: the item row, its collection memberships, and
+    /// every slide it had, each back with its original id, so anything else
+    /// keyed on it (an undo step still on the stack, a selection) still
+    /// lines up. A show or collection that's since been deleted for some
+    /// other reason is skipped rather than failing the whole restore.
+    public func restoreItems(_ deleted: [DeletedItem]) throws {
+        try db.transaction {
+            for d in deleted {
+                let item = d.item
+                try db.prepare("""
+                    INSERT INTO items (id, rel_path, hash, kind, width, height, duration, ingested_at,
+                                        source_path, rating)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """).bind(.int(item.id), .text(item.relativePath), .text(item.hash), .text(item.kind.rawValue),
+                              .int(Int64(item.pixelWidth)), .int(Int64(item.pixelHeight)),
+                              item.duration.map { .double($0) } ?? .null,
+                              .double(item.ingestedAt.timeIntervalSince1970), .text(item.sourcePath),
+                              .int(Int64(item.rating))).run()
+                let now = Date().timeIntervalSince1970
+                let ci = try db.prepare("INSERT INTO collection_items (collection_id, item_id, added_at) VALUES (?, ?, ?)")
+                for cid in d.collectionIDs { try? ci.bind(.int(cid), .int(item.id), .double(now)).run() }
+                let si = try db.prepare("INSERT INTO slides (id, show_id, position, item_id, settings) VALUES (?, ?, ?, ?, ?)")
+                for s in d.slides { try? si.bind(.int(s.slideID), .int(s.showID), .int(s.position), .int(item.id), .text(s.settings)).run() }
+            }
+        }
+    }
+
     // MARK: Shows
 
     private static let encoder: JSONEncoder = {

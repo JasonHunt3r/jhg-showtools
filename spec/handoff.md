@@ -13,7 +13,7 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 | 2 Composer (Edit Slides / Edit Show) | Built |
 | **2a** Framing, rotation, match cuts | **Built**, except presets (Flush), which are deferred |
 | **2c** The lane: transitions row + images row | **Built**, except the parked items below |
-| **2b** Library manager | **Started**: Collections, libraries, import, grid and ratings are built; delete, rename, Info and relink are not |
+| **2b** Library manager | **Started**: Collections, libraries, import, grid, ratings and delete are built; rename, Info and relink are not |
 | 3–5 | Not started |
 
 Built this session (2026-09-21, day two):
@@ -122,11 +122,19 @@ pass can go area by area:
    not reproduced.
 1. **Suggested: a hands-on pass with Jason's own photos**, in a separate library (File ▸ New Library…) so the master isn't used. Claude can take most of the list above first with axtool, leaving Jason the parts that need hands and eyes; it also sets up the parked stickiness question.
 2. **The rest of 2b:**
-   - Delete the Photos way (Delete asks, ⌘Delete trashes, ⌘Z restores)
+   - ~~Delete the Photos way~~ **Built** (2026-09-21, session 3b): Delete asks
+     first, naming how many shows use the file; ⌘Delete (and the grid's
+     context menu) skip or keep the prompt as the plan says; either way the
+     file moves to the Trash, its slides *and lane images* are removed from
+     every show that had it, and ⌘Z puts all of it back — the file from the
+     Trash, the database rows with their original ids, the show's slide
+     order and its overlays. `Library.deleteItems`/`restoreItems` do the
+     database side (tested); `AppModel.deleteItems` does the Trash move and
+     the undo/redo. Checked by hand with axtool: plain Delete, ⌘Delete, the
+     context menu, and undo, including a file that was a lane image.
    - Finder-style batch rename
    - an Info panel (camera metadata, tags, the Finder-tags option)
    - relink by hash
-   - Note: "which shows use this file" must count lane images (`shows.overlays` JSON), not just slides.
 3. **Phase 3:** music and waveform. Then 3b duplicate finder, 4 setlist export, 5 live desktop.
 
 ## How to work on it
