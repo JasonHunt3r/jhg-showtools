@@ -10,7 +10,57 @@
 // clock (so a screenshot shows it's live). The menu bar icon "BG" pauses a
 // monitor or quits. Every event that could disturb the window is logged:
 // screens changing, Space changes, sleep and wake, occlusion.
+//
+// Part 2: `--per-space` gives every desktop Space its own window (and its
+// own colour), placed with the unofficial CoreGraphics Space calls, which
+// yabai and Hammerspoon also use. There's no public way to tell Spaces
+// apart; these exist on macOS 27.0 (checked 2026-09-22).
 import AppKit
+
+enum Spaces {
+    typealias ConnFn = @convention(c) () -> Int32
+    typealias CopyFn = @convention(c) (Int32) -> Unmanaged<CFArray>
+    typealias MoveFn = @convention(c) (Int32, CFArray, CFArray) -> Void
+    static let cg = dlopen("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics", RTLD_NOW)
+    static let conn = unsafeBitCast(dlsym(cg, "CGSMainConnectionID")!, to: ConnFn.self)()
+    static let copy = unsafeBitCast(dlsym(cg, "CGSCopyManagedDisplaySpaces")!, to: CopyFn.self)
+    static let add = unsafeBitCast(dlsym(cg, "CGSAddWindowsToSpaces")!, to: MoveFn.self)
+    static let remove = unsafeBitCast(dlsym(cg, "CGSRemoveWindowsFromSpaces")!, to: MoveFn.self)
+
+    struct Space { let id: Int; let uuid: String; let index: Int }
+
+    /// Each display's ordinary desktops (not full-screen apps), by the
+    /// display's UUID.
+    static func desktops() -> [String: [Space]] {
+        let displays = copy(conn).takeRetainedValue() as? [[String: Any]] ?? []
+        var out: [String: [Space]] = [:]
+        for d in displays {
+            guard let display = d["Display Identifier"] as? String else { continue }
+            let spaces = (d["Spaces"] as? [[String: Any]] ?? []).filter { ($0["type"] as? Int) == 0 }
+            out[display] = spaces.enumerated().map { i, s in
+                Space(id: s["ManagedSpaceID"] as? Int ?? 0, uuid: s["uuid"] as? String ?? "", index: i + 1)
+            }
+        }
+        return out
+    }
+
+    static func move(_ window: NSWindow, to space: Int) {
+        let w = [NSNumber(value: window.windowNumber)] as CFArray
+        let all = desktops().values.flatMap { $0 }.map { NSNumber(value: $0.id) } as CFArray
+        remove(conn, w, all)
+        add(conn, w, [NSNumber(value: space)] as CFArray)
+    }
+}
+
+extension NSScreen {
+    var displayUUID: String {
+        let n = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32 ?? 0
+        guard let u = CGDisplayCreateUUIDFromDisplayID(n)?.takeRetainedValue() else { return "" }
+        return CFUUIDCreateString(nil, u) as String
+    }
+}
+
+let perSpace = CommandLine.arguments.contains("--per-space")
 
 let logURL = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first(where: { !$0.hasPrefix("-") })
                  ?? NSTemporaryDirectory() + "desktop-probe.log")
@@ -71,6 +121,7 @@ final class Probe: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         wc.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
             log("space changed; windows on screen: \(self?.windows.map { $0.isOnActiveSpace } ?? [])")
+            self?.checkSpaces()
         }
         for (name, note) in [("will sleep", NSWorkspace.willSleepNotification), ("did wake", NSWorkspace.didWakeNotification),
                              ("screens slept", NSWorkspace.screensDidSleepNotification), ("screens woke", NSWorkspace.screensDidWakeNotification)] {
@@ -78,8 +129,11 @@ final class Probe: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
+    var spaceSet = ""
+
     func buildWindows() {
         windows.forEach { $0.orderOut(nil) }
+        guard !perSpace else { return buildSpaceWindows() }
         windows = NSScreen.screens.map { screen in
             let w = NSWindow(contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false, screen: screen)
             w.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
@@ -96,6 +150,39 @@ final class Probe: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return w
         }
         rebuildMenu()
+    }
+
+    /// One window per desktop Space on each screen, moved onto its Space.
+    func buildSpaceWindows() {
+        let all = Spaces.desktops()
+        spaceSet = all.mapValues { $0.map(\.id) }.description
+        windows = NSScreen.screens.flatMap { screen -> [NSWindow] in
+            (all[screen.displayUUID] ?? []).map { space in
+                let w = NSWindow(contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false, screen: screen)
+                w.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
+                w.collectionBehavior = [.stationary, .ignoresCycle]
+                w.ignoresMouseEvents = true
+                w.isReleasedWhenClosed = false
+                w.hasShadow = false
+                let label = "\(screen.localizedName) · Space \(space.index)"
+                w.title = "BGTools probe \(label)"
+                w.contentView = LiveView(frame: NSRect(origin: .zero, size: screen.frame.size), name: label)
+                w.delegate = self
+                w.setFrame(screen.frame, display: true)
+                w.orderFront(nil)
+                Spaces.move(w, to: space.id)
+                log("window \(w.windowNumber) → \(label) (space id \(space.id), uuid \(space.uuid.isEmpty ? "none" : space.uuid))")
+                return w
+            }
+        }
+        rebuildMenu()
+    }
+
+    /// Spaces added or removed in Mission Control: rebuild.
+    func checkSpaces() {
+        guard perSpace else { return }
+        let now = Spaces.desktops().mapValues { $0.map(\.id) }.description
+        if now != spaceSet { log("spaces changed: \(now)"); buildWindows() }
     }
 
     func windowDidChangeOcclusionState(_ n: Notification) {
