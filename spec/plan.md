@@ -869,6 +869,24 @@ app's log got nothing), so a tile that must *change* something in BGTools
 needs a way to reach it: App Groups want a certificate, so try a URL
 scheme (`bgtools://…`) or a distributed notification when it's built.
 
+**BGTools can read the library while ShowTools writes** (measured
+2026-09-22, `tools/library-probe/`, on a scratch copy). A writer saving
+through ShowTools' own `Library` code (the app's path) for 20 s, 744
+saves, each changing slide lengths and adding or removing slides; two
+readers opening `Library.sqlite` read-only with plain SQLite (never
+`Library.init`), polling `PRAGMA data_version` every 50 ms and reading
+the show and its slides in one read transaction. Each reader: 369 changes
+read, **0 torn reads, 0 busy or locked errors, 0 undecodable settings**;
+it noticed a save within 15 ms median, 44 ms worst. Saves between two
+polls weren't seen separately, as expected: it always gets the latest.
+The writer did 765 saves alone against 744 with readers, within noise,
+so readers don't hold it up. A read-only reader leaves `Library.sqlite`
+and `-wal` untouched; it does write `-shm`, SQLite's shared index (every
+WAL reader marks its place there; it holds no library data). BGTools'
+read path: `SQLITE_OPEN_READONLY`, check `user_version` and refuse a
+newer schema, poll `data_version`, read inside `BEGIN`…`COMMIT`, decode
+with ShowToolsCore's types.
+
 Next: a throwaway test program (`tools/desktop-probe/`) checking, in
 order: the window below the icons on every monitor and Space; clicks
 passing through; a Control Center toggle loading (moved up for the crowded
