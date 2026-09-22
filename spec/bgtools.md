@@ -80,6 +80,21 @@ editor), built in this repo on ShowToolsCore's renderer (`frame(at:)` →
   App Groups want a certificate, so try a URL scheme (`bgtools://…`) or a
   distributed notification. (MacStories documented a Tahoe bug hiding
   third-party controls until the widget gallery is opened.)
+- **A tile can change BGTools without opening it** (`tools/control-probe`,
+  tiles Colour A/B/C, Jason pressing them, 2026-09-22). A tile's action
+  always runs in the sandboxed extension, even when the same intent is
+  compiled into the app too (C: logged by the extension, never reached
+  the app). Two ways across both worked, every press, within the second:
+  - **A, a distributed notification** (name only; a sandboxed sender
+    gets no userInfo): reaches BGTools only if it's already running.
+  - **B, a URL** (`bgtools://…`) opened with `activates = false` and
+    handled in the app delegate's `application(_:open:)`, not SwiftUI's
+    `onOpenURL` (which opens a window): with the app running it stays
+    behind other windows; **with it quit, the press launches it, delivers
+    the URL and changes it, all behind Jason's windows**. So tiles use
+    URLs.
+  - New tiles didn't appear in Control Center's gallery until the build
+    number went up and `chronod` was restarted (`killall chronod`).
 - **Reading the library while ShowTools writes** (`tools/library-probe`,
   scratch copy): a writer saving through `Library` (744 saves in 20 s)
   and two readers opening `Library.sqlite` with `SQLITE_OPEN_READONLY`,
@@ -111,7 +126,6 @@ it; follow the library when it moves (a bookmark; ShowTools tells it).
 - **Power** (a curiosity, not a gate; Jason: BGTools may do both live
   drawing and video): live Core Image drawing against a looping HEVC
   video, per monitor
-- **A tile that changes BGTools**: URL scheme or distributed notification
 
 ## Open questions (to settle with Jason one at a time)
 

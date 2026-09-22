@@ -17,15 +17,10 @@ and per Space. Every decision, measurement and open question is there.
 login, SMAppService and LaunchAgent alike; result in `spec/bgtools.md`,
 probes removed.
 
-From the test list still open:
-- **Power**: live Core Image drawing against a looping HEVC video, per
-  monitor (not measured yet)
-- **Several monitors**: needs Jason to plug in a second display; the
-  desktop probe (`tools/desktop-probe/build.sh`, `--per-space`) already
-  makes a window per display and Space, and logs screens changing
-- **A tile that changes BGTools**: the Control Center tile's action runs
-  in the sandboxed extension, so try a URL scheme or a distributed
-  notification to reach the app
+The test program is done (2026-09-22): several monitors and tiles
+measured with Jason (spec "Measured"). Only **Power** is left, a
+curiosity rather than a gate (Jason: BGTools may do both live drawing and
+video).
 Then settle `spec/bgtools.md`'s open questions with Jason one at a time
 (he asked for that), and propose build steps.
 

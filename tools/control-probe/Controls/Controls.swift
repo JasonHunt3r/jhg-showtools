@@ -7,6 +7,9 @@ struct BGControls: WidgetBundle {
     var body: some Widget {
         OpenBGToolsControl()
         DesktopShowControl()
+        ColourAControl()
+        ColourBControl()
+        ColourCControl()
     }
 }
 
@@ -33,4 +36,26 @@ struct DesktopShowControl: ControlWidget {
         .displayName("Desktop Show")
         .description("Turns the desktop show on or off.")
     }
+}
+
+/// Part 6's tiles: one per route (see Intents.swift). ControlWidget needs
+/// init(), so each is its own small type.
+@MainActor func colourTile<I: AppIntent>(_ kind: String, _ title: String, _ intent: I) -> some ControlWidgetConfiguration {
+    StaticControlConfiguration(kind: "com.jhg.BGControlProbe.next.\(kind)") {
+        ControlWidgetButton(action: intent) {
+            Label(title, systemImage: "paintpalette")
+        }
+    }
+    .displayName(LocalizedStringResource(stringLiteral: title))
+    .description("Changes the probe app's colour without opening it.")
+}
+
+struct ColourAControl: ControlWidget {
+    var body: some ControlWidgetConfiguration { colourTile("a", "Colour A", NextColourByNotificationIntent()) }
+}
+struct ColourBControl: ControlWidget {
+    var body: some ControlWidgetConfiguration { colourTile("b", "Colour B", NextColourByURLIntent()) }
+}
+struct ColourCControl: ControlWidget {
+    var body: some ControlWidgetConfiguration { colourTile("c", "Colour C", NextColourDirectIntent()) }
 }

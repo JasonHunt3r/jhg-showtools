@@ -1,5 +1,6 @@
 # Phase 5 test program, part 3: do Control Center tiles load from an
 # ad-hoc-signed app built on this Mac (no developer certificate)?
+# Part 6: can a tile change the running app without opening it? (Colour A/B/C)
 #   tools/control-probe/build.sh
 name: BGControlProbe
 options:
@@ -14,7 +15,7 @@ settings:
     SWIFT_VERSION: "6.0"
     ENABLE_HARDENED_RUNTIME: NO
     MACOSX_DEPLOYMENT_TARGET: "26.0"
-    CURRENT_PROJECT_VERSION: "1"
+    CURRENT_PROJECT_VERSION: "2"
     MARKETING_VERSION: "0.1"
 targets:
   BGControlProbe:
@@ -26,6 +27,13 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.jhg.BGControlProbe
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: BGControlProbe
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: BGControlProbe
+        CFBundleURLTypes:
+          - CFBundleURLName: com.jhg.BGControlProbe
+            CFBundleURLSchemes: [bgcontrolprobe]
     dependencies:
       - target: BGControls
         embed: true
