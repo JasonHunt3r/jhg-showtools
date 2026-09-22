@@ -92,12 +92,18 @@ enum SlideActions {
     }
 
     /// Copies go right after their originals, with their settings, as new uses.
+    /// A copy's auto Ken Burns comes from its own new id, as it always has,
+    /// so an imported slide's seed isn't copied.
     static func duplicate(_ ids: Set<Int64>, mutate: ShowMutator) {
         mutate("Duplicate") { s in
             var out: [Slide] = []
             for slide in s.slides {
                 out.append(slide)
-                if ids.contains(slide.id) { out.append(Slide(id: 0, itemID: slide.itemID, settings: slide.settings)) }
+                if ids.contains(slide.id) {
+                    var copy = Slide(id: 0, itemID: slide.itemID, settings: slide.settings)
+                    copy.settings.kenBurnsSeed = nil
+                    out.append(copy)
+                }
             }
             s.slides = out
         }

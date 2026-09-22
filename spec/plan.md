@@ -726,6 +726,10 @@ it shows.**
   pivots, a Ken Burns move's easing aren't in it), so only a cell that
   differs from what export would write for the JSON's value replaces it.
   A changed Ken Burns or rotation cell keeps the JSON's other details
+- A row copied in the spreadsheet is a second use of that slide: same
+  settings, its own auto Ken Burns move (as Duplicate gives in the app)
+- A cell that can't be read keeps the JSON's value and is listed in the
+  import's problems, with its line number
 - **Auto Ken Burns stays the same move.** It's seeded from the slide's id,
   which a new library won't reuse, so `show.json` records each slide's
   original id and import carries it over as the slide's seed (an additive
@@ -742,6 +746,8 @@ hash) are reused, not imported twice.
 
 **A folder with no manifest at all:** a new show from its files in Finder's
 name order, every slide on the defaults. In effect, "New Show from Folder".
+Songs in such a folder aren't placed; the import lists them to add by hand
+(built this way in 4b; say if they should go in the music row instead).
 
 - **The same checkbox on File ▸ Import…** (Jason, 2026-09-22): when a
   folder is imported, "Make a collection for it" puts its files into a new

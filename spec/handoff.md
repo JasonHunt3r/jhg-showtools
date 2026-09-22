@@ -7,16 +7,19 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 ## Start here (end of 2026-09-22)
 
-**Phase 4 (setlist export / import) is planned and 4a is built.** Jason
-answered every question on 2026-09-22; the plan's Phase 4 section was
+**Phase 4 (setlist export / import) is planned; 4a and 4b are built.**
+Jason answered every question on 2026-09-22; the plan's Phase 4 section was
 rewritten to fit what a show holds now (`show.json` for everything,
-`show.tsv` to read and edit, metadata stripped by default). **Next: 4b,
-core import**, on Jason's "go ahead". Build order: 4a core export (done),
-4b core import, 4c Export Show… panel, 4d Import Show… panel plus the
-"Make a collection for it" checkbox on File ▸ Import… too, 4e a hands-on
-round trip on a scratch library, including an edit in Numbers.
+`show.tsv` to read and edit, metadata stripped by default, song tags kept).
+**Next: 4c, the Export Show… panel**, on Jason's "go ahead". Build order:
+4a core export (done), 4b core import (done), 4c Export Show… panel (with
+the "Hide from Spotlight" checkbox, the Preferences "Strip metadata from
+exported files" setting, and the not-stripped list), 4d Import Show… panel
+plus the "Make a collection for it" checkbox on File ▸ Import… too, 4e a
+hands-on round trip on a scratch library, including an edit in Numbers
+(find out then whether Numbers saves TSV).
 
-Where things stand: Phase 3 and 3b are built; 165 tests; schema 12. Image
+Where things stand: Phase 3 and 3b are built; 172 tests; schema 12. Image
 stickiness (the end of Phase 3) stays parked until Jason has made a first
 real show.
 
@@ -36,11 +39,22 @@ real show.
   (`MetadataStrip.isPersonal`).
 - `Library.identifier()`: a random id kept in `library_settings` (no
   schema change), so an export knows which library and show it came from.
-- 4b must: add a `kenBurnsSeed` to `SlideSettings` (field by field) and
-  have the timeline use it before `slide.id`; match files by the JSON's
-  library hash first, then the file's own; apply the "cell still reads what
-  export wrote" rule. Numbers can open a TSV, but check how it saves one
-  before 4e (it may only export CSV).
+
+## Phase 4b: core import (2026-09-22)
+
+- `SetlistImport.swift`: `SetlistTSV.parse` and a parser for every cell
+  form; `SetlistImport.read` (off the main thread: merges JSON and TSV,
+  hashes the folder's files, collects problems), `filesToImport` (what the
+  library lacks: library hash first, then the file's own) and `makeShow`
+  (on the library's thread, after the app has imported those files; gives
+  ratings and tags only to the items just imported; puts the show and all
+  its files into the collection it's given).
+- The app's part (4d): `read`, then its own import of `filesToImport`
+  (which already dedupes by hash), then `makeShow` with the new item ids.
+- `SlideSettings.kenBurnsSeed` (additive, field by field): the timeline
+  seeds auto Ken Burns from it before `slide.id`. Import sets it to the
+  exported id; Duplicate clears it on the copy, so copies still get their
+  own move.
 
 ## Step 6 (2026-09-22: tested and agreed)
 

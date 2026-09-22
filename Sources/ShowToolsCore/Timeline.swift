@@ -207,7 +207,7 @@ public struct ShowTimeline: Sendable {
 
             let kb: KenBurns? = switch slide.settings.kenBurns ?? d.kenBurns {
             case .off: nil
-            case .auto: Self.autoKenBurns(seed: slide.id)
+            case .auto: Self.autoKenBurns(seed: slide.settings.kenBurnsSeed ?? slide.id)
             case .custom(let k): k
             }
 

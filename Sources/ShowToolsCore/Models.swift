@@ -255,11 +255,15 @@ public struct SlideSettings: Codable, Hashable, Sendable {
     public var background: SRGBColor?
     /// Nil means no rotation. There's no show-wide default for it.
     public var rotation: Rotation?
+    /// What auto Ken Burns is generated from, when not the slide's own id.
+    /// An imported slide keeps its exported id here, so its auto move stays
+    /// the same in a new library (plan, Phase 4). A duplicate drops it.
+    public var kenBurnsSeed: Int64?
 
     public init(length: SlideLength? = nil, transition: Transition? = nil,
                 kenBurns: KenBurnsSetting? = nil, fit: Fit? = nil, clipStart: Double? = nil,
                 transform: Transform? = nil, background: SRGBColor? = nil,
-                rotation: Rotation? = nil) {
+                rotation: Rotation? = nil, kenBurnsSeed: Int64? = nil) {
         self.length = length
         self.transition = transition
         self.kenBurns = kenBurns
@@ -268,6 +272,7 @@ public struct SlideSettings: Codable, Hashable, Sendable {
         self.transform = transform
         self.background = background
         self.rotation = rotation
+        self.kenBurnsSeed = kenBurnsSeed
     }
 
     /// Field by field, for the same reason as `ShowDefaults`.
@@ -281,6 +286,7 @@ public struct SlideSettings: Codable, Hashable, Sendable {
         transform = (try? c.decodeIfPresent(Transform.self, forKey: .transform)) ?? nil
         background = (try? c.decodeIfPresent(SRGBColor.self, forKey: .background)) ?? nil
         rotation = (try? c.decodeIfPresent(Rotation.self, forKey: .rotation)) ?? nil
+        kenBurnsSeed = (try? c.decodeIfPresent(Int64.self, forKey: .kenBurnsSeed)) ?? nil
     }
 }
 
