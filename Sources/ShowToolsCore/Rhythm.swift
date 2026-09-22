@@ -306,16 +306,18 @@ public struct RhythmGrid: Hashable, Sendable {
     }
 
     /// The pattern it spells: each gap from a lit square to the next is one
-    /// note, as long a value as fits, with rests making up the rest (5
-    /// sixteenths is `q rs`). Squares before the first lit one are rests.
+    /// note, as long a value as fits without crossing a bar line, with rests
+    /// making up the rest, also split at bar lines (Jason, 2026-09-22): 5
+    /// sixteenths is `q rs`, and a quarter on beat 4 before an empty bar is
+    /// `q rw`. Squares before the first lit one are rests.
     public var pattern: RhythmPattern {
         var notes: [RhythmPattern.Note] = []
         let lit = cells.indices.filter { cells[$0] }
-        if let first = lit.first, first > 0 { notes += spell(first, rest: true) }
-        if lit.isEmpty, !cells.isEmpty { notes += spell(cells.count, rest: true) }
+        if let first = lit.first, first > 0 { notes += spell(from: 0, first) }
+        if lit.isEmpty, !cells.isEmpty { notes += spell(from: 0, cells.count) }
         for (k, s) in lit.enumerated() {
             let next = k + 1 < lit.count ? lit[k + 1] : cells.count
-            let gap = spell(next - s, rest: true)
+            let gap = spell(from: s, next - s)
             if var head = gap.first {
                 head.rest = false
                 notes += [head] + gap.dropFirst()
@@ -324,7 +326,23 @@ public struct RhythmGrid: Hashable, Sendable {
         return RhythmPattern(notes)
     }
 
-    /// `steps` as notes, longest first (all rests; the caller un-rests the first).
+    /// `steps` from step `start` as rests (the caller un-rests the first),
+    /// each as long as fits before the next bar line.
+    private func spell(from start: Int, _ steps: Int) -> [RhythmPattern.Note] {
+        var out: [RhythmPattern.Note] = []
+        var at = start, left = steps
+        while left > 0 {
+            let room = min(left, stepsPerBar - at % stepsPerBar)
+            let piece = spell(room, rest: true)
+            guard !piece.isEmpty else { break }
+            out += piece
+            at += room
+            left -= room
+        }
+        return out
+    }
+
+    /// `steps` as notes, longest first.
     private func spell(_ steps: Int, rest: Bool) -> [RhythmPattern.Note] {
         typealias N = RhythmPattern.Note
         let values: [(Int, N)] = switch feel {

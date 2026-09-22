@@ -578,6 +578,9 @@ to the Collection Browser and the library.
     are hidden (Jason, 2026-09-22). It sizes itself: 16 or 12 steps a bar
     (12 for triplets), as many bars as the pattern needs. A pattern it
     can't show leaves it read-only with a note saying why.
+    Clicking rewrites the letters: each gap is one note, never running
+    past its bar line, then rests, also split at bar lines, so a
+    quarter before an empty bar reads `q rw` (Jason, 2026-09-22).
   - **Note length:** "A quarter note = [¼, ½, 1, 2, 4, 8] beats", default
     4 beats (one bar), so `q q q q` is a slide a bar.
   - **Tempo:** a **BPM field**, filled in from the song's analysis when

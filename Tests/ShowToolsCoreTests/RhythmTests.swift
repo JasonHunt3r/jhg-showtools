@@ -208,7 +208,10 @@ final class RhythmGridTests: XCTestCase {
     func testResizingAndChangingFeel() {
         let g = G.fitting(RhythmPattern(text: "h h"))!
         XCTAssertEqual(g.resized(bars: 2).cells.count, 32)
-        XCTAssertEqual(g.resized(bars: 2).pattern.text, "h w.")
+        XCTAssertEqual(g.resized(bars: 2).pattern.text, "h h rw", "a note doesn't run past its bar")
+        var beat4 = G.empty().resized(bars: 2)
+        beat4.cells[12] = true
+        XCTAssertEqual(beat4.pattern.text, "rh. q rw")
         XCTAssertEqual(g.converted(to: .triplet)?.pattern.text, "h h")
         XCTAssertNil(G.fitting(RhythmPattern(text: "e e h."))!.converted(to: .triplet))
     }
