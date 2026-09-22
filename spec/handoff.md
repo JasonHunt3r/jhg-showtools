@@ -1,9 +1,13 @@
-# ShowTools — handoff, 2026-09-21 (end of day two)
+# ShowTools — handoff, 2026-09-21 (end of day two, fourth session)
 
 For the next session. Read `CLAUDE.md` (rules) and `spec/plan.md` (every
 decision, phase by phase) first. This file is the state of play. The repo
 is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 (public, `main`).
+
+**Jason is updating his Mac to macOS 27** so step 6 (beat detection) can
+use Apple's Music Understanding framework. Check `sw_vers` first: if it
+still says 26.x, step 6 can't run yet (see "Starting step 6").
 
 ## Where it stands
 
@@ -14,129 +18,177 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 | **2a** Framing, rotation, match cuts | **Built**, except presets (Flush), which are deferred |
 | **2b** Library manager | **Built** |
 | **2c** The lane: transitions row + images row | **Built** |
-| **3** Music + timeline | **Started 2026-09-21:** steps 1–5 of 7 built; **step 6 waits for macOS 27** (Apple's Music Understanding framework), and step 7 follows it (markers with M, snapping with N, the I/O range with ⌥X and ⌘L loop playback; modular rows; the music row, waveform, and playback on the music's clock; moving and trimming songs, crossfades, and the level line on song and image clips; the show as long as its longest row, with the show background after the last slide). Decisions and build order in `spec/plan.md` |
+| **3** Music + timeline | **Steps 1–5 of 7 built** (below). **Step 6 (beat detection) waits for macOS 27**; step 7 (rhythm patterns) follows it |
 | 3b–5 | Not started |
 
-Everything through 2b/2c is built, audited, and checked by hand (Jason and/or
-Claude with `tools/axtool.swift`). The detailed build history for each phase
-lives in git log and in memory (session AARs); this file only tracks what's
-still open.
+Library schema is now **version 10**. Every upgrade is additive and tested
+by opening a library of the version before (7 rows, 8 music, 9 markers,
+10 editing state). Jason's real library steps up to 10 the first time a
+build from this session opens it. Before an upgrade, the database is
+copied to `Library.sqlite.v<N>.bak`, named for the version it was at. 108 core tests.
 
-## Recently completed (2026-09-21, third session that day)
+## Phase 3, as built (2026-09-21, fourth session)
 
-Picked up from small requests plus the rest of Phase 2b:
-- **Inspector polish:** a header bar (icon, selection name/length, a
-  circled-X close) like the collection list's; its two section headers
-  (Transform, Effects) now pin to the top of the column while their content
-  scrolls under them (`LazyVStack(pinnedViews: [.sectionHeaders])` in place
-  of `Form`, which doesn't support pinning).
-- **Library delete**, the Photos convention: Delete asks (naming how many
-  shows use the file); ⌘Delete and a context-menu item skip the prompt;
-  either way the file goes to the Trash, its slides *and lane images* are
-  stripped from every show that had it, and ⌘Z restores all of it, file
-  included.
-- **Batch rename:** Finder's Rename Items modes (Replace Text, Add Text,
-  Format with index/counter/date and a start number), live preview, from
-  the grid's context menu or File ▸ Rename….
-- **Info panel:** a floating panel (⌘I, or the grid's toolbar/context menu)
-  following the grid's selection live. Read-only metadata read fresh from
-  the file (dimensions, size, format, date, camera, lens, exposure, GPS);
-  rating; tags (schema 6) added/removed for the whole selection at once,
-  feeding the grid's search; a Settings toggle also writes them as Finder
-  tags.
-- **Relink by hash**, closing out 2b: File ▸ Relink Missing Files… finds a
-  file Finder moved or renamed behind the app's back and points its row at
-  the new location, matched by content hash.
+The decisions are all in `spec/plan.md`, Phase 3. What was built, step by
+step (one commit each, plus follow-ups):
 
-Library schema is now **version 6** (5 library settings, 6 tags on items).
-Every upgrade is additive and tested by opening the previous version.
+1. **Modular rows** (`1b681fc`). Each show keeps its timeline rows
+   (images, transitions, slides, music) in its own order (`Show.rows`).
+   Every row has a handle pinned in the storyline's left margin: drag to
+   reorder (undoable), click to slide its drawer out over the row, ⌥-click
+   for all, Esc to close. The drawers only hold a name and icon so far;
+   controls go in as features need them.
+2. **The music row** (`9661eac`). Songs are library items of kind
+   `.audio` (never slides or lane images; everything that adds items to a
+   show filters with `model.pictures`/`model.songs`). Waveforms are read
+   once per file and cached by hash in `<library>/Cache/Waveforms`.
+   `MusicPlayer` schedules every song due from a moment on, on one
+   AVAudioEngine, to start on the same sample, and while it plays **the
+   show's clock reads the sound card's sample count** (`PlaybackClock.external`),
+   so the picture follows what's heard. Music plays only forwards at
+   normal speed; scrubbing and shuttling are silent. Anything that starts,
+   stops or moves the clock must call `PlaybackEngine.syncMusic()`.
+3. **Songs move, trim and crossfade; the level line** (`82d81d4`). Front
+   trims move the in point with the start. Overlaps draw green; where one
+   song starts inside another they crossfade at equal power
+   (`AudioClip.gain`). `LevelLine` is one control for both song volume and
+   lane-image opacity, with fade handles.
+4. **The show is as long as its longest row** (`144e51a`). After the last
+   slide the show's background colour shows (`FrameState.background`). A
+   loop with time after the slides restarts with a cut, not a transition
+   (`ShowTimeline.wrapsDirectly`). Images can go past the end. The show's
+   default background got a colour well in the Edit Slides header bar.
+5. **Markers, snapping, the range** (`dc79afb`, then `29beba2`). M drops a
+   marker (`Show.markers`, undoable); N snaps slide cuts and image edges to
+   markers; I/O set the range, ⌥X clears it, ⌘L loops playback in it.
+   Jason's follow-ups: the markers' lines and the range's lines have
+   separate transport switches; double-click one marker or range end for
+   its own line, ⌥-double-click for every one of that kind. **The range,
+   loop and line switches are the show's editing state (`Show.editor`),
+   saved with the show so it opens as it was left, and never undone:** any
+   undo keeps the editing state as it is now (`AppModel.update`). Marker
+   edits, a marker's own line included, are undoable.
 
-**Recurring lesson, worth knowing before building anything else with a
-`.sheet` or a floating panel:** a separate window's own `\.undoManager`
-isn't the presenting window's, and even the *right* `UndoManager` passed in
-isn't enough by itself — AppKit vends every window its own, and ⌘Z asks
-whichever window is *key*. A panel is key right after you finish typing
-into it, the normal moment to press ⌘Z. Both traps are written up in full,
-with the fix, in `spec/macos_panels_guide.md` (in the sibling `jhg-cutcheck`
-repo, shared across projects) and in memory.
+Everything above was checked by hand in a scratch library with `axtool`,
+and measured where it could be. Two things only Jason can confirm: that
+the music actually **sounds** right (fades, crossfades, sync with
+Bluetooth headphones), and that the handles and drawers feel right.
 
-Full detail on all of the above — what was checked by hand, exact bugs
-found and fixed (a coordinate-math bug in relink caught by a test before it
-reached the app; a thumbnail-retry bug found only by looking at the
-screen) — is in git log (`832abb5`, `1d3f2f3`, `e072613`, `5bb0433`) and in
-memory (session AAR).
+## Starting step 6: beat detection
+
+**Decided (Jason, 2026-09-21):** use **Apple's Music Understanding
+framework** (WWDC26). It needs macOS 27. Our own detector (Accelerate,
+spectral flux) was considered and turned down, so don't build a fallback.
+
+**What the framework gives** (read from the macOS 27 SDK's
+`MusicUnderstanding.swiftinterface` on this Mac, 2026-09-21; check it again,
+since it was a beta SDK):
+- `MusicUnderstandingSession(asset:)` (async throws), or
+  `init(audioProvider:)` for streamed buffers. Then
+  `analyze(for: [.rhythm, .structure, …])` returns a `SessionResult`.
+  It's an actor, and `cancel()` exists.
+- `RhythmResult`: `beats: [CMTime]`, `bars: [CMTime]` (the bar starts, i.e.
+  downbeats), `beatsPerMinute: Float?`.
+- `StructureResult`: `sections`, `segments`, `phrases`, each `[CMTimeRange]`.
+- Also `key`, `pace`, `loudness` (integrated, momentary, short-term, peak),
+  and `instrumentActivity`. Not needed yet.
+- Everything is `@available(macOS 27.0, *)`. The deployment target is
+  macOS 14, so wrap it in `if #available` and show a note in the apply
+  sheet on older systems.
+- The WWDC session says to create the `AVURLAsset` with
+  `AVURLAssetPreferPreciseDurationAndTimingKey: true`.
+
+**Proposed, not yet agreed.** Jason answered only the choice of framework,
+so raise these with him before building:
+1. **Analyse each song automatically** when it's added, in the background,
+   and cache the result per file by hash (like the waveform, e.g.
+   `<library>/Cache/Rhythm/<hash>.json`, since the result types are
+   Codable). Markers appear only when he applies.
+2. **On song clips:** faint ticks for every beat and stronger ones for bar
+   starts, plus the song's sections as bands along the clip.
+   **Double-clicking a section sets the range to it**, a quick way to say
+   "do the chorus like this".
+3. **The apply sheet:** opened from a "Detect Beats…" button in the music
+   row's drawer, and from a song's right-click menu. It applies to the
+   range, or to the whole song with no range; if several songs fall in the
+   range, each gets its own markers. The modes are "every N beats" (1, 2
+   or 4, or once per bar) and "about every X seconds, landing on the
+   nearest beat". Step 7 adds the rhythm patterns as a third mode, so
+   leave room for it. A **live preview** of the markers shows faintly on
+   the timeline while the settings change.
+4. **"Fit slides to markers"** (a checkbox, already agreed in the plan):
+   the slides whose cuts fall inside the range are re-cut so each cut lands
+   on the next marker, starting at the first cut in the range. What follows
+   ripples. Extra markers stay; slides with no marker left keep their
+   lengths. Transitions stay centred on their cuts. The whole apply is one
+   undo step.
+5. **Detected markers:** teal, to tell them from the orange hand markers.
+   They belong to their song, stored in song time on the `AudioClip`, so
+   they move with it and hide when a trim cuts past them (they aren't
+   deleted). They can be dragged or deleted one by one. Running it again
+   on a range replaces that song's detected markers there, and never
+   touches hand markers. Snapping uses both kinds.
+6. **When the tempo is wrong** (usually out by a factor of two): **×2 / ÷2**
+   (half-beats between, or every other beat) and **"bar starts here"**
+   (shift the downbeat by a beat), in place of the plan's tap tempo, unless
+   detection turns out to need it.
+
+**Step 7 (after 6):** the rhythm patterns. They come in three
+interchangeable forms: text (`w w h h q q 3e 3e 3e`, repeated to fill the
+range), musical notation with note buttons, and a drum-machine step grid.
+There's also a multiplier for how many beats a whole note stands for. All
+of it is in the plan.
+
+**Then the end of Phase 3:** settle image stickiness with Jason (below).
+
+## While step 6 waits
+
+If Jason isn't on macOS 27 yet, **3b, the duplicate finder**, doesn't
+depend on anything in Phase 3. It was the suggestion at the end of this
+session, but Jason hadn't said yes yet.
 
 ## Still needs Jason's hands
-
-Claude has checked almost everything reachable with `axtool` (mouse, keys,
-menus). What's left needs real hardware or real judgement:
-- **Cross-app drags:** dropping files from Finder and from Photos onto the
-  storyline, the images row, the grid, a collection.
-- **Touch ID / the Mac's password:** opening a private library, and the
-  locked screen's Unlock.
-- **Pinch:** the work area's zoom, and the storyline.
-- **A second screen:** popping the preview out onto it.
-- **Look and feel:** cursors per handle zone, whether the sticky headers and
-  inspector bar read right, whether the lane's drags feel right now that
-  they're fixed.
-- **One confirmation:** a real ⌘Z with the Info panel itself focused, right
-  after editing a tag (axtool's synthetic version of this specific case
-  didn't reach Undo, even though the same undo works via the menu and via
-  ⌘Z with the main window focused — see the gotcha above; likely a
-  synthetic-event quirk, not a real bug, but worth one real keypress).
-
-**Suggested next step before diving into Phase 3:** a hands-on pass with
-Jason's own photos, in a separate library (File ▸ New Library…) so the
-master isn't touched. It's also when the parked "image stickiness"
-question (below) gets settled.
-
-## Starting Phase 3: music + timeline
-
-Per `spec/plan.md`:
-- Add a song (File ▸ Import a track, or similar) and draw its waveform on
-  a timeline under the storyline.
-- Slides appear as blocks under the waveform; dragging a block's edge
-  changes that slide's length (this already exists for the plain
-  storyline — the waveform is a new ruler-like element alongside it, not a
-  replacement).
-- **Alignment aids:** markers dropped by hand while listening (a keystroke
-  on the beat); slide edges snap to markers. Automatic beat detection is
-  explicitly deferred ("may come later if the markers turn out to be a
-  chore") — don't build it first.
-- Scrubbing the timeline scrubs the show (the engine's clock already
-  becomes the music's clock once a track is loaded — see `Timeline.swift`'s
-  clock note — so this should mostly fall out of that).
-
-Suggested first questions to raise with Jason before writing code (per
-`feedback_ask_for_clarity`/`feedback_verify_mental_model` in memory —
-restate the flow back before coding): where a track lives in the data model
-(per-show, stored how), what the waveform is drawn from (decode once and
-cache, or on the fly), and what a "marker" actually is (a time value only,
-or does it carry anything else).
+- **Listening:** music sync, fades, crossfades; Bluetooth headphones'
+  delay (the output latency is subtracted, but it's untested).
+- **Dragging a song in from Finder or Music.**
+- **Look and feel:** the row handles (10 pt wide), the drawers, the level
+  line's handles, whether a line on every clip is too busy in the thin
+  images row, and the transport's new toggles.
+- **From before Phase 3:** cross-app drags from Finder and Photos, Touch ID
+  and the Mac's password, pinch, a second screen, cursors, and one real ⌘Z
+  with the Info panel focused.
 
 ## How to work on it
 
 ```sh
-swift test                                  # 93 core tests
+swift test                                  # 108 core tests
 ./make-app.sh                               # → build/ShowTools.app
-tools/make-test-library.sh /tmp/STTest      # scratch library + generated media
-open -n --env SHOWTOOLS_LIBRARY=/tmp/STTest/TestLib.noindex build/ShowTools.app
+tools/make-test-library.sh <scratch>/STTest # scratch library + generated media
+open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools.app
 ```
 - **Never** run against the real library. Always set `SHOWTOOLS_LIBRARY`.
 - Dev hooks are listed in `CLAUDE.md` (show, slide, image, rotation mode, transition, lane image, play).
+- **A test song:** a click on every beat makes timing checkable by eye and by ear. Generate a WAV with Python's `wave` module (the session used 120 BPM: a 1 kHz click every 0.5 s over a quiet 220 Hz tone), `afconvert -f m4af -d aac` it to AAC, then `stcli ingest <lib> <file>`. `stcli ingest` doesn't add to a collection: add a `collection_items` row with `sqlite3` so the song shows in the collection list.
+- **Seed show data** (markers, songs, image clips) straight into the scratch database with `sqlite3`, **with the app quit**. The app only reads the database when it loads, and a column a new build adds doesn't exist until that build has opened the library once.
+- **Checking audio without ears:** a temporary tap on `engine.mainMixerNode` writing peak levels against the show clock to a scratch file. **Never call `DispatchQueue.main.sync` from the tap block:** when the engine stops on the main thread, each waits on the other and the app hangs on quit (it happened; the copy needed `kill -9`). Read the clock with a lock, or log the tap's own sample time instead. Remove the tap before committing.
 - Screenshots: `swiftc tools/list-windows.swift` gives window ids, then `screencapture -x -o -l <id>`. `tools/contact-sheet.swift` tiles a folder of PNGs.
-- **Get click/type coordinates from `ax find`/`ax dump` (Accessibility), never by eyeballing a screenshot** — especially one resized with `sips`, whose pixels don't match real screen points. Screenshots are for looking, not measuring; this exact mistake mis-clicked tiles twice in one session.
-- Frames: `stcli render <lib> <showID> 960x540 <outdir> <t>…` draws through the real Compositor, lane images included.
-- Driving the app: `swiftc -O tools/axtool.swift -o <scratch>/ax`, then `ax front <pid>`, `ax find <pid> <text>`, `ax click x y`, `ax type …`, `ax menu <pid> File "Import…"`. It refuses input unless ShowTools is frontmost. Read the UI with `find`/`dump` before taking screenshots. Close test copies with `kill` or ⌘Q, not `kill -9`.
-- Reading the menus through Accessibility validates every item, like opening them; that's how a past split-view crash surfaced. A crashed copy's crash dialog has a Reopen button: it launches without `SHOWTOOLS_LIBRARY` (refused once, by design).
-- Don't shell out to `osascript`/Finder for anything `ls`/`sqlite3`/`xattr` can already answer — it can pop a real macOS permission dialog outside the app, which `axtool` correctly refuses to touch.
+- **Get click coordinates from `ax find`/`ax dump`**, never from a screenshot. Check the element is on screen first: at a high zoom a marker can sit past the window's edge, and axtool refuses the click (⇧Z fits the show).
+- `axtool click` takes `right|double|cmd|shift|opt|opt-double`. `opt` holds the Option key down, which is what `NSEvent.modifierFlags` reads.
+- Frames: `stcli render <lib> <showID> 960x540 <outdir> <t>…` draws through the real Compositor. It prints each frame's state, `background after #N` included.
+- Close test copies with `kill` or ⌘Q, not `kill -9`. **Check `pgrep -f ShowTools.app/Contents/MacOS` after a kill:** a copy that didn't quit means two copies on one scratch library.
+- `defaults write com.jhg.showtools editMode show` and the `snapping` switch are Jason's **real** app preferences (a scratch library doesn't change the preferences domain). Leave them as found.
+- Don't shell out to `osascript`/Finder for anything `ls`/`sqlite3`/`xattr` can already answer.
 - **Tell Jason before restarting the app.** He often has it open and is trying things.
 
 ## Ask Jason later
-- **Image stickiness (2c).** Once he has his own files as a test bed: should a lane image stay at its time on the clock, or move with the slide it starts over when slides are trimmed or reordered? For now it stays on the clock.
+- **Image stickiness (2c)**, now at the end of Phase 3: should a lane image stay at its time on the clock, or move with the slide it starts over when slides are trimmed or reordered? For now it stays on the clock.
+- **A video slide's own sound**: muted for now. The idea is a volume line along the slide, so part of a clip can be kept (someone speaking) and part dropped (dogs barking). Punted until his first show.
 
 ## Known issues / debts
 - **The Edit Slides header bar overflows** (Jason, 2026-09-21: address later). It scrolls sideways, and at normal window widths Background, Loop and "Videos play in full" sit past its right edge, out of sight. Options: wrap to two lines, or move the overflow into a menu.
+- **A song lying wholly inside another** plays over it without crossfading (only a partial overlap crossfades). Level tops out at 100%.
+- **The last slide cuts to the background** when something runs past the slides; a fade could come later.
+- **The row drawers hold no controls yet.** Scrub audio (a music-row toggle, plan) isn't built; scrubbing is silent.
 - **CPU** is about 33–37% while playing. This needs work before Phase 5's desktop mode.
 - Memory is about 430 MB while playing.
 - **Video:** it can't go in the lane yet. The frame strip shows a video's first frame. The onion skin skips video slides.
@@ -145,11 +197,13 @@ open -n --env SHOWTOOLS_LIBRARY=/tmp/STTest/TestLib.noindex build/ShowTools.app
 - Accordion was dropped, and Page Curl is offered as "Page Turn".
 
 ## Lessons (details in memory)
+- **`PlaybackEngine.show` is `@ObservationIgnored`.** A view that reads it doesn't redraw when the show changes, so read the saved `show` that SwiftUI observes. The preview's image bar read the engine's copy and went stale, a bug that only showed once a second control could change opacity.
+- **Undo restores a whole-show snapshot.** Anything that lives in `Show` but shouldn't be undone (the editing state) has to be carried over explicitly when undoing, as `AppModel.update` now does.
+- **A new column breaks the older-version tests.** Each "a version-N library upgrades" test fakes an old library by dropping columns, so every newer column must be dropped too (the tests now chain `DROP COLUMN`s).
 - **Driving the Mac's UI is driving Jason's Mac.** Events go to whatever is in front. axtool refuses unless ShowTools is frontmost, and refuses a crash-relaunch that dropped its scratch-library environment.
 - **Synthetic clicks (and synthetic key events) aren't proof of a bug, or of a fix.** Settle a disagreement with a harness or, failing that, one real keypress/click from Jason.
-- **Harnesses first for AppKit questions.** A ten-line standalone harness answers an AppKit behaviour question faster and more certainly than reasoning about it.
+- **Harnesses first for AppKit questions.**
 - **Test the tests.** A new test should be run against the old code first, and fail there.
-- **When Jason reports breakage right after a layout change, that change is what he means.** Ask before fixing symptoms.
-- **Measure with probes**, written to a file — `log show` returns nothing from this app in Claude's sandbox.
-- **Swift decoding traps:** every model type saved as JSON decodes field by field, never synthesized `Codable` — one unreadable field would otherwise drop every saved value, permanently on the next save.
-- **A separate window's `\.undoManager` isn't the presenting window's, and registering on the right one isn't enough — the *key* window's own `undoManager` is what ⌘Z asks.** See "Recently completed" above; full write-up in `spec/macos_panels_guide.md`.
+- **Measure with probes**, written to a file. `log show` returns nothing from this app in Claude's sandbox.
+- **Swift decoding traps:** every model type saved as JSON decodes field by field, never synthesized `Codable`.
+- **A separate window's `\.undoManager` isn't the presenting window's**, and the *key* window's own `undoManager` is what ⌘Z asks. Full write-up in `spec/macos_panels_guide.md` (in `jhg-cutcheck`).
