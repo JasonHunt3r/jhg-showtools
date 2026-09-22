@@ -397,6 +397,38 @@ extension LibraryTests {
         try lib.restoreItems(deleted)
         XCTAssertEqual(try lib.allItems().first { $0.id == a.id }?.tags, ["Wedding", "2026"])
     }
+
+    /// A file moved by hand (outside the app, so the database wasn't told)
+    /// is found again by its hash and its row is pointed at the new path;
+    /// one truly missing (no file anywhere with that hash) is reported,
+    /// not silently dropped or matched to the wrong thing.
+    func testRelinkFindsAFileMovedByHandAndReportsWhatsStillMissing() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let probe = MediaProbe(kind: .image, width: 10, height: 10)
+        let bytes = Data("a real file's bytes".utf8)
+        try bytes.write(to: lib.mediaURL.appendingPathComponent("a.jpg"))
+        let hash = try Ingest.sha256(of: lib.mediaURL.appendingPathComponent("a.jpg"))
+        let a = try lib.insertItem(relativePath: "a.jpg", hash: hash, probe: probe, sourcePath: "")
+        let b = try lib.insertItem(relativePath: "gone.jpg", hash: "no-file-has-this-hash", probe: probe, sourcePath: "")
+
+        // Rearranged in Finder, by hand: moved into a subfolder and renamed,
+        // without the app's knowledge.
+        try FileManager.default.createDirectory(at: lib.mediaURL.appendingPathComponent("2026"),
+                                                 withIntermediateDirectories: true)
+        try FileManager.default.moveItem(at: lib.mediaURL.appendingPathComponent("a.jpg"),
+                                         to: lib.mediaURL.appendingPathComponent("2026/moved.jpg"))
+
+        let outcomes = try lib.relinkMissingItems()
+        XCTAssertEqual(outcomes.count, 2)
+        XCTAssertEqual(outcomes.first { $0.itemID == a.id }?.newPath, "2026/moved.jpg")
+        XCTAssertNil(outcomes.first { $0.itemID == b.id }?.newPath)
+
+        XCTAssertEqual(try lib.allItems().first { $0.id == a.id }?.relativePath, "2026/moved.jpg")
+        XCTAssertEqual(try lib.allItems().first { $0.id == b.id }?.relativePath, "gone.jpg")   // untouched
+
+        // Nothing left to relink now that a is fixed and b has no match.
+        XCTAssertEqual(try lib.relinkMissingItems().count, 1)
+    }
 }
 
 // MARK: - The library itself (schema 5)

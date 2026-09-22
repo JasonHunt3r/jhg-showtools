@@ -50,6 +50,10 @@ struct AppCommands: Commands {
             Button("Rename…") { requestLibraryRename?() }
                 .disabled((librarySelectionCount ?? 0) == 0)
             Divider()
+            // Whole-library maintenance, not scoped to a selection (2b).
+            Button("Relink Missing Files…") { model.relinkMissingItems() }
+                .disabled(model.library == nil)
+            Divider()
             // Libraries switch one at a time, as Photos does (plan, 2b).
             Button("Open Library…") { runOpenLibraryPanel(model) }
                 .keyboardShortcut("o", modifiers: [.command, .option])

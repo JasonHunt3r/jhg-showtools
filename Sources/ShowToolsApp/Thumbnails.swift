@@ -111,7 +111,10 @@ struct ThumbnailView: View {
             }
         }
         .overlay(alignment: .bottomTrailing) { KindBadge(item: item).padding(4) }
-        .task(id: item.id) {
+        // Keyed on the URL, not just the item's id: a failed load (the
+        // file was missing) otherwise never retries after a relink points
+        // the same id at a new file, since the id itself never changed.
+        .task(id: url) {
             image = Thumbnails.shared.cached(item.id)
             if image == nil, let url { image = await Thumbnails.shared.load(item, url: url) }
         }

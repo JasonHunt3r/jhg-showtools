@@ -494,6 +494,58 @@ public final class Library {
         return previous
     }
 
+    /// One item's outcome from `relinkMissingItems`: `newPath` nil means no
+    /// file on disk matched its hash, so it's still missing.
+    public struct RelinkOutcome: Sendable {
+        public let itemID: Int64
+        public let oldPath: String
+        public let newPath: String?
+    }
+
+    /// Repairs the database after files were rearranged by hand in Finder
+    /// (plan: "the app owns this folder... the hash-based relink can
+    /// recover from it, but that's a repair, not a workflow"). Every file
+    /// actually under `Media/` is hashed once; a missing item whose hash
+    /// matches one of them is pointed at its new path. `hash` is `UNIQUE`
+    /// in the schema, so a match is never ambiguous between two items —
+    /// at most one item can ever have a given hash.
+    public func relinkMissingItems() throws -> [RelinkOutcome] {
+        let fm = FileManager.default
+        let s = try db.prepare("SELECT id, rel_path, hash FROM items")
+        var rows: [(id: Int64, path: String, hash: String)] = []
+        while try s.step() { rows.append((s.int(0), s.text(1), s.text(2))) }
+
+        let missing = rows.filter { !fm.fileExists(atPath: mediaURL.appendingPathComponent($0.path).path) }
+        guard !missing.isEmpty else { return [] }
+
+        var byHash: [String: String] = [:]
+        // Resolved on both sides: FileManager's enumerator can hand back a
+        // path in a different (if equivalent) form than mediaURL's own —
+        // /tmp vs /private/tmp, measured directly in a test — which broke
+        // a plain string-prefix strip.
+        let mediaPath = mediaURL.resolvingSymlinksInPath().path
+        for url in Ingest.collect([mediaURL]) {
+            guard let hash = try? Ingest.sha256(of: url) else { continue }
+            let resolved = url.resolvingSymlinksInPath().path
+            guard resolved.hasPrefix(mediaPath + "/") else { continue }
+            byHash[hash] = String(resolved.dropFirst(mediaPath.count + 1))
+        }
+
+        return try db.transaction {
+            var out: [RelinkOutcome] = []
+            for item in missing {
+                guard let found = byHash[item.hash] else {
+                    out.append(RelinkOutcome(itemID: item.id, oldPath: item.path, newPath: nil))
+                    continue
+                }
+                try db.prepare("UPDATE items SET rel_path = ? WHERE id = ?")
+                    .bind(.text(found), .int(item.id)).run()
+                out.append(RelinkOutcome(itemID: item.id, oldPath: item.path, newPath: found))
+            }
+            return out
+        }
+    }
+
     // MARK: Shows
 
     private static let encoder: JSONEncoder = {

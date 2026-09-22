@@ -13,7 +13,7 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 | 2 Composer (Edit Slides / Edit Show) | Built |
 | **2a** Framing, rotation, match cuts | **Built**, except presets (Flush), which are deferred |
 | **2c** The lane: transitions row + images row | **Built**, except the parked items below |
-| **2b** Library manager | **Started**: Collections, libraries, import, grid, ratings, delete, rename and the Info panel are built; relink is not |
+| **2b** Library manager | **Built** |
 | 3–5 | Not started |
 
 Built this session (2026-09-21, day two):
@@ -183,7 +183,31 @@ pass can go area by area:
      quirk rather than a real one (menu invocation exercises the exact
      same code path a real keypress does), but **worth Jason confirming
      once with an actual ⌘Z while the Info panel has focus.**
-   - relink by hash
+   - ~~relink by hash~~ **Built** (2026-09-21, session 3b), closing out 2b.
+     `Library.relinkMissingItems`: every item whose file isn't where its
+     row says gets checked against every file actually under `Media/`,
+     hashed once; a match (hash is `UNIQUE` in the schema, so never
+     ambiguous between two items) points the row at the new path.
+     File ▸ Relink Missing Files… (not scoped to a selection, so no
+     FocusedValue needed) reports "N relinked", "M still missing — no
+     file with a matching hash was found", or "No missing files were
+     found." Not undoable — it only ever repairs a broken reference back
+     to a real file. Tested (a file moved into a new subfolder and
+     renamed is found; one with no match anywhere is reported, not
+     guessed at). A bug surfaced and fixed along the way: `Ingest.collect`'s
+     enumerator can hand back a path resolved differently than
+     `mediaURL`'s own string form (`/tmp` vs `/private/tmp`, caught by the
+     test before it ever reached the app), which broke a naive
+     string-prefix strip; fixed by resolving both sides first.
+     **Also found and fixed while checking this by hand, not really about
+     relink itself:** `ThumbnailView`'s `.task(id: item.id)` never retried
+     a thumbnail that had failed to load earlier in the same session,
+     because an item's id doesn't change when its file is relinked — only
+     its path does. Now keyed on the URL instead, so a relinked file's
+     thumbnail appears immediately rather than needing a restart. Checked
+     by hand with axtool: a file moved into a new folder and renamed
+     (relinked, its thumbnail reappearing live), nothing missing (correct
+     message), and a file deleted outright with no match anywhere.
 3. **Phase 3:** music and waveform. Then 3b duplicate finder, 4 setlist export, 5 live desktop.
 
 ## How to work on it

@@ -29,6 +29,8 @@ final class AppModel {
     /// because the panel is a separate window and needs to live-update as
     /// the grid's selection changes while it's open.
     var infoPanelSelection: [Int64] = []
+    /// Set after File ▸ Relink Missing Files… runs, for MainView's alert.
+    var relinkResult: RelinkSummary?
 
     struct ImportStatus {
         var total = 0
@@ -779,4 +781,30 @@ final class AppModel {
     func timeline(for show: Show) -> ShowTimeline {
         ShowTimeline(show: show, items: itemsByID)
     }
+
+    /// A repair, not a workflow (plan, 2b): finds files moved by hand in
+    /// Finder and points their rows at the new location, by hash. Not
+    /// undoable — it only ever repairs a broken reference back to a real
+    /// file, which isn't a step worth reversing the way an edit is.
+    func relinkMissingItems() {
+        guard let lib = library else { return }
+        do {
+            let outcomes = try lib.relinkMissingItems()
+            if !outcomes.isEmpty {
+                items = try lib.allItems()
+                itemsByID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+            }
+            let relinked = outcomes.filter { $0.newPath != nil }.count
+            relinkResult = RelinkSummary(relinked: relinked, stillMissing: outcomes.count - relinked)
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+}
+
+/// `AppModel.relinkResult`'s payload, for the alert that reports it.
+struct RelinkSummary: Identifiable {
+    let id = UUID()
+    let relinked: Int
+    let stillMissing: Int
 }

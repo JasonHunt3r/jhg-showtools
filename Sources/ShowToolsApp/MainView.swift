@@ -129,6 +129,23 @@ struct MainView: View {
         } message: { _ in
             Text("The show's slide order and settings are deleted. The images stay in the library.")
         }
+        .alert("Relink Missing Files",
+              isPresented: Binding(get: { model.relinkResult != nil }, set: { if !$0 { model.relinkResult = nil } }),
+              presenting: model.relinkResult) { _ in
+            Button("OK") {}
+        } message: { r in
+            Text(relinkMessage(r))
+        }
+    }
+
+    private func relinkMessage(_ r: RelinkSummary) -> String {
+        if r.relinked == 0 && r.stillMissing == 0 { return "No missing files were found." }
+        var parts: [String] = []
+        if r.relinked > 0 { parts.append("\(r.relinked) file\(r.relinked == 1 ? "" : "s") relinked") }
+        if r.stillMissing > 0 {
+            parts.append("\(r.stillMissing) still missing — no file with a matching hash was found")
+        }
+        return parts.joined(separator: "; ") + "."
     }
 }
 
