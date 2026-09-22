@@ -96,10 +96,17 @@ struct BeatSheet: View {
                     Text("\(times.count) marker\(times.count == 1 ? "" : "s")").foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Cancel") { close() }.keyboardShortcut(.cancelAction)
-                Button("Apply") { apply() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(times.isEmpty)
+                if Rhythms.isAvailable {
+                    Button("Cancel") { close() }.keyboardShortcut(.cancelAction)
+                    Button("Apply") { apply() }
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(times.isEmpty)
+                } else {
+                    // Nothing to apply before macOS 27 (Jason's wording).
+                    Button("Bummer") { close() }
+                        .keyboardShortcut(.defaultAction)
+                    Button("") { close() }.keyboardShortcut(.cancelAction).hidden()
+                }
             }
         }
         .padding(20)
