@@ -515,6 +515,15 @@ to the Collection Browser and the library.
 - Photos-library browsing inside the app. Deferred until the app has taken
   shape; the permission question gets worked out then. Drag-and-drop from
   Photos works from Phase 1 regardless
+- **A collage maker** (Jason, 2026-09-21b), parked here to think through
+  rather than build straight away. Two ideas so far, which may turn out to
+  be the same feature seen two ways:
+  - A gradient mask to blend two photos on one slide: two points pinned to
+    the slide frame's edges with a line between them, a handle at the
+    line's centre that pulls out at right angles to set how far the
+    gradient reaches, and a further handle on that pull-out to set the
+    gradient's midpoint weight
+  - Multi-panel slides (2 or 3 images arranged "1 2 3" across one slide)
 
 ---
 

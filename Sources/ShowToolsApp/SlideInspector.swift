@@ -8,6 +8,10 @@ struct SlideInspector: View {
     let timeline: ShowTimeline
     let selection: Set<Int64>
     let mutate: ShowMutator
+    /// Edit Show's inspector column gets a bar like the collection list's,
+    /// with a close button; Edit Slides' system inspector has its toolbar
+    /// toggle instead.
+    var close: (() -> Void)? = nil
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
 
@@ -28,50 +32,139 @@ struct SlideInspector: View {
     }
 
     var body: some View {
+        if let close {
+            VStack(spacing: 0) {
+                bar(close)
+                Divider()
+                content
+            }
+        } else {
+            content
+        }
+    }
+
+    // MARK: The bar
+
+    /// Final Cut's inspector header: what's selected and how long it is.
+    /// The close button sits where the collection list's open arrow was
+    /// before the list moved over, so the pointer is already on it.
+    private func bar(_ close: @escaping () -> Void) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "slider.horizontal.3").foregroundStyle(.secondary)
+            Text(barTitle)
+                .fontWeight(.semibold)
+                .lineLimit(1).truncationMode(.middle)
+            if let length = barLength {
+                Text(formatSeconds(length)).foregroundStyle(.secondary).monospacedDigit()
+            }
+            Spacer(minLength: 4)
+            Button(action: close) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18, height: 18)
+            }
+            .buttonStyle(.borderless)
+            .help("Close the inspector (⌥⌘I)")
+        }
+        .font(.callout)
+        .padding(.horizontal, 10).padding(.vertical, 8)
+    }
+
+    private var barTitle: String {
+        switch selected.count {
+        case 0: "Inspector"
+        case 1: model.itemsByID[selected[0].itemID]?.fileName ?? "Slide"
+        default: "\(selected.count) slides"
+        }
+    }
+
+    /// The selected slides' total length.
+    private var barLength: Double? {
+        let lengths = timeline.slides.filter { selection.contains($0.slide.id) }.map(\.length)
+        return lengths.isEmpty ? nil : lengths.reduce(0, +)
+    }
+
+    @ViewBuilder private var content: some View {
         if let first = selected.first {
-            Form {
-                Section {
-                    if selected.count == 1, let item = model.itemsByID[first.itemID] {
-                        ThumbnailView(item: item, url: model.url(for: item))
-                            .aspectRatio(16 / 10, contentMode: .fit)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
-                        LabeledContent("File", value: item.fileName)
-                        LabeledContent("Size", value: "\(item.pixelWidth) × \(item.pixelHeight)")
-                    } else {
-                        Text("\(selected.count) slides selected").font(.headline)
-                        Text("Changes apply to all of them.").foregroundStyle(.secondary)
-                    }
-                    // The file's rating, the same in every show that uses it.
-                    LabeledContent("Rating") {
-                        StarRating(rating: model.itemsByID[first.itemID]?.rating ?? 0) { r in
-                            model.setRating(r, for: Set(selected.map(\.itemID)), undo: undoManager)
+            // Not a Form: pinned section headers (Transform, Effects) need a
+            // LazyVStack in a ScrollView, which is where SwiftUI supports
+            // sticking a header to the top while its section scrolls under it.
+            // `card` reproduces the grouped-form look each section lost.
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 16, pinnedViews: [.sectionHeaders]) {
+                    Section {
+                        card {
+                            if selected.count == 1, let item = model.itemsByID[first.itemID] {
+                                ThumbnailView(item: item, url: model.url(for: item))
+                                    .aspectRatio(16 / 10, contentMode: .fit)
+                                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                                LabeledContent("File", value: item.fileName)
+                                LabeledContent("Size", value: "\(item.pixelWidth) × \(item.pixelHeight)")
+                            } else {
+                                Text("\(selected.count) slides selected").font(.headline)
+                                Text("Changes apply to all of them.").foregroundStyle(.secondary)
+                            }
+                            // The file's rating, the same in every show that uses it.
+                            LabeledContent("Rating") {
+                                StarRating(rating: model.itemsByID[first.itemID]?.rating ?? 0) { r in
+                                    model.setRating(r, for: Set(selected.map(\.itemID)), undo: undoManager)
+                                }
+                            }
                         }
                     }
-                }
 
-                // The slide itself: where it sits and for how long. Then its
-                // effects: everything that changes the picture over time,
-                // with a timeline of when (Jason, 2026-09-21).
-                transformSection(first)
-                lengthSection(first)
-                if let r = timeline.slides.first(where: { $0.slide.id == first.id }) {
-                    Section {
-                        EffectsTimeline(slide: r, timeline: timeline)
-                    } header: {
-                        Text("Effects")
-                    } footer: {
-                        if selected.count > 1 { Text("Showing the first selected slide.") }
+                    // The slide itself: where it sits and for how long. Then its
+                    // effects: everything that changes the picture over time,
+                    // with a timeline of when (Jason, 2026-09-21).
+                    transformSection(first)
+                    lengthSection(first)
+                    if let r = timeline.slides.first(where: { $0.slide.id == first.id }) {
+                        Section {
+                            card { EffectsTimeline(slide: r, timeline: timeline) }
+                        } header: {
+                            header("Effects")
+                        } footer: {
+                            if selected.count > 1 {
+                                Text("Showing the first selected slide.").padding(.horizontal, 16)
+                            }
+                        }
                     }
+                    transitionSection(first)
+                    kenBurnsSection(first)
+                    rotationSection(first)
                 }
-                transitionSection(first)
-                kenBurnsSection(first)
-                rotationSection(first)
+                .padding(.vertical, 12)
             }
-            .formStyle(.grouped)
         } else {
             ContentUnavailableView("No slide selected", systemImage: "cursorarrow.click",
                                    description: Text("Select a slide to set its length, transition and Ken Burns."))
         }
+    }
+
+    /// A pinned section header: darker than the column, the same "sunken"
+    /// colour the storyline's lane uses. It sticks to the top of the
+    /// scroll view while its section's content scrolls under it, then the
+    /// next header pushes it off (`pinnedViews: [.sectionHeaders]` above).
+    private func header(_ title: String) -> some View {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            .background(Color(nsColor: .underPageBackgroundColor))
+    }
+
+    /// A section's fields, in the rounded card a Form's `.grouped` style
+    /// used to give them for free.
+    private func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            content()
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
+        .padding(.horizontal, 16)
     }
 
     // MARK: Sections
@@ -87,6 +180,7 @@ struct SlideInspector: View {
         }
         let hasClip = selected.allSatisfy { model.itemsByID[$0.itemID]?.kind != .image }
         return Section {
+            card {
             Picker("Length", selection: Binding(get: { mode }, set: { m in
                 edit("Change Length") {
                     switch m {
@@ -105,12 +199,14 @@ struct SlideInspector: View {
                     SecondsField(value: v) { new in edit("Change Length") { $0.length = .seconds(new) } }
                 }
             }
-        } footer: { mixedNote(mixed { $0.length }) }
+            }
+        } footer: { mixedNote(mixed { $0.length }).padding(.horizontal, 16) }
     }
 
     private func transitionSection(_ first: Slide) -> some View {
         let t = first.settings.transition
         return Section {
+            card {
             Picker("Transition in", selection: Binding(get: { t != nil }, set: { custom in
                 edit("Change Transition") { $0.transition = custom ? show.defaults.transition : nil }
             })) {
@@ -122,7 +218,8 @@ struct SlideInspector: View {
                     TransitionPicker(transition: t) { new in edit("Change Transition") { $0.transition = new } }
                 }
             }
-        } footer: { mixedNote(mixed { $0.transition }) }
+            }
+        } footer: { mixedNote(mixed { $0.transition }).padding(.horizontal, 16) }
     }
 
     private enum KBMode: Hashable { case inherit, off, auto, custom }
@@ -136,6 +233,7 @@ struct SlideInspector: View {
         }
         let defaultTitle = show.defaults.kenBurns == .auto ? "Auto" : "Off"
         return Section {
+            card {
             Picker("Ken Burns", selection: Binding(get: { mode }, set: { m in
                 let seed = customStart(for: first)
                 edit("Change Ken Burns") {
@@ -165,7 +263,8 @@ struct SlideInspector: View {
                 }))
                 .help("Hold the start frame through the transition in and the end frame through the transition out")
             }
-        } footer: { mixedNote(mixed { $0.kenBurns }) }
+            }
+        } footer: { mixedNote(mixed { $0.kenBurns }).padding(.horizontal, 16) }
     }
 
     /// Changes one field of each selected slide's custom move, leaving the
@@ -200,6 +299,7 @@ struct SlideInspector: View {
             }
         }
         return Section {
+            card {
             Picker("Fit", selection: Binding(get: { first.settings.fit }, set: { f in edit("Change Fit") { $0.fit = f } })) {
                 Text("Show default (\(show.defaults.fit.title))").tag(Fit?.none)
                 ForEach(Fit.allCases, id: \.self) { Text($0.title).tag(Fit?.some($0)) }
@@ -247,10 +347,11 @@ struct SlideInspector: View {
                     .font(.caption)
                 }
             }
+            }
         } header: {
-            Text("Transform")
+            header("Transform")
         } footer: {
-            mixedNote(mixed { $0.fit } || mixed { $0.transform } || mixed { $0.background })
+            mixedNote(mixed { $0.fit } || mixed { $0.transform } || mixed { $0.background }).padding(.horizontal, 16)
         }
     }
 
@@ -267,6 +368,7 @@ struct SlideInspector: View {
             }
         }
         return Section {
+            card {
             Toggle("Rotation", isOn: Binding(get: { on }, set: { v in
                 editRotation(v ? "Turn On Rotation" : "Turn Off Rotation") { $0.enabled = v }
             }))
@@ -332,7 +434,8 @@ struct SlideInspector: View {
                 }))
                 .help("Hold the start angle through the transition in and the end angle through the transition out")
             }
-        } footer: { mixedNote(mixed { $0.rotation }) }
+            }
+        } footer: { mixedNote(mixed { $0.rotation }).padding(.horizontal, 16) }
     }
 
     /// The other half of the numbers: the speed that Angles gives, or the

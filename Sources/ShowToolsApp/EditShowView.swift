@@ -38,7 +38,7 @@ struct EditShowView: View {
                                                 mutate: mutate, inspectorShown: $inspectorShown,
                                                 selection: $selection, selectedOverlay: $selectedOverlay),
                         inspector: SlideInspector(show: show, timeline: timeline, selection: selection,
-                                                  mutate: mutate))
+                                                  mutate: mutate, close: { inspectorShown = false }))
                         .frame(minHeight: 220)
                     VStack(spacing: 0) {
                         TransportRow(engine: engine, pps: $pps, fit: fitStoryline)
