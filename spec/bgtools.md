@@ -36,7 +36,7 @@ editor), built in this repo on ShowToolsCore's renderer (`frame(at:)` →
 - If a macOS update breaks the unofficial Space calls (below), fall back
   to one window on every Space.
 
-## Measured (2026-09-22, macOS 27.0, one built-in display)
+## Measured (2026-09-22, macOS 27.0; built-in display, then a 5K PA279CRV)
 
 - **A window beneath the desktop icons** (`tools/desktop-probe`): at the
   desktop window level it sits one layer above macOS's wallpaper and below
@@ -50,6 +50,22 @@ editor), built in this repo on ShowToolsCore's renderer (`frame(at:)` →
   for the first desktop, so key that one as "desktop 1 of that display")
   and put a window on one Space only. Three desktops each showed their own
   window and colour (Jason). Displays have their own UUID.
+- **Several monitors** (desktop probe, a 5K PA279CRV plugged into the
+  laptop, "Displays have separate Spaces" on): plugging in, unplugging,
+  plugging back in and adding a Space on the external display were each
+  noticed within a second, and each window came up on its own display and
+  Space with the right label and colour (Jason). Found on the way:
+  - **Key Spaces by uuid, never by id.** After a replug the external
+    display's first Space went from id 19 to id 23; its uuid
+    (`E653A497…`) and the display's uuid stayed the same. Only the
+    *main* display's first desktop has an empty uuid; the external's first
+    Space had one.
+  - **One change fires two or three notices** (screens changed ×2 plus
+    spaces changed, same second). BGTools must wait a moment and rebuild
+    once, or a slide show restarts three times per plug.
+  - The first probe run coloured windows by Space number, so both
+    displays' Space 1 matched and Jason read it as a failure; test colours
+    must differ across every window, not per display.
 - **Occlusion** flickers "hidden" for under a second on every Space
   switch, and stayed "visible" under windows covering the screen, so
   pausing when hidden needs a delay and isn't a dependable power saver.
@@ -92,10 +108,9 @@ it; follow the library when it moves (a bookmark; ShowTools tells it).
 
 ## Still to test
 
-- **Power**: live Core Image drawing against a looping HEVC video, per
-  monitor
-- **Several monitors**: needs a second display plugged in; the desktop
-  probe already makes a window per display and Space
+- **Power** (a curiosity, not a gate; Jason: BGTools may do both live
+  drawing and video): live Core Image drawing against a looping HEVC
+  video, per monitor
 - **A tile that changes BGTools**: URL scheme or distributed notification
 
 ## Open questions (to settle with Jason one at a time)

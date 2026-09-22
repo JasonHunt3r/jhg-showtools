@@ -160,8 +160,10 @@ final class Probe: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func buildSpaceWindows() {
         let all = Spaces.desktops()
         spaceSet = all.mapValues { $0.map(\.id) }.description
+        var colour = 0   // counts across monitors, so no two windows share a colour
         windows = NSScreen.screens.flatMap { screen -> [NSWindow] in
             (all[screen.displayUUID] ?? []).map { space in
+                defer { colour += 1 }
                 let w = NSWindow(contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false, screen: screen)
                 w.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
                 w.collectionBehavior = [.stationary, .ignoresCycle]
@@ -170,7 +172,7 @@ final class Probe: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 w.hasShadow = false
                 let label = "\(screen.localizedName) · Space \(space.index)"
                 w.title = "BGTools probe \(label)"
-                w.contentView = LiveView(frame: NSRect(origin: .zero, size: screen.frame.size), name: label, index: space.index - 1)
+                w.contentView = LiveView(frame: NSRect(origin: .zero, size: screen.frame.size), name: label, index: colour)
                 w.delegate = self
                 w.setFrame(screen.frame, display: true)
                 w.orderFront(nil)
