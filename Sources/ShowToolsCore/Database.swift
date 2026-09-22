@@ -10,16 +10,39 @@ public struct DatabaseError: Error, CustomStringConvertible {
 final class Database {
     private let handle: OpaquePointer
 
-    init(path: String) throws {
+    /// `readOnly` (BGTools): SQLite's read-only open plus `query_only`, so
+    /// any write, even one by mistake, fails instead of touching the file.
+    /// It reads the WAL ShowTools keeps and writes only `-shm` (measured).
+    init(path: String, readOnly: Bool = false) throws {
         var h: OpaquePointer?
-        guard sqlite3_open(path, &h) == SQLITE_OK, let h else {
+        let flags = readOnly ? SQLITE_OPEN_READONLY : SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
+        guard sqlite3_open_v2(path, &h, flags, nil) == SQLITE_OK, let h else {
             let msg = h.map { String(cString: sqlite3_errmsg($0)) } ?? "unknown"
             sqlite3_close(h)
             throw DatabaseError(description: "Can't open database: \(msg)")
         }
         handle = h
+        if readOnly {
+            try exec("PRAGMA query_only = ON")
+            return
+        }
         try exec("PRAGMA foreign_keys = ON")
         try exec("PRAGMA journal_mode = WAL")
+    }
+
+    /// Changes whenever another connection commits (SQLite's
+    /// `data_version`): polled to notice ShowTools' saves.
+    var dataVersion: Int {
+        (try? prepare("PRAGMA data_version").firstInt()) ?? 0
+    }
+
+    /// Runs `body` in a read transaction, so everything it reads comes from
+    /// one snapshot even while another process writes.
+    func snapshot<T>(_ body: () throws -> T) throws -> T {
+        if sqlite3_get_autocommit(handle) == 0 { return try body() }
+        try exec("BEGIN DEFERRED")
+        defer { try? exec("COMMIT") }
+        return try body()
     }
 
     deinit { sqlite3_close(handle) }

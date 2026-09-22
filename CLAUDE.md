@@ -18,6 +18,11 @@ own spec: `spec/bgtools.md`.
   `MusicPlayer`. The engine reads shows and files through `ShowSource`
   (AppModel is one; BGTools' read-only reader will be another), never the
   app's types. Anything the app uses from here must be `public`.
+- `BGTools/`: the desktop companion app (spec `spec/bgtools.md`), an
+  XcodeGen project using this package; `BGTools/build.sh` → `build/BGTools.app`.
+  It opens libraries with `Library(readingOnly:)` only. Test it with
+  `open -n --env BGTOOLS_LIBRARY=<scratch library> build/BGTools.app`;
+  it logs to `~/Library/Logs/BGTools.log`.
 - `Sources/ShowToolsApp/`: the SwiftUI/AppKit app. `PlaybackEngine` owns a
   show's clock, media and drawing, and any number of `ShowCanvas` views
   show it (the Edit Show preview and its pop-out share one engine). A paused

@@ -1,0 +1,42 @@
+# BGTools: plays ShowTools shows as the desktop picture (spec/bgtools.md).
+#   BGTools/build.sh    → build/BGTools.app
+name: BGTools
+options:
+  bundleIdPrefix: com.jhg
+  deploymentTarget:
+    macOS: "26.0"
+packages:
+  ShowTools:
+    path: ..
+settings:
+  base:
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    SWIFT_VERSION: "6.0"
+    ENABLE_HARDENED_RUNTIME: NO
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.1"
+targets:
+  BGTools:
+    type: application
+    platform: macOS
+    sources: [App]
+    dependencies:
+      - package: ShowTools
+        product: ShowToolsCore
+      - package: ShowTools
+        product: ShowToolsPlayback
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jhg.bgtools
+        GENERATE_INFOPLIST_FILE: YES
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: BGTools
+        LSUIElement: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.jhg.bgtools
+            CFBundleURLSchemes: [bgtools]

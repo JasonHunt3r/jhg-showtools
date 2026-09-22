@@ -98,6 +98,21 @@ public struct TestLaunchRecord {
     }
 }
 
+public enum LibraryReadError: Error, Equatable, CustomStringConvertible {
+    case missing(URL)
+    case version(found: Int, known: Int)
+
+    public var description: String {
+        switch self {
+        case .missing(let url): return "No library at \(url.path)"
+        case .version(let found, let known) where found < known:
+            return "This library is from an older ShowTools. Open it in ShowTools once to bring it up to date."
+        case .version:
+            return "This library is from a newer ShowTools. Update BGTools."
+        }
+    }
+}
+
 /// The library database plus the folder of media it manages.
 ///
 /// Not thread-safe: the app uses it from the main actor. Heavy file work
@@ -122,6 +137,27 @@ public final class Library {
         try backUpBeforeUpgrade()
         try migrate()
     }
+
+    /// Opens a library only to read it (BGTools): never creates, backs up,
+    /// migrates or writes anything, and refuses a schema other than this
+    /// build's, since the columns it reads must be the ones it knows.
+    /// ShowTools brings an older library up to date when it opens it.
+    public init(readingOnly root: URL) throws {
+        let file = root.appendingPathComponent("Library.sqlite")
+        guard FileManager.default.fileExists(atPath: file.path) else {
+            throw LibraryReadError.missing(root)
+        }
+        self.root = root
+        db = try Database(path: file.path, readOnly: true)
+        let v = db.userVersion
+        if v != Self.schemaVersion { throw LibraryReadError.version(found: v, known: Self.schemaVersion) }
+    }
+
+    /// Changes each time any process saves to the library.
+    public var changeCount: Int { db.dataVersion }
+
+    /// Reads inside one snapshot, so a show and its slides always match.
+    public func snapshot<T>(_ body: () throws -> T) throws -> T { try db.snapshot(body) }
 
     /// The schema version `migrate` brings a library up to.
     public static let schemaVersion = 12

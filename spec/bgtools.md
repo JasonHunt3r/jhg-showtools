@@ -63,6 +63,9 @@ editor), built in this repo on ShowToolsCore's renderer (`frame(at:)` →
   - **One change fires two or three notices** (screens changed ×2 plus
     spaces changed, same second). BGTools must wait a moment and rebuild
     once, or a slide show restarts three times per plug.
+  - **Unplugging moves a display's Spaces onto the one left**, uuid and
+    all (the external's Space 2 turned up as the laptop's fourth desktop),
+    so a Space's setting follows it there.
   - The first probe run coloured windows by Space number, so both
     displays' Space 1 matched and Jason read it as a failure; test colours
     must differ across every window, not per display.
@@ -204,7 +207,9 @@ New with BGTools:
   URL, editing state) instead of `AppModel`; AppModel conforms. ShowTools
   behaves exactly as before, so the desktop draws shows exactly as the
   player does (the Compositor rule).
-- **B2 BGTools skeleton.** `BGTools/` (XcodeGen: the app, later its
+- **B2 BGTools skeleton. BUILT 2026-09-22** (`BGTools/build.sh`;
+  `Library(readingOnly:)` + 3 tests; played the test show on 4 Spaces and
+  noticed a save within the second). `BGTools/` (XcodeGen: the app, later its
   Control Center extension) using the package. A read-only library reader
   in ShowToolsCore (the read path above) that is a `ShowSource`. Desktop
   windows per display and Space (uuid keys, one rebuild per burst of
