@@ -513,6 +513,16 @@ to the Collection Browser and the library.
   once Jason has made a first real show.
 
 #### Beat detection, the range, and rhythm (settled 2026-09-21)
+- **The detector is Apple's Music Understanding framework** (Jason,
+  2026-09-21): on-device beats, bar starts, tempo, and the song's
+  sections, segments and phrases. It needs macOS 27, so step 6 waits
+  until Jason's Mac is on it. Our own detector was considered and turned
+  down. Still to settle when step 6 starts: analysing each song
+  automatically on import (cached like the waveform); beat and bar ticks
+  and section bands on song clips (double-click a section to set the
+  range); where the apply sheet opens, and its preview; detected markers
+  in teal, belonging to their song; ×2 / ÷2 and "bar starts here" in
+  place of tap tempo.
 - **The range:** I and O set in and out points, drawn as two blue markers
   on the ruler with the span between them shaded (Final Cut's convention).
   A toggle extends them as lines down through every row; off, they're
