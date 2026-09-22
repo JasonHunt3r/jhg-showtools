@@ -174,3 +174,80 @@ public enum RhythmApply {
         return SlideFitting.fit(out, timeline: timeline, markers: times, in: range)
     }
 }
+
+/// Where a pattern's notes go when it's drawn as notation (plan, Phase 3
+/// step 7): one rhythm line, in staff spaces from the left. Eighths and
+/// sixteenths are beamed within each beat; triplet notes are bracketed in
+/// threes; a bar line falls every `barQuarters` where a note ends exactly
+/// on it (4/4 by default). Drawing it is the app's job.
+public enum RhythmNotation {
+    public struct Item: Hashable, Sendable {
+        public let note: RhythmPattern.Note
+        /// When it starts in the pattern, in quarter notes.
+        public let start: Double
+        /// Where its notehead (or rest) begins, in staff spaces.
+        public let x: Double
+    }
+
+    public struct Layout: Hashable, Sendable {
+        public var items: [Item] = []
+        /// Bar lines' x, in staff spaces.
+        public var barLines: [Double] = []
+        /// Runs of item indices beamed together (two notes or more).
+        public var beams: [ClosedRange<Int>] = []
+        /// Runs of item indices under one triplet mark.
+        public var tuplets: [ClosedRange<Int>] = []
+        /// Where the closing repeat sign goes: the pattern repeats.
+        public var end: Double = 0
+    }
+
+    /// The room a note takes, in staff spaces: more for longer notes, but
+    /// not in proportion, as engravers space them.
+    public static func advance(_ quarters: Double) -> Double { 2.2 + 3.2 * quarters }
+
+    static let margin = 1.0
+    static let barGap = 1.6
+
+    public static func layout(_ p: RhythmPattern, barQuarters: Double = 4) -> Layout {
+        var out = Layout()
+        var x = margin, t = 0.0
+        for (i, n) in p.notes.enumerated() {
+            out.items.append(Item(note: n, start: t, x: x))
+            x += advance(n.quarters)
+            t += n.quarters
+            let onBar = abs(t / barQuarters - (t / barQuarters).rounded()) < 1e-6
+            if onBar, i < p.notes.count - 1 {
+                // Just after this note's room, with a gap before the next.
+                out.barLines.append(x + 0.2)
+                x += barGap
+            }
+        }
+        out.end = x
+        out.beams = runs(out.items) { a, b in
+            beamable(a.note) && beamable(b.note) && beat(a) == beat(b)
+        }.filter { $0.count >= 2 }
+        out.tuplets = runs(out.items) { a, b in a.note.triplet && b.note.triplet }
+            .filter { out.items[$0.lowerBound].note.triplet }
+            .flatMap { r in stride(from: r.lowerBound, through: r.upperBound, by: 3).map { $0...min($0 + 2, r.upperBound) } }
+        return out
+    }
+
+    static func beamable(_ n: RhythmPattern.Note) -> Bool {
+        !n.rest && (n.value == .eighth || n.value == .sixteenth)
+    }
+
+    static func beat(_ i: Item) -> Int { Int((i.start + 1e-6).rounded(.down)) }
+
+    /// Maximal runs where each neighbouring pair belongs together.
+    static func runs(_ items: [Item], _ together: (Item, Item) -> Bool) -> [ClosedRange<Int>] {
+        guard !items.isEmpty else { return [] }
+        var out: [ClosedRange<Int>] = []
+        var start = 0
+        for i in items.indices.dropFirst() where !together(items[i - 1], items[i]) {
+            out.append(start...(i - 1))
+            start = i
+        }
+        out.append(start...(items.count - 1))
+        return out
+    }
+}

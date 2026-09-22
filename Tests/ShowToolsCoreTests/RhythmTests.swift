@@ -126,3 +126,42 @@ final class RhythmTests: XCTestCase {
         XCTAssertEqual(RhythmApply.apply(times, to: s, timeline: t, in: 0...8, fitSlides: false).slides, s.slides)
     }
 }
+
+final class RhythmNotationTests: XCTestCase {
+    func layout(_ text: String) -> RhythmNotation.Layout { RhythmNotation.layout(RhythmPattern(text: text)) }
+
+    func testEighthsAndSixteenthsBeamWithinEachBeat() {
+        // q | e e | s s s s | e. s | e re: beams in beats 2, 3 and 4, not across.
+        XCTAssertEqual(layout("q e e s s s s e. s e re").beams, [1...2, 3...6, 7...8])
+    }
+
+    func testRestsAndLongerNotesBreakBeams() {
+        // e at 0, rest, q at 1, then e e sharing beat 2.
+        XCTAssertEqual(layout("e re q e e").beams, [3...4])
+        XCTAssertEqual(layout("e").beams, [], "one alone takes a flag")
+    }
+
+    func testTripletsAreMarkedInThrees() {
+        let l = layout("3e 3e 3e 3e 3e 3e q 3q 3q 3q")
+        XCTAssertEqual(l.tuplets, [0...2, 3...5, 7...9])
+        XCTAssertEqual(l.beams, [0...2, 3...5], "triplet eighths beam within their beat")
+    }
+
+    func testBarLinesFallWhereANoteEndsOnTheBar() {
+        let l = layout("h h q q q q w")
+        XCTAssertEqual(l.barLines.count, 2, "after 4 and after 8 quarters, none after the last note")
+        XCTAssertLessThan(l.barLines[0], l.items[2].x)
+        XCTAssertGreaterThan(l.barLines[0], l.items[1].x)
+        // A note across the bar gets no line (it'd be a tie in print).
+        XCTAssertEqual(layout("h. h h.").barLines.count, 0)
+    }
+
+    func testLongerNotesTakeMoreRoomAndItemsRunLeftToRight() {
+        let l = layout("w h q e s")
+        let gaps = zip(l.items, l.items.dropFirst()).map { $1.x - $0.x }
+        XCTAssertEqual(gaps, gaps.sorted(by: >))
+        XCTAssertEqual(l.items.map(\.start), [0, 4, 6, 7, 7.5])
+        XCTAssertGreaterThan(l.end, l.items.last!.x)
+        XCTAssertEqual(layout("").items, [])
+    }
+}

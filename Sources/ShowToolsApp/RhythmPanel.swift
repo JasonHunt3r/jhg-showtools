@@ -169,6 +169,8 @@ struct RhythmPanelContent: View {
                 .foregroundStyle(.secondary)
 
             patternField
+            RhythmNotationView(pattern: parsed.pattern)
+                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
             legend
 
             Form {

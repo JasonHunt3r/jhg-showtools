@@ -29,7 +29,8 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   "add to collection?" question), `Libraries` (open/new/private),
   `FrameStrip`, `EffectsTimeline`, `EffectControls` (sliders, pads), `RhythmPanel`
   (the Rhythm tool: a floating panel, `RhythmTool.shared` holds its show,
-  undo manager and ruler preview).
+  undo manager and ruler preview), `RhythmNotationView` (a pattern as notation:
+  Bravura's glyph outlines in a `Canvas`, placed by `RhythmNotation.layout`).
 - `Resources/Fonts/`: Bravura, the SMuFL music font (SIL OFL 1.1, licence
   alongside). `make-app.sh` copies it into the app and `ATSApplicationFontsPath`
   loads it, so it only exists in the built app, not under `swift run`.

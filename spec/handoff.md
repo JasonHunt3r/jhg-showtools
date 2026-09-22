@@ -226,8 +226,17 @@ ahead with 7x" from Jason before each one:
   with the licence), `Resources/Fonts/`.
   Not done: the song choice is the one playing at the range start; the
   panel uses the detected tempo as is (×2/÷2 live in Detect Beats, 7e).
-- **7c Notation:** Bravura (licence checked first, then bundled), one
-  rhythm line with beams, triplet brackets and bar lines, following the text.
+- **7c Notation: BUILT** (2026-09-22). Layout in the core
+  (`RhythmNotation.layout`: x in staff spaces, beams within each beat,
+  triplets in threes, a bar line every 4 quarters where a note ends on
+  it, none across a note), 5 tests. Drawn by `RhythmNotationView` from
+  Bravura's glyph outlines through Core Text (a `Text` would be placed by
+  the font's huge line box), with Bravura's own stem/beam/bar thicknesses
+  and anchors. Sixteenths get a second beam or a stub; triplets a 3, with
+  a bracket unless one beam holds them; a closing repeat sign. It scrolls
+  sideways and starts at the end, where notes are added. Checked by eye in
+  a scratch copy with every feature in one pattern. The staff space is
+  5.5 pt: ask Jason whether it should be bigger.
 - **7d The grid:** 16 or 12 steps a bar. It's its own input: clicking a
   square puts a change there, and in grid mode the text field and legend
   are hidden (Jason, 2026-09-22).
