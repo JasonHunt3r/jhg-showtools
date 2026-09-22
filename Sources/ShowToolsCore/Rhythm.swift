@@ -251,3 +251,115 @@ public enum RhythmNotation {
         return out
     }
 }
+
+/// A pattern as a drum machine's step grid (plan, Phase 3 step 7): a lit
+/// square is a slide change; the gaps between them are the note values.
+/// Straight grids have 16 steps a bar (sixteenths); triplet grids have 12
+/// (triplet eighths). A pattern that fits neither (straight and triplet
+/// notes mixed, say) has no grid.
+public struct RhythmGrid: Hashable, Sendable {
+    public enum Feel: Int, CaseIterable, Sendable {
+        /// Steps per quarter note.
+        case straight = 4, triplet = 3
+    }
+
+    public var feel: Feel
+    /// One per step, for one pass of the pattern.
+    public var cells: [Bool]
+
+    public var stepsPerBar: Int { feel.rawValue * 4 }
+    public var bars: Int { max(1, (cells.count + stepsPerBar - 1) / stepsPerBar) }
+
+    public init(feel: Feel = .straight, cells: [Bool]) {
+        self.feel = feel
+        self.cells = cells
+    }
+
+    /// An empty bar.
+    public static func empty(_ feel: Feel = .straight) -> RhythmGrid {
+        RhythmGrid(feel: feel, cells: Array(repeating: false, count: feel.rawValue * 4))
+    }
+
+    /// The pattern on this grid, or nil if a note falls between its steps.
+    public init?(_ p: RhythmPattern, feel: Feel) {
+        let per = Double(feel.rawValue)
+        func step(_ q: Double) -> Int? {
+            let s = q * per
+            return abs(s - s.rounded()) < 1e-6 ? Int(s.rounded()) : nil
+        }
+        guard let total = step(p.quarters) else { return nil }
+        var cells = Array(repeating: false, count: total)
+        var t = 0.0
+        for n in p.notes {
+            guard let s = step(t) else { return nil }
+            if !n.rest, s < total { cells[s] = true }
+            t += n.quarters
+        }
+        self.init(feel: feel, cells: cells)
+    }
+
+    /// The grid a pattern shows on: straight if it can, else triplet; an
+    /// empty pattern is an empty straight bar.
+    public static func fitting(_ p: RhythmPattern) -> RhythmGrid? {
+        if p.notes.isEmpty { return .empty() }
+        return RhythmGrid(p, feel: .straight) ?? RhythmGrid(p, feel: .triplet)
+    }
+
+    /// The pattern it spells: each gap from a lit square to the next is one
+    /// note, as long a value as fits, with rests making up the rest (5
+    /// sixteenths is `q rs`). Squares before the first lit one are rests.
+    public var pattern: RhythmPattern {
+        var notes: [RhythmPattern.Note] = []
+        let lit = cells.indices.filter { cells[$0] }
+        if let first = lit.first, first > 0 { notes += spell(first, rest: true) }
+        if lit.isEmpty, !cells.isEmpty { notes += spell(cells.count, rest: true) }
+        for (k, s) in lit.enumerated() {
+            let next = k + 1 < lit.count ? lit[k + 1] : cells.count
+            let gap = spell(next - s, rest: true)
+            if var head = gap.first {
+                head.rest = false
+                notes += [head] + gap.dropFirst()
+            }
+        }
+        return RhythmPattern(notes)
+    }
+
+    /// `steps` as notes, longest first (all rests; the caller un-rests the first).
+    private func spell(_ steps: Int, rest: Bool) -> [RhythmPattern.Note] {
+        typealias N = RhythmPattern.Note
+        let values: [(Int, N)] = switch feel {
+        case .straight:
+            [(24, N(.whole, dotted: true, rest: rest)), (16, N(.whole, rest: rest)),
+             (12, N(.half, dotted: true, rest: rest)), (8, N(.half, rest: rest)),
+             (6, N(.quarter, dotted: true, rest: rest)), (4, N(.quarter, rest: rest)),
+             (3, N(.eighth, dotted: true, rest: rest)), (2, N(.eighth, rest: rest)), (1, N(.sixteenth, rest: rest))]
+        case .triplet:
+            [(18, N(.whole, dotted: true, rest: rest)), (12, N(.whole, rest: rest)),
+             (9, N(.half, dotted: true, rest: rest)), (6, N(.half, rest: rest)),
+             (3, N(.quarter, rest: rest)), (2, N(.quarter, triplet: true, rest: rest)),
+             (1, N(.eighth, triplet: true, rest: rest))]
+        }
+        var left = steps, out: [N] = []
+        while left > 0, let (n, note) = values.first(where: { $0.0 <= left }) {
+            out.append(note)
+            left -= n
+        }
+        return out
+    }
+
+    /// Lengthened (with empty squares) or shortened to whole bars.
+    public func resized(bars n: Int) -> RhythmGrid {
+        let count = max(1, n) * stepsPerBar
+        var c = Array(cells.prefix(count))
+        c += Array(repeating: false, count: count - c.count)
+        return RhythmGrid(feel: feel, cells: c)
+    }
+
+    /// The same squares in time, on the other feel, if every lit one lands
+    /// on a step there (an empty grid always does).
+    public func converted(to f: Feel) -> RhythmGrid? {
+        guard f != feel else { return self }
+        guard let g = RhythmGrid(pattern, feel: f) else { return nil }
+        return g.resized(bars: bars)
+    }
+}

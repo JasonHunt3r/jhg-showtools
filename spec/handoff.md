@@ -237,9 +237,19 @@ ahead with 7x" from Jason before each one:
   sideways and starts at the end, where notes are added. Checked by eye in
   a scratch copy with every feature in one pattern. The staff space is
   5.5 pt: ask Jason whether it should be bigger.
-- **7d The grid:** 16 or 12 steps a bar. It's its own input: clicking a
-  square puts a change there, and in grid mode the text field and legend
-  are hidden (Jason, 2026-09-22).
+- **7d The grid: BUILT** (2026-09-22). `RhythmGrid` (core, 5 tests): a
+  pattern on 16 steps a bar (straight) or 12 (triplet), nil when it fits
+  neither; back to letters with each gap one note, as long as fits, and
+  rests making up the odd lengths (5 sixteenths = `q rs`). `RhythmGridView`:
+  Notes | Grid switch in the panel (remembered); in Grid the text field,
+  notation and legend are hidden. A row per bar, beats spaced, the first
+  square of a beat a shade lighter; click to light or clear; Straight /
+  Triplet (refuses with a note if a lit square falls between the new
+  steps); 1–8 bars. The feel last chosen is tried first, so an empty
+  triplet grid stays triplet. Checked in a scratch copy.
+  **Ask Jason:** the grid spells a gap longest-first, so adding an empty
+  bar after a quarter turns `q` into `w rq` (same timing). Would he rather
+  keep the note and pad with rests (`q rw`)?
 - **7e Detect Beats' Pattern mode:** the pattern's text plus Edit…, which
   opens the panel; teal markers on the detected beats.
 - **7f Saved patterns:** the built-ins, and Jason's named patterns stored

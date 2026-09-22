@@ -165,3 +165,51 @@ final class RhythmNotationTests: XCTestCase {
         XCTAssertEqual(layout("").items, [])
     }
 }
+
+final class RhythmGridTests: XCTestCase {
+    typealias G = RhythmGrid
+
+    func testAPatternOnTheStraightGrid() {
+        let g = G.fitting(RhythmPattern(text: "q e e rq s s s s"))!
+        XCTAssertEqual(g.feel, .straight)
+        XCTAssertEqual(g.cells.map { $0 ? 1 : 0 }, [1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1])
+    }
+
+    func testTripletsGoOnTheTripletGridAndMixedPatternsOnNone() {
+        let g = G.fitting(RhythmPattern(text: "3e 3e 3e q 3q 3q 3q"))!
+        XCTAssertEqual(g.feel, .triplet)
+        XCTAssertEqual(g.cells.map { $0 ? 1 : 0 }, [1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0])
+        XCTAssertNil(G.fitting(RhythmPattern(text: "e 3e 3e 3e")), "straight and triplet eighths mixed")
+    }
+
+    func testSquaresSpellAsNotesWithRestsMakingUpOddGaps() {
+        var g = G.empty()
+        for i in [0, 4, 6, 11] { g.cells[i] = true }
+        // Gaps of 4, 2, 5 and 5: q, e, then q rs twice.
+        XCTAssertEqual(g.pattern.text, "q e q rs q rs")
+        XCTAssertEqual(g.pattern.quarters, 4)
+        var lead = G.empty()
+        lead.cells[4] = true
+        XCTAssertEqual(lead.pattern.text, "rq h.", "squares before the first lit one are rests")
+        XCTAssertEqual(G.empty().pattern.text, "rw")
+    }
+
+    func testGridAndPatternRoundTripInTime() {
+        for text in ["h q q", "q e e rq s s s s", "3e 3e 3e q 3q 3q 3q", "e. s q h"] {
+            let p = RhythmPattern(text: text)
+            let back = G.fitting(p)!.pattern
+            XCTAssertEqual(back.quarters, p.quarters, accuracy: 1e-9, text)
+            XCTAssertEqual(RhythmPlacement.markers(back, beatsPerQuarter: 1, pulse: .even(beatsPerMinute: 60), from: 0, to: 20),
+                           RhythmPlacement.markers(p, beatsPerQuarter: 1, pulse: .even(beatsPerMinute: 60), from: 0, to: 20),
+                           "the same changes: \(text)")
+        }
+    }
+
+    func testResizingAndChangingFeel() {
+        let g = G.fitting(RhythmPattern(text: "h h"))!
+        XCTAssertEqual(g.resized(bars: 2).cells.count, 32)
+        XCTAssertEqual(g.resized(bars: 2).pattern.text, "h w.")
+        XCTAssertEqual(g.converted(to: .triplet)?.pattern.text, "h h")
+        XCTAssertNil(G.fitting(RhythmPattern(text: "e e h."))!.converted(to: .triplet))
+    }
+}

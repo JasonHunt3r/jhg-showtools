@@ -95,6 +95,10 @@ struct RhythmPanelContent: View {
     @AppStorage("rhythmFit") private var fitSlides = true
     /// Off once a BPM is typed over a song; "Use the song's beats" turns it back on.
     @State private var followSong = true
+    /// Notes (the letters, drawn as notation) or Grid (the drum machine).
+    @AppStorage("rhythmView") private var view: PatternView = .notes
+
+    enum PatternView: String { case notes, grid }
 
     private var show: Show? { tool.showID.flatMap { model.show($0) } }
 
@@ -168,10 +172,21 @@ struct RhythmPanelContent: View {
                  + (PlaybackEngine.range(of: s.show.editor, duration: s.timeline.duration) != nil ? " (the range)" : ""))
                 .foregroundStyle(.secondary)
 
-            patternField
-            RhythmNotationView(pattern: parsed.pattern)
-                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
-            legend
+            Picker("", selection: $view) {
+                Text("Notes").tag(PatternView.notes)
+                Text("Grid").tag(PatternView.grid)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            switch view {
+            case .notes:
+                patternField
+                RhythmNotationView(pattern: parsed.pattern)
+                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
+                legend
+            case .grid:
+                RhythmGridView(text: $text)
+            }
 
             Form {
                 tempoRow(s)
