@@ -30,6 +30,8 @@ targets:
         product: ShowToolsPlayback
       - package: ShowTools
         product: BGToolsCore
+      - target: BGToolsControls
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jhg.bgtools
@@ -42,3 +44,25 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: com.jhg.bgtools
             CFBundleURLSchemes: [bgtools]
+  BGToolsControls:
+    type: app-extension
+    platform: macOS
+    sources: [Controls]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jhg.bgtools.controls
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: BGTools
+    info:
+      path: Controls/Info.plist
+      properties:
+        CFBundleDisplayName: BGTools
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Controls/BGToolsControls.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        # Reads the on/off state BGTools writes for the tiles; nothing else.
+        com.apple.security.temporary-exception.files.home-relative-path.read-only:
+          - /Library/Application Support/BGTools/

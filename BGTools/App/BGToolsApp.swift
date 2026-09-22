@@ -44,6 +44,7 @@ final class BGToolsApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
             Log.write("url \(url)")
             if url.host == "window" { showWindow() }
             if url.host == "open" { panel?.toggle() }
+            if url.host == "show" { desktop?.update { $0.on = url.lastPathComponent == "on" } }
         }
     }
 

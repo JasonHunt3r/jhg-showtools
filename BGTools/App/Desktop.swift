@@ -1,4 +1,5 @@
 import AppKit
+import WidgetKit
 import BGToolsCore
 import ShowToolsCore
 import ShowToolsPlayback
@@ -119,14 +120,33 @@ final class DesktopController {
             MainActor.assumeIsolated { self?.checkSettingsFile() }
         }
         rebuild(reason: "launch")
+        publishForTiles()
     }
 
     /// Replaces the settings (the panel, the tiles) and saves them.
     func update(_ change: (inout DesktopSettings) -> Void) {
+        let wasOn = settings.on
         change(&settings)
+        if settings.on != wasOn { publishForTiles() }
         do { try store.save(settings) } catch { Log.write("can't save settings: \(error)") }
         settingsModified = store.modified
         apply()
+    }
+
+    /// The Desktop Show tile can't read the settings (it's sandboxed, and
+    /// a test's settings are elsewhere), so BGTools writes its on/off to a
+    /// file the tile may read, and asks Control Center to redraw it.
+    func publishForTiles() {
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("BGTools")
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try JSONSerialization.data(withJSONObject: ["on": settings.on])
+                .write(to: dir.appendingPathComponent("control-state.json"), options: .atomic)
+        } catch {
+            Log.write("can't write the tiles' state: \(error)")
+        }
+        ControlCenter.shared.reloadControls(ofKind: "com.jhg.bgtools.desktopShow")
     }
 
     private func checkSettingsFile() {
@@ -135,6 +155,7 @@ final class DesktopController {
         settingsModified = m
         settings = store.load()
         Log.write("settings changed on disk")
+        publishForTiles()
         apply()
     }
 

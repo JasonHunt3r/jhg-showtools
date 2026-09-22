@@ -24,10 +24,10 @@ video).
 Then settle `spec/bgtools.md`'s open questions with Jason one at a time
 (he asked for that), and propose build steps.
 
-**Test things still installed on Jason's Mac** (remove when done, or
-when BGTools replaces them): `~/Applications/BGControlProbe.app` and its
-two tiles in Control Center (Jason added them),
-`build/DesktopProbe.app` (not running), and XcodeGen
+**Test things still installed on Jason's Mac**: BGTools itself in
+`~/Applications` (it belongs there; B7 makes ShowTools install it) with
+its two Control Center tiles, `build/DesktopProbe.app` (not running),
+and XcodeGen
 (`brew install xcodegen`, kept: BGTools' Control Center extension will
 need it).
 
@@ -193,7 +193,7 @@ files are both in the show keeps both ("1 stays"), Keep One disabled.
 | **3** Music + timeline | **All 7 steps built** (6 and 7 on 2026-09-22). Left: settle image stickiness with Jason |
 | **3b** Find Similar (was "duplicate finder") | **Built** 2026-09-22: Delete by context, Group/Show Similar, Keep One |
 | **4** Setlist export / import | **Built** 2026-09-22 (4a–4d); risks recorded under "Phase 4: open risks" |
-| 5 BGTools (desktop companion app) | **Building**, own spec `spec/bgtools.md`: questions settled, B1 (shared player), B2 (skeleton), B3 (settings and modes), B4a (the window), B4b (the panel) built 2026-09-22; next B5, Control Center tiles |
+| 5 BGTools (desktop companion app) | **Building**, own spec `spec/bgtools.md`: questions settled, B1 (shared player), B2 (skeleton), B3 (settings and modes), B4a (the window), B4b (the panel), B5 (Control Center tiles) built 2026-09-22; next B6, pausing and private libraries |
 
 Library schema is now **version 12**. Every upgrade is additive and tested
 by opening a library of the version before (7 rows, 8 music, 9 markers,

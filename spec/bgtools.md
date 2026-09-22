@@ -252,8 +252,18 @@ New with BGTools:
   click anywhere else closes it (a global mouse monitor: for Jason to
   try). Was: `bgtools://open` shows it without activating other
   windows; rows per monitor and Space.
-- **B5 Control Center.** Open BGTools, Desktop Show on/off (via
-  `bgtools://` URLs, measured).
+- **B5 Control Center. BUILT 2026-09-22** (Jason pressed all four:
+  both tiles, both ways). `BGTools/Controls` is a widget extension with
+  **Open BGTools** (→ `bgtools://open`, the panel) and **Desktop Show**
+  (→ `bgtools://show/on|off`), each opened without activating BGTools,
+  which also launches it if it's quit. The tile is sandboxed and can't
+  read the settings, so BGTools writes `control-state.json` beside them
+  and calls `ControlCenter.shared.reloadControls`; the extension has a
+  **read-only sandbox exception** for `~/Library/Application Support/BGTools/`
+  alone, which works ad hoc signed (measured). New tiles need a build
+  number bump and `killall chronod` before Control Center lists them.
+  The probe app and its tiles are gone; BGTools is installed in
+  `~/Applications` (where tiles load from).
 - **B6 Pausing and private libraries.** Sleep/lock, Low Power Mode,
   inactive Spaces; Touch ID for a private library, dropped on sleep/lock.
 - **B7 ShowTools installs it.** Copy to `~/Applications` (newer build
