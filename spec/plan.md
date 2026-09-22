@@ -837,6 +837,26 @@ Research, 2026-09-22:
 - **Power** of live Core Image transitions against a looping HEVC video:
   nothing trustworthy found; to be measured
 
+**Decided with Jason 2026-09-22:**
+- **Control Center launches BGTools' interface** (its window of monitors,
+  Spaces and shows); BGTools' **menu bar icon is optional, a checkbox**
+  in its settings (Jason's menu bar is crowded). Control Center tiles are
+  a button or a toggle, so the tiles open the window and, perhaps, switch
+  the desktop show on and off; the full settings live in the window
+- **Shows can be assigned per Space, as well as per monitor**, and other
+  monitors are remembered. Measured with the probe on macOS 27.0: Spaces
+  have no public identity, but the unofficial CoreGraphics calls (as used
+  by yabai and Hammerspoon) list each display's Spaces with a lasting uuid
+  (the first desktop's is empty, so key it as "desktop 1 of that
+  display") and put a window on one Space only; three desktops each
+  showed their own window. Displays are known by their own UUID. If a
+  macOS update breaks the unofficial calls, fall back to one window on
+  every Space (the public `canJoinAllSpaces`, checked working)
+- Measured too: during every Space switch macOS reports the desktop
+  window hidden for under a second, and it still said "visible" under
+  full-screen-covering windows, so pausing on occlusion needs a delay
+  and isn't a dependable power saver on its own
+
 Next: a throwaway test program (`tools/desktop-probe/`) checking, in
 order: the window below the icons on every monitor and Space; clicks
 passing through; a Control Center toggle loading (moved up for the crowded
