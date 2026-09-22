@@ -336,6 +336,18 @@ public final class Library {
             """).bind(.text(on ? "1" : "0")).run()
     }
 
+    /// A random id for this library, made the first time it's asked for.
+    /// An export records it, so exporting the same show again can recognise
+    /// its earlier folder (plan, Phase 4).
+    public func identifier() throws -> String {
+        if let id = try db.prepare("SELECT value FROM library_settings WHERE key = 'id'").firstText() {
+            return id
+        }
+        let id = UUID().uuidString
+        try db.prepare("INSERT INTO library_settings (key, value) VALUES ('id', ?)").bind(.text(id)).run()
+        return id
+    }
+
     public static let startingCollectionName = "Untitled Collection"
 
     // MARK: Rhythm patterns (schema 11)

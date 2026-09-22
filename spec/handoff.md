@@ -7,17 +7,38 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 ## Start here (end of 2026-09-22)
 
-**Next: plan Phase 4, setlist export and import, with Jason** (Jason,
-2026-09-22). Plan by Q&A before any code, as Phases 3 and 3b were: read
-the plan's Phase 4 section, check what's already settled, ask numbered
-questions with a "Suggest:" default for each, write every answer into
-`spec/plan.md`, then propose steps and build one per "go ahead".
+**Phase 4 (setlist export / import) is planned and 4a is built.** Jason
+answered every question on 2026-09-22; the plan's Phase 4 section was
+rewritten to fit what a show holds now (`show.json` for everything,
+`show.tsv` to read and edit, metadata stripped by default). **Next: 4b,
+core import**, on Jason's "go ahead". Build order: 4a core export (done),
+4b core import, 4c Export Show… panel, 4d Import Show… panel plus the
+"Make a collection for it" checkbox on File ▸ Import… too, 4e a hands-on
+round trip on a scratch library, including an edit in Numbers.
 
-Where things stand: Phase 3 (all 7 steps) and Phase 3b (Delete by
-context, Find Similar, Keep One) are built and pushed; 154 tests; schema
-12. Image stickiness (the end of Phase 3) stays parked until Jason has
-made a first real show. The sections below record how each part was
-built and checked.
+Where things stand: Phase 3 and 3b are built; 165 tests; schema 12. Image
+stickiness (the end of Phase 3) stays parked until Jason has made a first
+real show.
+
+## Phase 4a: core export (2026-09-22)
+
+- `Setlist.swift`: `SetlistManifest` (show.json, decoded field by field
+  with lenient lists), `SetlistTSV` (text forms for every cell),
+  `SetlistExport.plan` (reads the library, on its thread; fails with
+  `missingFiles` before writing anything) and `SetlistExport.write`
+  (off the main thread; builds a hidden sibling folder and moves it into
+  place; replaces an earlier export of the same show via `discard`, the
+  Trash by default; refuses any other non-empty folder).
+- `MetadataStrip.swift`: measured before it was written (see the plan's
+  Privacy bullet). Each stripped copy is read back; a failure falls back to
+  an unstripped copy, listed in `Result.notStripped` for 4c to show.
+- `Library.identifier()`: a random id kept in `library_settings` (no
+  schema change), so an export knows which library and show it came from.
+- 4b must: add a `kenBurnsSeed` to `SlideSettings` (field by field) and
+  have the timeline use it before `slide.id`; match files by the JSON's
+  library hash first, then the file's own; apply the "cell still reads what
+  export wrote" rule. Numbers can open a TSV, but check how it saves one
+  before 4e (it may only export CSV).
 
 ## Step 6 (2026-09-22: tested and agreed)
 
@@ -100,7 +121,7 @@ files are both in the show keeps both ("1 stays"), Keep One disabled.
 | **2c** The lane: transitions row + images row | **Built** |
 | **3** Music + timeline | **All 7 steps built** (6 and 7 on 2026-09-22). Left: settle image stickiness with Jason |
 | **3b** Find Similar (was "duplicate finder") | **Built** 2026-09-22: Delete by context, Group/Show Similar, Keep One |
-| **4** Setlist export / import | **Next: plan it with Jason** |
+| **4** Setlist export / import | **Planned** 2026-09-22; **4a core export built**; next 4b core import |
 | 5 Live desktop | Not started |
 
 Library schema is now **version 12**. Every upgrade is additive and tested

@@ -7,7 +7,8 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
 ## Layout
 
 - `Sources/ShowToolsCore/`: no UI. Models, the SQLite library, ingest, the
-  timeline (`ShowTimeline.frame(at:)`), and the `Compositor`. Everything
+  timeline (`ShowTimeline.frame(at:)`), the `Compositor`, and setlist
+  export (`Setlist`, `MetadataStrip`). Everything
   that draws a show goes through `frame(at:)` → `Compositor.compose`,
   including the future video exporter. Keep it that way.
 - `Sources/ShowToolsApp/`: the SwiftUI/AppKit app. `PlaybackEngine` owns a
