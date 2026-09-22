@@ -93,8 +93,10 @@ in the range (that would re-cut two slides for eight markers). Tell Jason.
   section bands on clips; double-click a section sets the range), teal
   detected markers on the ruler (select, drag, Delete, double-click line,
   snapping), a faint teal preview while the sheet is open.
-- **Test first, in order:** (1) the app still launches on macOS 26 (weak
-  link) and the sheet says it needs macOS 27; (2) on macOS 27, a song gets
+- **Checked on macOS 26.6.2** (2026-09-21): the app launches, the music
+  drawer's Detect Beats… button opens the sheet, which says it needs
+  macOS 27 (Apply disabled), and Esc closes it.
+- **Test next, on macOS 27, in order:** (2) on macOS 27, a song gets
   analysed (the 120 BPM click track: beats every 0.5 s, and does it find
   bars?); (3) the sheet's preview, Apply, and one-step undo; (4) Fit slides;
   (5) dragging and deleting teal markers, a song move carrying them;

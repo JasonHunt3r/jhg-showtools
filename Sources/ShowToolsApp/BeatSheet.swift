@@ -81,7 +81,7 @@ struct BeatSheet: View {
 
             if !Rhythms.isAvailable {
                 Text("Beat detection uses Apple's Music Understanding, which needs macOS 27. "
-                     + "This Mac is on macOS \(ProcessInfo.processInfo.operatingSystemVersionString).")
+                     + "This Mac is on macOS \(Self.systemVersion).")
                     .fixedSize(horizontal: false, vertical: true)
             } else if songs.isEmpty {
                 Text("There's no song under this stretch of the show.")
@@ -180,6 +180,11 @@ struct BeatSheet: View {
             s = BeatDetection.apply(plan, to: s, timeline: timeline, rhythms: rhythms, in: range, fitSlides: fit)
         }
         close()
+    }
+
+    private static var systemVersion: String {
+        let v = ProcessInfo.processInfo.operatingSystemVersion
+        return "\(v.majorVersion).\(v.minorVersion)" + (v.patchVersion > 0 ? ".\(v.patchVersion)" : "")
     }
 
     private func close() {
