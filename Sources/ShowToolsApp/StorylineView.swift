@@ -20,6 +20,8 @@ struct StorylineView: View {
     @Binding var selectedOverlay: UUID?
     /// The song selected in the music row.
     @Binding var selectedSong: UUID?
+    /// Markers selected on the ruler: dragging one moves them all.
+    @Binding var selectedMarkers: Set<UUID>
     /// Points per second: the zoom.
     @Binding var pps: Double
     /// How far the storyline is scrolled, for the frame strip to follow.
@@ -27,6 +29,32 @@ struct StorylineView: View {
     let mutate: ShowMutator
     let openInspector: () -> Void
     @Environment(AppModel.self) private var model
+    /// N: edges land on markers (plan, Phase 3). App-wide, like Final Cut's.
+    @AppStorage("snapping") private var snapping = true
+    /// The range's ends (and the markers) as lines down through every row,
+    /// or only on the ruler.
+    @AppStorage("rangeLines") private var rangeLines = true
+
+    /// Markers being dragged: which, and how far.
+    private struct MarkerDrag {
+        let ids: Set<UUID>
+        var dt: Double
+    }
+    @State private var markerDrag: MarkerDrag?
+
+    /// Markers where they're drawn: a drag in progress applied.
+    private var markerTimes: [(marker: Marker, time: Double)] {
+        show.markers.map { m in
+            let moving = markerDrag?.ids.contains(m.id) == true
+            return (m, max(m.time + (moving ? markerDrag!.dt : 0), 0))
+        }
+    }
+
+    /// What a dragged edge snaps to, and from how far (six points), or nil
+    /// with snapping off.
+    private var snap: (targets: [Double], tolerance: Double)? {
+        snapping && !show.markers.isEmpty ? (show.markers.map(\.time), 6 / pps) : nil
+    }
 
     static let blockHeight: CGFloat = 64
     static let rulerHeight: CGFloat = 22
@@ -206,10 +234,12 @@ struct StorylineView: View {
                         .frame(width: contentWidth, height: Self.rulerHeight)
                         .contentShape(Rectangle())
                         .gesture(scrubGesture)
+                        .overlay(alignment: .topLeading) { rangeOnRuler }
+                        .overlay(alignment: .topLeading) { markersOnRuler }
                     ZStack(alignment: .topLeading) {
                         Color.clear.frame(width: contentWidth, height: rowsHeight)
                         ImagesRow(show: show, timeline: timeline, engine: engine, pps: pps, inset: Self.inset,
-                                  width: contentWidth, height: Self.imagesRowHeight,
+                                  width: contentWidth, height: Self.imagesRowHeight, snap: snap,
                                   dropTargeted: $imagesDropTargeted, selectedOverlay: $selectedOverlay,
                                   mutate: mutate,
                                   didSelect: { selection = []; selectedTransition = nil; selectedSong = nil; focused = true })
@@ -257,6 +287,7 @@ struct StorylineView: View {
                         update: { dropX = $0?.x },
                         perform: { providers, location in drop(providers, at: location.x, placed) }))
                 }
+                .overlay(alignment: .topLeading) { linesThroughRows }
                 .overlay(alignment: .topLeading) { Playhead(engine: engine, timeline: timeline, pps: pps, inset: Self.inset) }
                 .coordinateSpace(name: "storyline")
                 .padding(.vertical, 6)
@@ -289,10 +320,115 @@ struct StorylineView: View {
                 openDrawers = []
                 return .handled
             }
-            guard selectedOverlay != nil || selectedSong != nil else { return .ignored }
+            guard selectedOverlay != nil || selectedSong != nil || !selectedMarkers.isEmpty else { return .ignored }
             selectedOverlay = nil
             selectedSong = nil
+            selectedMarkers = []
             return .handled
+        }
+    }
+
+    // MARK: Markers and the range
+
+    /// Blue, like Final Cut's range: the span shaded on the ruler, a
+    /// triangle at each end. Faded while the range is switched off.
+    @ViewBuilder private var rangeOnRuler: some View {
+        let on = engine.rangeOn
+        let lo = engine.rangeIn ?? 0, hi = engine.rangeOut ?? timeline.duration
+        if engine.rangeIn != nil || engine.rangeOut != nil, hi > lo {
+            let x0 = Self.inset + CGFloat(lo * pps), x1 = Self.inset + CGFloat(hi * pps)
+            ZStack(alignment: .topLeading) {
+                Rectangle().fill(Color.blue.opacity(on ? 0.28 : 0.1))
+                    .frame(width: x1 - x0, height: Self.rulerHeight)
+                    .offset(x: x0)
+                if engine.rangeIn != nil { rangeEnd(x0, pointsRight: true, on: on) }
+                if engine.rangeOut != nil { rangeEnd(x1, pointsRight: false, on: on) }
+            }
+            .allowsHitTesting(false)
+        }
+    }
+
+    private func rangeEnd(_ x: CGFloat, pointsRight: Bool, on: Bool) -> some View {
+        Path { p in
+            let h = Self.rulerHeight, w: CGFloat = 7
+            p.move(to: CGPoint(x: 0, y: h - 10))
+            p.addLine(to: CGPoint(x: 0, y: h))
+            p.addLine(to: CGPoint(x: pointsRight ? w : -w, y: h))
+            p.closeSubpath()
+        }
+        .fill(Color.blue.opacity(on ? 1 : 0.4))
+        .offset(x: x)
+    }
+
+    /// Markers on the ruler: click to select (⌘ or ⇧ adds), drag to move
+    /// (a selected one takes the rest of the selection with it), Delete to
+    /// remove. One undo step per drag.
+    private var markersOnRuler: some View {
+        ForEach(markerTimes, id: \.marker.id) { m, t in
+            let selected = selectedMarkers.contains(m.id)
+            MarkerShape()
+                .fill(selected ? Color.yellow : Color.orange)
+                .overlay(MarkerShape().stroke(Color.black.opacity(0.5), lineWidth: 0.5))
+                .frame(width: 9, height: 11)
+                .padding(.horizontal, 3)
+                .contentShape(Rectangle())
+                .offset(x: Self.inset + CGFloat(t * pps) - 7.5, y: Self.rulerHeight - 11)
+                .onTapGesture { clickMarker(m.id) }
+                .gesture(markerDragGesture(m.id))
+                .help("Marker at \(formatClock(t)). Drag to move; Delete removes it.")
+        }
+    }
+
+    private func clickMarker(_ id: UUID) {
+        let mods = NSEvent.modifierFlags
+        if mods.contains(.command) || mods.contains(.shift) {
+            if selectedMarkers.contains(id) { selectedMarkers.remove(id) } else { selectedMarkers.insert(id) }
+        } else {
+            selectedMarkers = [id]
+        }
+        focused = true
+    }
+
+    private func markerDragGesture(_ id: UUID) -> some Gesture {
+        DragGesture(minimumDistance: 2, coordinateSpace: .named("storyline"))
+            .onChanged { g in
+                if markerDrag == nil {
+                    if !selectedMarkers.contains(id) { selectedMarkers = [id] }
+                    markerDrag = MarkerDrag(ids: selectedMarkers, dt: 0)
+                    focused = true
+                }
+                markerDrag?.dt = ((Double(g.translation.width) / pps) * 100).rounded() / 100
+            }
+            .onEnded { _ in
+                guard let d = markerDrag else { return }
+                markerDrag = nil
+                guard d.dt != 0 else { return }
+                mutate(d.ids.count == 1 ? "Move Marker" : "Move Markers") { s in
+                    for i in s.markers.indices where d.ids.contains(s.markers[i].id) {
+                        s.markers[i].time = max(s.markers[i].time + d.dt, 0)
+                    }
+                }
+            }
+    }
+
+    /// With lines on: the range's ends in blue and the markers in faint
+    /// orange, down through every row, so an edge can be lined up by eye.
+    @ViewBuilder private var linesThroughRows: some View {
+        if rangeLines {
+            ZStack(alignment: .topLeading) {
+                ForEach(markerTimes, id: \.marker.id) { _, t in
+                    Rectangle().fill(Color.orange.opacity(0.45)).frame(width: 1)
+                        .offset(x: Self.inset + CGFloat(t * pps))
+                }
+                if engine.rangeOn {
+                    ForEach([engine.rangeIn, engine.rangeOut].compactMap { $0 }, id: \.self) { t in
+                        Rectangle().fill(Color.blue.opacity(0.8)).frame(width: 1.5)
+                            .offset(x: Self.inset + CGFloat(t * pps))
+                    }
+                }
+            }
+            .padding(.top, Self.rulerHeight + 6)
+            .allowsHitTesting(false)
         }
     }
 
@@ -511,7 +647,8 @@ struct StorylineView: View {
                 // The cut's position when the drag began: the view (and so
                 // `cutX`) moves as the edit reshapes the layout.
                 let origin = edge?.kind == kind ? edge!.cutX : cutX
-                edge = EdgeEdit(kind: kind, delta: clampedDelta(kind, (raw * 10).rounded() / 10), cutX: origin)
+                let delta = snapped(kind, raw) ?? (raw * 10).rounded() / 10
+                edge = EdgeEdit(kind: kind, delta: clampedDelta(kind, delta), cutX: origin)
             }
             .onEnded { _ in
                 if let e = edge, e.delta != 0 { commit(e) }
@@ -520,6 +657,24 @@ struct StorylineView: View {
     }
 
     private func resolved(_ id: Int64) -> ResolvedSlide? { timeline.slides.first { $0.slide.id == id } }
+
+    /// The delta that puts the cut being dragged on a marker, if one is in
+    /// reach. Trimming an end or rolling moves that cut; trimming a start
+    /// leaves it and moves the next cut instead (what follows ripples), so
+    /// that's the one that snaps.
+    private func snapped(_ kind: EdgeKind, _ raw: Double) -> Double? {
+        guard let snap else { return nil }
+        switch kind {
+        case .trimEnd(let a), .roll(let a, _):
+            guard let r = resolved(a) else { return nil }
+            let cut = r.start + r.length
+            return Snap.nearest(cut + raw, in: snap.targets, within: snap.tolerance).map { $0 - cut }
+        case .trimStart(let b):
+            guard let r = resolved(b) else { return nil }
+            let cut = r.start + r.length
+            return Snap.nearest(cut - raw, in: snap.targets, within: snap.tolerance).map { cut - $0 }
+        }
+    }
 
     /// Keeps every slide at least half a second long, and a video's start
     /// within its clip.
@@ -1162,5 +1317,19 @@ extension TimelineRow.Kind {
         case .slides: "rectangle.stack"
         case .music: "music.note"
         }
+    }
+}
+
+/// A marker's shape: a little tag pointing down at its time.
+struct MarkerShape: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY - r.width / 2))
+        p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.minX, y: r.maxY - r.width / 2))
+        p.closeSubpath()
+        return p
     }
 }

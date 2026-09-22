@@ -14,7 +14,7 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 | **2a** Framing, rotation, match cuts | **Built**, except presets (Flush), which are deferred |
 | **2b** Library manager | **Built** |
 | **2c** The lane: transitions row + images row | **Built** |
-| **3** Music + timeline | **Started 2026-09-21:** steps 1–4 of 7 built (modular rows; the music row, waveform, and playback on the music's clock; moving and trimming songs, crossfades, and the level line on song and image clips; the show as long as its longest row, with the show background after the last slide). Decisions and build order in `spec/plan.md` |
+| **3** Music + timeline | **Started 2026-09-21:** steps 1–5 of 7 built (markers with M, snapping with N, the I/O range with ⌥X and ⌘L loop playback; modular rows; the music row, waveform, and playback on the music's clock; moving and trimming songs, crossfades, and the level line on song and image clips; the show as long as its longest row, with the show background after the last slide). Decisions and build order in `spec/plan.md` |
 | 3b–5 | Not started |
 
 Everything through 2b/2c is built, audited, and checked by hand (Jason and/or
@@ -136,6 +136,7 @@ open -n --env SHOWTOOLS_LIBRARY=/tmp/STTest/TestLib.noindex build/ShowTools.app
 - **Image stickiness (2c).** Once he has his own files as a test bed: should a lane image stay at its time on the clock, or move with the slide it starts over when slides are trimmed or reordered? For now it stays on the clock.
 
 ## Known issues / debts
+- **The Edit Slides header bar overflows** (Jason, 2026-09-21: address later). It scrolls sideways, and at normal window widths Background, Loop and "Videos play in full" sit past its right edge, out of sight. Options: wrap to two lines, or move the overflow into a menu.
 - **CPU** is about 33–37% while playing. This needs work before Phase 5's desktop mode.
 - Memory is about 430 MB while playing.
 - **Video:** it can't go in the lane yet. The frame strip shows a video's first frame. The onion skin skips video slides.

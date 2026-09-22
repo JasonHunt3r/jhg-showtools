@@ -249,7 +249,7 @@ extension LibraryTests {
         }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("ALTER TABLE shows DROP COLUMN music; ALTER TABLE shows DROP COLUMN rows; PRAGMA user_version = 6;")
+            try db.exec("ALTER TABLE shows DROP COLUMN markers; ALTER TABLE shows DROP COLUMN music; ALTER TABLE shows DROP COLUMN rows; PRAGMA user_version = 6;")
         }
         let lib = try Library(root: root)
         var show = try XCTUnwrap(lib.allShows().first)

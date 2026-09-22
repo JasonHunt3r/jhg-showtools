@@ -349,10 +349,15 @@ public struct Show: Identifiable, Hashable, Sendable {
     public var rows: [TimelineRow]
     /// The music row's songs (plan, Phase 3).
     public var music: [AudioClip]
+    /// Markers dropped by hand (M): times on the show's clock. They stay
+    /// where they are when slides or songs change, and move only when
+    /// selected and dragged (plan, Phase 3).
+    public var markers: [Marker]
 
     public init(id: Int64, name: String, defaults: ShowDefaults = ShowDefaults(),
                 slides: [Slide] = [], overlays: [OverlayClip] = [], collectionID: Int64? = nil,
-                rows: [TimelineRow] = TimelineRow.defaultOrder(), music: [AudioClip] = []) {
+                rows: [TimelineRow] = TimelineRow.defaultOrder(), music: [AudioClip] = [],
+                markers: [Marker] = []) {
         self.id = id
         self.name = name
         self.defaults = defaults
@@ -361,6 +366,7 @@ public struct Show: Identifiable, Hashable, Sendable {
         self.collectionID = collectionID
         self.rows = TimelineRow.normalized(rows)
         self.music = music
+        self.markers = markers
     }
 }
 

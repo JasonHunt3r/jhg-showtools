@@ -17,6 +17,8 @@ struct EditShowView: View {
     /// The image selected in the lane's images row.
     @State private var selectedOverlay: UUID?
     @State private var selectedSong: UUID?
+    @State private var selectedMarkers: Set<UUID> = []
+    @AppStorage("snapping") private var snapping = true
     @AppStorage("storylineZoom") private var pps: Double = 24
     @State private var storylineOffset: CGFloat = 0
 
@@ -47,6 +49,7 @@ struct EditShowView: View {
                         StorylineView(show: show, timeline: timeline, engine: engine,
                                       selection: $selection, selectedTransition: $selectedTransition,
                                       selectedOverlay: $selectedOverlay, selectedSong: $selectedSong,
+                                      selectedMarkers: $selectedMarkers,
                                       pps: $pps, scrollOffset: $storylineOffset, mutate: mutate,
                                       openInspector: { inspectorShown = true })
                     }
@@ -57,7 +60,11 @@ struct EditShowView: View {
                 .onDeleteCommand {
                     // What's selected in the lane goes first: an image is
                     // taken out; a transition leaves a cut.
-                    if let id = selectedSong {
+                    if !selectedMarkers.isEmpty {
+                        let ids = selectedMarkers
+                        mutate(ids.count == 1 ? "Remove Marker" : "Remove Markers") { $0.markers.removeAll { ids.contains($0.id) } }
+                        selectedMarkers = []
+                    } else if let id = selectedSong {
                         mutate("Remove Song") { $0.music.removeAll { $0.id == id } }
                         selectedSong = nil
                     } else if let id = selectedOverlay {
@@ -74,9 +81,15 @@ struct EditShowView: View {
                     }
                 }
                 .onChange(of: selection) { _, s in
-                    if !s.isEmpty { selectedTransition = nil; selectedOverlay = nil; selectedSong = nil }
+                    if !s.isEmpty { selectedTransition = nil; selectedOverlay = nil; selectedSong = nil; selectedMarkers = [] }
                 }
-                .onChange(of: selectedOverlay) { _, o in if o != nil { selectedTransition = nil; selectedSong = nil } }
+                .onChange(of: selectedOverlay) { _, o in if o != nil { selectedTransition = nil; selectedSong = nil; selectedMarkers = [] } }
+                .onChange(of: selectedSong) { _, o in if o != nil { selectedMarkers = [] } }
+                .onChange(of: selectedTransition) { _, o in if o != nil { selectedMarkers = [] } }
+                .onChange(of: selectedMarkers) { _, m in
+                    // Markers are selected on their own, so Delete knows what it's for.
+                    if !m.isEmpty { selection = []; selectedTransition = nil; selectedOverlay = nil; selectedSong = nil }
+                }
                 .task {
                     // Dev hook: SHOWTOOLS_DEV_TRANSITION=<slideIndex> selects the
                     // transition into that slide, so its controls can be screenshotted.
@@ -129,13 +142,22 @@ struct EditShowView: View {
 
     @State private var visibleWidth: CGFloat = 800
 
+    /// M, while listening: a marker at the playhead, on the show's clock.
+    /// Not a second one on top of one already there.
+    private func addMarker(_ engine: PlaybackEngine) {
+        let t = (engine.timeline.wrap(engine.now) * 100).rounded() / 100
+        guard !show.markers.contains(where: { abs($0.time - t) < 0.05 }) else { return }
+        mutate("Add Marker") { $0.markers.append(Marker(time: t)) }
+    }
+
     private func fitStoryline() {
         guard timeline.duration > 0 else { return }
         pps = min(max(Double(visibleWidth - StorylineView.inset * 2 - 40) / timeline.duration, 2), 400)
     }
 
-    /// Keyboard shortcuts with no visible button: Final Cut's J/K/L, space,
-    /// ⇧Z and zoom.
+    /// Keyboard shortcuts: Final Cut's J/K/L, space, ⇧Z and zoom, and its
+    /// M (marker), I and O (range), ⌥X (clear the range), N (snapping) and
+    /// ⌘L (loop playback).
     ///
     /// The single keys aren't `.keyboardShortcut`s: those become window key
     /// equivalents, which AppKit offers before the focused text field, so
@@ -145,6 +167,7 @@ struct EditShowView: View {
         ZStack {
             Button("") { pps = min(pps * 1.5, 400) }.keyboardShortcut("=", modifiers: .command)
             Button("") { pps = max(pps / 1.5, 2) }.keyboardShortcut("-", modifiers: .command)
+            Button("") { engine.loopPlayback.toggle() }.keyboardShortcut("l", modifiers: .command)
             SingleKeys { event in
                 switch (event.keyCode, event.charactersIgnoringModifiers?.lowercased(), event.plainModifiers) {
                 case (49, _, []): engine.togglePlay()                  // space
@@ -152,6 +175,11 @@ struct EditShowView: View {
                 case (_, "k", []): engine.shuttle(0)
                 case (_, "l", []): engine.shuttle(1)
                 case (_, "z", [.shift]): fitStoryline()
+                case (_, "m", []): addMarker(engine)
+                case (_, "i", []): engine.setRangeIn()
+                case (_, "o", []): engine.setRangeOut()
+                case (_, "x", [.option]): engine.clearRange()
+                case (_, "n", []): snapping.toggle()
                 default: return false
                 }
                 return true
@@ -525,6 +553,8 @@ struct TransportRow: View {
     let engine: PlaybackEngine
     @Binding var pps: Double
     let fit: () -> Void
+    @AppStorage("snapping") private var snapping = true
+    @AppStorage("rangeLines") private var rangeLines = true
 
     var body: some View {
         HStack(spacing: 10) {
@@ -560,6 +590,24 @@ struct TransportRow: View {
                     .foregroundStyle(.orange)
             }
 
+            Divider().frame(height: 16)
+Group {
+                Toggle(isOn: $snapping) { Image(systemName: "arrow.left.and.line.vertical.and.arrow.right") }
+                    .help(snapping ? "Snapping is on: edges land on markers (N)" : "Snapping is off (N)")
+                Toggle(isOn: Binding(get: { engine.rangeOn }, set: { engine.rangeOn = $0 })) {
+                    Image(systemName: "timeline.selection")
+                }
+                .disabled(engine.rangeIn == nil && engine.rangeOut == nil)
+                .help("Use the range (set it with I and O; ⌥X clears it)")
+                Toggle(isOn: $rangeLines) { Image(systemName: "arrow.down.to.line.compact") }
+                    .help("Show the range and the markers as lines through every row")
+                Toggle(isOn: Binding(get: { engine.loopPlayback }, set: { engine.loopPlayback = $0 })) {
+                    Image(systemName: "repeat")
+                }
+                .help("Loop playback: the range, or the whole show (⌘L)")
+            }
+            // Icons that light up when on, not checkboxes.
+            .toggleStyle(.button)
             Divider().frame(height: 16)
             Button { pps = max(pps / 1.5, 2) } label: { Image(systemName: "minus.magnifyingglass") }
                 .help("Zoom out (⌘−)")

@@ -112,6 +112,47 @@ public struct AudioClip: Codable, Hashable, Identifiable, Sendable {
     }
 }
 
+/// A marker dropped by hand, on the show's clock (plan, Phase 3). A time
+/// only, for now.
+public struct Marker: Codable, Hashable, Identifiable, Sendable {
+    public var id: UUID = UUID()
+    /// Seconds from the start of the show.
+    public var time: Double
+
+    public init(time: Double) { self.time = time }
+
+    /// Field by field, like every saved type. Without its time there's no
+    /// marker, so it fails, and `decodeList` skips it.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        time = try c.decode(Double.self, forKey: .time)
+        id = ((try? c.decodeIfPresent(UUID.self, forKey: .id)) ?? nil) ?? UUID()
+    }
+
+    public static func decodeList(_ json: String) -> [Marker] {
+        guard let items = try? JSONDecoder().decode([Lenient].self, from: Data(json.utf8)) else { return [] }
+        return items.compactMap(\.marker)
+    }
+
+    private struct Lenient: Decodable {
+        let marker: Marker?
+        init(from decoder: Decoder) throws { marker = try? Marker(from: decoder) }
+    }
+}
+
+/// Snapping (plan, Phase 3): an edge being dragged lands on a marker when
+/// it comes within a few points of one.
+public enum Snap {
+    /// The target nearest `t`, if one is within `tolerance` seconds.
+    public static func nearest(_ t: Double, in targets: [Double], within tolerance: Double) -> Double? {
+        var best: Double?
+        for x in targets where abs(x - t) <= tolerance {
+            if best == nil || abs(x - t) < abs(best! - t) { best = x }
+        }
+        return best
+    }
+}
+
 /// A song's loudness over time, for drawing: the loudest sample in each
 /// slice, 0…255. Read from the file once and cached beside the library
 /// (plan: "decoded once and cached").

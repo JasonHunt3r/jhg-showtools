@@ -18,6 +18,8 @@ struct ImagesRow: View {
     let inset: CGFloat
     let width: CGFloat
     let height: CGFloat
+    /// Markers an edge snaps to, and from how far; nil with snapping off.
+    let snap: (targets: [Double], tolerance: Double)?
     @Binding var dropTargeted: Bool
     @Binding var selectedOverlay: UUID?
     let mutate: ShowMutator
@@ -205,15 +207,25 @@ struct ImagesRow: View {
                 }
                 guard var e = edit else { return }
                 let dt = Double(g.translation.width) / pps
+                // Snapping: the edge being dragged lands on a marker in reach;
+                // a moved image snaps by whichever of its edges is nearer one.
+                func near(_ t: Double) -> Double? {
+                    snap.flatMap { Snap.nearest(t, in: $0.targets, within: $0.tolerance) }
+                }
                 switch e.part {
                 case .move:
-                    e.start = min(max(e.start0 + dt, e.room.lowerBound), e.room.upperBound - e.length0)
+                    var start = e.start0 + dt
+                    let byStart = near(start).map { $0 - start }, byEnd = near(start + e.length0).map { $0 - (start + e.length0) }
+                    if let d = [byStart, byEnd].compactMap({ $0 }).min(by: { abs($0) < abs($1) }) { start += d }
+                    e.start = min(max(start, e.room.lowerBound), e.room.upperBound - e.length0)
                 case .start:
                     let end = e.start0 + e.length0
-                    e.start = min(max(e.start0 + dt, e.room.lowerBound), end - Self.shortest)
+                    let start = near(e.start0 + dt) ?? e.start0 + dt
+                    e.start = min(max(start, e.room.lowerBound), end - Self.shortest)
                     e.length = end - e.start
                 case .end:
-                    e.length = min(max(e.length0 + dt, Self.shortest), e.room.upperBound - e.start0)
+                    let end = near(e.start0 + e.length0 + dt) ?? e.start0 + e.length0 + dt
+                    e.length = min(max(end - e.start0, Self.shortest), e.room.upperBound - e.start0)
                 }
                 edit = e
             }

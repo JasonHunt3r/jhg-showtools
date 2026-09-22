@@ -117,12 +117,41 @@ final class MusicTests: XCTestCase {
         XCTAssertEqual(clips[1].volume, 0.25)
     }
 
+    func testMarkersRoundTripAndSnapToTheNearestWithinReach() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        var show = try lib.createShow(name: "Marks")
+        XCTAssertEqual(show.markers, [])
+        show.markers = [Marker(time: 1.5), Marker(time: 4)]
+        try lib.saveShow(show)
+        XCTAssertEqual(try lib.allShows()[0].markers, show.markers)
+        XCTAssertEqual(Marker.decodeList(#"[{"time":2},{"id":"x"},{"time":3}]"#).map(\.time), [2, 3])
+
+        XCTAssertEqual(Snap.nearest(4.08, in: [1.5, 4, 4.2], within: 0.1), 4)
+        XCTAssertEqual(Snap.nearest(4.15, in: [1.5, 4, 4.2], within: 0.1), 4.2)
+        XCTAssertNil(Snap.nearest(3, in: [1.5, 4], within: 0.1))
+    }
+
+    func testAVersionEightLibraryGetsNoMarkers() throws {
+        let root = dir.appendingPathComponent("Eight.noindex")
+        do { _ = try Library(root: root).createShow(name: "Old") }
+        do {
+            let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
+            try db.exec("ALTER TABLE shows DROP COLUMN markers; PRAGMA user_version = 8;")
+        }
+        let lib = try Library(root: root)
+        var show = try XCTUnwrap(lib.allShows().first)
+        XCTAssertEqual(show.markers, [])
+        show.markers = [Marker(time: 2)]
+        try lib.saveShow(show)
+        XCTAssertEqual(try lib.allShows()[0].markers.map(\.time), [2])
+    }
+
     func testAVersionSevenLibraryGetsNoMusic() throws {
         let root = dir.appendingPathComponent("Seven.noindex")
         do { _ = try Library(root: root).createShow(name: "Old") }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("ALTER TABLE shows DROP COLUMN music; PRAGMA user_version = 7;")
+            try db.exec("ALTER TABLE shows DROP COLUMN markers; ALTER TABLE shows DROP COLUMN music; PRAGMA user_version = 7;")
         }
         let lib = try Library(root: root)
         var show = try XCTUnwrap(lib.allShows().first)
