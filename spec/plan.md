@@ -641,7 +641,7 @@ shows, and in **keeping one of a series** that got imported.
   used in shows"). Files sent to the Trash give the keeper their tags and
   the highest rating.
 
-### Phase 4: Setlist export / import (replanned with Jason 2026-09-22)
+### Phase 4: Setlist export / import (replanned with Jason 2026-09-22) — BUILT 2026-09-22 (risks: see handoff)
 
 The first version of this section (2026-09-20) was written before slides had
 transform, rotation, background or clip start, and before shows had the

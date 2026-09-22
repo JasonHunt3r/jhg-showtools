@@ -7,13 +7,37 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 ## Start here (end of 2026-09-22)
 
-**Phase 4 (setlist export / import): 4a–4d are built.** Jason answered
-every question on 2026-09-22; the plan's Phase 4 section was rewritten to
-fit what a show holds now (`show.json` for everything, `show.tsv` to read
-and edit, metadata stripped by default, song tags kept). **Next: 4e**, a
-hands-on round trip with Jason, including an edit to `show.tsv` in Numbers
-(find out whether Numbers saves TSV; if it only writes CSV, import could
-read `show.csv` too).
+**Phase 4 is done** (Jason, 2026-09-22: "mark it done, record the
+risks"). 4a–4d built and checked in the app on scratch libraries; Jason
+skipped the 4e hands-on pass. Its open risks are below. **Next: plan
+Phase 5 (live desktop) by Q&A.**
+
+## Phase 4: open risks (not measured; recorded 2026-09-22)
+
+1. **iPhone HDR photos may lose HDR when stripped.** HEIC/PNG are
+   rewritten from their decoded frames, which likely drops the HDR gain
+   map (an auxiliary image). The copy still looks right in SDR. JPEG is
+   copied losslessly and isn't affected. Fix if it bites: carry the gain
+   map across (`CGImageSourceCopyAuxiliaryDataInfoAtIndex` →
+   `CGImageDestinationAddAuxiliaryDataInfo`), measured before and after.
+2. **RAW (DNG, ProRAW) can't be rewritten by ImageIO**: such files are
+   copied unstripped and listed in the banner's Details. Nothing leaks
+   silently, but nothing is stripped either.
+3. **Real iPhone video and Live Photos untested.** Only a generated video
+   was stripped. The remux keeps video and audio tracks only, which should
+   drop the timed-metadata track phones use for location; not yet seen on
+   a real file.
+4. **Big shows not timed.** Import hashes every file in the folder;
+   stripped export rewrites every file. Nothing measured at hundreds of
+   slides.
+5. **Not tried in the app, tests only:** exporting over an earlier export
+   (it goes to the real Trash), export with stripping off, Hide from
+   Spotlight on, Import Show… of a plain folder, and a TSV saved by
+   Numbers (whether Numbers can save TSV at all is unknown; if only CSV,
+   import could read `show.csv` too).
+
+To close 1–3: real files from Jason's phone (an HDR photo, a video, a Live
+Photo or ProRAW) in `~/Projects/ShowTools-TestMedia/`, never the repo.
 
 Where things stand: Phase 3 and 3b are built; 172 tests; schema 12. Image
 stickiness (the end of Phase 3) stays parked until Jason has made a first
@@ -172,8 +196,8 @@ files are both in the show keeps both ("1 stays"), Keep One disabled.
 | **2c** The lane: transitions row + images row | **Built** |
 | **3** Music + timeline | **All 7 steps built** (6 and 7 on 2026-09-22). Left: settle image stickiness with Jason |
 | **3b** Find Similar (was "duplicate finder") | **Built** 2026-09-22: Delete by context, Group/Show Similar, Keep One |
-| **4** Setlist export / import | **Planned** 2026-09-22; **4a core export built**; next 4b core import |
-| 5 Live desktop | Not started |
+| **4** Setlist export / import | **Built** 2026-09-22 (4a–4d); risks recorded under "Phase 4: open risks" |
+| 5 Live desktop | **Next: plan it with Jason** |
 
 Library schema is now **version 12**. Every upgrade is additive and tested
 by opening a library of the version before (7 rows, 8 music, 9 markers,
