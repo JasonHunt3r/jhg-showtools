@@ -38,8 +38,23 @@ Checked in a scratch copy, and a DB backup was taken first.
 **Open:** clicking a grid tile didn't give the grid the keyboard with
 axtool's clicks (Tab did; Library and collection alike, so not new).
 Ask Jason for one real click, then Delete, before calling it a bug.
-**Next: Find Similar** (fingerprints, Group Similar, Show Similar), then
-Keep One. Ask first.
+**Find Similar is BUILT** (2026-09-22). Measured first (scratch script
+over the macOS aerial screensaver stills plus variants): Vision's distance
+is plain Euclidean on the 768-float unit print; shrinking to **299 px**
+before Vision keeps copies at 0.09–0.18 and a light crop at 0.22, while
+the closest different photos are 0.39+, a "series" (Numbers' marble
+textures) 0.47–0.72, unrelated ~1.0 (512 px gave copies 0.35–0.38; whole
+images scattered to 0.63). `SimilarityIndex` (core, 5 tests): every pair
+within 0.75 at once (Accelerate sgemm in 256-row blocks), union-find
+groups for any tighter setting, `similar(to:)` closest first.
+`Fingerprints` (app): Vision revision 2 pinned, cached as
+`Cache/Prints/<hash>.r2.f32`, worked out 4 at a time with progress.
+Grid bar: **Similar** (Group Similar, sections "N alike") and a
+Close–Loose slider (0.15–0.75, default 0.45); **Show Similar** on a
+picture's right-click ("Like “name”" with ✕). Checked in a scratch copy:
+the Golden Gate photo and its 5 variants group; 10 → 27 of 51 grouped
+from default to Loose; Show Similar lists the variants closest first.
+**Next: Keep One.** Ask first.
 
 ## Where it stands
 

@@ -301,6 +301,16 @@ struct LibraryGridView: View {
     }
     @State private var anchor: Int64?
     @State private var dropTargeted = false
+    // Find Similar (plan, Phase 3b).
+    /// Group Similar: the grid shows look-alikes together, in groups.
+    @State private var grouping = false
+    /// Show Similar: this picture, then the ones like it, closest first.
+    @State private var similarTo: Int64?
+    /// The similarity slider: how far apart two pictures may be and still
+    /// count, from close (copies, crops) to loose (a series, look-alikes).
+    @AppStorage("similarWithin") private var within: Double = 0.45
+    @State private var index: SimilarityIndex?
+    static let closest = 0.15, loosest = 0.75
     @AppStorage("gridTileSize") private var tileSize: Double = 150
 
     private var collection: MediaCollection? { collectionID.flatMap(model.collection) }
@@ -312,8 +322,32 @@ struct LibraryGridView: View {
         return c.itemIDs.compactMap { model.itemsByID[$0] }
     }
 
-    /// The files shown, searched, filtered and sorted.
+    private var similarActive: Bool { grouping || similarTo != nil }
+
+    /// The groups Group Similar shows, in the grid's order.
+    private var similarGroups: [[MediaItem]] {
+        guard grouping, let index else { return [] }
+        let byID = Dictionary(filtered.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        return index.groups(within: Float(within)).map { $0.compactMap { byID[$0] } }.filter { $0.count > 1 }
+    }
+
+    /// The files shown: the filtered ones, or with Find Similar on, the
+    /// groups laid end to end, or one picture and those like it.
     private var visible: [MediaItem] {
+        if let id = similarTo {
+            guard let first = filtered.first(where: { $0.id == id }) ?? model.itemsByID[id] else { return [] }
+            let byID = Dictionary(filtered.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+            return [first] + (index?.similar(to: id, within: Float(within)).compactMap { byID[$0.id] } ?? [])
+        }
+        if grouping { return similarGroups.flatMap { $0 } }
+        return filtered
+    }
+
+    /// The pictures Find Similar compares: the stills and animations in view.
+    private var comparable: [MediaItem] { filtered.filter { Fingerprints.fingerprintable($0.kind) } }
+
+    /// The files in view, searched, filtered and sorted.
+    private var filtered: [MediaItem] {
         let needle = search.trimmingCharacters(in: .whitespaces).lowercased()
         let collected = onlyUncollected && collection == nil
             ? Set(model.collections.flatMap(\.itemIDs)) : []
@@ -386,6 +420,17 @@ struct LibraryGridView: View {
             .menuStyle(.borderlessButton)
             .fixedSize()
 
+            Button {
+                grouping.toggle()
+                similarTo = nil
+            } label: {
+                Label("Similar", systemImage: grouping ? "square.stack.3d.up.fill" : "square.stack.3d.up")
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(grouping ? Color.accentColor : .primary)
+            .help("Group Similar: look-alike pictures together")
+            if similarActive { similarControls }
+
             Spacer()
             if visible.count != all.count {
                 Text("\(visible.count) of \(all.count)").foregroundStyle(.secondary).monospacedDigit()
@@ -394,9 +439,31 @@ struct LibraryGridView: View {
         .padding(.horizontal, 12).padding(.vertical, 8)
     }
 
+    /// The slider, what Show Similar is showing, and the fingerprints' progress.
+    @ViewBuilder private var similarControls: some View {
+        if let id = similarTo, let item = model.itemsByID[id] {
+            HStack(spacing: 4) {
+                Text("Like “\(item.fileName)”").lineLimit(1).truncationMode(.middle).frame(maxWidth: 160)
+                Button { similarTo = nil } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.borderless).foregroundStyle(.secondary)
+                    .help("Back to all")
+            }
+        }
+        HStack(spacing: 4) {
+            Text("Close").font(.caption).foregroundStyle(.secondary)
+            Slider(value: $within, in: Self.closest...Self.loosest).frame(width: 110)
+                .help("Left: only copies and crops. Right: a series, and pictures that look alike.")
+            Text("Loose").font(.caption).foregroundStyle(.secondary)
+        }
+        if let p = Fingerprints.shared.progress {
+            ProgressView(value: Double(p.done), total: Double(max(p.total, 1))).frame(width: 60)
+            Text("Reading \(p.done) of \(p.total)").font(.caption).foregroundStyle(.secondary).monospacedDigit()
+        }
+    }
+
     var body: some View {
         Group {
-            if let c = collection, visible.isEmpty {
+            if let c = collection, visible.isEmpty, !similarActive {
                 ContentUnavailableView {
                     Label("“\(c.name)” is empty", systemImage: "rectangle.stack")
                 } description: {
@@ -433,7 +500,19 @@ struct LibraryGridView: View {
         }
         .navigationTitle(collection?.name ?? "Library")
         .navigationSubtitle(selection.isEmpty ? "\(visible.count) items" : "\(selection.count) selected")
-        .onChange(of: collectionID) { selection = []; anchor = nil }
+        .onChange(of: collectionID) { selection = []; anchor = nil; similarTo = nil }
+        // Fingerprints for what's in view, worked out once each.
+        .task(id: similarActive ? comparable.map(\.id) : []) {
+            guard similarActive else { return }
+            Fingerprints.shared.prepare(comparable.compactMap { i in model.url(for: i).map { (i, $0) } })
+        }
+        // The index, rebuilt as fingerprints arrive or the view changes.
+        .task(id: similarActive ? "\(Fingerprints.shared.revision) \(comparable.map(\.id))" : "") {
+            guard similarActive else { index = nil; return }
+            let prints = comparable.compactMap { i in Fingerprints.shared.print(i).map { (id: i.id, print: $0) } }
+            let reach = Float(Self.loosest)
+            index = await Task.detached(priority: .userInitiated) { SimilarityIndex(prints, reach: reach) }.value
+        }
         .onChange(of: selection) { model.infoPanelSelection = orderedSelection }
         .toolbar {
             ToolbarItemGroup {
@@ -529,17 +608,48 @@ struct LibraryGridView: View {
     }
 
     private var grid: some View {
-        ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: tileSize, maximum: tileSize * 1.4), spacing: 10)],
-                      spacing: 10) {
-                ForEach(visible) { item in
-                    tile(item)
+        let columns = [GridItem(.adaptive(minimum: tileSize, maximum: tileSize * 1.4), spacing: 10)]
+        return ScrollView {
+            if grouping && similarTo == nil {
+                let groups = similarGroups
+                if groups.isEmpty {
+                    similarEmpty
+                } else {
+                    LazyVStack(alignment: .leading, spacing: 16) {
+                        ForEach(Array(groups.enumerated()), id: \.element.first?.id) { n, group in
+                            Section {
+                                LazyVGrid(columns: columns, spacing: 10) {
+                                    ForEach(group) { item in tile(item) }
+                                }
+                            } header: {
+                                Text("\(group.count) alike").font(.headline).foregroundStyle(.secondary)
+                                    .accessibilityLabel("Group \(n + 1), \(group.count) alike")
+                            }
+                        }
+                    }
+                    .padding(12)
                 }
+            } else {
+                LazyVGrid(columns: columns, spacing: 10) {
+                    ForEach(visible) { item in
+                        tile(item)
+                    }
+                }
+                .padding(12)
+                if similarTo != nil, visible.count <= 1 { similarEmpty }
             }
-            .padding(12)
         }
         .background(Color(nsColor: .textBackgroundColor).opacity(0.001))
         .onTapGesture { selection = [] }
+    }
+
+    /// Nothing alike at this setting (or not worked out yet).
+    private var similarEmpty: some View {
+        Text(Fingerprints.shared.progress != nil ? "Looking at the pictures…"
+             : "Nothing alike at this setting. Slide toward Loose to find more.")
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(40)
     }
 
     private func tile(_ item: MediaItem) -> some View {
@@ -565,6 +675,13 @@ struct LibraryGridView: View {
                 model.newShow(itemIDs: ids, in: collectionID)
             }
             addToShowMenu(ids: ids)
+            if Fingerprints.fingerprintable(item.kind) {
+                Button("Show Similar") {
+                    grouping = false
+                    similarTo = item.id
+                    selection = [item.id]
+                }
+            }
             Divider()
             Button("New Collection from \(ids.count == 1 ? "Item" : "\(ids.count) Items")") {
                 model.newCollection(itemIDs: ids)
