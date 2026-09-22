@@ -1,0 +1,50 @@
+# Phase 5 test program, part 3: do Control Center tiles load from an
+# ad-hoc-signed app built on this Mac (no developer certificate)?
+#   tools/control-probe/build.sh
+name: BGControlProbe
+options:
+  bundleIdPrefix: com.jhg
+  deploymentTarget:
+    macOS: "26.0"
+settings:
+  base:
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    SWIFT_VERSION: "6.0"
+    ENABLE_HARDENED_RUNTIME: NO
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.1"
+targets:
+  BGControlProbe:
+    type: application
+    platform: macOS
+    sources: [App, Shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jhg.BGControlProbe
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: BGControlProbe
+    dependencies:
+      - target: BGControls
+        embed: true
+  BGControls:
+    type: app-extension
+    platform: macOS
+    sources: [Controls, Shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jhg.BGControlProbe.BGControls
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: BGTools
+    info:
+      path: Controls/Info.plist
+      properties:
+        CFBundleDisplayName: BGTools
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Controls/BGControls.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
