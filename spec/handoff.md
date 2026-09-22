@@ -203,20 +203,23 @@ of it is in the plan.
 Every decision is in `spec/plan.md` under "Rhythm patterns" (Jason answered
 the last five: yes to each). Proposed steps, one commit each, and "go
 ahead with 7x" from Jason before each one:
-- **7a Core, no UI:** parse the letters into a pattern and write it back
-  as text; lay it on beats (the song's detected beats, or an even BPM grid)
-  from the range start, repeated and cut short at the end; rests, dots,
-  triplets, the note-length setting. Fully tested.
+- **7a Core, no UI: BUILT** (2026-09-22). `Sources/ShowToolsCore/Rhythm.swift`:
+  `RhythmPattern` (the letters both ways; saved as its text; unreadable
+  letters skipped and reported by offset, for the text field to mark),
+  `RhythmPulse` (an even BPM, or a song's detected beats in show time,
+  tempo-corrected), `RhythmPlacement.markers` (from the range start, or on
+  a song its first beat at or after it; repeats; last pass cut short; stops
+  where a song's beats do), `RhythmApply.apply` (orange hand markers, none
+  doubled, plus Fit slides; one edit). 13 tests in `RhythmTests`, 130 in all.
 - **7b The Rhythm panel, text only:** a floating panel with the text field
   and glyph legend, BPM (from the analysis, "Use the song's beats"),
   note length, and Fit slides; Apply drops orange markers on the range;
   the ruler preview. Opened from the slides row's drawer and the Show menu.
 - **7c Notation:** Bravura (licence checked first, then bundled), one
   rhythm line with beams, triplet brackets and bar lines, following the text.
-- **7d The grid:** 16 or 12 steps a bar, following the text. Question for
-  Jason when we get there: does clicking a square edit the pattern
-  (a drum machine does), or is the grid view-only because the text is
-  the input?
+- **7d The grid:** 16 or 12 steps a bar. It's its own input: clicking a
+  square puts a change there, and in grid mode the text field and legend
+  are hidden (Jason, 2026-09-22).
 - **7e Detect Beats' Pattern mode:** the pattern's text plus Edit…, which
   opens the panel; teal markers on the detected beats.
 - **7f Saved patterns:** the built-ins, and Jason's named patterns stored

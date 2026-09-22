@@ -572,9 +572,11 @@ to the Collection Browser and the library.
   - **Notation:** one rhythm line, no pitches, drawn with Bravura (the
     free SMuFL music font; check its licence before shipping it). Eighths
     and sixteenths beamed within the beat, triplet brackets, bar lines.
-  - **The grid** sizes itself: 16 or 12 steps a bar (12 for triplets), as
-    many bars as the pattern needs. A pattern it can't show leaves it
-    read-only with a note saying why.
+  - **The grid** is its own input, like a drum machine: click a square to
+    put a change there. In grid mode the text field and the letter legend
+    are hidden (Jason, 2026-09-22). It sizes itself: 16 or 12 steps a bar
+    (12 for triplets), as many bars as the pattern needs. A pattern it
+    can't show leaves it read-only with a note saying why.
   - **Note length:** "A quarter note = [¼, ½, 1, 2, 4, 8] beats", default
     4 beats (one bar), so `q q q q` is a slide a bar.
   - **Tempo:** a **BPM field**, filled in from the song's analysis when
