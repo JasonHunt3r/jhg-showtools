@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// Edit Show's right-hand column: the show's collection, its files to build
 /// the show from (plan, 2b; Final Cut's browser). The show's own order lives

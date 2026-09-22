@@ -6,7 +6,10 @@ import ShowToolsCore
 
 /// Carries a value across an isolation boundary. Used for immutable
 /// CoreGraphics images decoded off the main thread.
-struct Handoff<T>: @unchecked Sendable { let value: T }
+public struct Handoff<T>: @unchecked Sendable {
+    public let value: T
+    public init(value: T) { self.value = value }
+}
 
 /// Decoded media for the slides around the playhead.
 ///
@@ -15,7 +18,7 @@ struct Handoff<T>: @unchecked Sendable { let value: T }
 /// several-hundred-slide show costs a handful of images of memory. Video
 /// plays through AVPlayer, kept in step with the show clock.
 @MainActor
-final class MediaProvider {
+public final class MediaProvider {
     private let urlFor: (MediaItem) -> URL?
     private let maxPixels: Int
 
@@ -31,14 +34,14 @@ final class MediaProvider {
     private var loading: Set<Int64> = []
     private var videos: [Int64: VideoSlot] = [:]   // keyed by slide id: each use plays on its own
     /// Called when newly decoded media arrives, so an idle view redraws.
-    var onChange: (() -> Void)?
+    public var onChange: (() -> Void)?
 
-    init(maxPixels: Int, urlFor: @escaping (MediaItem) -> URL?) {
+    public init(maxPixels: Int, urlFor: @escaping (MediaItem) -> URL?) {
         self.maxPixels = maxPixels
         self.urlFor = urlFor
     }
 
-    func isReady(_ slide: ResolvedSlide) -> Bool {
+    public func isReady(_ slide: ResolvedSlide) -> Bool {
         switch slide.item.kind {
         case .image: stills[slide.item.id] != nil
         case .animatedImage: animations[slide.item.id] != nil
@@ -48,7 +51,7 @@ final class MediaProvider {
         }
     }
 
-    func image(for layer: Layer, playing: Bool) -> CIImage? {
+    public func image(for layer: Layer, playing: Bool) -> CIImage? {
         let item = layer.slide.item
         switch item.kind {
         case .image:
@@ -67,7 +70,7 @@ final class MediaProvider {
 
     /// The lane's image. Stills and animations; video in the lane isn't
     /// supported yet, so it draws nothing.
-    func image(for overlay: OverlayLayer) -> CIImage? {
+    public func image(for overlay: OverlayLayer) -> CIImage? {
         let item = overlay.overlay.item
         switch item.kind {
         case .image:
@@ -94,7 +97,7 @@ final class MediaProvider {
 
     /// Loads what's about to be needed and drops what's far away. `alsoKeep`
     /// is the lane's images near the playhead.
-    func prepare(around index: Int, in timeline: ShowTimeline, visible: [Layer], alsoKeep: [MediaItem] = []) {
+    public func prepare(around index: Int, in timeline: ShowTimeline, visible: [Layer], alsoKeep: [MediaItem] = []) {
         guard !timeline.slides.isEmpty else { return }
         let n = timeline.slides.count
         let window = (-1...2).map { (index + $0 + n) % n }
@@ -118,9 +121,9 @@ final class MediaProvider {
         }
     }
 
-    func pauseAllVideo() { videos.values.forEach { $0.pause() } }
+    public func pauseAllVideo() { videos.values.forEach { $0.pause() } }
 
-    func stopAll() {
+    public func stopAll() {
         videos.values.forEach { $0.stop() }
         videos = [:]
     }
@@ -183,7 +186,7 @@ final class MediaProvider {
 /// while it keeps up, and is re-seeked only when it drifts, so playback
 /// stays smooth rather than stuttering through constant corrections.
 @MainActor
-final class VideoSlot {
+public final class VideoSlot {
     private let player: AVPlayer
     private let output: AVPlayerItemVideoOutput
     private let duration: Double
@@ -191,7 +194,7 @@ final class VideoSlot {
     private var last: CIImage?
     private var seeking = false
 
-    init(url: URL, duration: Double) {
+    public init(url: URL, duration: Double) {
         let asset = AVURLAsset(url: url)
         let item = AVPlayerItem(asset: asset)
         output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
@@ -212,7 +215,7 @@ final class VideoSlot {
     /// A video plays once from its clip start and holds its last frame —
     /// through the transition out of it, too. It loops (back to the clip
     /// start) only when its slide is longer than what's left of the clip.
-    func image(localTime: Double, slideLength: Double, clipStart: Double, playing: Bool) -> CIImage? {
+    public func image(localTime: Double, slideLength: Double, clipStart: Double, playing: Bool) -> CIImage? {
         let lastFrame = max(duration - 0.04, 0)
         let span = max(duration - clipStart, 0.04)
         let loops = slideLength > span + 0.1
@@ -267,9 +270,9 @@ final class VideoSlot {
         return t.transformed(by: .init(translationX: -t.extent.minX, y: -t.extent.minY))
     }
 
-    func pause() { player.pause() }
+    public func pause() { player.pause() }
 
-    func stop() {
+    public func stop() {
         player.pause()
         player.replaceCurrentItem(with: nil)
     }

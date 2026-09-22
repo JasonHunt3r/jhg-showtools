@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// The inspector's Effects timeline: a slide's time on screen, from its
 /// transition in beginning to its transition out ending, with a bar for each

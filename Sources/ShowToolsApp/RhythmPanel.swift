@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// The Rhythm tool (plan, Phase 3 step 7): a floating panel that writes a
 /// rhythm pattern and lays it over the range as hand markers, on an even

@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// The storyline's music row (plan, Phase 3): songs as clips on the show's
 /// clock, each drawn with its waveform. Drop songs from Finder, the library

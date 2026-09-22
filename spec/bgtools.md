@@ -196,7 +196,8 @@ New with BGTools:
 
 ## Build steps (proposed 2026-09-22)
 
-- **B1 Shared player.** Move `PlaybackClock`, `PlaybackEngine`,
+- **B1 Shared player. BUILT 2026-09-22** (172 tests pass; Edit Show's
+  preview and the player checked in-app on a scratch library). Move `PlaybackClock`, `PlaybackEngine`,
   `MediaProvider`/`VideoSlot`, `MusicPlayer` and `ShowCanvas` out of the
   app into a new SwiftPM library, `ShowToolsPlayback`. The engine talks to
   a small `ShowSource` protocol (a show by id, its timeline, an item's

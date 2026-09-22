@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// Click the image in the Edit Show preview to select it; then its handles
 /// and the keyboard edit that slide's Transform (plan, Phase 2a):

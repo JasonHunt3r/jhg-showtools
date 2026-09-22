@@ -3,6 +3,7 @@ import AVFoundation
 import CoreImage
 import ImageIO
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// A strip of rendered frames of the finished picture (slides, transitions
 /// and lane images together) above the play bar (Jason, 2026-09-21). The

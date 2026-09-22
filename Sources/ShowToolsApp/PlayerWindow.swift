@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// What the on-screen overlay shows.
 @MainActor

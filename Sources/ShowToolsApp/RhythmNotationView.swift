@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreText
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// A rhythm pattern drawn as notation (plan, Phase 3 step 7): one line, no
 /// pitches, in Bravura (bundled; see make-app.sh). `RhythmNotation.layout`

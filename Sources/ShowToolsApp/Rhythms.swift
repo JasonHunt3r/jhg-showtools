@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import ShowToolsCore
+import ShowToolsPlayback
 // Weakly linked: the framework is new in macOS 27, and the app still has to
 // launch on older systems, where beat detection just says it isn't there.
 @_weakLinked import MusicUnderstanding

@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// The Rhythm tool's drum-machine view (plan, Phase 3 step 7): one row of
 /// squares per bar, a lit square where a slide changes. It's its own input:

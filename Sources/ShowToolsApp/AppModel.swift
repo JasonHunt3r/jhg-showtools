@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import ShowToolsCore
+import ShowToolsPlayback
 
 enum SidebarItem: Hashable {
     case library
@@ -969,6 +970,8 @@ final class AppModel {
         ShowTimeline(show: show, items: itemsByID)
     }
 
+    func item(_ id: Int64) -> MediaItem? { itemsByID[id] }
+
     /// A repair, not a workflow (plan, 2b): finds files moved by hand in
     /// Finder and points their rows at the new location, by hash. Not
     /// undoable — it only ever repairs a broken reference back to a real
@@ -995,3 +998,6 @@ struct RelinkSummary: Identifiable {
     let relinked: Int
     let stillMissing: Int
 }
+
+/// The player (ShowToolsPlayback) reads shows and files through this.
+extension AppModel: ShowSource {}

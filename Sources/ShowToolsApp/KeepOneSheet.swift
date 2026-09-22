@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// Keep One (plan, Phase 3b): a group of look-alikes side by side, one
 /// suggested to keep (the largest, then the best rated); click another to

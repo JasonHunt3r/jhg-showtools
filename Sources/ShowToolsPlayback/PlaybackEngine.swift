@@ -7,37 +7,37 @@ import ShowToolsCore
 /// The show clock. Slides never keep their own timers: everything asks this
 /// what time it is.
 @MainActor
-final class PlaybackClock {
-    private(set) var playing = false
+public final class PlaybackClock {
+    public private(set) var playing = false
     /// 1 = normal; 2, 4… from pressing L again; negative plays backwards (J).
-    private(set) var rate: Double = 1
+    public private(set) var rate: Double = 1
     private var base: Double = 0
     private var anchor: CFTimeInterval = 0
     /// While music plays at normal speed, the seconds since `base` come from
     /// the sound card instead of the system clock (see `MusicPlayer`). Set
     /// right after a play or seek, so it always counts from `base`.
-    var external: (() -> Double?)?
+    public var external: (() -> Double?)?
 
-    var now: Double {
+    public var now: Double {
         guard playing else { return base }
         if rate == 1, let e = external?() { return base + e }
         return base + (CACurrentMediaTime() - anchor) * rate
     }
 
-    func play(rate: Double? = nil) {
+    public func play(rate: Double? = nil) {
         if playing { base = now }
         anchor = CACurrentMediaTime()
         if let rate { self.rate = rate }
         playing = true
     }
 
-    func pause() {
+    public func pause() {
         guard playing else { return }
         base = now
         playing = false
     }
 
-    func seek(_ t: Double) {
+    public func seek(_ t: Double) {
         base = t
         anchor = CACurrentMediaTime()
     }
@@ -49,33 +49,33 @@ final class PlaybackClock {
 /// its popped-out window draw the same frame from the same clock.
 @MainActor
 @Observable
-final class PlaybackEngine {
-    let showID: Int64
-    @ObservationIgnored private weak var model: AppModel?
-    @ObservationIgnored private(set) var show: Show
-    @ObservationIgnored private(set) var timeline: ShowTimeline
+public final class PlaybackEngine {
+    public let showID: Int64
+    @ObservationIgnored private weak var model: (any ShowSource)?
+    @ObservationIgnored public private(set) var show: Show
+    @ObservationIgnored public private(set) var timeline: ShowTimeline
 
     // Observed a few times a second, for controls — never per frame.
-    private(set) var isPlaying = false
-    private(set) var rate: Double = 1
-    private(set) var currentIndex = 0
-    private(set) var duration: Double = 0
+    public private(set) var isPlaying = false
+    public private(set) var rate: Double = 1
+    public private(set) var currentIndex = 0
+    public private(set) var duration: Double = 0
     /// Bumped whenever the timeline is rebuilt, so views can re-read it.
-    private(set) var revision = 0
+    public private(set) var revision = 0
     /// Bumped on every seek, so a paused playhead redraws where it landed.
-    private(set) var seekCount = 0
+    public private(set) var seekCount = 0
 
     // The range and loop playback live in the show's editing state
     // (`Show.editor`), saved with it but not undone. Views read them from
     // the saved show, which SwiftUI observes; the engine's copy follows
     // at once when they're changed here.
 
-    @ObservationIgnored let clock = PlaybackClock()
+    @ObservationIgnored public let clock = PlaybackClock()
     @ObservationIgnored private let music = MusicPlayer()
     /// Which pass of a looping show the music was started for: at the next
     /// pass it starts again from the top.
     @ObservationIgnored private var musicPass = 0
-    @ObservationIgnored let media: MediaProvider
+    @ObservationIgnored public let media: MediaProvider
     @ObservationIgnored private let device: MTLDevice
     @ObservationIgnored private let queue: MTLCommandQueue
     @ObservationIgnored private let ci: CIContext
@@ -87,9 +87,9 @@ final class PlaybackEngine {
     @ObservationIgnored private var waitingToStart = false
     /// True while a handle drag or a run of nudges is drawn before it's
     /// saved. The saved show mustn't replace it until the edit is committed.
-    @ObservationIgnored private(set) var isEditingLive = false
+    @ObservationIgnored public private(set) var isEditingLive = false
 
-    init(showID: Int64, model: AppModel) {
+    public init(showID: Int64, model: any ShowSource) {
         self.showID = showID
         self.model = model
         show = model.show(showID) ?? Show(id: showID, name: "")
@@ -109,7 +109,7 @@ final class PlaybackEngine {
     }
 
     /// Stop the timer and release video. The engine can't be used afterwards.
-    func shutdown() {
+    public func shutdown() {
         ticker?.invalidate()
         ticker = nil
         clock.pause()
@@ -117,9 +117,9 @@ final class PlaybackEngine {
         media.stopAll()
     }
 
-    var now: Double { clock.now }
+    public var now: Double { clock.now }
 
-    func touch() { lastChange = CACurrentMediaTime() }
+    public func touch() { lastChange = CACurrentMediaTime() }
 
     // MARK: Keeping up with edits
 
@@ -170,7 +170,7 @@ final class PlaybackEngine {
     /// Draws `edited` in place of the saved show, for a live edit that
     /// doesn't change timing (a Transform). Call `endLiveEdit` once it's
     /// committed, or abandoned.
-    func showLiveEdit(_ edited: Show) {
+    public func showLiveEdit(_ edited: Show) {
         isEditingLive = true
         show = edited
         timeline = model?.timeline(for: edited) ?? timeline
@@ -178,7 +178,7 @@ final class PlaybackEngine {
     }
 
     /// Back to the saved show: the next tick picks it up.
-    func endLiveEdit() {
+    public func endLiveEdit() {
         guard isEditingLive else { return }
         isEditingLive = false
         tick()
@@ -187,7 +187,7 @@ final class PlaybackEngine {
 
     // MARK: Controls
 
-    func play() {
+    public func play() {
         if !timeline.loops, clock.now >= timeline.duration - 0.01 { clock.seek(0) }
         // Looping a range from outside it starts at its beginning.
         if show.editor.loopPlayback, let r = range, !r.contains(timeline.wrap(clock.now)) { clock.seek(r.lowerBound) }
@@ -202,7 +202,7 @@ final class PlaybackEngine {
         tick()
     }
 
-    func pause() {
+    public func pause() {
         waitingToStart = false
         clock.pause()
         syncMusic()
@@ -211,10 +211,10 @@ final class PlaybackEngine {
         tick()
     }
 
-    func togglePlay() { clock.playing || waitingToStart ? pause() : play() }
+    public func togglePlay() { clock.playing || waitingToStart ? pause() : play() }
 
     /// Final Cut's J/K/L: L plays, again doubles; J the same backwards; K stops.
-    func shuttle(_ direction: Int) {
+    public func shuttle(_ direction: Int) {
         waitingToStart = false
         if direction == 0 { pause(); return }
         let current = clock.playing ? clock.rate : 0
@@ -227,7 +227,7 @@ final class PlaybackEngine {
         tick()
     }
 
-    func seek(_ t: Double) {
+    public func seek(_ t: Double) {
         clock.seek(t)
         syncMusic()
         seekCount += 1
@@ -237,7 +237,7 @@ final class PlaybackEngine {
 
     /// Next/previous land with the slide fully on screen when paused, and
     /// at the start of its transition when playing (so the transition plays).
-    func step(_ delta: Int) {
+    public func step(_ delta: Int) {
         guard !timeline.isEmpty else { return }
         let n = timeline.slides.count
         let now = clock.now
@@ -252,7 +252,7 @@ final class PlaybackEngine {
         go(to: i)
     }
 
-    func go(to index: Int) {
+    public func go(to index: Int) {
         guard timeline.slides.indices.contains(index) else { return }
         // Stay within the current loop pass so wrapping transitions stay right.
         let passStart = timeline.loops && timeline.duration > 0
@@ -262,7 +262,7 @@ final class PlaybackEngine {
     }
 
     /// Show a particular slide, fully on screen, and pause there.
-    func showSlide(id: Int64) {
+    public func showSlide(id: Int64) {
         guard let i = timeline.slides.firstIndex(where: { $0.slide.id == id }) else { return }
         pause()
         seek(timeline.settledTime(of: i))
@@ -272,9 +272,9 @@ final class PlaybackEngine {
 
     /// The in-to-out span, when it's on and set. With only one end set, the
     /// other is the show's start or end, as in Final Cut.
-    var range: ClosedRange<Double>? { Self.range(of: show.editor, duration: duration) }
+    public var range: ClosedRange<Double>? { Self.range(of: show.editor, duration: duration) }
 
-    static func range(of e: ShowEditorState, duration: Double) -> ClosedRange<Double>? {
+    public static func range(of e: ShowEditorState, duration: Double) -> ClosedRange<Double>? {
         guard e.rangeOn, e.rangeIn != nil || e.rangeOut != nil else { return nil }
         let lo = e.rangeIn ?? 0, hi = e.rangeOut ?? duration
         return hi > lo ? lo...hi : nil
@@ -282,13 +282,13 @@ final class PlaybackEngine {
 
     /// Saves a change to the show's editing state (no undo step), and
     /// takes it up at once rather than on the next tick.
-    func updateEditor(_ change: (inout ShowEditorState) -> Void) {
+    public func updateEditor(_ change: (inout ShowEditorState) -> Void) {
         model?.updateEditor(showID, change)
         if !isEditingLive, let latest = model?.show(showID), latest != show { reload(latest) }
         touch()
     }
 
-    func setRangeIn() {
+    public func setRangeIn() {
         let t = (timeline.wrap(clock.now) * 100).rounded() / 100
         updateEditor { e in
             e.rangeIn = t
@@ -297,7 +297,7 @@ final class PlaybackEngine {
         }
     }
 
-    func setRangeOut() {
+    public func setRangeOut() {
         let t = (timeline.wrap(clock.now) * 100).rounded() / 100
         updateEditor { e in
             e.rangeOut = t
@@ -306,7 +306,7 @@ final class PlaybackEngine {
         }
     }
 
-    func clearRange() {
+    public func clearRange() {
         updateEditor { $0.rangeIn = nil; $0.rangeOut = nil }
     }
 
@@ -328,25 +328,25 @@ final class PlaybackEngine {
     /// While listening: the stretch that loops, and the clicks (show times).
     /// Its own loop, so the show's saved loop switch isn't touched.
     @ObservationIgnored private var listening: (range: ClosedRange<Double>, clicks: [Double])?
-    var isListening: Bool { listening != nil }
+    public var isListening: Bool { listening != nil }
 
     /// Loops `range` with a click at each of `clicks`, over the songs.
-    func listen(_ range: ClosedRange<Double>, clicks: [Double]) {
+    public func listen(_ range: ClosedRange<Double>, clicks: [Double]) {
         listening = (range, clicks)
         clock.seek(range.lowerBound)
         play()
     }
 
     /// New clicks while listening (the pattern changed): from the next pass.
-    func updateListening(_ range: ClosedRange<Double>, clicks: [Double]) {
+    public func updateListening(_ range: ClosedRange<Double>, clicks: [Double]) {
         guard listening != nil else { return }
         listening = (range, clicks)
     }
 
     /// Playback stopped some other way (Space, say): Listen is over.
-    @ObservationIgnored var onListenEnded: (() -> Void)?
+    @ObservationIgnored public var onListenEnded: (() -> Void)?
 
-    func stopListening() {
+    public func stopListening() {
         guard listening != nil else { return }
         listening = nil
         pause()
@@ -374,7 +374,7 @@ final class PlaybackEngine {
         // Songs stop at the show's end (step 4 makes the show as long as
         // its longest row).
         let segments: [MusicPlayer.Segment] = show.music.compactMap { clip in
-            guard let item = model.itemsByID[clip.itemID], let url = model.url(for: item),
+            guard let item = model.item(clip.itemID), let url = model.url(for: item),
                   let seg = clip.segment(from: local, until: timeline.duration) else { return nil }
             return MusicPlayer.Segment(clipID: clip.id, url: url, delay: seg.delay, fileStart: seg.fileStart,
                                        duration: seg.duration)
@@ -395,7 +395,7 @@ final class PlaybackEngine {
 
     @ObservationIgnored private var drawnSize: [ObjectIdentifier: CGSize] = [:]
 
-    func render(_ view: MTKView) {
+    public func render(_ view: MTKView) {
         let key = ObjectIdentifier(view)
         let size = view.drawableSize
         let settling = CACurrentMediaTime() - lastChange < 0.6
@@ -445,7 +445,7 @@ final class PlaybackEngine {
                             source: (Layer) -> CIImage?) -> CIImage {
         let whole = CGRect(origin: .zero, size: size)
         // Centred, so the same in Core Image's y-up space as in the view's.
-        let frame = PreviewStage.pictureRect(in: size, zoom: stage.zoom)
+        let frame = ShowCanvas.pictureRect(in: size, zoom: stage.zoom, aspect: stage.aspect)
         guard frame.width >= 1, frame.height >= 1 else { return CIImage(color: .black).cropped(to: whole) }
         let move = CGAffineTransform(translationX: frame.minX, y: frame.minY)
 
@@ -504,7 +504,7 @@ final class PlaybackEngine {
                      transitionOutPlays: prev.transitionOut)
     }
 
-    func makeView() -> ShowCanvas {
+    public func makeView() -> ShowCanvas {
         let v = ShowCanvas(frame: NSRect(x: 0, y: 0, width: 640, height: 360), device: device)
         v.framebufferOnly = false
         v.colorPixelFormat = .bgra8Unorm
@@ -518,63 +518,86 @@ final class PlaybackEngine {
 }
 
 /// An MTKView that draws whatever its engine says is on screen.
-final class ShowCanvas: MTKView, MTKViewDelegate {
-    weak var engine: PlaybackEngine?
+public final class ShowCanvas: MTKView, MTKViewDelegate {
+    public weak var engine: PlaybackEngine?
     /// Set on the Edit Show preview only, making it a work area. Every other
     /// canvas (pop-out, player) is the picture and nothing else.
-    var stage: Stage?
+    public var stage: Stage?
 
-    struct Stage: Equatable {
+    public struct Stage: Equatable {
         /// 1 fits the picture to the view; below 1 leaves room round it.
-        var zoom: CGFloat = 1
+        public var zoom: CGFloat = 1
         /// The selected image's slide: the onion skin shows the slide before it.
-        var onionSlideID: Int64?
-        var onionOpacity: Double = 0.5
+        public var onionSlideID: Int64?
+        public var onionOpacity: Double = 0.5
+        /// The shape the show is framed for (ShowTools: the main screen's).
+        public var aspect: CGFloat = 16 / 9
+
+        public init(zoom: CGFloat = 1, onionSlideID: Int64? = nil, onionOpacity: Double = 0.5, aspect: CGFloat = 16 / 9) {
+            self.zoom = zoom
+            self.onionSlideID = onionSlideID
+            self.onionOpacity = onionOpacity
+            self.aspect = aspect
+        }
     }
 
-    var onKey: ((NSEvent) -> Bool)?
-    var onMouseMoved: (() -> Void)?
-    var onDoubleClick: (() -> Void)?
+    /// The picture's frame inside a view of `size` at `zoom` (1 fits it).
+    public static func pictureRect(in size: CGSize, zoom: CGFloat, aspect: CGFloat) -> CGRect {
+        guard size.width > 0, size.height > 0 else { return .zero }
+        let z = min(max(zoom, 0.05), 1)
+        let w = min(size.width, size.height * aspect) * z
+        let h = w / aspect
+        return CGRect(x: (size.width - w) / 2, y: (size.height - h) / 2, width: w, height: h)
+    }
 
-    nonisolated func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
+    public var onKey: ((NSEvent) -> Bool)?
+    public var onMouseMoved: (() -> Void)?
+    public var onDoubleClick: (() -> Void)?
 
-    nonisolated func draw(in view: MTKView) {
+    public nonisolated func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
+
+    public nonisolated func draw(in view: MTKView) {
         MainActor.assumeIsolated { engine?.render(self) }
     }
 
-    override var acceptsFirstResponder: Bool { onKey != nil }
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    public override var acceptsFirstResponder: Bool { onKey != nil }
+    public override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
-    override func keyDown(with event: NSEvent) {
+    public override func keyDown(with event: NSEvent) {
         if onKey?(event) != true { super.keyDown(with: event) }
     }
 
-    override func mouseMoved(with event: NSEvent) { onMouseMoved?() }
+    public override func mouseMoved(with event: NSEvent) { onMouseMoved?() }
 
-    override func updateTrackingAreas() {
+    public override func updateTrackingAreas() {
         super.updateTrackingAreas()
         trackingAreas.forEach(removeTrackingArea)
         addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseMoved, .activeInKeyWindow, .inVisibleRect],
                                        owner: self))
     }
 
-    override func mouseDown(with event: NSEvent) {
+    public override func mouseDown(with event: NSEvent) {
         if onKey != nil { window?.makeFirstResponder(self) }
         if event.clickCount == 2 { onDoubleClick?() } else { super.mouseDown(with: event) }
     }
 }
 
 /// The engine's picture as a SwiftUI view.
-struct ShowCanvasView: NSViewRepresentable {
-    let engine: PlaybackEngine
-    var stage: ShowCanvas.Stage? = nil
+public struct ShowCanvasView: NSViewRepresentable {
+    public let engine: PlaybackEngine
+    public var stage: ShowCanvas.Stage? = nil
 
-    func makeNSView(context: Context) -> ShowCanvas {
+    public init(engine: PlaybackEngine, stage: ShowCanvas.Stage? = nil) {
+        self.engine = engine
+        self.stage = stage
+    }
+
+    public func makeNSView(context: Context) -> ShowCanvas {
         let v = engine.makeView()
         v.stage = stage
         return v
     }
-    func updateNSView(_ view: ShowCanvas, context: Context) {
+    public func updateNSView(_ view: ShowCanvas, context: Context) {
         if view.engine !== engine { view.engine = engine; engine.touch() }
         if view.stage != stage { view.stage = stage; engine.touch() }
     }

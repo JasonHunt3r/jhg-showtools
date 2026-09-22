@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// Songs' waveforms, read once per file and kept: on disk beside the
 /// library (by content hash), and in memory while the app runs.

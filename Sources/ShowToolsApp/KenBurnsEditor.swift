@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// The shape shows are framed for: the main screen's. (Each monitor gets
 /// its own in Phase 5; until then the main screen stands in for all.)

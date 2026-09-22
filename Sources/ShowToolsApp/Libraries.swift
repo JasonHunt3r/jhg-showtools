@@ -1,6 +1,7 @@
 import SwiftUI
 import LocalAuthentication
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// "Prove it's you": Touch ID, or the Mac's login password
 /// (LocalAuthentication's device-owner check). False if cancelled, failed,

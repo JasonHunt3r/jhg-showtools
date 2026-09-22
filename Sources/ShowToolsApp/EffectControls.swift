@@ -1,6 +1,7 @@
 import SwiftUI
 import OSLog
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// Every commit from these controls is logged, so a value that changes
 /// unexpectedly can be traced to the control that wrote it:

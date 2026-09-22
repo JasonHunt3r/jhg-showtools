@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// The Info panel's "write tags as Finder tags too" setting (plan, 2b).
 /// Off by default; tags always live in the database regardless.

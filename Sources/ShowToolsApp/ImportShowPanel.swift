@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// File ▸ Import Show… (plan, Phase 4): a folder exported by Export Show…,
 /// or any folder of pictures, becomes a new show named after the folder. It

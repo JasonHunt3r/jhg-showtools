@@ -8,10 +8,10 @@ import ShowToolsCore
 /// sound card's own sample count, so the picture follows what you hear
 /// rather than the other way round.
 @MainActor
-final class MusicPlayer {
+public final class MusicPlayer {
     /// One song's part of a play: from `fileStart` seconds into the file,
     /// for `duration`, starting `delay` seconds after the play starts.
-    struct Segment {
+    public struct Segment {
         let clipID: UUID
         let url: URL
         let delay: Double
@@ -49,17 +49,17 @@ final class MusicPlayer {
     private var startHost: UInt64 = 0
     /// The output's sample count at `startHost`, worked out on first read.
     private var startSample: Double?
-    private(set) var isRunning = false
+    public private(set) var isRunning = false
     /// The output device changed (headphones in or out, say) and playback
     /// stopped: the owner restarts it from wherever the clock is.
-    var onReset: (() -> Void)?
+    public var onReset: (() -> Void)?
     private var observer: NSObjectProtocol?
 
     /// How far ahead of now the sound is scheduled, so every song starts on
     /// the same sample.
     private static let lead = 0.05
 
-    init() {
+    public init() {
         _ = engine.mainMixerNode        // builds the output chain
         observer = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in
@@ -77,7 +77,7 @@ final class MusicPlayer {
     ///
     /// `clicks` are seconds after the start, for Listen: they sound even
     /// with no song.
-    func start(_ segments: [Segment], clicks: [Double] = [], from local: Double,
+    public func start(_ segments: [Segment], clicks: [Double] = [], from local: Double,
                gain: @escaping (UUID, Double) -> Float) -> Bool {
         stop()
         var scheduled: [(AVAudioPlayerNode, AVAudioFile, Segment)] = []
@@ -140,7 +140,7 @@ final class MusicPlayer {
         for n in nodes { n.node.volume = gain(n.clipID, t) }
     }
 
-    func stop() {
+    public func stop() {
         levelTimer?.invalidate()
         levelTimer = nil
         gain = nil
@@ -161,7 +161,7 @@ final class MusicPlayer {
     /// Seconds of sound heard since the start, by the sound card's clock;
     /// nil when not playing. Never negative: during the short lead-in, the
     /// picture waits at the start.
-    var elapsed: Double? {
+    public var elapsed: Double? {
         guard isRunning, let r = engine.outputNode.lastRenderTime, r.isSampleTimeValid, r.isHostTimeValid
         else { return nil }
         let rate = r.sampleRate

@@ -2,6 +2,7 @@ import SwiftUI
 import Vision
 import ImageIO
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// Each picture's fingerprint for Find Similar (plan, Phase 3b): Vision's
 /// image feature print, worked out once per file and kept, on disk beside

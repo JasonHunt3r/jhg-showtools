@@ -2,6 +2,7 @@ import SwiftUI
 import ImageIO
 import AVFoundation
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// Small previews for the grid and slide list, made on demand and kept in
 /// memory. Several hundred items at 320px is a few tens of megabytes.

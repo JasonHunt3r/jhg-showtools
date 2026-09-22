@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// Per-slide settings for the selected slide(s). Each control can be left
 /// on "Show default"; editing several slides writes the value to all of them.

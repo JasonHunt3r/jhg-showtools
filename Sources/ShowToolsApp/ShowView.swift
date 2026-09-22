@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// Every edit to a show goes through one of these: an undo name, and the change.
 typealias ShowMutator = (_ action: String, _ change: (inout Show) -> Void) -> Void

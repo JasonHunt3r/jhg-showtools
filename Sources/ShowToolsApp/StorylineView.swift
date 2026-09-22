@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// The show as a Final Cut-style storyline: one block per slide, as wide as
 /// the slide is long, sitting end to end.

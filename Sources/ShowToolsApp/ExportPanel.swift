@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// The Settings switch for stripping metadata from exported files (plan,
 /// Phase 4). On by default: Jason wants privacy protected unless he says

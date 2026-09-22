@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// Edit Show: the show large in the middle, a transport and a Final
 /// Cut-style storyline under it, and the order list down the right.
@@ -235,7 +236,7 @@ struct PreviewStage: View {
 
     private var stage: ShowCanvas.Stage {
         ShowCanvas.Stage(zoom: CGFloat(workZoom), onionSlideID: onionOn ? imageSlideID : nil,
-                         onionOpacity: onionOpacity)
+                         onionOpacity: onionOpacity, aspect: outputAspect)
     }
 
     /// The picture, with the frame strip below it in this column only (not
@@ -513,11 +514,7 @@ struct PreviewStage: View {
     /// by the work area's zoom about the centre. The engine draws with the
     /// same rect (in pixels), so the handles line up with the picture.
     static func pictureRect(in size: CGSize, zoom: CGFloat) -> CGRect {
-        guard size.width > 0, size.height > 0 else { return .zero }
-        let z = min(max(zoom, 0.05), 1)
-        let w = min(size.width, size.height * outputAspect) * z
-        let h = w / outputAspect
-        return CGRect(x: (size.width - w) / 2, y: (size.height - h) / 2, width: w, height: h)
+        ShowCanvas.pictureRect(in: size, zoom: zoom, aspect: outputAspect)
     }
 }
 

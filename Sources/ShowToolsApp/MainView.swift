@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// Types a drop onto the app can carry: files from Finder, file promises
 /// (or data) from Photos.

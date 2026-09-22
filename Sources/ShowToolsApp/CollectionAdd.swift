@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// Library files dragged within the app, from the Collection Browser: a
 /// list of their ids, under ShowTools' own type (declared in Info.plist).

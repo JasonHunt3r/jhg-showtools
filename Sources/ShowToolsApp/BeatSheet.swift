@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// "Detect Beats…" (plan, Phase 3 step 6): markers on the beat, over the
 /// range (or one song, with no range), from each song's detected rhythm.

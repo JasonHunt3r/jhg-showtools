@@ -1,5 +1,6 @@
 import SwiftUI
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// `.sheet(item:)` needs an `Identifiable`; `[Int64]` isn't one, so this
 /// just carries it across.

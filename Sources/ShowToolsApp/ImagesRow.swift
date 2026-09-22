@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import ShowToolsCore
+import ShowToolsPlayback
 
 /// The lane's images row (plan, Phase 2c), one of the storyline's movable
 /// rows (Phase 3).
