@@ -329,6 +329,19 @@ struct StorylineView: View {
         // An open Rhythm tool follows the show on screen.
         .onAppear { RhythmTool.shared.follow(showID: show.id, undoManager: undoManager) }
         .onChange(of: show.id) { RhythmTool.shared.follow(showID: show.id, undoManager: undoManager) }
+        // The Rhythm tool's Listen plays here, on this show's engine.
+        .onChange(of: RhythmTool.shared.listening) { _, on in
+            let tool = RhythmTool.shared
+            if on, tool.showID == show.id {
+                engine.onListenEnded = { tool.listening = false }
+                engine.listen(listenRange, clicks: tool.preview)
+            } else {
+                engine.stopListening()
+            }
+        }
+        .onChange(of: RhythmTool.shared.preview) { _, clicks in
+            if RhythmTool.shared.listening { engine.updateListening(listenRange, clicks: clicks) }
+        }
         .sheet(item: $beatSheet) { req in
             BeatSheet(request: req, show: show, timeline: timeline, preview: $beatPreview, mutate: mutate)
         }
@@ -440,6 +453,11 @@ struct StorylineView: View {
                 .offset(x: Self.inset + CGFloat(t * pps) - 4.5, y: Self.rulerHeight - 11)
                 .allowsHitTesting(false)
         }
+    }
+
+    /// What Listen loops: the range, or the whole show (as the tool uses).
+    private var listenRange: ClosedRange<Double> {
+        engine.range ?? 0...max(timeline.duration, 0.1)
     }
 
     /// The Rhythm tool, on this show.

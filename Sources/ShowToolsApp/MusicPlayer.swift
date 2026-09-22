@@ -21,6 +21,23 @@ final class MusicPlayer {
 
     private let engine = AVAudioEngine()
     private var nodes: [(clipID: UUID, node: AVAudioPlayerNode)] = []
+    /// The Rhythm tool's Listen (plan, Phase 3 step 7): a click on each
+    /// pattern note, on the same engine as the songs, so it keeps time.
+    private var clickNode: AVAudioPlayerNode?
+    private static let clickSound: AVAudioPCMBuffer? = {
+        // 25 ms of a 1.6 kHz tone, falling away fast: a woodblock-ish tick.
+        let rate = 44_100.0
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1),
+              let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(rate * 0.025))
+        else { return nil }
+        buf.frameLength = buf.frameCapacity
+        let out = buf.floatChannelData![0]
+        for i in 0..<Int(buf.frameLength) {
+            let t = Double(i) / rate
+            out[i] = Float(0.6 * sin(2 * .pi * 1600 * t) * exp(-t * 180))
+        }
+        return buf
+    }()
     /// Each song's level at a show time (its volume, fades and crossfades),
     /// applied many times a second while it plays.
     private var gain: ((UUID, Double) -> Float)?
@@ -57,7 +74,11 @@ final class MusicPlayer {
     /// Starts the segments playing together. False if nothing could be
     /// played (no segments, or no file would open): the show then runs on
     /// the system clock.
-    func start(_ segments: [Segment], from local: Double, gain: @escaping (UUID, Double) -> Float) -> Bool {
+    ///
+    /// `clicks` are seconds after the start, for Listen: they sound even
+    /// with no song.
+    func start(_ segments: [Segment], clicks: [Double] = [], from local: Double,
+               gain: @escaping (UUID, Double) -> Float) -> Bool {
         stop()
         var scheduled: [(AVAudioPlayerNode, AVAudioFile, Segment)] = []
         for seg in segments {
@@ -68,7 +89,8 @@ final class MusicPlayer {
             node.volume = gain(seg.clipID, local + seg.delay)
             scheduled.append((node, file, seg))
         }
-        guard !scheduled.isEmpty else { return false }
+        let clickSound = clicks.isEmpty ? nil : Self.clickSound
+        guard !scheduled.isEmpty || clickSound != nil else { return false }
         do {
             if !engine.isRunning { try engine.start() }
         } catch {
@@ -84,6 +106,16 @@ final class MusicPlayer {
             node.scheduleSegment(file, startingFrame: first, frameCount: AVAudioFrameCount(count),
                                  at: AVAudioTime(sampleTime: AVAudioFramePosition(seg.delay * rate), atRate: rate))
         }
+        if let sound = clickSound {
+            let node = AVAudioPlayerNode()
+            engine.attach(node)
+            engine.connect(node, to: engine.mainMixerNode, format: sound.format)
+            let rate = sound.format.sampleRate
+            for c in clicks.prefix(2000) where c >= 0 {
+                node.scheduleBuffer(sound, at: AVAudioTime(sampleTime: AVAudioFramePosition(c * rate), atRate: rate))
+            }
+            clickNode = node
+        }
         nodes = scheduled.map { ($0.2.clipID, $0.0) }
         self.gain = gain
         startLocal = local
@@ -91,6 +123,7 @@ final class MusicPlayer {
         startSample = nil
         let when = AVAudioTime(hostTime: startHost)
         for n in nodes { n.node.play(at: when) }
+        clickNode?.play(at: when)
         isRunning = true
         // In the common modes, so fades keep moving while something's dragged.
         let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
@@ -116,6 +149,11 @@ final class MusicPlayer {
             engine.detach(n.node)
         }
         nodes = []
+        if let c = clickNode {
+            c.stop()
+            engine.detach(c)
+            clickNode = nil
+        }
         if engine.isRunning { engine.pause() }
         isRunning = false
     }

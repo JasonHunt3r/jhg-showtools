@@ -16,6 +16,8 @@ final class RhythmTool {
     @ObservationIgnored var undoManager: UndoManager?
     /// Where Apply would put markers (show times), drawn faintly on the ruler.
     var preview: [Double] = []
+    /// Listen: the storyline loops the range with a click on each of `preview`.
+    var listening = false
     var isOpen: Bool { panel != nil }
 
     @ObservationIgnored private var panel: RhythmPanel?
@@ -62,6 +64,7 @@ final class RhythmTool {
     }
 
     fileprivate func closed() {
+        listening = false
         editingPattern = false
         panel = nil
         preview = []
@@ -208,7 +211,7 @@ struct RhythmPanelContent: View {
             }
         }
         .padding(16)
-        .onAppear { tool.preview = [] }
+        .onAppear { tool.preview = []; tool.listening = false }
     }
 
     /// Notes or Grid.
@@ -262,7 +265,14 @@ struct RhythmPanelContent: View {
             HStack {
                 Text("\(t.count) marker\(t.count == 1 ? "" : "s")").foregroundStyle(.secondary)
                 Spacer()
-                Button("Apply") { apply(s, t) }
+                Button {
+                    tool.listening.toggle()
+                } label: {
+                    Label(tool.listening ? "Stop" : "Listen", systemImage: tool.listening ? "stop.fill" : "play.fill")
+                }
+                .disabled(t.isEmpty && !tool.listening)
+                .help("Loop the range with a click on each note, over the music")
+                Button("Apply") { tool.listening = false; apply(s, t) }
                     .keyboardShortcut(.defaultAction)
                     .disabled(t.isEmpty)
             }

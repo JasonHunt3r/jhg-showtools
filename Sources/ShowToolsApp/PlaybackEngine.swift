@@ -140,6 +140,10 @@ final class PlaybackEngine {
         if i != currentIndex { currentIndex = i }
         let playing = clock.playing || waitingToStart
         if playing != isPlaying { isPlaying = playing }
+        if !playing, listening != nil {
+            listening = nil
+            onListenEnded?()
+        }
         if clock.rate != rate { rate = clock.rate }
     }
 
@@ -310,13 +314,42 @@ final class PlaybackEngine {
     /// no range) goes back to its start. Checked every frame drawn and every
     /// tick, so it overshoots by a frame at most.
     private func keepInLoop() {
-        guard show.editor.loopPlayback, clock.playing, clock.rate > 0, duration > 0 else { return }
-        let region = range ?? 0...duration
+        guard show.editor.loopPlayback || listening != nil, clock.playing, clock.rate > 0, duration > 0 else { return }
+        let region = listening?.range ?? range ?? 0...duration
         let local = timeline.wrap(clock.now)
         let atShowEnd = !timeline.loops && clock.now >= duration - 0.001
         if local >= region.upperBound || atShowEnd || local < region.lowerBound - 0.1 {
             seek(region.lowerBound)
         }
+    }
+
+    // MARK: Listen (the Rhythm tool)
+
+    /// While listening: the stretch that loops, and the clicks (show times).
+    /// Its own loop, so the show's saved loop switch isn't touched.
+    @ObservationIgnored private var listening: (range: ClosedRange<Double>, clicks: [Double])?
+    var isListening: Bool { listening != nil }
+
+    /// Loops `range` with a click at each of `clicks`, over the songs.
+    func listen(_ range: ClosedRange<Double>, clicks: [Double]) {
+        listening = (range, clicks)
+        clock.seek(range.lowerBound)
+        play()
+    }
+
+    /// New clicks while listening (the pattern changed): from the next pass.
+    func updateListening(_ range: ClosedRange<Double>, clicks: [Double]) {
+        guard listening != nil else { return }
+        listening = (range, clicks)
+    }
+
+    /// Playback stopped some other way (Space, say): Listen is over.
+    @ObservationIgnored var onListenEnded: (() -> Void)?
+
+    func stopListening() {
+        guard listening != nil else { return }
+        listening = nil
+        pause()
     }
 
     // MARK: Music
@@ -331,7 +364,7 @@ final class PlaybackEngine {
     /// from the clock's time and takes the clock over.
     private func syncMusic() {
         clock.external = nil
-        guard clock.playing, clock.rate == 1, !show.music.isEmpty, let model else {
+        guard clock.playing, clock.rate == 1, !show.music.isEmpty || listening != nil, let model else {
             if music.isRunning { music.stop() }
             return
         }
@@ -351,7 +384,9 @@ final class PlaybackEngine {
         let gain: (UUID, Double) -> Float = { id, t in
             clips.first { $0.id == id }.map { Float(AudioClip.gain(of: $0, at: t, among: clips)) } ?? 0
         }
-        if music.start(segments, from: local, gain: gain) {
+        // Listen's clicks still to come in this stretch, as seconds from now.
+        let clicks = (listening?.clicks ?? []).filter { $0 >= local - 0.001 }.map { $0 - local }
+        if music.start(segments, clicks: clicks, from: local, gain: gain) {
             clock.external = { [music] in music.elapsed }
         }
     }

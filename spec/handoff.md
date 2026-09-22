@@ -275,7 +275,18 @@ ahead with 7x" from Jason before each one:
   for ones saved before, which leave the setting alone); picking it
   restores the setting; the menu shows "(q = 2 beats)". Built-ins leave
   the setting as it is.
-- **7g Listen:** loop the range with a click on each note, over the song.
+- **7g Listen: BUILT** (2026-09-22). The Rhythm panel's Listen / Stop.
+  `MusicPlayer.start` takes click times: a generated 25 ms 1.6 kHz tick on
+  its own node, scheduled on the same engine and started on the same
+  host time as the songs (works with no song too). `PlaybackEngine.listen`
+  has its own loop over the range (the show's saved loop switch isn't
+  touched); a new preview while listening takes effect next pass; playback
+  stopping any other way ends it (`onListenEnded`). **Measured**: a
+  recording tap (removed) over the click track, pattern `q` at 1 beat:
+  every click within 2.2 ms of the song's (mean 1.2, at 0.7 ms
+  resolution), gaps steady through the loop wrap. Not yet checked: Space
+  stopping Listen resets the button (the code path is there); Jason's
+  ears on real music.
 
 ## Still needs Jason's hands
 - **Listening:** music sync, fades, crossfades; Bluetooth headphones'
