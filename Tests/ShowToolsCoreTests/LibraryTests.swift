@@ -272,6 +272,23 @@ extension LibraryTests {
         XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("Library.sqlite.v10.bak").path))
     }
 
+    func testAVersionElevenLibrarysPatternsKeepTheirSettingAsIs() throws {
+        let root = dir.appendingPathComponent("Eleven.noindex")
+        do {
+            let lib = try Library(root: root)
+            try lib.saveRhythmPattern(name: "old", RhythmPattern(text: "h q q"))
+        }
+        do {
+            let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
+            try db.exec("ALTER TABLE rhythm_patterns DROP COLUMN beats_per_quarter; PRAGMA user_version = 11;")
+        }
+        let lib = try Library(root: root)
+        XCTAssertEqual(try lib.allRhythmPatterns().map(\.pattern.text), ["h q q"])
+        XCTAssertNil(try lib.allRhythmPatterns().first?.beatsPerQuarter, "no setting: leave it as it is")
+        try lib.saveRhythmPattern(name: "new", RhythmPattern(text: "q"), beatsPerQuarter: 2)
+        XCTAssertEqual(try lib.allRhythmPatterns().first { $0.name == "new" }?.beatsPerQuarter, 2)
+    }
+
     func testRhythmPatternsSaveByNameAndReplaceASameName() throws {
         let lib = try Library(root: dir.appendingPathComponent("R.noindex"))
         let a = try lib.saveRhythmPattern(name: "verse", RhythmPattern(text: "h q q"))

@@ -438,10 +438,10 @@ final class AppModel {
     }
 
     /// Saves a rhythm pattern by name; a name already used is replaced.
-    func saveRhythmPattern(name: String, _ pattern: RhythmPattern) {
+    func saveRhythmPattern(name: String, _ pattern: RhythmPattern, beatsPerQuarter: Double) {
         guard let lib = library, !name.isEmpty else { return }
         do {
-            try lib.saveRhythmPattern(name: name, pattern)
+            try lib.saveRhythmPattern(name: name, pattern, beatsPerQuarter: beatsPerQuarter)
             rhythmPatterns = try lib.allRhythmPatterns()
         } catch {
             loadError = "\(error)"

@@ -101,11 +101,14 @@ public struct SavedRhythm: Hashable, Identifiable, Sendable {
     public let id: Int64
     public var name: String
     public var pattern: RhythmPattern
+    /// "A quarter note = N beats" when it was saved; nil leaves it as it is.
+    public var beatsPerQuarter: Double?
 
-    public init(id: Int64, name: String, pattern: RhythmPattern) {
+    public init(id: Int64, name: String, pattern: RhythmPattern, beatsPerQuarter: Double? = nil) {
         self.id = id
         self.name = name
         self.pattern = pattern
+        self.beatsPerQuarter = beatsPerQuarter
     }
 }
 

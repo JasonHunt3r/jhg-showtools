@@ -124,7 +124,7 @@ public final class Library {
     }
 
     /// The schema version `migrate` brings a library up to.
-    public static let schemaVersion = 11
+    public static let schemaVersion = 12
 
     /// Before an existing library is upgraded, a copy of its database as it
     /// was, beside it: `Library.sqlite.v<N>.bak`. Upgrades are additive and
@@ -303,6 +303,16 @@ public final class Library {
                     """)
             }
         }
+        // 12 (2026-09-22): a saved pattern keeps its "a quarter note = N
+        // beats" too (Jason). Additive: NULL leaves the setting as it is.
+        if db.userVersion < 12 {
+            try db.transaction {
+                try db.exec("""
+                    ALTER TABLE rhythm_patterns ADD COLUMN beats_per_quarter REAL;
+                    PRAGMA user_version = 12;
+                    """)
+            }
+        }
     }
 
     // MARK: The library itself
@@ -332,23 +342,30 @@ public final class Library {
 
     /// The named patterns, by name.
     public func allRhythmPatterns() throws -> [SavedRhythm] {
-        let s = try db.prepare("SELECT id, name, pattern FROM rhythm_patterns ORDER BY name COLLATE NOCASE, id")
+        let s = try db.prepare("""
+            SELECT id, name, pattern, beats_per_quarter FROM rhythm_patterns ORDER BY name COLLATE NOCASE, id
+            """)
         var out: [SavedRhythm] = []
-        while try s.step() { out.append(SavedRhythm(id: s.int(0), name: s.text(1), pattern: RhythmPattern(text: s.text(2)))) }
+        while try s.step() {
+            out.append(SavedRhythm(id: s.int(0), name: s.text(1), pattern: RhythmPattern(text: s.text(2)),
+                                   beatsPerQuarter: s.isNull(3) ? nil : s.double(3)))
+        }
         return out
     }
 
-    /// Saves a pattern under a name. A name already used is replaced, as
-    /// saving a preset over one does.
+    /// Saves a pattern under a name, with its note length ("a quarter note
+    /// = N beats"). A name already used is replaced, as saving a preset
+    /// over one does.
     @discardableResult
-    public func saveRhythmPattern(name: String, _ pattern: RhythmPattern) throws -> SavedRhythm {
+    public func saveRhythmPattern(name: String, _ pattern: RhythmPattern, beatsPerQuarter: Double? = nil) throws -> SavedRhythm {
         try db.prepare("""
-            INSERT INTO rhythm_patterns (name, pattern, created_at) VALUES (?, ?, ?)
-            ON CONFLICT(name) DO UPDATE SET pattern = excluded.pattern
-            """).bind(.text(name), .text(pattern.text), .double(Date().timeIntervalSince1970)).run()
+            INSERT INTO rhythm_patterns (name, pattern, beats_per_quarter, created_at) VALUES (?, ?, ?, ?)
+            ON CONFLICT(name) DO UPDATE SET pattern = excluded.pattern, beats_per_quarter = excluded.beats_per_quarter
+            """).bind(.text(name), .text(pattern.text), beatsPerQuarter.map { .double($0) } ?? .null,
+                      .double(Date().timeIntervalSince1970)).run()
         let id = try db.prepare("SELECT id FROM rhythm_patterns WHERE name = ?").bind(.text(name))
         _ = try id.step()
-        return SavedRhythm(id: id.int(0), name: name, pattern: pattern)
+        return SavedRhythm(id: id.int(0), name: name, pattern: pattern, beatsPerQuarter: beatsPerQuarter)
     }
 
     public func deleteRhythmPattern(id: Int64) throws {

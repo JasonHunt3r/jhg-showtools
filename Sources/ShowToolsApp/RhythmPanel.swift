@@ -292,6 +292,16 @@ struct RhythmPanelContent: View {
         }
     }
 
+    /// "4 beats", "½ beat": the note-length setting in words.
+    static func beatsText(_ b: Double) -> String {
+        switch b {
+        case 0.25: "¼ beat"
+        case 0.5: "½ beat"
+        case 1: "1 beat"
+        default: "\(b == b.rounded() ? "\(Int(b))" : String(format: "%g", b)) beats"
+        }
+    }
+
     private static func quartersText(_ q: Double) -> String {
         let n = (q * 1000).rounded() / 1000
         let s = n == n.rounded() ? "\(Int(n))" : String(format: "%g", n)
@@ -309,7 +319,11 @@ struct RhythmPanelContent: View {
             if !model.rhythmPatterns.isEmpty {
                 Section("Saved") {
                     ForEach(model.rhythmPatterns) { r in
-                        Button("\(r.name)   \(r.pattern.text)") { text = r.pattern.text }
+                        Button("\(r.name)   \(r.pattern.text)"
+                               + (r.beatsPerQuarter.map { "   (q = \(Self.beatsText($0)))" } ?? "")) {
+                            text = r.pattern.text
+                            if let b = r.beatsPerQuarter { beatsPerQuarter = b }
+                        }
                     }
                 }
             }
@@ -328,11 +342,15 @@ struct RhythmPanelContent: View {
         .fixedSize()
         .alert("Save Pattern", isPresented: $naming) {
             TextField("Name", text: $newName)
-            Button("Save") { model.saveRhythmPattern(name: newName.trimmingCharacters(in: .whitespaces), parsed.pattern) }
+            Button("Save") {
+                model.saveRhythmPattern(name: newName.trimmingCharacters(in: .whitespaces), parsed.pattern,
+                                        beatsPerQuarter: beatsPerQuarter)
+            }
                 .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Saved in this library as “\(parsed.pattern.text)”. A pattern with the same name is replaced.")
+            Text("Saved in this library as “\(parsed.pattern.text)”, with a quarter note = \(Self.beatsText(beatsPerQuarter)). "
+                 + "A pattern with the same name is replaced.")
         }
         .confirmationDialog("Delete “\(deleting?.name ?? "")”?", isPresented: Binding(
             get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {

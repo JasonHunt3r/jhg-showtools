@@ -592,7 +592,7 @@ to the Collection Browser and the library.
   - **Saved patterns:** the last one used is remembered; a few built-ins
     (steady `q`; long-short `h q q`; build `w h h q q q q e e e e e e e e`;
     a triplet feel); and Jason's own named patterns, saved in the library
-    and offered in a menu.
+    and offered in a menu, each with its note length (Jason, 2026-09-22).
   - **Listen:** loops the range with a click on each pattern note (over
     the song when there is one), before applying.
   - **The Rhythm tool is a floating panel** that stays open while you

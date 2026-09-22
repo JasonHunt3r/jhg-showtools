@@ -37,7 +37,7 @@ first, as for every step.
 | **3** Music + timeline | **Steps 1–6 of 7 built**; 6 (beat detection) tested on macOS 27, 2026-09-22. Step 7 (rhythm patterns) is next |
 | 3b–5 | Not started |
 
-Library schema is now **version 11** (rhythm patterns, 2026-09-22). Every upgrade is additive and tested
+Library schema is now **version 12** (rhythm patterns 11, their note length 12; 2026-09-22). Every upgrade is additive and tested
 by opening a library of the version before (7 rows, 8 music, 9 markers,
 10 editing state). Jason's real library steps up to 10 the first time a
 build from this session opens it. Before an upgrade, the database is
@@ -270,7 +270,11 @@ ahead with 7x" from Jason before each one:
   Swing (triplet feel) `3q 3e`. The panel's **Patterns** menu (also in the
   editing mode for Detect Beats): built-ins, saved ones, Save Pattern…
   (a name; the same name replaces), Delete Saved Pattern (asks first).
-  Saves the letters only, not the note length. Checked in a scratch copy.
+  Checked in a scratch copy. **Schema 12** (Jason: keep the setting too):
+  a saved pattern keeps its "a quarter note =" (`beats_per_quarter`, NULL
+  for ones saved before, which leave the setting alone); picking it
+  restores the setting; the menu shows "(q = 2 beats)". Built-ins leave
+  the setting as it is.
 - **7g Listen:** loop the range with a click on each note, over the song.
 
 ## Still needs Jason's hands
