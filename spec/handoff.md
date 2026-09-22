@@ -1,11 +1,25 @@
-# ShowTools — handoff, 2026-09-21 (end of day two, fourth session)
+# ShowTools — handoff, 2026-09-22 (end of day three)
 
 For the next session. Read `CLAUDE.md` (rules) and `spec/plan.md` (every
 decision, phase by phase) first. This file is the state of play. The repo
 is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 (public, `main`).
 
-## Start here (2026-09-22: step 6 tested and agreed)
+## Start here (end of 2026-09-22)
+
+**Next: plan Phase 4, setlist export and import, with Jason** (Jason,
+2026-09-22). Plan by Q&A before any code, as Phases 3 and 3b were: read
+the plan's Phase 4 section, check what's already settled, ask numbered
+questions with a "Suggest:" default for each, write every answer into
+`spec/plan.md`, then propose steps and build one per "go ahead".
+
+Where things stand: Phase 3 (all 7 steps) and Phase 3b (Delete by
+context, Find Similar, Keep One) are built and pushed; 154 tests; schema
+12. Image stickiness (the end of Phase 3) stays parked until Jason has
+made a first real show. The sections below record how each part was
+built and checked.
+
+## Step 6 (2026-09-22: tested and agreed)
 
 Step 6, beat detection, was tested on **macOS 27.0** on 2026-09-22 and
 passed all seven checks below. It was tested with the click track and with
@@ -24,6 +38,8 @@ with a screenshot of the open menu, not with `axtool`.
 
 **Step 7 (rhythm patterns) is built too**, 7a–7g, all on 2026-09-22 (see
 "Step 7" below). Image stickiness (end of Phase 3) is still to settle.
+
+## Phase 3b: Delete by context, Find Similar, Keep One (2026-09-22)
 
 **Phase 3b was replanned with Jason** (plan: "Find Similar, and Delete by
 context"): exact duplicates can't exist (unique hash, import skips them),
@@ -71,8 +87,7 @@ Leaves / Stays badges; a summary line. Checked: the Golden Gate group,
 5 to the Trash, keeper took "bridge" and 4 stars, one ⌘Z brought all back
 (files out of the Trash, tags and ratings as before); a group whose
 files are both in the show keeps both ("1 stays"), Keep One disabled.
-**Phase 3b is done.** Next: ask Jason (image stickiness, end of Phase 3;
-or Phase 4, setlist export).
+**Phase 3b is done.** Next: plan Phase 4 (see "Start here").
 
 ## Where it stands
 
@@ -84,13 +99,16 @@ or Phase 4, setlist export).
 | **2b** Library manager | **Built** |
 | **2c** The lane: transitions row + images row | **Built** |
 | **3** Music + timeline | **All 7 steps built** (6 and 7 on 2026-09-22). Left: settle image stickiness with Jason |
-| 3b–5 | Not started |
+| **3b** Find Similar (was "duplicate finder") | **Built** 2026-09-22: Delete by context, Group/Show Similar, Keep One |
+| **4** Setlist export / import | **Next: plan it with Jason** |
+| 5 Live desktop | Not started |
 
-Library schema is now **version 12** (rhythm patterns 11, their note length 12; 2026-09-22). Every upgrade is additive and tested
+Library schema is now **version 12**. Every upgrade is additive and tested
 by opening a library of the version before (7 rows, 8 music, 9 markers,
-10 editing state). Jason's real library steps up to 10 the first time a
-build from this session opens it. Before an upgrade, the database is
-copied to `Library.sqlite.v<N>.bak`, named for the version it was at. 108 core tests.
+10 editing state, 11 rhythm patterns, 12 their note length). Jason's real
+library steps up to 12 the first time a current build opens it. Before an
+upgrade, the database is copied to `Library.sqlite.v<N>.bak`, named for
+the version it was at. 154 core tests.
 
 ## Phase 3, as built (2026-09-21, fourth session)
 
