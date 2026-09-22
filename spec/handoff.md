@@ -76,6 +76,30 @@ Bluetooth headphones), and that the handles and drawers feel right.
 
 ## Starting step 6: beat detection
 
+**First pass written, not yet run in the app** (Jason asked for it while
+downloading macOS 27, 2026-09-21; commit after `20cde76`). It follows
+proposals 1–6 below, with one change: **"Fit slides to markers" starts at
+the slide the range begins in and uses as many slides as there are
+markers**, rather than re-cutting only the slides whose cuts were already
+in the range (that would re-cut two slides for eight markers). Tell Jason.
+- Core, tested (116 tests): `SongRhythm` (cached per hash as
+  `<library>/Cache/Rhythm/<hash>.json`), `BeatPlan` (every N beats / N
+  bars / about X seconds; ×2, ÷2; bar shift), `SlideFitting.fit`,
+  `BeatDetection.preview/apply`, detected markers on `AudioClip.markers`
+  in song time, `Show.detectedMarkers/updateMarker/removeMarkers`.
+- App: `Rhythms` (weak-linked `MusicUnderstanding`; `LC_LOAD_WEAK_DYLIB`
+  checked in the release binary), `BeatSheet` (from the music drawer's
+  button and a song's context menu), `RhythmMarks` (beat/bar ticks and
+  section bands on clips; double-click a section sets the range), teal
+  detected markers on the ruler (select, drag, Delete, double-click line,
+  snapping), a faint teal preview while the sheet is open.
+- **Test first, in order:** (1) the app still launches on macOS 26 (weak
+  link) and the sheet says it needs macOS 27; (2) on macOS 27, a song gets
+  analysed (the 120 BPM click track: beats every 0.5 s, and does it find
+  bars?); (3) the sheet's preview, Apply, and one-step undo; (4) Fit slides;
+  (5) dragging and deleting teal markers, a song move carrying them;
+  (6) section double-click. Never run on the real library.
+
 **Decided (Jason, 2026-09-21):** use **Apple's Music Understanding
 framework** (WWDC26). It needs macOS 27. Our own detector (Accelerate,
 spectral flux) was considered and turned down, so don't build a fallback.

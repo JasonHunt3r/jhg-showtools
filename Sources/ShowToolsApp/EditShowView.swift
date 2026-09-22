@@ -62,7 +62,7 @@ struct EditShowView: View {
                     // taken out; a transition leaves a cut.
                     if !selectedMarkers.isEmpty {
                         let ids = selectedMarkers
-                        mutate(ids.count == 1 ? "Remove Marker" : "Remove Markers") { $0.markers.removeAll { ids.contains($0.id) } }
+                        mutate(ids.count == 1 ? "Remove Marker" : "Remove Markers") { $0.removeMarkers(ids) }
                         selectedMarkers = []
                     } else if let id = selectedSong {
                         mutate("Remove Song") { $0.music.removeAll { $0.id == id } }

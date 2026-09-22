@@ -17,6 +17,10 @@ public struct AudioClip: Codable, Hashable, Identifiable, Sendable {
     /// Seconds to fade in from silence and out to silence.
     public var fadeIn: Double = 0
     public var fadeOut: Double = 0
+    /// Markers placed by beat detection (plan, Phase 3 step 6), in *song*
+    /// time, so they belong to the song and move with it. One outside the
+    /// clip (trimmed past) hides, and comes back if the trim is undone.
+    public var markers: [Marker] = []
 
     public init(itemID: Int64, start: Double, length: Double) {
         self.itemID = itemID
@@ -41,6 +45,27 @@ public struct AudioClip: Codable, Hashable, Identifiable, Sendable {
         volume = get(.volume, 1)
         fadeIn = get(.fadeIn, 0)
         fadeOut = get(.fadeOut, 0)
+        // Each marker on its own: one unreadable one doesn't cost the rest.
+        var list = try? c.nestedUnkeyedContainer(forKey: .markers)
+        var read: [Marker] = []
+        while let l = list, !l.isAtEnd {
+            if let m = try? list!.decode(Marker.self) { read.append(m) } else { _ = try? list!.decode(Skip.self) }
+        }
+        markers = read
+    }
+
+    /// Decodes anything, to step past an unreadable list element.
+    private struct Skip: Decodable {}
+
+    /// Song time to show time, and back.
+    public func showTime(ofSongTime t: Double) -> Double { start + (t - inPoint) }
+    public func songTime(ofShowTime t: Double) -> Double { inPoint + (t - start) }
+
+    /// Its detected markers that fall inside the clip, at their show times.
+    public var visibleMarkers: [(marker: Marker, time: Double)] {
+        markers.compactMap { m in
+            m.time >= inPoint - 1e-9 && m.time <= inPoint + length + 1e-9 ? (m, showTime(ofSongTime: m.time)) : nil
+        }
     }
 
     /// A saved list, keeping every clip that can be read.

@@ -213,6 +213,7 @@ final class AppModel {
         do {
             library = lib
             Waveforms.shared.cacheDir = lib.root.appendingPathComponent("Cache/Waveforms", isDirectory: true)
+            Rhythms.shared.cacheDir = lib.root.appendingPathComponent("Cache/Rhythm", isDirectory: true)
             libraryIsPrivate = lib.isPrivate
             items = try lib.allItems()
             itemsByID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })

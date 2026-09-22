@@ -18,6 +18,10 @@ struct MusicRow: View {
     let height: CGFloat
     @Binding var selectedSong: UUID?
     let mutate: ShowMutator
+    /// Sets the show's range: double-clicking a song's section does this.
+    let setRange: (ClosedRange<Double>) -> Void
+    /// Opens the beat detection sheet for a song.
+    let detectBeats: (AudioClip) -> Void
     /// Called when a song is selected, so the rest of the selection clears.
     let didSelect: () -> Void
     @Environment(AppModel.self) private var model
@@ -88,7 +92,18 @@ struct MusicRow: View {
                         selected: selectedSong == clip.id, height: height)
             .frame(width: w, height: height)
             .contentShape(Rectangle())
-            .onTapGesture { select(clip.id) }
+            .onTapGesture { location in
+                select(clip.id)
+                // Double-click a section: the range becomes that section.
+                if (NSApp.currentEvent?.clickCount ?? 1) >= 2, let r = Rhythms.shared.rhythm(item) {
+                    let t = clip.inPoint + clip.length * Double(location.x / w)
+                    if let sec = r.sections.first(where: { $0.start <= t && t < $0.end }) {
+                        let lo = max(clip.showTime(ofSongTime: sec.start), clip.start)
+                        let hi = min(clip.showTime(ofSongTime: sec.end), clip.end)
+                        if hi > lo { setRange(lo...hi) }
+                    }
+                }
+            }
             .gesture(drag(clip, item: item, part: .move))
             .overlay(alignment: .leading) { edgeZone(clip, item: item, part: .start) }
             .overlay(alignment: .trailing) { edgeZone(clip, item: item, part: .end) }
@@ -107,6 +122,8 @@ struct MusicRow: View {
             }
             .onHover { if $0 { NSCursor.openHand.set() } else { NSCursor.arrow.set() } }
             .contextMenu {
+                Button("Detect Beats…") { detectBeats(clip) }
+                Divider()
                 Button("Remove Song") {
                     mutate("Remove Song") { $0.music.removeAll { $0.id == clip.id } }
                     if selectedSong == clip.id { selectedSong = nil }
@@ -211,6 +228,7 @@ struct SongClip: View {
                 WaveformView(waveform: waveform, inPoint: clip.inPoint, length: clip.length, colour: Self.wave)
                     .padding(.vertical, 3)
             }
+            RhythmMarks(item: item, inPoint: clip.inPoint, length: clip.length)
             Text(item.fileName)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(Self.wave)
@@ -227,6 +245,54 @@ struct SongClip: View {
         .task(id: url) {
             waveform = Waveforms.shared.cached(item)
             if waveform == nil, let url { waveform = await Waveforms.shared.load(item, url: url) }
+            // Beat detection starts the first time a song is drawn (macOS 27).
+            if let url { await Rhythms.shared.load(item, url: url) }
+        }
+    }
+}
+
+/// A song's detected rhythm on its clip: a faint tick at every beat and a
+/// stronger one at every bar start, along the bottom; the sections as
+/// alternating bands under them. While the song is being analysed, a note
+/// says so.
+struct RhythmMarks: View {
+    let item: MediaItem
+    let inPoint: Double
+    let length: Double
+
+    var body: some View {
+        switch Rhythms.shared.state(item) {
+        case .ready(let r):
+            Canvas { ctx, size in
+                guard length > 0 else { return }
+                func x(_ t: Double) -> CGFloat { CGFloat((t - inPoint) / length) * size.width }
+                let end = inPoint + length
+                // Sections: alternating bands, 4 pt along the bottom.
+                for (i, s) in r.sections.enumerated() where s.end > inPoint && s.start < end {
+                    let a = max(x(s.start), 0), b = min(x(s.end), size.width)
+                    ctx.fill(Path(CGRect(x: a, y: size.height - 4, width: b - a, height: 4)),
+                             with: .color(i % 2 == 0 ? Color.indigo.opacity(0.55) : Color.teal.opacity(0.55)))
+                }
+                var beats = Path(), bars = Path()
+                for t in r.beats where t >= inPoint && t <= end {
+                    beats.addRect(CGRect(x: x(t), y: size.height - 10, width: 0.75, height: 6))
+                }
+                for t in r.bars where t >= inPoint && t <= end {
+                    bars.addRect(CGRect(x: x(t), y: size.height - 16, width: 1.25, height: 12))
+                }
+                ctx.fill(beats, with: .color(.black.opacity(0.35)))
+                ctx.fill(bars, with: .color(.black.opacity(0.7)))
+            }
+            .allowsHitTesting(false)
+        case .analysing:
+            Text("Finding the beats…")
+                .font(.system(size: 9))
+                .foregroundStyle(SongClip.wave.opacity(0.8))
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .padding(3)
+                .allowsHitTesting(false)
+        case .failed, nil:
+            EmptyView()
         }
     }
 }

@@ -39,19 +39,28 @@ struct StorylineView: View {
     }
     @State private var markerDrag: MarkerDrag?
 
-    /// Markers where they're drawn: a drag in progress applied.
-    private var markerTimes: [(marker: Marker, time: Double)] {
-        show.markers.map { m in
+    /// Every marker where it's drawn, a drag in progress applied: the hand
+    /// markers (no song), and each song's detected ones that are showing.
+    private var markerTimes: [(marker: Marker, time: Double, song: UUID?)] {
+        let hand = show.markers.map { ($0, $0.time, UUID?.none) }
+        let detected = show.detectedMarkers.map { ($0.marker, $0.time, UUID?.some($0.clipID)) }
+        return (hand + detected).map { m, t, song in
             let moving = markerDrag?.ids.contains(m.id) == true
-            return (m, max(m.time + (moving ? markerDrag!.dt : 0), 0))
+            return (m, max(t + (moving ? markerDrag!.dt : 0), 0), song)
         }
     }
 
-    /// What a dragged edge snaps to, and from how far (six points), or nil
-    /// with snapping off.
+    /// What a dragged edge snaps to (markers of both kinds), and from how
+    /// far (six points), or nil with snapping off.
     private var snap: (targets: [Double], tolerance: Double)? {
-        snapping && !show.markers.isEmpty ? (show.markers.map(\.time), 6 / pps) : nil
+        let targets = show.markers.map(\.time) + show.detectedMarkers.map(\.time)
+        return snapping && !targets.isEmpty ? (targets, 6 / pps) : nil
     }
+
+    /// The beat detection sheet, open for this stretch of the show.
+    @State private var beatSheet: BeatSheet.Request?
+    /// The markers the open sheet would place, drawn faintly on the ruler.
+    @State private var beatPreview: [Double] = []
 
     static let blockHeight: CGFloat = 64
     static let rulerHeight: CGFloat = 22
@@ -244,6 +253,10 @@ struct StorylineView: View {
                         MusicRow(show: show, timeline: timeline, pps: pps, inset: Self.inset,
                                  width: contentWidth, height: Self.musicRowHeight,
                                  selectedSong: $selectedSong, mutate: mutate,
+                                 setRange: { r in
+                                     engine.updateEditor { $0.rangeIn = r.lowerBound; $0.rangeOut = r.upperBound; $0.rangeOn = true }
+                                 },
+                                 detectBeats: { clip in openBeatSheet(for: clip) },
                                  didSelect: { selection = []; selectedTransition = nil; selectedOverlay = nil; focused = true })
                             .offset(y: rowTop(.music))
                         ForEach(placed) { p in
@@ -312,6 +325,9 @@ struct StorylineView: View {
         .focusable()
         .focusEffectDisabled()
         .focused($focused)
+        .sheet(item: $beatSheet) { req in
+            BeatSheet(request: req, show: show, timeline: timeline, preview: $beatPreview, mutate: mutate)
+        }
         .onKeyPress(.escape) {
             if !openDrawers.isEmpty {
                 openDrawers = []
@@ -387,11 +403,11 @@ struct StorylineView: View {
     /// remove; double-click for its own line through the rows, ⌥-double-
     /// click for every marker's. Moving, removing and a marker's own line
     /// are undoable; the all-markers switch is editing state, and isn't.
-    private var markersOnRuler: some View {
-        ForEach(markerTimes, id: \.marker.id) { m, t in
+    @ViewBuilder private var markersOnRuler: some View {
+        ForEach(markerTimes, id: \.marker.id) { m, t, song in
             let selected = selectedMarkers.contains(m.id)
             MarkerShape()
-                .fill(selected ? Color.yellow : Color.orange)
+                .fill(selected ? Color.yellow : song == nil ? Color.orange : Color.teal)
                 .overlay(MarkerShape().stroke(Color.black.opacity(0.5), lineWidth: 0.5))
                 .frame(width: 9, height: 11)
                 .padding(.horizontal, 3)
@@ -399,8 +415,23 @@ struct StorylineView: View {
                 .offset(x: Self.inset + CGFloat(t * pps) - 7.5, y: Self.rulerHeight - 11)
                 .onTapGesture { clickMarker(m) }
                 .gesture(markerDragGesture(m.id))
-                .help("Marker at \(formatClock(t)). Drag to move; Delete removes it; double-click for its line.")
+                .help((song == nil ? "Marker" : "Beat marker (moves with its song)")
+                      + " at \(formatClock(t)). Drag to move; Delete removes it; double-click for its line.")
         }
+        // What the beat detection sheet would place, faint, until it's applied.
+        ForEach(Array(beatPreview.enumerated()), id: \.offset) { _, t in
+            MarkerShape()
+                .fill(Color.teal.opacity(0.45))
+                .frame(width: 9, height: 11)
+                .offset(x: Self.inset + CGFloat(t * pps) - 4.5, y: Self.rulerHeight - 11)
+                .allowsHitTesting(false)
+        }
+    }
+
+    /// From a song's menu: the range if there is one, else that song.
+    private func openBeatSheet(for clip: AudioClip?) {
+        let r = engine.range ?? clip.map { $0.start...$0.end } ?? 0...max(timeline.duration, 0.1)
+        beatSheet = BeatSheet.Request(range: r, song: clip?.id)
     }
 
     private func clickMarker(_ m: Marker) {
@@ -415,7 +446,7 @@ struct StorylineView: View {
             if !editor.markerLines { engine.updateEditor { $0.markerLines = true } }
             if m.showsLine == showing {
                 mutate(showing ? "Hide Marker Line" : "Show Marker Line") { s in
-                    if let i = s.markers.firstIndex(where: { $0.id == m.id }) { s.markers[i].showsLine = !showing }
+                    s.updateMarker(m.id) { $0.showsLine = !showing }
                 }
             }
             return
@@ -443,8 +474,8 @@ struct StorylineView: View {
                 markerDrag = nil
                 guard d.dt != 0 else { return }
                 mutate(d.ids.count == 1 ? "Move Marker" : "Move Markers") { s in
-                    for i in s.markers.indices where d.ids.contains(s.markers[i].id) {
-                        s.markers[i].time = max(((s.markers[i].time + d.dt) * 100).rounded() / 100, 0)
+                    for id in d.ids {
+                        s.updateMarker(id) { $0.time = max((($0.time + d.dt) * 100).rounded() / 100, 0) }
                     }
                 }
             }
@@ -457,8 +488,8 @@ struct StorylineView: View {
         let e = editor
         return ZStack(alignment: .topLeading) {
             if e.markerLines {
-                ForEach(markerTimes.filter { $0.marker.showsLine }, id: \.marker.id) { _, t in
-                    Rectangle().fill(Color.orange.opacity(0.45)).frame(width: 1)
+                ForEach(markerTimes.filter { $0.marker.showsLine }, id: \.marker.id) { _, t, song in
+                    Rectangle().fill((song == nil ? Color.orange : Color.teal).opacity(0.45)).frame(width: 1)
                         .offset(x: Self.inset + CGFloat(t * pps))
                 }
             }
@@ -487,6 +518,7 @@ struct StorylineView: View {
                 RowHandle(row: row, height: Self.height(of: row.kind),
                           open: openDrawers.contains(row.id), dragging: rowDrag?.id == row.id,
                           width: Self.inset,
+                          action: row.kind == .music ? ("Detect Beats…", { openBeatSheet(for: nil) }) : nil,
                           toggle: { toggleDrawer(row.id) },
                           drag: rowDragGesture(row))
                     .offset(y: rowTop(row.kind))
@@ -1298,6 +1330,9 @@ struct RowHandle<G: Gesture>: View {
     let open: Bool
     let dragging: Bool
     let width: CGFloat
+    /// The row's one control so far, in its drawer (the music row's "Detect
+    /// Beats…").
+    let action: (title: String, run: () -> Void)?
     let toggle: () -> Void
     let drag: G
 
@@ -1332,10 +1367,14 @@ struct RowHandle<G: Gesture>: View {
             Image(systemName: row.kind.symbol)
             Text(row.kind.title)
                 .lineLimit(1)
+            if let action {
+                Button(action.title, action: action.run)
+                    .controlSize(.small)
+            }
         }
         .font(.caption.weight(.medium))
         .padding(.horizontal, 8)
-        .frame(width: 130, height: height, alignment: .leading)
+        .frame(width: action == nil ? 130 : 210, height: height, alignment: .leading)
         .background(.regularMaterial, in: UnevenRoundedRectangle(bottomTrailingRadius: 5, topTrailingRadius: 5))
         .overlay(alignment: .leading) { Rectangle().fill(Color.accentColor.opacity(0.85)).frame(width: 1) }
         .shadow(radius: 3, x: 2)
