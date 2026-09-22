@@ -212,6 +212,7 @@ final class AppModel {
         libraryGeneration += 1
         do {
             library = lib
+            Waveforms.shared.cacheDir = lib.root.appendingPathComponent("Cache/Waveforms", isDirectory: true)
             libraryIsPrivate = lib.isPrivate
             items = try lib.allItems()
             itemsByID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
@@ -341,7 +342,7 @@ final class AppModel {
                 urls.append(url)
                 continue
             }
-            for type in [UTType.movie, .image] where p.hasItemConformingToTypeIdentifier(type.identifier) {
+            for type in [UTType.movie, .image, .audio] where p.hasItemConformingToTypeIdentifier(type.identifier) {
                 if let url = await loadFileCopy(p, type: type, into: staging) { urls.append(url) }
                 break
             }
@@ -389,7 +390,7 @@ final class AppModel {
         let n = name ?? nextShowName()
         do {
             let show = try lib.createShow(name: n, collectionID: collectionID ?? currentCollectionID,
-                                          itemIDs: itemIDs)
+                                          itemIDs: pictures(itemIDs))
             shows.append(show)
             collections = try lib.allCollections()
             sidebar = .show(show.id)
@@ -508,7 +509,18 @@ final class AppModel {
         }
     }
 
+    /// The ones that can be slides or lane images: songs can't.
+    func pictures(_ itemIDs: [Int64]) -> [Int64] {
+        itemIDs.filter { itemsByID[$0]?.kind.isPicture ?? false }
+    }
+
+    /// The songs among them, for the music row.
+    func songs(_ itemIDs: [Int64]) -> [Int64] {
+        itemIDs.filter { itemsByID[$0]?.kind == .audio }
+    }
+
     func append(_ itemIDs: [Int64], to showID: Int64, undo: UndoManager? = nil) {
+        let itemIDs = pictures(itemIDs)
         guard var show = show(showID), !itemIDs.isEmpty,
               bringIntoCollection(itemIDs, forShow: showID) else { return }
         show.slides += itemIDs.map { Slide(id: 0, itemID: $0) }
@@ -676,6 +688,7 @@ final class AppModel {
         shows.filter { show in
             show.slides.contains { itemIDs.contains($0.itemID) }
                 || show.overlays.contains { itemIDs.contains($0.itemID) }
+                || show.music.contains { itemIDs.contains($0.itemID) }
         }
     }
 
@@ -689,15 +702,18 @@ final class AppModel {
         guard let lib = library, !itemIDs.isEmpty else { return }
         let idSet = Set(itemIDs)
 
-        // The lane's images aren't in the `slides` table (deleteItems below
-        // only cleans that up), so they're stripped here, one show save
-        // each, same as any other show edit — captured first, so undo can
-        // put them back.
-        var strippedOverlays: [Int64: [OverlayClip]] = [:]
-        for show in shows where show.overlays.contains(where: { idSet.contains($0.itemID) }) {
+        // The lane's images and the songs aren't in the `slides` table
+        // (deleteItems below only cleans that up), so they're stripped here,
+        // one show save each, same as any other show edit — captured first,
+        // so undo can put them back.
+        var stripped: [Int64: StrippedClips] = [:]
+        for show in shows where show.overlays.contains(where: { idSet.contains($0.itemID) })
+                               || show.music.contains(where: { idSet.contains($0.itemID) }) {
             var s = show
-            strippedOverlays[s.id] = s.overlays.filter { idSet.contains($0.itemID) }
+            stripped[s.id] = StrippedClips(overlays: s.overlays.filter { idSet.contains($0.itemID) },
+                                           music: s.music.filter { idSet.contains($0.itemID) })
             s.overlays.removeAll { idSet.contains($0.itemID) }
+            s.music.removeAll { idSet.contains($0.itemID) }
             do { s = try lib.saveShow(s) } catch { loadError = "\(error)"; return }
             if let i = shows.firstIndex(where: { $0.id == s.id }) { shows[i] = s }
         }
@@ -728,18 +744,24 @@ final class AppModel {
         undo?.registerUndo(withTarget: self) { model in
             MainActor.assumeIsolated {
                 guard model.libraryGeneration == generation else { return }
-                model.restoreDeletedItems(deleted, overlays: strippedOverlays, trashedURLs: trashedURLs, undo: undo)
+                model.restoreDeletedItems(deleted, stripped: stripped, trashedURLs: trashedURLs, undo: undo)
             }
         }
         undo?.setActionName(itemIDs.count == 1 ? "Delete Item" : "Delete Items")
     }
 
+    /// A show's lane images and songs that used deleted files, for undo.
+    struct StrippedClips {
+        var overlays: [OverlayClip]
+        var music: [AudioClip]
+    }
+
     /// `deleteItems`'s undo: the file back from the Trash, the database rows
-    /// back with their original ids, and the lane images put back in each
-    /// show's overlays. Registers a redo the same way `update` does — which,
+    /// back with their original ids, and the lane images and songs put back
+    /// in each show. Registers a redo the same way `update` does — which,
     /// calling `deleteItems` again, re-derives what to strip from `shows` as
     /// it now stands, rather than needing it passed back in.
-    private func restoreDeletedItems(_ deleted: [Library.DeletedItem], overlays: [Int64: [OverlayClip]],
+    private func restoreDeletedItems(_ deleted: [Library.DeletedItem], stripped: [Int64: StrippedClips],
                                      trashedURLs: [Int64: URL], undo: UndoManager?) {
         guard let lib = library else { return }
         for d in deleted {
@@ -758,9 +780,10 @@ final class AppModel {
         items = (try? lib.allItems()) ?? items
         itemsByID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
         shows = (try? lib.allShows()) ?? shows
-        for (showID, clips) in overlays {
-            guard var s = shows.first(where: { $0.id == showID }), !clips.isEmpty else { continue }
-            s.overlays += clips
+        for (showID, clips) in stripped {
+            guard var s = shows.first(where: { $0.id == showID }) else { continue }
+            s.overlays += clips.overlays
+            s.music += clips.music
             do {
                 s = try lib.saveShow(s)
                 if let i = shows.firstIndex(where: { $0.id == showID }) { shows[i] = s }

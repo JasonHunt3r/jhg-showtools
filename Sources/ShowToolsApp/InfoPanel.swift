@@ -144,7 +144,11 @@ struct InfoPanelContent: View {
     private func singleFileMetadata(_ item: MediaItem) -> some View {
         let m = metadata
         VStack(alignment: .leading, spacing: 4) {
-            row("Dimensions", "\(item.pixelWidth) × \(item.pixelHeight)")
+            if item.kind == .audio {
+                row("Length", item.duration.map(formatDuration) ?? "—")
+            } else {
+                row("Dimensions", "\(item.pixelWidth) × \(item.pixelHeight)")
+            }
             if let size = m?.fileSize { row("Size", ByteCountFormatter.string(fromByteCount: size, countStyle: .file)) }
             if let format = m?.format { row("Format", format) }
             if let date = m?.dateTaken { row("Date Taken", date.formatted(date: .abbreviated, time: .shortened)) }

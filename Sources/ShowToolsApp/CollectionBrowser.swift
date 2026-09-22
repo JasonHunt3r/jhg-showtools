@@ -34,6 +34,7 @@ struct CollectionBrowser: View {
     enum Pick: Hashable {
         case slide(Int64)
         case overlay(UUID)
+        case song(UUID)
         case file(Int64)
     }
     @State private var picked: Set<Pick> = []
@@ -54,11 +55,13 @@ struct CollectionBrowser: View {
 
     private var collection: MediaCollection? { show.collectionID.flatMap(model.collection) }
 
-    /// Files the show uses, slides and lane images alike.
-    private var used: Set<Int64> { Set(show.slides.map(\.itemID) + show.overlays.map(\.itemID)) }
+    /// Files the show uses: slides, lane images and songs alike.
+    private var used: Set<Int64> {
+        Set(show.slides.map(\.itemID) + show.overlays.map(\.itemID) + show.music.map(\.itemID))
+    }
 
-    /// One use of a file in the show: a slide (at its join) or a lane image
-    /// (at its start).
+    /// One use of a file in the show: a slide (at its join), a lane image or
+    /// a song (at its start).
     struct Use: Identifiable {
         let item: MediaItem
         /// The slide or lane image this use is.
@@ -73,8 +76,10 @@ struct CollectionBrowser: View {
 
     /// Every use of every file, in the order they appear on screen.
     private var uses: [Use] {
+        let songs = show.music.compactMap { c in model.itemsByID[c.itemID].map { ($0, Pick.song(c.id), c.start) } }
         let appearances = (timeline.slides.map { ($0.item, Pick.slide($0.slide.id), $0.start) }
-                           + timeline.overlays.map { ($0.item, Pick.overlay($0.clip.id), $0.start) })
+                           + timeline.overlays.map { ($0.item, Pick.overlay($0.clip.id), $0.start) }
+                           + songs)
             .sorted { $0.2 < $1.2 }
         var seen: [Int64: Int] = [:]
         var out: [Use] = appearances.map { item, pick, t in
@@ -244,7 +249,7 @@ struct CollectionBrowser: View {
                 if !engine.isPlaying { engine.showSlide(id: id) }
             case .overlay(let id):
                 if selectedOverlay != id { selectedOverlay = id }
-            case .file:
+            case .file, .song:
                 break
             }
         }
@@ -305,12 +310,14 @@ struct CollectionBrowser: View {
         case .file(let id): id
         case .slide(let id): show.slides.first { $0.id == id }?.itemID
         case .overlay(let id): show.overlays.first { $0.id == id }?.itemID
+        case .song(let id): show.music.first { $0.id == id }?.itemID
         }
     }
 
     // MARK: Adding to the show
 
     private func append(_ ids: [Int64]) {
+        let ids = model.pictures(ids)
         guard !ids.isEmpty else { return }
         mutate(ids.count == 1 ? "Append Slide" : "Append Slides") { s in
             s.slides += ids.map { Slide(id: 0, itemID: $0) }
@@ -320,6 +327,7 @@ struct CollectionBrowser: View {
     /// At the join nearest the playhead: before the slide under it if the
     /// playhead is in its first half, after it if in the second.
     private func insertAtPlayhead(_ ids: [Int64]) {
+        let ids = model.pictures(ids)
         guard !ids.isEmpty else { return }
         var at = show.slides.count
         if !timeline.slides.isEmpty {
@@ -339,7 +347,7 @@ struct CollectionBrowser: View {
     }
 
     private func placeAtPlayhead(_ ids: [Int64]) {
-        guard let id = ids.first, model.itemsByID[id]?.kind != .video else { return }
+        guard let id = ids.first, let kind = model.itemsByID[id]?.kind, kind.isPicture, kind != .video else { return }
         let t = timeline.wrap(engine.now)
         guard var clip = OverlayPlacement.place(itemID: id, at: t, length: ImagesRow.newLength,
                                                 in: show.overlays, duration: timeline.duration,

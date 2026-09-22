@@ -18,7 +18,11 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
 - App files worth knowing: `TransformOverlay` (the handles, arrow keys
   and Rotation mode on the preview), `StorylineView` (the timeline's rows,
   drawn in the show's own `rows` order, with their handles and drawers;
-  the blocks and the lane's transitions row), `ImagesRow` (the lane's images row), `CollectionBrowser`
+  the blocks and the lane's transitions row), `ImagesRow` (the lane's images row),
+  `MusicRow` (songs and their waveforms), `MusicPlayer` (plays the songs on
+  AVAudioEngine and is the show's clock while it does; `PlaybackEngine.syncMusic`
+  must follow anything that starts, stops or moves the clock), `Waveforms`
+  (read once per file, cached in `<library>/Cache/Waveforms` by hash), `CollectionBrowser`
   (Edit Show's right column), `CollectionAdd` (the in-app drag type and the
   "add to collection?" question), `Libraries` (open/new/private),
   `FrameStrip`, `EffectsTimeline`, `EffectControls` (sliders, pads).
@@ -69,6 +73,9 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   screenshot only when the check is about what's on screen. Cross-app drops
   (Finder, Photos), Touch ID, pinch, and look-and-feel still go on Jason's
   list. Don't drive the app while Jason is using it.
+- Songs are library items of kind `.audio` and are never slides or lane
+  images: anything that adds items to a show filters with `model.pictures`
+  (or `model.songs` for the music row).
 - The library item carries no slide settings. Settings belong to each use of
   it (`Slide`). The same file can appear many times with different settings.
 - Settings JSON decodes field by field. Don't replace that with synthesized
@@ -84,7 +91,7 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   and `SlideLength` are synthesized enums, so a removed case drops the
   whole setting. Keep old cases decodable, or migrate them.
 - Library schema changes are additive migrations (`Library.migrate`,
-  currently version 7), each tested by opening a library written by the
+  currently version 8), each tested by opening a library written by the
   version before. The master library upgrades itself on first open, after
   copying its database to `Library.sqlite.v<N>.bak`. A new migration must
   also raise `Library.schemaVersion`, or that copy isn't made (the

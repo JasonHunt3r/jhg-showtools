@@ -43,6 +43,8 @@ final class MediaProvider {
         case .image: stills[slide.item.id] != nil
         case .animatedImage: animations[slide.item.id] != nil
         case .video: true
+        // A song is never a slide (the app keeps it out), so never waited for.
+        case .audio: true
         }
     }
 
@@ -58,6 +60,8 @@ final class MediaProvider {
         case .video:
             return slot(for: layer.slide)?.image(localTime: layer.localTime, slideLength: layer.slide.length,
                                                  clipStart: layer.slide.clipStart, playing: playing)
+        case .audio:
+            return nil
         }
     }
 
@@ -72,7 +76,7 @@ final class MediaProvider {
             return nil
         case .animatedImage:
             return animationFrame(item, at: overlay.localTime)
-        case .video:
+        case .video, .audio:
             return nil
         }
     }

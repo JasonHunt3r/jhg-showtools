@@ -7,6 +7,11 @@ public enum MediaKind: String, Codable, Sendable {
     /// GIF, APNG, animated HEIC/WebP — anything ImageIO reads as several frames.
     case animatedImage
     case video
+    /// A song, for the music row (plan, Phase 3). Never a slide.
+    case audio
+
+    /// Anything that can be a slide or a lane image: everything but audio.
+    public var isPicture: Bool { self != .audio }
 }
 
 /// One file the app has ingested. Carries no slide settings: those belong to
@@ -19,10 +24,10 @@ public struct MediaItem: Identifiable, Hashable, Sendable {
     /// SHA-256 of the file's bytes, hex.
     public var hash: String
     public var kind: MediaKind
-    /// Display size, orientation already applied.
+    /// Display size, orientation already applied. 0 for audio.
     public var pixelWidth: Int
     public var pixelHeight: Int
-    /// Seconds. Video: clip length. Animated image: one loop.
+    /// Seconds. Video: clip length. Animated image: one loop. Audio: the song.
     public var duration: Double?
     public var ingestedAt: Date
     /// Where the file was copied from. Informational only; may no longer exist.
@@ -342,10 +347,12 @@ public struct Show: Identifiable, Hashable, Sendable {
     /// The timeline's rows, top to bottom (plan, Phase 3). Always complete:
     /// see `TimelineRow.normalized`.
     public var rows: [TimelineRow]
+    /// The music row's songs (plan, Phase 3).
+    public var music: [AudioClip]
 
     public init(id: Int64, name: String, defaults: ShowDefaults = ShowDefaults(),
                 slides: [Slide] = [], overlays: [OverlayClip] = [], collectionID: Int64? = nil,
-                rows: [TimelineRow] = TimelineRow.defaultOrder()) {
+                rows: [TimelineRow] = TimelineRow.defaultOrder(), music: [AudioClip] = []) {
         self.id = id
         self.name = name
         self.defaults = defaults
@@ -353,6 +360,7 @@ public struct Show: Identifiable, Hashable, Sendable {
         self.overlays = overlays
         self.collectionID = collectionID
         self.rows = TimelineRow.normalized(rows)
+        self.music = music
     }
 }
 

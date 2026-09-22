@@ -4,7 +4,7 @@ import ShowToolsCore
 
 /// Types a drop onto the app can carry: files from Finder, file promises
 /// (or data) from Photos.
-let droppableTypes: [UTType] = [.fileURL, .image, .movie]
+let droppableTypes: [UTType] = [.fileURL, .image, .movie, .audio]
 
 struct MainView: View {
     @Environment(AppModel.self) private var model
@@ -267,13 +267,14 @@ struct LibraryGridView: View {
     @State private var renameIDs: [Int64]?
 
     enum KindFilter: String, CaseIterable {
-        case all, stills, animations, videos
+        case all, stills, animations, videos, songs
         var title: String {
             switch self {
             case .all: "All Kinds"
             case .stills: "Photos"
             case .animations: "Animations"
             case .videos: "Videos"
+            case .songs: "Songs"
             }
         }
         func matches(_ k: MediaKind) -> Bool {
@@ -282,6 +283,7 @@ struct LibraryGridView: View {
             case .stills: k == .image
             case .animations: k == .animatedImage
             case .videos: k == .video
+            case .songs: k == .audio
             }
         }
     }

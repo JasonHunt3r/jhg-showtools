@@ -1,0 +1,129 @@
+import Foundation
+import AVFoundation
+
+/// A song in the music row (plan, Phase 3). Like a lane image, it sits at a
+/// time on the show's clock; it plays `length` seconds of its file starting
+/// `inPoint` seconds in (trimming the front edge moves both).
+public struct AudioClip: Codable, Hashable, Identifiable, Sendable {
+    public var id: UUID = UUID()
+    public var itemID: Int64
+    /// Seconds from the start of the show.
+    public var start: Double
+    /// Seconds into the song where the clip begins.
+    public var inPoint: Double = 0
+    public var length: Double
+    /// 0…1.
+    public var volume: Double = 1
+    /// Seconds to fade in from silence and out to silence.
+    public var fadeIn: Double = 0
+    public var fadeOut: Double = 0
+
+    public init(itemID: Int64, start: Double, length: Double) {
+        self.itemID = itemID
+        self.start = start
+        self.length = length
+    }
+
+    public var end: Double { start + length }
+
+    /// Field by field, like every saved type. The file and the timing have no
+    /// sensible fallback, so without them it fails, and `decodeList` skips it.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func get<T: Decodable>(_ k: CodingKeys, _ fallback: T) -> T {
+            ((try? c.decodeIfPresent(T.self, forKey: k)) ?? nil) ?? fallback
+        }
+        itemID = try c.decode(Int64.self, forKey: .itemID)
+        start = try c.decode(Double.self, forKey: .start)
+        length = try c.decode(Double.self, forKey: .length)
+        id = get(.id, UUID())
+        inPoint = get(.inPoint, 0)
+        volume = get(.volume, 1)
+        fadeIn = get(.fadeIn, 0)
+        fadeOut = get(.fadeOut, 0)
+    }
+
+    /// A saved list, keeping every clip that can be read.
+    public static func decodeList(_ json: String) -> [AudioClip] {
+        guard let items = try? JSONDecoder().decode([Lenient].self, from: Data(json.utf8)) else { return [] }
+        return items.compactMap(\.clip)
+    }
+
+    private struct Lenient: Decodable {
+        let clip: AudioClip?
+        init(from decoder: Decoder) throws { clip = try? AudioClip(from: decoder) }
+    }
+
+    /// What should play when the show's clock reads `local` (inside one pass
+    /// of the show), up to `until`: how long from now it starts, where in the
+    /// file, and for how long. Nil if nothing of it is left to play.
+    public func segment(from local: Double, until: Double) -> (delay: Double, fileStart: Double, duration: Double)? {
+        let from = max(local, start)
+        let to = min(end, until)
+        guard to - from > 0.001 else { return nil }
+        return (delay: from - local, fileStart: inPoint + (from - start), duration: to - from)
+    }
+}
+
+/// A song's loudness over time, for drawing: the loudest sample in each
+/// slice, 0…255. Read from the file once and cached beside the library
+/// (plan: "decoded once and cached").
+public struct Waveform: Sendable, Equatable {
+    public static let slicesPerSecond = 100.0
+    public let peaks: [UInt8]
+
+    public init(peaks: [UInt8]) { self.peaks = peaks }
+
+    public var duration: Double { Double(peaks.count) / Self.slicesPerSecond }
+
+    /// The loudest peak, 0…1, between two times in the song.
+    public func peak(from t0: Double, to t1: Double) -> Double {
+        guard !peaks.isEmpty else { return 0 }
+        let a = max(0, min(peaks.count - 1, Int(t0 * Self.slicesPerSecond)))
+        let b = max(a + 1, min(peaks.count, Int((t1 * Self.slicesPerSecond).rounded(.up))))
+        var m: UInt8 = 0
+        for i in a..<b where peaks[i] > m { m = peaks[i] }
+        return Double(m) / 255
+    }
+
+    /// Decodes the whole file, all channels, in chunks.
+    public static func read(_ url: URL) throws -> Waveform {
+        let file = try AVAudioFile(forReading: url)
+        let format = file.processingFormat
+        let perSlice = max(1, Int(format.sampleRate / slicesPerSecond))
+        let chunk = AVAudioFrameCount(perSlice * 256)
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: chunk) else { return Waveform(peaks: []) }
+        var peaks: [UInt8] = []
+        peaks.reserveCapacity(Int(Double(file.length) / Double(perSlice)) + 1)
+        var sliceMax: Float = 0, inSlice = 0
+        while file.framePosition < file.length {
+            try file.read(into: buffer, frameCount: chunk)
+            let n = Int(buffer.frameLength)
+            guard n > 0, let channels = buffer.floatChannelData else { break }
+            for i in 0..<n {
+                for c in 0..<Int(format.channelCount) {
+                    let v = abs(channels[c][i])
+                    if v > sliceMax { sliceMax = v }
+                }
+                inSlice += 1
+                if inSlice == perSlice {
+                    peaks.append(UInt8(min(sliceMax, 1) * 255))
+                    sliceMax = 0; inSlice = 0
+                }
+            }
+        }
+        if inSlice > 0 { peaks.append(UInt8(min(sliceMax, 1) * 255)) }
+        return Waveform(peaks: peaks)
+    }
+
+    /// From the cache if it's there, else read from the file and cached.
+    /// Keyed by the file's hash, so a rename or relink doesn't matter.
+    public static func load(_ url: URL, hash: String, cacheDir: URL) throws -> Waveform {
+        let cached = cacheDir.appendingPathComponent("\(hash).peaks")
+        if let data = try? Data(contentsOf: cached), !data.isEmpty { return Waveform(peaks: [UInt8](data)) }
+        let w = try read(url)
+        try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        try? Data(w.peaks).write(to: cached, options: .atomic)
+        return w
+    }
+}

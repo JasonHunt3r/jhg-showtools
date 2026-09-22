@@ -5,7 +5,7 @@ import CoreImage.CIFilterBuiltins
 import ShowToolsCore
 
 /// The show clock. Slides never keep their own timers: everything asks this
-/// what time it is. (Phase 3 swaps in the music's clock when there is one.)
+/// what time it is.
 @MainActor
 final class PlaybackClock {
     private(set) var playing = false
@@ -13,8 +13,16 @@ final class PlaybackClock {
     private(set) var rate: Double = 1
     private var base: Double = 0
     private var anchor: CFTimeInterval = 0
+    /// While music plays at normal speed, the seconds since `base` come from
+    /// the sound card instead of the system clock (see `MusicPlayer`). Set
+    /// right after a play or seek, so it always counts from `base`.
+    var external: (() -> Double?)?
 
-    var now: Double { playing ? base + (CACurrentMediaTime() - anchor) * rate : base }
+    var now: Double {
+        guard playing else { return base }
+        if rate == 1, let e = external?() { return base + e }
+        return base + (CACurrentMediaTime() - anchor) * rate
+    }
 
     func play(rate: Double? = nil) {
         if playing { base = now }
@@ -58,6 +66,10 @@ final class PlaybackEngine {
     private(set) var seekCount = 0
 
     @ObservationIgnored let clock = PlaybackClock()
+    @ObservationIgnored private let music = MusicPlayer()
+    /// Which pass of a looping show the music was started for: at the next
+    /// pass it starts again from the top.
+    @ObservationIgnored private var musicPass = 0
     @ObservationIgnored let media: MediaProvider
     @ObservationIgnored private let device: MTLDevice
     @ObservationIgnored private let queue: MTLCommandQueue
@@ -88,6 +100,7 @@ final class PlaybackEngine {
         ticker = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
+        music.onReset = { [weak self] in self?.syncMusic() }
     }
 
     /// Stop the timer and release video. The engine can't be used afterwards.
@@ -95,6 +108,7 @@ final class PlaybackEngine {
         ticker?.invalidate()
         ticker = nil
         clock.pause()
+        syncMusic()
         media.stopAll()
     }
 
@@ -109,9 +123,13 @@ final class PlaybackEngine {
         let t = clock.now
         // A show that doesn't loop stops at its end (or its start, in reverse).
         if clock.playing, !timeline.loops, timeline.duration > 0 {
-            if t >= timeline.duration { clock.pause(); clock.seek(timeline.duration - 0.001) }
-            else if t < 0 { clock.pause(); clock.seek(0) }
+            if t >= timeline.duration { clock.pause(); clock.seek(timeline.duration - 0.001); syncMusic() }
+            else if t < 0 { clock.pause(); clock.seek(0); syncMusic() }
         }
+        // A looping show's music starts again with each pass.
+        // (Checked whether or not any is sounding: the rest of a pass can be silent.)
+        if clock.playing, clock.rate == 1, !show.music.isEmpty, timeline.loops,
+           pass(clock.now) != musicPass { syncMusic() }
         let i = timeline.frame(at: clock.now).currentIndex ?? 0
         if i != currentIndex { currentIndex = i }
         let playing = clock.playing || waitingToStart
@@ -125,6 +143,7 @@ final class PlaybackEngine {
         let keep = timeline.frame(at: clock.now).currentIndex
         let keptID = keep.map { timeline.slides[$0].slide.id }
         let into = keep.map { clock.now - timeline.slides[$0].start } ?? 0
+        let before = clock.now, musicBefore = show.music
         show = latest
         timeline = model?.timeline(for: latest) ?? timeline
         duration = timeline.duration
@@ -132,6 +151,9 @@ final class PlaybackEngine {
         if let keptID, let s = timeline.slides.first(where: { $0.slide.id == keptID }) {
             clock.seek(s.start + max(0, min(into, s.length)))
         }
+        // The music follows if the songs changed, or the playhead moved to
+        // stay on its slide.
+        if clock.playing, show.music != musicBefore || abs(clock.now - before) > 0.02 { syncMusic() }
         touch()
     }
 
@@ -162,6 +184,7 @@ final class PlaybackEngine {
             media.prepare(around: first.index, in: timeline, visible: [])
         } else {
             clock.play(rate: 1)
+            syncMusic()
         }
         touch()
         tick()
@@ -170,6 +193,7 @@ final class PlaybackEngine {
     func pause() {
         waitingToStart = false
         clock.pause()
+        syncMusic()
         media.pauseAllVideo()
         touch()
         tick()
@@ -186,12 +210,14 @@ final class PlaybackEngine {
                                                              : Double(direction)
         if next != 1 { media.pauseAllVideo() }
         clock.play(rate: next)
+        syncMusic()
         touch()
         tick()
     }
 
     func seek(_ t: Double) {
         clock.seek(t)
+        syncMusic()
         seekCount += 1
         touch()
         tick()
@@ -230,6 +256,39 @@ final class PlaybackEngine {
         seek(timeline.settledTime(of: i))
     }
 
+    // MARK: Music
+
+    private func pass(_ t: Double) -> Int {
+        timeline.loops && timeline.duration > 0 ? Int((t / timeline.duration).rounded(.down)) : 0
+    }
+
+    /// Music plays while the show plays forwards at normal speed; scrubbing,
+    /// shuttling and paused seeks are silent (plan, Phase 3). Call after
+    /// anything that starts, stops or moves the clock: the music restarts
+    /// from the clock's time and takes the clock over.
+    private func syncMusic() {
+        clock.external = nil
+        guard clock.playing, clock.rate == 1, !show.music.isEmpty, let model else {
+            if music.isRunning { music.stop() }
+            return
+        }
+        let t = clock.now
+        clock.seek(t)                   // counts from here, like the music
+        let local = timeline.wrap(t)
+        // Songs stop at the show's end (step 4 makes the show as long as
+        // its longest row).
+        let segments: [MusicPlayer.Segment] = show.music.compactMap { clip in
+            guard let item = model.itemsByID[clip.itemID], let url = model.url(for: item),
+                  let seg = clip.segment(from: local, until: timeline.duration) else { return nil }
+            return MusicPlayer.Segment(url: url, delay: seg.delay, fileStart: seg.fileStart,
+                                       duration: seg.duration, volume: Float(clip.volume))
+        }
+        musicPass = pass(t)
+        if music.start(segments) {
+            clock.external = { [music] in music.elapsed }
+        }
+    }
+
     // MARK: Drawing
 
     @ObservationIgnored private var drawnSize: [ObjectIdentifier: CGSize] = [:]
@@ -247,6 +306,7 @@ final class PlaybackEngine {
             waitingToStart = false
             clock.seek(t)
             clock.play(rate: 1)
+            syncMusic()
         }
         let overlay = timeline.overlay(at: t)
         if let i = state.currentIndex {

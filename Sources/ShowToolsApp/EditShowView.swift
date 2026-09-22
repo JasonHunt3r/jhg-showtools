@@ -16,6 +16,7 @@ struct EditShowView: View {
     @State private var selectedTransition: Int64?
     /// The image selected in the lane's images row.
     @State private var selectedOverlay: UUID?
+    @State private var selectedSong: UUID?
     @AppStorage("storylineZoom") private var pps: Double = 24
     @State private var storylineOffset: CGFloat = 0
 
@@ -45,7 +46,7 @@ struct EditShowView: View {
                         Divider()
                         StorylineView(show: show, timeline: timeline, engine: engine,
                                       selection: $selection, selectedTransition: $selectedTransition,
-                                      selectedOverlay: $selectedOverlay,
+                                      selectedOverlay: $selectedOverlay, selectedSong: $selectedSong,
                                       pps: $pps, scrollOffset: $storylineOffset, mutate: mutate,
                                       openInspector: { inspectorShown = true })
                     }
@@ -56,7 +57,10 @@ struct EditShowView: View {
                 .onDeleteCommand {
                     // What's selected in the lane goes first: an image is
                     // taken out; a transition leaves a cut.
-                    if let id = selectedOverlay {
+                    if let id = selectedSong {
+                        mutate("Remove Song") { $0.music.removeAll { $0.id == id } }
+                        selectedSong = nil
+                    } else if let id = selectedOverlay {
                         mutate("Remove Image") { $0.overlays.removeAll { $0.id == id } }
                         selectedOverlay = nil
                     } else if let id = selectedTransition {
@@ -70,9 +74,9 @@ struct EditShowView: View {
                     }
                 }
                 .onChange(of: selection) { _, s in
-                    if !s.isEmpty { selectedTransition = nil; selectedOverlay = nil }
+                    if !s.isEmpty { selectedTransition = nil; selectedOverlay = nil; selectedSong = nil }
                 }
-                .onChange(of: selectedOverlay) { _, o in if o != nil { selectedTransition = nil } }
+                .onChange(of: selectedOverlay) { _, o in if o != nil { selectedTransition = nil; selectedSong = nil } }
                 .task {
                     // Dev hook: SHOWTOOLS_DEV_TRANSITION=<slideIndex> selects the
                     // transition into that slide, so its controls can be screenshotted.

@@ -18,7 +18,16 @@ public struct MediaProbe: Sendable {
             return await readVideo(url)
         }
         if type.conforms(to: .image) { return readImage(url) }
+        if type.conforms(to: .audio) { return readAudio(url) }
         return nil
+    }
+
+    /// A song: its length, read by opening it the way playback will (so a
+    /// file that probes will also play).
+    static func readAudio(_ url: URL) -> MediaProbe? {
+        guard let f = try? AVAudioFile(forReading: url), f.length > 0 else { return nil }
+        return MediaProbe(kind: .audio, width: 0, height: 0,
+                          duration: Double(f.length) / f.processingFormat.sampleRate)
     }
 
     static func readImage(_ url: URL) -> MediaProbe? {
@@ -94,7 +103,7 @@ public enum Ingest {
 
     public static func isMedia(_ url: URL) -> Bool {
         guard let t = UTType(filenameExtension: url.pathExtension) else { return false }
-        return t.conforms(to: .image) || t.conforms(to: .movie) || t.conforms(to: .video)
+        return t.conforms(to: .image) || t.conforms(to: .movie) || t.conforms(to: .video) || t.conforms(to: .audio)
     }
 
     public static func sha256(of url: URL) throws -> String {
@@ -116,7 +125,7 @@ public enum Ingest {
         case notMedia, verifyFailed, copy(String)
         public var description: String {
             switch self {
-            case .notMedia: "not a readable image or video"
+            case .notMedia: "not a readable image, video or song"
             case .verifyFailed: "the copy didn't match the original"
             case .copy(let m): m
             }

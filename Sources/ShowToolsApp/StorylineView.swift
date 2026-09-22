@@ -18,6 +18,8 @@ struct StorylineView: View {
     @Binding var selectedTransition: Int64?
     /// The image selected in the lane's images row.
     @Binding var selectedOverlay: UUID?
+    /// The song selected in the music row.
+    @Binding var selectedSong: UUID?
     /// Points per second: the zoom.
     @Binding var pps: Double
     /// How far the storyline is scrolled, for the frame strip to follow.
@@ -34,7 +36,7 @@ struct StorylineView: View {
     /// The images row, the same height empty or not (a faded placeholder
     /// holds its place).
     static let imagesRowHeight: CGFloat = 30
-    /// The music row (a placeholder until Phase 3 step 2).
+    /// The music row.
     static let musicRowHeight: CGFloat = 44
     static let rowGap: CGFloat = 4
     /// Where the rows start in the scrolling content: below the padding and
@@ -208,9 +210,12 @@ struct StorylineView: View {
                                   width: contentWidth, height: Self.imagesRowHeight,
                                   dropTargeted: $imagesDropTargeted, selectedOverlay: $selectedOverlay,
                                   mutate: mutate,
-                                  didSelect: { selection = []; selectedTransition = nil; focused = true })
+                                  didSelect: { selection = []; selectedTransition = nil; selectedSong = nil; focused = true })
                             .offset(y: rowTop(.images))
-                        musicRow
+                        MusicRow(show: show, timeline: timeline, pps: pps, inset: Self.inset,
+                                 width: contentWidth, height: Self.musicRowHeight,
+                                 selectedSong: $selectedSong, mutate: mutate,
+                                 didSelect: { selection = []; selectedTransition = nil; selectedOverlay = nil; focused = true })
                             .offset(y: rowTop(.music))
                         ForEach(placed) { p in
                             let isMoving = moving?.ids.contains(p.id) == true
@@ -282,28 +287,14 @@ struct StorylineView: View {
                 openDrawers = []
                 return .handled
             }
-            guard selectedOverlay != nil else { return .ignored }
+            guard selectedOverlay != nil || selectedSong != nil else { return .ignored }
             selectedOverlay = nil
+            selectedSong = nil
             return .handled
         }
     }
 
     // MARK: Rows
-
-    /// A faded placeholder until the music row is built (Phase 3 step 2).
-    private var musicRow: some View {
-        RoundedRectangle(cornerRadius: 3)
-            .fill(Color.white.opacity(0.05))
-            .frame(width: max(CGFloat(timeline.duration * pps), 0), height: Self.musicRowHeight)
-            .overlay(alignment: .leading) {
-                Label("Music", systemImage: "music.note")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .padding(.leading, 8)
-            }
-            .offset(x: Self.inset)
-            .allowsHitTesting(false)
-    }
 
     /// Each row's handle, pinned at the left edge (it doesn't scroll
     /// sideways), and its drawer. Drag a handle to move the row; click it
@@ -635,7 +626,12 @@ struct StorylineView: View {
         let index = dropTarget(x, placed).index
         let showID = show.id
         Task {
-            let ids = await model.itemIDs(from: providers)
+            // Songs go in the music row, at the time they were dropped.
+            let all = await model.itemIDs(from: providers)
+            let songs = model.songs(all), ids = model.pictures(all)
+            if !songs.isEmpty, model.bringIntoCollection(songs, forShow: showID) {
+                MusicRow.place(songs, at: max(0, Double(x - Self.inset) / pps), model: model, mutate: mutate)
+            }
             guard !ids.isEmpty, model.bringIntoCollection(ids, forShow: showID) else { return }
             mutate(ids.count == 1 ? "Insert Slide" : "Insert Slides") { s in
                 s.slides.insert(contentsOf: ids.map { Slide(id: 0, itemID: $0) }, at: min(index, s.slides.count))
@@ -797,6 +793,7 @@ struct StorylineView: View {
     private func selectTransition(_ id: Int64, at time: Double) {
         selectedTransition = id
         selectedOverlay = nil
+        selectedSong = nil
         selection = []
         focused = true
         engine.pause()
@@ -830,6 +827,7 @@ struct StoryBlock: View {
         case .image: Color(red: 0.30, green: 0.34, blue: 0.62)
         case .animatedImage: Color(red: 0.20, green: 0.52, blue: 0.52)
         case .video: Color(red: 0.22, green: 0.42, blue: 0.70)
+        case .audio: Color(red: 0.16, green: 0.30, blue: 0.46)
         }
     }
 

@@ -28,9 +28,16 @@ final class Thumbnails {
     func load(_ item: MediaItem, url: URL) async -> NSImage? {
         if let hit = cached(item.id) { return hit }
         let kind = item.kind, started = generation
-        let cg = await Task.detached(priority: .userInitiated) {
-            kind == .video ? await Self.videoFrame(url) : Self.imageThumb(url)
-        }.value
+        let cg: CGImage?
+        if kind == .audio {
+            // A song's tile is its waveform.
+            guard let w = await Waveforms.shared.load(item, url: url) else { return nil }
+            cg = await Task.detached(priority: .userInitiated) { Waveforms.thumbnail(w) }.value
+        } else {
+            cg = await Task.detached(priority: .userInitiated) {
+                kind == .video ? await Self.videoFrame(url) : Self.imageThumb(url)
+            }.value
+        }
         guard let cg, generation == started else { return nil }
         let img = NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
         cache.setObject(img, forKey: NSNumber(value: item.id))
@@ -132,6 +139,8 @@ struct KindBadge: View {
             badge("GIF")
         case .video:
             badge(item.duration.map(formatDuration) ?? "Video", symbol: "video.fill")
+        case .audio:
+            badge(item.duration.map(formatDuration) ?? "Song", symbol: "music.note")
         }
     }
 

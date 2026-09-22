@@ -108,8 +108,8 @@ struct ImagesRow: View {
         mutate(itemIDs.count == 1 ? "Place Image" : "Place Images") { s in
             var at = t
             for id in itemIDs {
-                // No video in the lane yet: skip it, and place the rest.
-                guard model.itemsByID[id]?.kind != .video else { continue }
+                // No video in the lane yet, and songs never: skip them, and place the rest.
+                guard let kind = model.itemsByID[id]?.kind, kind.isPicture, kind != .video else { continue }
                 guard var clip = OverlayPlacement.place(itemID: id, at: at, length: Self.newLength,
                                                         in: s.overlays, duration: timeline.duration,
                                                         shortest: Self.shortest)
@@ -252,7 +252,7 @@ struct LibraryPicker: View {
             Divider()
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 10)], spacing: 12) {
-                    ForEach(model.items.filter { $0.kind != .video }) { item in
+                    ForEach(model.items.filter { $0.kind.isPicture && $0.kind != .video }) { item in
                         Button { choose(item) } label: {
                             VStack(spacing: 4) {
                                 ThumbnailView(item: item, url: model.url(for: item))
