@@ -452,13 +452,78 @@ to the Collection Browser and the library.
 - **Relink** files that have moved or gone missing, re-found by their hash
 
 ### Phase 3: Music + timeline
-- Add a song and draw its waveform on a timeline
-- Slides appear as blocks under the waveform. Dragging a block's edge changes
-  that slide's length
-- **Alignment aids:** markers you drop yourself while listening (tap a key on
-  the beat). Slide edges snap to markers. Automatic beat detection may come
-  later if the markers turn out to be a chore
-- Scrubbing the timeline scrubs the show
+(Decisions from Jason, 2026-09-21, unless marked otherwise.)
+- **Modular rows.** Every timeline row (transitions, images, slides, music)
+  is a module, and the rows can be dragged into any order. Each row has a
+  small **header** at its left end (like Logic's track headers, which Final
+  Cut doesn't have). You grab the header to move the row, and it holds the
+  row's controls. Reordering is built in this phase, not later.
+- **The music row** sits at the bottom by default. Songs are **copied into
+  the library**, like photos, so relink, delete and export already cover them.
+- **Audio clips work like image clips.** Add as many as you want, drag one
+  to move it, and drag its edges to trim it (trimming the front edge cuts
+  into the start of the song, as in Final Cut). Songs share **one row**.
+  Where two overlap they crossfade; one song draws light blue and the
+  overlap draws light green (or something similar) so it's easy to see.
+- **A level line on each clip.** Each clip gets a simple ramp you adjust on
+  the clip itself: a level you drag up or down, with fade handles at each
+  end. It's volume on an audio clip. **Image clips get the same control for
+  opacity.** They already store opacity and fades (set in the Inspector),
+  but there are no handles on the timeline yet.
+- **The show is as long as its longest row**, not just its slides. Drop an
+  image or a song that runs past the end, and the show gets that much
+  longer. Time after the last slide shows the **show's background
+  colour**. Slides already have their own background colour (in the
+  Inspector); the show-wide default, fixed at black until now, gets a
+  control in the Edit Slides header bar. With loop on, the whole show
+  restarts after its longest row ends.
+- **The waveform** is decoded once and cached.
+- **Scrubbing scrubs the show.** It's silent by default. A button in the
+  music row's header turns scrub audio on.
+- **Markers, two kinds:**
+  - **Manual:** press M on the beat. These stay at their time on the show's
+    clock and move only when selected and dragged together.
+  - **Detected:** generated from a song, so they belong to that audio clip
+    and move with it. Automatic detection is **in this phase** (it was
+    deferred until 2026-09-21). How detection is set up and applied (a
+    range, beats per slide, a rhythm pattern) is below.
+- **Snapping:** slide cuts and image clip edges snap to markers. N turns
+  snapping on and off.
+- **Video sound:** muted by default. Punted until Jason makes a first show
+  (2026-09-21). The idea is a volume line along a video slide's own length,
+  so you keep the part where someone speaks and drop the part with the dogs
+  barking.
+- **Image stickiness** (parked in 2c): settle it at the end of this phase,
+  once Jason has made a first real show.
+
+#### Beat detection, the range, and rhythm (settled 2026-09-21)
+- **The range:** I and O set in and out points, drawn as two blue markers
+  on the ruler with the span between them shaded (Final Cut's convention).
+  It's multi-purpose by context: the part detection applies to, and, with
+  loop on (⌘L), the region playback loops inside while editing. Option-X
+  clears it, and a header button turns it off without losing it.
+- **Tempo:** the song's tempo (BPM) and beat grid are detected, with a
+  field to override them and a tap-tempo button for when it guesses half
+  or double. Slide changes quantize onto the *detected* beats, not a perfect
+  grid, so a song that drifts is still followed.
+- **The apply sheet**, run on the range: roughly how many beats per slide,
+  *or* a change every roughly X seconds, *or* a rhythm pattern (below).
+  It always drops markers (detected ones, so they belong to the song). A
+  **"Fit slides to markers"** checkbox also re-cuts the slides in the range
+  so their cuts land on those markers.
+- **Rhythm patterns**, three ways to write the same thing:
+  - **text**, a short pattern repeated to fill the range, e.g.
+    `w w h h q q 3e 3e 3e` (whole, half, quarter, a triplet of eighths)
+  - **musical notation**: the pattern drawn as notes, with note buttons
+    that write it for you
+  - **a step grid**, like a drum machine: squares for one bar, clicked
+    where a slide should change
+  - plus a **note-length multiplier**: how many beats a whole note stands
+    for, so the pattern can be slow enough for pictures (a quarter note on
+    every beat would be a slide every half second)
+- A note's value only sets the gap from one slide change to the next.
+  "Staccato" was colour, not a literal feature. It did spark an idea for a
+  **strobe effect**, which is parked under Later.
 
 ### Phase 3b: Duplicate finder
 - **Exact duplicates:** identical content, found by hash. This is instant
@@ -511,7 +576,9 @@ to the Collection Browser and the library.
 
 ### Later
 - Video export (the hook above)
-- Beat detection
+- ~~Beat detection~~ (moved into Phase 3, 2026-09-21)
+- **A strobe effect** (Jason, 2026-09-21): a slide flashing on and off
+  against the background colour. Came out of the rhythm-pattern talk
 - Photos-library browsing inside the app. Deferred until the app has taken
   shape; the permission question gets worked out then. Drag-and-drop from
   Photos works from Phase 1 regardless
