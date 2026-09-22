@@ -7,19 +7,21 @@ import ShowToolsPlayback
 /// builds its show, follows library edits, and picks again at the end of
 /// each pass for the random modes. It's the engine's `ShowSource`.
 @MainActor
+@Observable
 final class Player: ShowSource {
-    let setting: ScreenSetting
-    private let reader: LibraryReader
-    let randomDefaults: ShowDefaults
-    private var built: DesktopShow.Built?
-    private(set) var engine: PlaybackEngine!
-    private var seenGeneration: Int
-    private var pass = 0
-    private var timer: Timer?
+    @ObservationIgnored let setting: ScreenSetting
+    @ObservationIgnored private let reader: LibraryReader
+    @ObservationIgnored let randomDefaults: ShowDefaults
+    /// What's playing: observed by the window.
+    private(set) var built: DesktopShow.Built?
+    @ObservationIgnored private(set) var engine: PlaybackEngine!
+    @ObservationIgnored private var seenGeneration: Int
+    @ObservationIgnored private var pass = 0
+    @ObservationIgnored private var timer: Timer?
 
     /// Only one screen is heard: the controller sets this on the player
     /// for the main display's current Space.
-    var audible = false {
+    @ObservationIgnored var audible = false {
         didSet {
             guard audible != oldValue else { return }
             engine.media.muteVideo = !hears

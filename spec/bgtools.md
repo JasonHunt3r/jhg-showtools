@@ -228,7 +228,20 @@ New with BGTools:
   mode, show or collection, Stills only, sound), All same, the "new
   screens" default, the desktop defaults; random modes build a show on the
   fly with those defaults.
-- **B4 The panel.** `bgtools://open` shows it without activating other
+- **B4a The window. BUILT 2026-09-22** (Jason asked for a larger, regular
+  window alongside the panel, opened from it). Monitors drawn as arranged
+  plus a list of each one's Spaces on the left; the selected screen's
+  live preview (⏮ ⏯ ⏭, "Show · n of N") and its setting on the right
+  (library, the five modes, a thumbnail grid of shows or collections,
+  Stills only, Sound); All same (switch in its row), New screens and
+  Random pictures below. Desktop Show switch in the toolbar. Opens with
+  `bgtools://window`, by opening BGTools again, or `BGTOOLS_OPEN_WINDOW=1`;
+  BGTools shows in the Dock only while it's open. Libraries on offer:
+  ShowTools' main and recent ones (its prefs, read only), or in a test
+  launch only those the settings name. Checked by driving it with axtool
+  (`AXTOOL_APP=bgtools`) on the test settings. Private libraries show a
+  note until B6.
+- **B4b The panel.** `bgtools://open` shows it without activating other
   windows; rows per monitor and Space.
 - **B5 Control Center.** Open BGTools, Desktop Show on/off (via
   `bgtools://` URLs, measured).

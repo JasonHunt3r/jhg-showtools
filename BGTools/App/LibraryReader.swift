@@ -6,17 +6,22 @@ import ShowToolsCore
 /// SQLite's change counter and rereads everything in one snapshot when
 /// ShowTools saves; `generation` goes up each time, for the players.
 @MainActor
+@Observable
 final class LibraryReader {
-    let root: URL
-    private let library: Library
+    @ObservationIgnored let root: URL
+    @ObservationIgnored private let library: Library
     private(set) var contents = DesktopShow.Library(shows: [], collections: [], items: [:])
     private(set) var generation = 0
-    private var lastChange = -1
-    private var poll: Timer?
+    @ObservationIgnored private var lastChange = -1
+    @ObservationIgnored private var poll: Timer?
+    /// Read once: whether ShowTools marks it private (spec question 11).
+    @ObservationIgnored private(set) var isPrivate = false
+    var name: String { library.name }
 
     init(root: URL) throws {
         self.root = root
         library = try Library(readingOnly: root)
+        isPrivate = library.isPrivate
         reload()
         poll = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.reload() }

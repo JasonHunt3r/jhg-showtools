@@ -21,7 +21,8 @@
 //                                        tab, left, right, up, down, or a letter
 //
 // Screen points, top-left origin, as `dump` prints them. click, drag, type
-// and key refuse to run unless ShowTools is the frontmost app, and click and
+// and key refuse to run unless ShowTools is the frontmost app (or BGTools, with
+// AXTOOL_APP=bgtools), and click and
 // drag refuse any point outside its windows.
 import ApplicationServices
 import AppKit
@@ -134,10 +135,13 @@ func type(_ text: String) {
 /// Events go to whatever app is in front, not to ShowTools. Every click,
 /// drag and key checks first, and refuses if ShowTools isn't frontmost:
 /// on 2026-09-21 typed paths landed in Jason's editor when it came forward.
+/// `AXTOOL_APP=bgtools` drives BGTools instead (the only other app allowed).
+let targetBundle = ProcessInfo.processInfo.environment["AXTOOL_APP"] == "bgtools" ? "com.jhg.bgtools" : "com.jhg.showtools"
+
 func requireShowToolsInFront() {
     let front = NSWorkspace.shared.frontmostApplication
-    guard front?.bundleIdentifier == "com.jhg.showtools" else {
-        print("REFUSED: \(front?.localizedName ?? "another app") is in front, not ShowTools")
+    guard front?.bundleIdentifier == targetBundle else {
+        print("REFUSED: \(front?.localizedName ?? "another app") is in front, not \(targetBundle)")
         exit(2)
     }
 }

@@ -13,6 +13,20 @@ struct ScreenKey: Hashable, CustomStringConvertible {
     var description: String { "\(display.prefix(8))/\(space.isEmpty ? "desktop1" : String(space.prefix(8)))" }
 }
 
+/// A monitor's Space as the window lists it.
+struct ScreenInfo: Identifiable, Hashable {
+    let key: ScreenKey
+    let displayName: String
+    /// The monitor's frame in screen coordinates, for the arrangement.
+    let displayFrame: CGRect
+    let isMainDisplay: Bool
+    /// As Mission Control numbers them (0 when one window serves them all).
+    let spaceIndex: Int
+    var isCurrent: Bool
+    var id: String { key.id }
+    var title: String { spaceIndex > 0 ? "\(displayName) · Space \(spaceIndex)" : displayName }
+}
+
 /// One window per monitor and Space at desktop level: above the wallpaper,
 /// below Finder's icons, clicks passing through (measured). It shows a
 /// player's engine; under All same, many windows show the same one.
@@ -66,17 +80,23 @@ final class DesktopWindow {
 /// rebuilds once. Windows and players that are still wanted are kept, so
 /// their shows don't restart.
 @MainActor
+@Observable
 final class DesktopController {
-    private let store: DesktopSettingsStore
+    @ObservationIgnored let store: DesktopSettingsStore
     private(set) var settings: DesktopSettings
-    private var settingsModified: Date?
-    private var readers: [String: LibraryReader] = [:]
+    @ObservationIgnored private var settingsModified: Date?
+    @ObservationIgnored private var readers: [String: LibraryReader] = [:]
     /// By screen id, or "all" under All same.
-    private var players: [String: Player] = [:]
-    private var windows: [ScreenKey: DesktopWindow] = [:]
-    private var pending: DispatchWorkItem?
-    private var lastLayout = ""
-    private var watch: Timer?
+    private(set) var players: [String: Player] = [:]
+    /// Every monitor and Space there is now, for the window.
+    private(set) var screens: [ScreenInfo] = []
+    /// While BGTools' window is open, libraries it's shown stay open, so
+    /// its pickers don't close and reopen them.
+    @ObservationIgnored var keepReaders = false
+    @ObservationIgnored private var windows: [ScreenKey: DesktopWindow] = [:]
+    @ObservationIgnored private var pending: DispatchWorkItem?
+    @ObservationIgnored private var lastLayout = ""
+    @ObservationIgnored private var watch: Timer?
 
     init(store: DesktopSettingsStore) {
         self.store = store
@@ -89,6 +109,7 @@ final class DesktopController {
         }
         wc.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
+                self?.updateCurrent()
                 self?.updateSound()
                 self?.soon("space changed")
             }
@@ -128,20 +149,40 @@ final class DesktopController {
     /// Space's current id (nil: one window on every Space).
     private func wanted() -> [(ScreenKey, NSScreen, Int?)] {
         let desktops = Spaces.desktops()
+        let current = Spaces.current()
         var out: [(ScreenKey, NSScreen, Int?)] = []
-        for screen in NSScreen.screens {
+        var infos: [ScreenInfo] = []
+        for (n, screen) in NSScreen.screens.enumerated() {
             let display = screen.displayUUID
             if Spaces.available, let spaces = desktops[display], !spaces.isEmpty {
-                for s in spaces { out.append((ScreenKey(display: display, space: s.uuid), screen, s.id)) }
+                for s in spaces {
+                    let key = ScreenKey(display: display, space: s.uuid)
+                    out.append((key, screen, s.id))
+                    infos.append(ScreenInfo(key: key, displayName: screen.localizedName, displayFrame: screen.frame,
+                                            isMainDisplay: n == 0, spaceIndex: s.index,
+                                            isCurrent: current[display] == s.uuid))
+                }
             } else {
-                out.append((ScreenKey(display: display, space: "all"), screen, nil))
+                let key = ScreenKey(display: display, space: "all")
+                out.append((key, screen, nil))
+                infos.append(ScreenInfo(key: key, displayName: screen.localizedName, displayFrame: screen.frame,
+                                        isMainDisplay: n == 0, spaceIndex: 0, isCurrent: true))
             }
         }
+        if infos != screens { screens = infos }
         return out
     }
 
+    /// Marks the Space each monitor shows now.
+    private func updateCurrent() {
+        let current = Spaces.current()
+        let updated = screens.map { var i = $0; i.isCurrent = i.spaceIndex == 0 || current[i.key.display] == i.key.space; return i }
+        if updated != screens { screens = updated }
+    }
+
     private func rebuild(reason: String) {
-        let want = settings.on ? wanted() : []
+        let all = wanted()
+        let want = settings.on ? all : []
         let layout = want.map { "\($0.0)@\($0.2 ?? -1)\($0.1.frame)" }.joined(separator: " ")
         guard layout != lastLayout else { return }   // a Space switch alone changes nothing
         lastLayout = layout
@@ -194,14 +235,48 @@ final class DesktopController {
         }
         // Readers no player uses any more are closed.
         let used = Set(needed.values.map(\.library))
-        for (path, r) in readers where !used.contains(path) {
+        for (path, r) in readers where !used.contains(path) && !keepReaders {
             r.close()
             readers[path] = nil
         }
         updateSound()
     }
 
-    private func reader(for path: String) -> LibraryReader? {
+    /// The libraries to offer: ShowTools' own and any a setting names.
+    func libraryChoices() -> [LibraryChoice] {
+        let named = settings.screens.values.map(\.library)
+            + [settings.allSameSetting?.library, settings.newScreens?.library].compactMap { $0 }
+        return LibraryChoices.list(named: named)
+    }
+
+    /// A first choice for a screen that has none: all files of the first
+    /// library on offer.
+    func startingSetting() -> ScreenSetting? {
+        (settings.newScreens?.library ?? libraryChoices().first?.path).map { ScreenSetting(library: $0, mode: .allFiles) }
+    }
+
+    /// One line for the list: what a screen plays.
+    func summary(for screenID: String) -> String {
+        guard settings.on else { return "Off" }
+        guard let s = settings.setting(for: screenID) else { return "Wallpaper" }
+        let contents = readers[s.library]?.contents
+        func showName(_ id: Int64) -> String { contents?.shows.first { $0.id == id }?.name ?? "a show" }
+        let what: String
+        switch s.mode {
+        case .show(let id): what = showName(id)
+        case .shuffled(let id): what = "\(showName(id)), shuffled"
+        case .collection(let id): what = "Random from \(contents?.collections.first { $0.id == id }?.name ?? "a collection")"
+        case .randomShow: what = "A random show"
+        case .allFiles: what = "Random from all files"
+        }
+        let source = settings.allSame ? "All same" : settings.screens[screenID] == nil ? "New screens" : nil
+        return [what, s.stillsOnly ? "stills" : nil, source].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// The player a screen shows (All same's under All same).
+    func player(for screenID: String) -> Player? { players[settings.allSame ? "all" : screenID] }
+
+    func reader(for path: String) -> LibraryReader? {
         if let r = readers[path] { return r }
         do {
             let r = try LibraryReader(root: URL(fileURLWithPath: path))
