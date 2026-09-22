@@ -13,7 +13,7 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 | 2 Composer (Edit Slides / Edit Show) | Built |
 | **2a** Framing, rotation, match cuts | **Built**, except presets (Flush), which are deferred |
 | **2c** The lane: transitions row + images row | **Built**, except the parked items below |
-| **2b** Library manager | **Started**: Collections, libraries, import, grid, ratings and delete are built; rename, Info and relink are not |
+| **2b** Library manager | **Started**: Collections, libraries, import, grid, ratings, delete and rename are built; Info and relink are not |
 | 3–5 | Not started |
 
 Built this session (2026-09-21, day two):
@@ -132,7 +132,20 @@ pass can go area by area:
      database side (tested); `AppModel.deleteItems` does the Trash move and
      the undo/redo. Checked by hand with axtool: plain Delete, ⌘Delete, the
      context menu, and undo, including a file that was a lane image.
-   - Finder-style batch rename
+   - ~~Finder-style batch rename~~ **Built** (2026-09-21, session 3b):
+     Replace Text, Add Text and Format (name + index/counter/date, a start
+     number), with a live preview, from the grid's context menu or File ▸
+     Rename… (published through a `FocusedValue`, since the sheet needs the
+     grid's own selection). `BatchRename` computes the names (tested, pure
+     logic, no filesystem); `Library.renameItems` moves the files and
+     updates their rows, numbering a name already taken rather than ever
+     overwriting (tested); undo/redo are symmetric, like `deleteItems`'s.
+     **Gotcha, worth knowing for the next sheet:** a `.sheet` is a separate
+     window, and its own `\.undoManager` isn't necessarily the presenting
+     window's — the rename's undo silently did nothing until the caller's
+     `undoManager` was passed in explicitly instead of read from the
+     sheet's own environment. Checked by hand with axtool: a two-file
+     rename, its preview, Rename, ⌘Z, and ⌘⇧Z.
    - an Info panel (camera metadata, tags, the Finder-tags option)
    - relink by hash
 3. **Phase 3:** music and waveform. Then 3b duplicate finder, 4 setlist export, 5 live desktop.

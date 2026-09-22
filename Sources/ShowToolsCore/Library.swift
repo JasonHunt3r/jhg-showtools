@@ -438,6 +438,36 @@ public final class Library {
         }
     }
 
+    /// Renames files on disk and updates their rows to match. A wanted name
+    /// already taken — by another file, or by one just renamed earlier in
+    /// this same batch — is numbered the way an import would; nothing is
+    /// ever silently overwritten. `slides` and `collection_items` refer to
+    /// an item by id, never by name, so every show and collection is
+    /// untouched. Returns each renamed item's old name, keyed by id — pass
+    /// that straight back in to undo it (or to redo an undo).
+    @discardableResult
+    public func renameItems(_ names: [Int64: String]) throws -> [Int64: String] {
+        var previous: [Int64: String] = [:]
+        let fm = FileManager.default
+        try db.transaction {
+            for (id, wanted) in names {
+                guard !wanted.isEmpty else { continue }
+                let s = try db.prepare("SELECT rel_path FROM items WHERE id = ?").bind(.int(id))
+                guard try s.step() else { continue }
+                let oldRel = s.text(0)
+                guard oldRel != wanted else { continue }
+                let oldURL = mediaURL.appendingPathComponent(oldRel)
+                guard fm.fileExists(atPath: oldURL.path) else { continue }
+                let newURL = Ingest.uniqueURL(in: mediaURL, for: wanted)
+                try fm.moveItem(at: oldURL, to: newURL)
+                try db.prepare("UPDATE items SET rel_path = ? WHERE id = ?")
+                    .bind(.text(newURL.lastPathComponent), .int(id)).run()
+                previous[id] = oldRel
+            }
+        }
+        return previous
+    }
+
     // MARK: Shows
 
     private static let encoder: JSONEncoder = {

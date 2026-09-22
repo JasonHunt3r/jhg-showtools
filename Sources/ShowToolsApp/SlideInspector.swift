@@ -523,3 +523,14 @@ extension FocusedValues {
         set { self[ActiveShowKey.self] = newValue }
     }
 }
+
+// MARK: - Focus: the Library grid's selection, for File ▸ Rename…
+
+struct LibraryRenameKey: FocusedValueKey { typealias Value = (count: Int, invoke: () -> Void) }
+
+extension FocusedValues {
+    var libraryRename: (count: Int, invoke: () -> Void)? {
+        get { self[LibraryRenameKey.self] }
+        set { self[LibraryRenameKey.self] = newValue }
+    }
+}

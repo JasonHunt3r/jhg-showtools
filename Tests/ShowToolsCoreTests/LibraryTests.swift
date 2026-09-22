@@ -352,6 +352,34 @@ extension LibraryTests {
         XCTAssertEqual(restored.slides.map(\.id), originalSlideIDs)          // same slide identities
         XCTAssertEqual(Set(try lib.allCollections().first { $0.id == wedding.id }!.itemIDs), Set([a.id, b.id]))
     }
+
+    /// Renaming moves the file on disk and updates its row; a name already
+    /// taken is numbered rather than overwriting; renaming back (the old
+    /// names `renameItems` hands back) is undo, and works whichever
+    /// direction it's called.
+    func testRenameItemsMovesFilesAndAvoidsCollisions() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let probe = MediaProbe(kind: .image, width: 10, height: 10)
+        try Data().write(to: lib.mediaURL.appendingPathComponent("a.jpg"))
+        try Data().write(to: lib.mediaURL.appendingPathComponent("b.jpg"))
+        let a = try lib.insertItem(relativePath: "a.jpg", hash: "a", probe: probe, sourcePath: "")
+        let b = try lib.insertItem(relativePath: "b.jpg", hash: "b", probe: probe, sourcePath: "")
+
+        // b is renamed to a name a file on disk already has (untracked,
+        // just to prove the numbering looks at the real filesystem).
+        try Data().write(to: lib.mediaURL.appendingPathComponent("taken.jpg"))
+        let previous = try lib.renameItems([a.id: "Wedding 1.jpg", b.id: "taken.jpg"])
+        XCTAssertEqual(previous, [a.id: "a.jpg", b.id: "b.jpg"])
+        XCTAssertEqual(try lib.allItems().first { $0.id == a.id }?.relativePath, "Wedding 1.jpg")
+        XCTAssertEqual(try lib.allItems().first { $0.id == b.id }?.relativePath, "taken 2.jpg")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: lib.mediaURL.appendingPathComponent("Wedding 1.jpg").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: lib.mediaURL.appendingPathComponent("a.jpg").path))
+
+        // Undo: renaming back with what came back above.
+        try lib.renameItems(previous)
+        XCTAssertEqual(try lib.allItems().first { $0.id == a.id }?.relativePath, "a.jpg")
+        XCTAssertEqual(try lib.allItems().first { $0.id == b.id }?.relativePath, "b.jpg")
+    }
 }
 
 // MARK: - The library itself (schema 5)

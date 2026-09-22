@@ -598,6 +598,33 @@ final class AppModel {
         undo?.setActionName("Rate")
     }
 
+    /// Batch rename (2b): Finder's Rename Items sheet computes each new
+    /// name (`BatchRename`); this applies them. Symmetric, like
+    /// `deleteItems` — calling it again with what it hands back is both
+    /// undo and (from there) redo.
+    func renameItems(_ names: [Int64: String], undo: UndoManager?) {
+        guard let lib = library, !names.isEmpty else { return }
+        let previous: [Int64: String]
+        do {
+            previous = try lib.renameItems(names)
+        } catch {
+            loadError = "\(error)"
+            return
+        }
+        guard !previous.isEmpty else { return }
+        items = (try? lib.allItems()) ?? items
+        itemsByID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+
+        let generation = libraryGeneration
+        undo?.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated {
+                guard model.libraryGeneration == generation else { return }
+                model.renameItems(previous, undo: undo)
+            }
+        }
+        undo?.setActionName(previous.count == 1 ? "Rename" : "Rename \(previous.count) Items")
+    }
+
     /// Shows that use any of these files, in a slide or in the lane's
     /// images row — for the Delete prompt (and later, the Info panel).
     func showsUsing(_ itemIDs: Set<Int64>) -> [Show] {

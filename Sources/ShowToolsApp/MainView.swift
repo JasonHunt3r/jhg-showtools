@@ -246,6 +246,8 @@ struct LibraryGridView: View {
     @FocusState private var focused: Bool
     /// What Delete is about to send to the Trash — nil until it's confirmed.
     @State private var confirmDeleteIDs: [Int64]?
+    /// The batch-rename sheet's targets — nil while it's closed.
+    @State private var renameIDs: [Int64]?
 
     enum KindFilter: String, CaseIterable {
         case all, stills, animations, videos
@@ -441,6 +443,14 @@ struct LibraryGridView: View {
         } message: { ids in
             Text(deleteDialogMessage(ids))
         }
+        .sheet(item: Binding(get: { renameIDs.map(IdentifiedIDs.init) },
+                             set: { renameIDs = $0?.ids })) { wrapped in
+            BatchRenameSheet(itemIDs: wrapped.ids, undoManager: undoManager)
+        }
+        .focusedSceneValue(\.libraryRename, (count: selection.count, invoke: {
+            guard !orderedSelection.isEmpty else { return }
+            renameIDs = orderedSelection
+        }))
     }
 
     private var deleteDialogTitle: String {
@@ -522,6 +532,7 @@ struct LibraryGridView: View {
                 let urls = ids.compactMap { model.itemsByID[$0] }.compactMap(model.url(for:))
                 NSWorkspace.shared.activateFileViewerSelecting(urls)
             }
+            Button("Rename…") { renameIDs = ids }
             Divider()
             Button("Move to Trash…", role: .destructive) { requestDelete(ids, confirm: true) }
         }

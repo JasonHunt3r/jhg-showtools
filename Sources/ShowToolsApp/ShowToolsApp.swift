@@ -25,6 +25,7 @@ struct ShowToolsApp: App {
 struct AppCommands: Commands {
     let model: AppModel
     @FocusedValue(\.activeShowID) private var activeShowID
+    @FocusedValue(\.libraryRename) private var libraryRename
     @AppStorage("frameStripShown") private var frameStripShown = true
 
     var body: some Commands {
@@ -39,6 +40,10 @@ struct AppCommands: Commands {
                 .keyboardShortcut("i", modifiers: [.command, .shift])
             Button("Add to Library…") { runImportPanel(model, intoCollection: false) }
                 .keyboardShortcut("i", modifiers: [.command, .shift, .option])
+            Divider()
+            // The Library grid publishes this while it has a selection (2b).
+            Button("Rename…") { libraryRename?.invoke() }
+                .disabled((libraryRename?.count ?? 0) == 0)
             Divider()
             // Libraries switch one at a time, as Photos does (plan, 2b).
             Button("Open Library…") { runOpenLibraryPanel(model) }
