@@ -198,6 +198,25 @@ of it is in the plan.
 
 **Then the end of Phase 3:** settle image stickiness with Jason (below).
 
+## Step 7 questions (asked 2026-09-22)
+
+The decisions so far are in `spec/plan.md` under "Rhythm patterns".
+Still open:
+1. **"Filled in when there's an active profile"**: does "profile" mean
+   the song's analysis, or something else?
+2. **Typing a BPM over a song:** does that drop the detected beats for an
+   even grid at the typed tempo? Suggest: yes, with a "Use the song's beats"
+   button to go back.
+3. **What the Rhythm tool is:** a floating panel that stays open while you
+   work, applied to the range as often as you like? Suggest: yes. From
+   Detect Beats, Pattern shows the pattern's text with "Edit…", which opens
+   the Rhythm tool; the pattern comes back when it closes.
+4. **The Rhythm tool on its own:** give it Fit slides as well, and open it
+   from the slides row's drawer and the Show menu, with a shortcut?
+   Suggest: yes.
+5. **"Every N beats" without a song:** drop it. A steady `q` pattern does
+   the same job. Suggest: yes.
+
 ## Still needs Jason's hands
 - **Listening:** music sync, fades, crossfades; Bluetooth headphones'
   delay (the output latency is subtracted, but it's untested).

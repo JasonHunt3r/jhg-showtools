@@ -548,19 +548,49 @@ to the Collection Browser and the library.
   **"Fit slides to markers"** switch also resizes the slides, from the one
   the range starts in, so each ends on the next marker. Slides are never
   split: they're resized, and the ones after follow (Jason, 2026-09-22).
-- **Rhythm patterns**, three ways to write the same thing:
-  - **text**, a short pattern repeated to fill the range, e.g.
-    `w w h h q q 3e 3e 3e` (whole, half, quarter, a triplet of eighths)
-  - **musical notation**: the pattern drawn as notes, with note buttons
-    that write it for you
-  - **a step grid**, like a drum machine: squares for one bar, clicked
-    where a slide should change
-  - plus a **note-length multiplier**: how many beats a whole note stands
-    for, so the pattern can be slow enough for pictures (a quarter note on
-    every beat would be a slide every half second)
-- A note's value only sets the gap from one slide change to the next.
-  "Staccato" was colour, not a literal feature. It did spark an idea for a
-  **strobe effect**, which is parked under Later.
+- **Rhythm patterns** (step 7, planned with Jason 2026-09-22). A note's
+  value only sets the gap from one slide change to the next. "Staccato" was
+  colour, not a literal feature. It did spark an idea for a **strobe
+  effect**, which is parked under Later.
+  - **Two tools.** The **Rhythm** tool writes a pattern and works on its
+    own, with no song and no analysis: it lays the pattern on an even BPM
+    grid and drops **orange hand markers** (a re-run adds more; ⌘Z to try
+    another). **Detect Beats** gets a fourth marker choice, **Pattern**,
+    which opens the Rhythm tool for its pattern and lays it on the song's
+    detected beats as teal markers, with the preview, marker count, Fit
+    slides and one-step undo it already has.
+  - **Writing it: one text field is the input.** Type into it, or click the
+    glyph legend (each note glyph with its letter, a "Rosetta stone") to add
+    that letter. The pattern is drawn as **notation** and as a **step grid**
+    (tabs), both following the text.
+  - **The letters:** `w h q e s` (whole, half, quarter, eighth, sixteenth);
+    a dot after a note adds half its length (`q.`); `3e` is one note of an
+    eighth-note triplet, so `3e 3e 3e` lasts a quarter. **`r` before a
+    value is a rest** (`rq`, `rh.`): it takes time but drops no marker, so
+    `q rq q` changes on beats 1 and 3. No ties (a note's value is only the
+    gap, so `h`+`q` tied is `h.`). An empty grid square is a rest.
+  - **Notation:** one rhythm line, no pitches, drawn with Bravura (the
+    free SMuFL music font; check its licence before shipping it). Eighths
+    and sixteenths beamed within the beat, triplet brackets, bar lines.
+  - **The grid** sizes itself: 16 or 12 steps a bar (12 for triplets), as
+    many bars as the pattern needs. A pattern it can't show leaves it
+    read-only with a note saying why.
+  - **Note length:** "A quarter note = [¼, ½, 1, 2, 4, 8] beats", default
+    4 beats (one bar), so `q q q q` is a slide a bar.
+  - **Tempo:** a **BPM field**, filled in from the song's analysis when
+    there is one, otherwise 120; always editable.
+  - **Where it starts:** the start of the range, or of the show with no
+    range. It repeats to the end, and the last repeat is cut short. On a
+    song it counts the detected beats (between beats, in proportion), so a
+    drifting song is still followed; ×2 / ÷2 and "bar starts" apply.
+  - **Saved patterns:** the last one used is remembered; a few built-ins
+    (steady `q`; long-short `h q q`; build `w h h q q q q e e e e e e e e`;
+    a triplet feel); and Jason's own named patterns, saved in the library
+    and offered in a menu.
+  - **Listen:** loops the range with a click on each pattern note (over
+    the song when there is one), before applying.
+  - **Still open (asked 2026-09-22):** see "Step 7 questions" in
+    `spec/handoff.md`.
 
 ### Phase 3b: Duplicate finder
 - **Exact duplicates:** identical content, found by hash. This is instant
