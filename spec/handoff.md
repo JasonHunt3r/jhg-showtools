@@ -5,24 +5,31 @@ decision, phase by phase) first. This file is the state of play. The repo
 is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 (public, `main`).
 
-## Start here (end of 2026-09-22)
+## Start here (end of 2026-09-22, third session)
 
-**Phase 5 is now BGTools, the desktop companion app, and it's being
-planned; its test program is half run.** It has its own spec,
-**`spec/bgtools.md`**: a small separate app that ShowTools installs,
-reading the library read-only; Control Center opens it; shows per monitor
-and per Space. Every decision, measurement and open question is there.
+**Phase 5 (BGTools) is BUILT**, steps B1–B7, and every open question is
+settled. Its spec, `spec/bgtools.md`, holds the decisions, the
+measurements and what each step did. BGTools is installed in
+`~/Applications`, registered at login, with its two Control Center tiles.
 
-**Launch at login: done** (2026-09-22). Both probes launched at Jason's
-login, SMAppService and LaunchAgent alike; result in `spec/bgtools.md`,
-probes removed.
-
-The test program is done (2026-09-22): several monitors and tiles
-measured with Jason (spec "Measured"). Only **Power** is left, a
-curiosity rather than a gate (Jason: BGTools may do both live drawing and
-video).
-Then settle `spec/bgtools.md`'s open questions with Jason one at a time
-(he asked for that), and propose build steps.
+**What's left:**
+- **Jason's hands-on pass:** unlocking a private library with Touch ID,
+  the panel closing on a click elsewhere, Space-switch pausing.
+- **Ken Burns costs ~40% of a core** while it moves (a motionless still
+  now costs ~2%). Decide whether it should be on by default for random
+  desktop pictures.
+- **Telling BGTools when a library moves** (B7 left it open).
+- **Packaging (being decided 2026-09-22):** Jason would rather one app
+  held both, so deleting ShowTools takes BGTools with it. Measured: a
+  nested helper in `Contents/Library/LoginItems` runs, takes
+  `bgtools://` URLs and can be registered at login, but **its own
+  Control Center tiles never register**. `tools/nest-probe` then proved
+  the way round it: an **Xcode-built host app** carries the tile
+  extension itself, the helper nested inside, and a tile press reaches
+  the nested helper. So the move is to build ShowTools with XcodeGen too.
+  (`tools/nest-probe/remove.sh` takes the probe out.)
+- Parked: image stickiness, a guided first run, video export ("Later" in
+  the plan; the render hook is built in).
 
 **Test things still installed on Jason's Mac**: BGTools itself in
 `~/Applications` (it belongs there; B7 makes ShowTools install it) with

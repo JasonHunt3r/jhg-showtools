@@ -802,7 +802,12 @@ hands-on round trip on a scratch library, including an edit in Numbers.
 questions). In short: a small separate app that ShowTools installs, which
 plays shows as the desktop picture on each monitor and Space, reading the
 library read-only; Control Center opens it, its menu bar icon is
-optional. Nothing built yet beyond throwaway test programs.
+optional. **Built 2026-09-22 (B1–B7)**: the shared player
+(`ShowToolsPlayback`), the read-only library reader, desktop windows per
+monitor and Space, five play modes with per-screen settings, BGTools'
+window and panel, its two Control Center tiles, pausing (sleep, lock, Low
+Power, hidden Spaces) and private libraries behind Touch ID, and
+installation from ShowTools. See `spec/bgtools.md` for what's left.
 
 ### Later
 - Video export (the hook above)
