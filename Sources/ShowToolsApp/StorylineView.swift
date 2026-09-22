@@ -29,6 +29,7 @@ struct StorylineView: View {
     let mutate: ShowMutator
     let openInspector: () -> Void
     @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
     /// N: edges land on markers (plan, Phase 3). App-wide, like Final Cut's.
     @AppStorage("snapping") private var snapping = true
 
@@ -325,6 +326,9 @@ struct StorylineView: View {
         .focusable()
         .focusEffectDisabled()
         .focused($focused)
+        // An open Rhythm tool follows the show on screen.
+        .onAppear { RhythmTool.shared.follow(showID: show.id, undoManager: undoManager) }
+        .onChange(of: show.id) { RhythmTool.shared.follow(showID: show.id, undoManager: undoManager) }
         .sheet(item: $beatSheet) { req in
             BeatSheet(request: req, show: show, timeline: timeline, preview: $beatPreview, mutate: mutate)
         }
@@ -418,6 +422,16 @@ struct StorylineView: View {
                 .help((song == nil ? "Marker" : "Beat marker (moves with its song)")
                       + " at \(formatClock(t)). Drag to move; Delete removes it; double-click for its line.")
         }
+        // What the Rhythm tool would place on this show, faint, until it's applied.
+        if RhythmTool.shared.showID == show.id {
+            ForEach(Array(RhythmTool.shared.preview.enumerated()), id: \.offset) { _, t in
+                MarkerShape()
+                    .fill(Color.orange.opacity(0.45))
+                    .frame(width: 9, height: 11)
+                    .offset(x: Self.inset + CGFloat(t * pps) - 4.5, y: Self.rulerHeight - 11)
+                    .allowsHitTesting(false)
+            }
+        }
         // What the beat detection sheet would place, faint, until it's applied.
         ForEach(Array(beatPreview.enumerated()), id: \.offset) { _, t in
             MarkerShape()
@@ -426,6 +440,11 @@ struct StorylineView: View {
                 .offset(x: Self.inset + CGFloat(t * pps) - 4.5, y: Self.rulerHeight - 11)
                 .allowsHitTesting(false)
         }
+    }
+
+    /// The Rhythm tool, on this show.
+    private func openRhythm() {
+        RhythmTool.shared.open(showID: show.id, model: model, undoManager: undoManager)
     }
 
     /// From a song's menu: the range if there is one, else that song.
@@ -518,7 +537,8 @@ struct StorylineView: View {
                 RowHandle(row: row, height: Self.height(of: row.kind),
                           open: openDrawers.contains(row.id), dragging: rowDrag?.id == row.id,
                           width: Self.inset,
-                          action: row.kind == .music ? ("Detect Beats…", { openBeatSheet(for: nil) }) : nil,
+                          action: row.kind == .music ? ("Detect Beats…", { openBeatSheet(for: nil) })
+                              : row.kind == .slides ? ("Rhythm…", { openRhythm() }) : nil,
                           toggle: { toggleDrawer(row.id) },
                           drag: rowDragGesture(row))
                     .offset(y: rowTop(row.kind))

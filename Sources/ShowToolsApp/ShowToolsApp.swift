@@ -85,11 +85,21 @@ struct AppCommands: Commands {
             Button("Play Full Screen") { play(fullScreen: true) }
                 .keyboardShortcut("p", modifiers: [.command, .option])
                 .disabled(activeShow == nil)
+            Divider()
+            Button("Rhythm…") { openRhythm() }
+                .keyboardShortcut("r")
+                .disabled(activeShowID.flatMap { model.show($0) } == nil)
         }
     }
 
     private var activeShow: Show? {
         activeShowID.flatMap { model.show($0) }.flatMap { $0.slides.isEmpty ? nil : $0 }
+    }
+
+    /// The Rhythm tool (plan, Phase 3 step 7), on the show in the window.
+    @MainActor private func openRhythm() {
+        guard let id = activeShowID else { return }
+        RhythmTool.shared.open(showID: id, model: model, undoManager: NSApp.mainWindow?.undoManager)
     }
 
     @MainActor private func play(fullScreen: Bool) {

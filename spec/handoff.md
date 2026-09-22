@@ -211,10 +211,21 @@ ahead with 7x" from Jason before each one:
   a song its first beat at or after it; repeats; last pass cut short; stops
   where a song's beats do), `RhythmApply.apply` (orange hand markers, none
   doubled, plus Fit slides; one edit). 13 tests in `RhythmTests`, 130 in all.
-- **7b The Rhythm panel, text only:** a floating panel with the text field
-  and glyph legend, BPM (from the analysis, "Use the song's beats"),
-  note length, and Fit slides; Apply drops orange markers on the range;
-  the ruler preview. Opened from the slides row's drawer and the Show menu.
+- **7b The Rhythm panel, text only: BUILT** (2026-09-22). `RhythmPanel.swift`.
+  Opens with ⌘R (Show menu) or "Rhythm…" in the slides row's drawer; first
+  time at the bottom right, then where it was left. Follows the show on
+  screen. Pattern field (unreadable letters named under it), a legend of
+  Bravura glyphs that add letters, BPM (from the song's analysis; typing
+  one gives an even beat, "Use the song's beats" goes back), "A quarter
+  note =", Fit slides, marker count, Apply (orange hand markers, one undo,
+  ⌘Z works with the panel in front). Faint orange preview on the ruler.
+  Checked in a scratch copy: legend, 60 BPM (5 markers, times checked),
+  Apply + ⌘Z, back to the song's beats, close, drawer.
+  **Bravura came forward from 7c:** no macOS font has the Unicode music
+  symbols, so the legend showed "?" boxes. Licence checked (OFL 1.1, bundle
+  with the licence), `Resources/Fonts/`.
+  Not done: the song choice is the one playing at the range start; the
+  panel uses the detected tempo as is (×2/÷2 live in Detect Beats, 7e).
 - **7c Notation:** Bravura (licence checked first, then bundled), one
   rhythm line with beams, triplet brackets and bar lines, following the text.
 - **7d The grid:** 16 or 12 steps a bar. It's its own input: clicking a

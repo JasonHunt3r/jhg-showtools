@@ -27,7 +27,12 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   (read once per file, cached in `<library>/Cache/Waveforms` by hash), `CollectionBrowser`
   (Edit Show's right column), `CollectionAdd` (the in-app drag type and the
   "add to collection?" question), `Libraries` (open/new/private),
-  `FrameStrip`, `EffectsTimeline`, `EffectControls` (sliders, pads).
+  `FrameStrip`, `EffectsTimeline`, `EffectControls` (sliders, pads), `RhythmPanel`
+  (the Rhythm tool: a floating panel, `RhythmTool.shared` holds its show,
+  undo manager and ruler preview).
+- `Resources/Fonts/`: Bravura, the SMuFL music font (SIL OFL 1.1, licence
+  alongside). `make-app.sh` copies it into the app and `ATSApplicationFontsPath`
+  loads it, so it only exists in the built app, not under `swift run`.
 - `Sources/stcli/`: dev CLI. `ingest`, `show` (creates a show; it doesn't print one), and `render` (writes frames
   through the Compositor to PNG, which is how transitions get checked by eye).
 - `make-app.sh`: builds `build/ShowTools.app` (a SwiftPM binary wrapped in a

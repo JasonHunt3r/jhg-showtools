@@ -15,6 +15,9 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp ".build/$CONFIG/ShowToolsApp" "$APP/Contents/MacOS/ShowTools"
+# Bravura, the music font (SIL OFL 1.1, licence alongside), for rhythm
+# notation. ATSApplicationFontsPath below loads it for the app alone.
+cp -R Resources/Fonts "$APP/Contents/Resources/Fonts"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -31,6 +34,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>LSMinimumSystemVersion</key>     <string>14.0</string>
     <key>NSHighResolutionCapable</key>    <true/>
     <key>NSSupportsAutomaticTermination</key> <false/>
+    <key>ATSApplicationFontsPath</key>    <string>Fonts</string>
     <!-- Files dragged within the app (from the Collection Browser). -->
     <key>UTExportedTypeDeclarations</key>
     <array>

@@ -570,7 +570,8 @@ to the Collection Browser and the library.
     `q rq q` changes on beats 1 and 3. No ties (a note's value is only the
     gap, so `h`+`q` tied is `h.`). An empty grid square is a rest.
   - **Notation:** one rhythm line, no pitches, drawn with Bravura (the
-    free SMuFL music font; check its licence before shipping it). Eighths
+    free SMuFL music font, SIL OFL 1.1: licence checked 2026-09-22 and
+    bundled with it in `Resources/Fonts/`; the legend uses it too). Eighths
     and sixteenths beamed within the beat, triplet brackets, bar lines.
   - **The grid** is its own input, like a drum machine: click a square to
     put a change there. In grid mode the text field and the letter legend
