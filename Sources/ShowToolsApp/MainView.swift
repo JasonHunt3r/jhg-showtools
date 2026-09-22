@@ -299,7 +299,8 @@ struct LibraryGridView: View {
         let collected = onlyUncollected && collection == nil
             ? Set(model.collections.flatMap(\.itemIDs)) : []
         let shown = all.filter { item in
-            (needle.isEmpty || item.fileName.lowercased().contains(needle))
+            (needle.isEmpty || item.fileName.lowercased().contains(needle)
+                || item.tags.contains { $0.lowercased().contains(needle) })
                 && kind.matches(item.kind)
                 && item.rating >= minRating
                 && !(onlyUncollected && collection == nil && collected.contains(item.id))
@@ -414,6 +415,7 @@ struct LibraryGridView: View {
         .navigationTitle(collection?.name ?? "Library")
         .navigationSubtitle(selection.isEmpty ? "\(visible.count) items" : "\(selection.count) selected")
         .onChange(of: collectionID) { selection = []; anchor = nil }
+        .onChange(of: selection) { model.infoPanelSelection = orderedSelection }
         .toolbar {
             ToolbarItemGroup {
                 Slider(value: $tileSize, in: 90...320).frame(width: 100)
@@ -421,6 +423,9 @@ struct LibraryGridView: View {
                 Button { runImportPanel(model) } label: { Label("Import", systemImage: "square.and.arrow.down") }
                     .help("Import files or folders")
                 addToShowMenu(ids: orderedSelection)
+                    .disabled(selection.isEmpty)
+                Button { showGetInfo() } label: { Label("Get Info", systemImage: "info.circle") }
+                    .help("Show info and tags for the selection (⌘I)")
                     .disabled(selection.isEmpty)
             }
         }
@@ -447,10 +452,18 @@ struct LibraryGridView: View {
                              set: { renameIDs = $0?.ids })) { wrapped in
             BatchRenameSheet(itemIDs: wrapped.ids, undoManager: undoManager)
         }
-        .focusedSceneValue(\.libraryRename, (count: selection.count, invoke: {
+        .focusedSceneValue(\.librarySelectionCount, selection.count)
+        .focusedSceneValue(\.requestLibraryRename, {
             guard !orderedSelection.isEmpty else { return }
             renameIDs = orderedSelection
-        }))
+        })
+        .focusedSceneValue(\.requestLibraryGetInfo, showGetInfo)
+    }
+
+    private func showGetInfo() {
+        guard !orderedSelection.isEmpty else { return }
+        model.infoPanelSelection = orderedSelection
+        InfoPanel.show(model: model, undoManager: undoManager)
     }
 
     private var deleteDialogTitle: String {
@@ -533,6 +546,7 @@ struct LibraryGridView: View {
                 NSWorkspace.shared.activateFileViewerSelecting(urls)
             }
             Button("Rename…") { renameIDs = ids }
+            Button("Get Info") { model.infoPanelSelection = ids; InfoPanel.show(model: model, undoManager: undoManager) }
             Divider()
             Button("Move to Trash…", role: .destructive) { requestDelete(ids, confirm: true) }
         }

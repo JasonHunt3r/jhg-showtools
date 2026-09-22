@@ -13,7 +13,7 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 | 2 Composer (Edit Slides / Edit Show) | Built |
 | **2a** Framing, rotation, match cuts | **Built**, except presets (Flush), which are deferred |
 | **2c** The lane: transitions row + images row | **Built**, except the parked items below |
-| **2b** Library manager | **Started**: Collections, libraries, import, grid, ratings, delete and rename are built; Info and relink are not |
+| **2b** Library manager | **Started**: Collections, libraries, import, grid, ratings, delete, rename and the Info panel are built; relink is not |
 | 3–5 | Not started |
 
 Built this session (2026-09-21, day two):
@@ -146,7 +146,43 @@ pass can go area by area:
      `undoManager` was passed in explicitly instead of read from the
      sheet's own environment. Checked by hand with axtool: a two-file
      rename, its preview, Rename, ⌘Z, and ⌘⇧Z.
-   - an Info panel (camera metadata, tags, the Finder-tags option)
+   - ~~an Info panel~~ **Built** (2026-09-21, session 3b): a floating
+     panel (`spec/macos_panels_guide.md`'s recipe — one panel, so no
+     snapping needed), ⌘I or the grid's toolbar/context menu, following
+     the grid's selection live via `AppModel.infoPanelSelection`.
+     Read-only metadata (`MediaMetadata`, read fresh from the file, never
+     cached: dimensions, size, format, date taken, camera, lens, exposure,
+     GPS as an Apple Maps link) for one file; rating; tags, added or
+     removed for the whole selection at once (schema 6: a `tags` column,
+     JSON, decoded into `MediaItem.tags`), feeding the grid's search.
+     Settings ▸ Tags has "Also write tags as Finder tags"
+     (off by default; confirmed by hand with `xattr`).
+     **Two undo gotchas found here, both fixed — worth knowing for any
+     future panel or sheet:**
+     1. The same one rename hit: a separate window's own `\.undoManager`
+        isn't the presenting window's. Fixed the same way — pass it in
+        explicitly rather than read it from the panel's own environment.
+     2. **New:** passing the right `UndoManager` into `registerUndo` isn't
+        enough by itself. AppKit vends **every** window its own
+        `UndoManager` unless told otherwise, and ⌘Z (or Edit ▸ Undo) asks
+        *the key window's* one — so with the floating panel key (the
+        normal case, right after typing a tag), a correctly-registered
+        step went nowhere. Fixed by overriding the panel's own
+        `undoManager` to return the shared one. **`URLResourceValues.tagNames`'s
+        setter is unavailable at our deployment target on the SDK in this
+        environment** (a macOS 26+ restriction that showed up while
+        building on macOS 14 as the target); used `NSURL.setResourceValue(_:forKey:)`
+        instead, which isn't restricted.
+     Checked by hand with axtool: single- and multi-file selection
+     following live, adding/removing a tag (on one and on two at once),
+     the search field matching a tag, undo/redo **via the menu** (both
+     directions), and undo via ⌘Z **with the main window key**. ⌘Z sent as
+     a synthetic key event specifically while the *panel* was key did not
+     reach Undo in axtool's hands, even though the same action through the
+     menu worked correctly — likely a synthetic-CGEvent-versus-panel
+     quirk rather than a real one (menu invocation exercises the exact
+     same code path a real keypress does), but **worth Jason confirming
+     once with an actual ⌘Z while the Info panel has focus.**
    - relink by hash
 3. **Phase 3:** music and waveform. Then 3b duplicate finder, 4 setlist export, 5 live desktop.
 

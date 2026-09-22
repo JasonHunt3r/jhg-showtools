@@ -25,7 +25,9 @@ struct ShowToolsApp: App {
 struct AppCommands: Commands {
     let model: AppModel
     @FocusedValue(\.activeShowID) private var activeShowID
-    @FocusedValue(\.libraryRename) private var libraryRename
+    @FocusedValue(\.librarySelectionCount) private var librarySelectionCount
+    @FocusedValue(\.requestLibraryRename) private var requestLibraryRename
+    @FocusedValue(\.requestLibraryGetInfo) private var requestLibraryGetInfo
     @AppStorage("frameStripShown") private var frameStripShown = true
 
     var body: some Commands {
@@ -41,9 +43,12 @@ struct AppCommands: Commands {
             Button("Add to Library…") { runImportPanel(model, intoCollection: false) }
                 .keyboardShortcut("i", modifiers: [.command, .shift, .option])
             Divider()
-            // The Library grid publishes this while it has a selection (2b).
-            Button("Rename…") { libraryRename?.invoke() }
-                .disabled((libraryRename?.count ?? 0) == 0)
+            // The Library grid publishes these while it has a selection (2b).
+            Button("Get Info") { requestLibraryGetInfo?() }
+                .keyboardShortcut("i")
+                .disabled((librarySelectionCount ?? 0) == 0)
+            Button("Rename…") { requestLibraryRename?() }
+                .disabled((librarySelectionCount ?? 0) == 0)
             Divider()
             // Libraries switch one at a time, as Photos does (plan, 2b).
             Button("Open Library…") { runOpenLibraryPanel(model) }
@@ -92,6 +97,7 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @AppStorage(SlideRemovalNotice.suppressKey) private var suppressRemovalNotice = false
     @AppStorage(CollectionAddNotice.autoAddKey) private var autoAddToCollection = false
+    @AppStorage(FinderTagsSetting.key) private var writeFinderTags = false
 
     var body: some View {
         Form {
@@ -122,6 +128,12 @@ struct SettingsView: View {
                     set: { on in Task { await model.setPrivate(on) } }))
                     .disabled(model.library == nil)
                 Text("Opening a private library asks for Touch ID or your Mac's password, and it's never listed in Open Recent. Turning this off asks too. It locks ShowTools' door only: the photos are still ordinary files to anyone using this Mac account. To lock the files themselves, keep the library in an encrypted disk image (Disk Utility can make one).")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Tags") {
+                Toggle("Also write tags as Finder tags", isOn: $writeFinderTags)
+                Text("Tags always live in the library's database, whether or not this is on. With it on, they're also set as macOS Finder tags on the library files themselves.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

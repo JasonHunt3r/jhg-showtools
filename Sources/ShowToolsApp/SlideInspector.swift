@@ -524,13 +524,24 @@ extension FocusedValues {
     }
 }
 
-// MARK: - Focus: the Library grid's selection, for File ▸ Rename…
+// MARK: - Focus: the Library grid's selection, for its File-menu commands
+// (Rename…, Get Info). One shared count, one action closure per command.
 
-struct LibraryRenameKey: FocusedValueKey { typealias Value = (count: Int, invoke: () -> Void) }
+struct LibrarySelectionCountKey: FocusedValueKey { typealias Value = Int }
+struct LibraryRenameKey: FocusedValueKey { typealias Value = () -> Void }
+struct LibraryGetInfoKey: FocusedValueKey { typealias Value = () -> Void }
 
 extension FocusedValues {
-    var libraryRename: (count: Int, invoke: () -> Void)? {
+    var librarySelectionCount: Int? {
+        get { self[LibrarySelectionCountKey.self] }
+        set { self[LibrarySelectionCountKey.self] = newValue }
+    }
+    var requestLibraryRename: (() -> Void)? {
         get { self[LibraryRenameKey.self] }
         set { self[LibraryRenameKey.self] = newValue }
+    }
+    var requestLibraryGetInfo: (() -> Void)? {
+        get { self[LibraryGetInfoKey.self] }
+        set { self[LibraryGetInfoKey.self] = newValue }
     }
 }

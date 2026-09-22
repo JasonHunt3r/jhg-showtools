@@ -380,6 +380,23 @@ extension LibraryTests {
         XCTAssertEqual(try lib.allItems().first { $0.id == a.id }?.relativePath, "a.jpg")
         XCTAssertEqual(try lib.allItems().first { $0.id == b.id }?.relativePath, "b.jpg")
     }
+
+    /// Tags round-trip through the database, and survive a delete + undo
+    /// (schema 6).
+    func testTagsRoundTripAndSurviveDeleteAndRestore() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let probe = MediaProbe(kind: .image, width: 10, height: 10)
+        let a = try lib.insertItem(relativePath: "a.jpg", hash: "a", probe: probe, sourcePath: "")
+        XCTAssertEqual(a.tags, [])                                         // untagged by default
+
+        try lib.setTags(["Wedding", "2026"], for: a.id)
+        XCTAssertEqual(try lib.allItems().first { $0.id == a.id }?.tags, ["Wedding", "2026"])
+
+        let deleted = try lib.deleteItems([a.id])
+        XCTAssertEqual(deleted[0].item.tags, ["Wedding", "2026"])
+        try lib.restoreItems(deleted)
+        XCTAssertEqual(try lib.allItems().first { $0.id == a.id }?.tags, ["Wedding", "2026"])
+    }
 }
 
 // MARK: - The library itself (schema 5)

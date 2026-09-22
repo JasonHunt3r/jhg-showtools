@@ -124,7 +124,7 @@ public final class Library {
     }
 
     /// The schema version `migrate` brings a library up to.
-    public static let schemaVersion = 5
+    public static let schemaVersion = 6
 
     /// Before an existing library is upgraded, a copy of its database as it
     /// was, beside it: `Library.sqlite.v<N>.bak`. Upgrades are additive and
@@ -237,6 +237,16 @@ public final class Library {
                     """)
             }
         }
+        // 6 (2026-09-21): tags on files, for the Info panel. Additive: every
+        // existing file starts with none.
+        if db.userVersion < 6 {
+            try db.transaction {
+                try db.exec("""
+                    ALTER TABLE items ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';
+                    PRAGMA user_version = 6;
+                    """)
+            }
+        }
     }
 
     // MARK: The library itself
@@ -316,7 +326,7 @@ public final class Library {
 
     public func allItems() throws -> [MediaItem] {
         let s = try db.prepare("""
-            SELECT id, rel_path, hash, kind, width, height, duration, ingested_at, source_path, rating
+            SELECT id, rel_path, hash, kind, width, height, duration, ingested_at, source_path, rating, tags
             FROM items ORDER BY ingested_at, id
             """)
         var out: [MediaItem] = []
@@ -327,7 +337,7 @@ public final class Library {
                 pixelWidth: Int(s.int(4)), pixelHeight: Int(s.int(5)),
                 duration: s.isNull(6) ? nil : s.double(6),
                 ingestedAt: Date(timeIntervalSince1970: s.double(7)),
-                sourcePath: s.text(8), rating: Int(s.int(9))))
+                sourcePath: s.text(8), rating: Int(s.int(9)), tags: Self.decodeTags(s.text(10))))
         }
         return out
     }
@@ -340,6 +350,22 @@ public final class Library {
                 try db.prepare("UPDATE items SET rating = ? WHERE id = ?").bind(.int(r), .int(id)).run()
             }
         }
+    }
+
+    /// Sets the exact tag list on one file. The Info panel does the
+    /// union/intersection logic for tagging several at once; this just writes.
+    public func setTags(_ tags: [String], for itemID: Int64) throws {
+        try db.prepare("UPDATE items SET tags = ? WHERE id = ?")
+            .bind(.text(Self.encodeTags(tags)), .int(itemID)).run()
+    }
+
+    static func encodeTags(_ tags: [String]) -> String {
+        (try? String(decoding: JSONSerialization.data(withJSONObject: tags), as: UTF8.self)) ?? "[]"
+    }
+
+    static func decodeTags(_ json: String) -> [String] {
+        guard let obj = try? JSONSerialization.jsonObject(with: Data(json.utf8)) else { return [] }
+        return obj as? [String] ?? []
     }
 
     public func itemID(forHash hash: String) throws -> Int64? {
@@ -384,7 +410,7 @@ public final class Library {
             var out: [DeletedItem] = []
             for id in itemIDs {
                 let s = try db.prepare("""
-                    SELECT id, rel_path, hash, kind, width, height, duration, ingested_at, source_path, rating
+                    SELECT id, rel_path, hash, kind, width, height, duration, ingested_at, source_path, rating, tags
                     FROM items WHERE id = ?
                     """).bind(.int(id))
                 guard try s.step() else { continue }
@@ -393,7 +419,7 @@ public final class Library {
                                       pixelWidth: Int(s.int(4)), pixelHeight: Int(s.int(5)),
                                       duration: s.isNull(6) ? nil : s.double(6),
                                       ingestedAt: Date(timeIntervalSince1970: s.double(7)),
-                                      sourcePath: s.text(8), rating: Int(s.int(9)))
+                                      sourcePath: s.text(8), rating: Int(s.int(9)), tags: Self.decodeTags(s.text(10)))
                 let cs = try db.prepare("SELECT collection_id FROM collection_items WHERE item_id = ?").bind(.int(id))
                 var collectionIDs: [Int64] = []
                 while try cs.step() { collectionIDs.append(cs.int(0)) }
@@ -422,13 +448,13 @@ public final class Library {
                 let item = d.item
                 try db.prepare("""
                     INSERT INTO items (id, rel_path, hash, kind, width, height, duration, ingested_at,
-                                        source_path, rating)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                        source_path, rating, tags)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """).bind(.int(item.id), .text(item.relativePath), .text(item.hash), .text(item.kind.rawValue),
                               .int(Int64(item.pixelWidth)), .int(Int64(item.pixelHeight)),
                               item.duration.map { .double($0) } ?? .null,
                               .double(item.ingestedAt.timeIntervalSince1970), .text(item.sourcePath),
-                              .int(Int64(item.rating))).run()
+                              .int(Int64(item.rating)), .text(Self.encodeTags(item.tags))).run()
                 let now = Date().timeIntervalSince1970
                 let ci = try db.prepare("INSERT INTO collection_items (collection_id, item_id, added_at) VALUES (?, ?, ?)")
                 for cid in d.collectionIDs { try? ci.bind(.int(cid), .int(item.id), .double(now)).run() }

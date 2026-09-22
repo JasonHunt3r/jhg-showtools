@@ -25,6 +25,10 @@ final class AppModel {
     var sidebar: SidebarItem? = .library
     /// Developer hook only: a slide for the show view to select on appearing.
     var devSelection: Int64?
+    /// The Info panel's targets: kept here, not in the grid's own state,
+    /// because the panel is a separate window and needs to live-update as
+    /// the grid's selection changes while it's open.
+    var infoPanelSelection: [Int64] = []
 
     struct ImportStatus {
         var total = 0
@@ -596,6 +600,45 @@ final class AppModel {
             }
         }
         undo?.setActionName("Rate")
+    }
+
+    /// Sets each file's exact tag list (the Info panel works out the
+    /// add/remove per file for tagging several at once). Belongs to the
+    /// file, not a show, like rating — same symmetric undo.
+    func setTags(_ changes: [Int64: [String]], undo: UndoManager?) {
+        applyTags(changes, undo: undo)
+    }
+
+    private func applyTags(_ changes: [Int64: [String]], undo: UndoManager?) {
+        guard let lib = library, !changes.isEmpty else { return }
+        let before = Dictionary(uniqueKeysWithValues: changes.keys.map { ($0, itemsByID[$0]?.tags ?? []) })
+        do {
+            for (id, tags) in changes { try lib.setTags(tags, for: id) }
+        } catch {
+            loadError = "\(error)"
+            return
+        }
+        for (id, tags) in changes {
+            itemsByID[id]?.tags = tags
+            if let i = items.firstIndex(where: { $0.id == id }) { items[i].tags = tags }
+        }
+        if FinderTagsSetting.isOn {
+            for (id, tags) in changes {
+                guard let item = itemsByID[id], let url = url(for: item) else { continue }
+                // The URLResourceValues.tagNames *setter* is unavailable at
+                // our deployment target on this SDK; NSURL's older API sets
+                // the same Finder tags without that restriction.
+                try? (url as NSURL).setResourceValue(tags, forKey: .tagNamesKey)
+            }
+        }
+        let generation = libraryGeneration
+        undo?.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated {
+                guard model.libraryGeneration == generation else { return }
+                model.applyTags(before, undo: undo)
+            }
+        }
+        undo?.setActionName(changes.count == 1 ? "Set Tags" : "Set Tags on \(changes.count) Items")
     }
 
     /// Batch rename (2b): Finder's Rename Items sheet computes each new
