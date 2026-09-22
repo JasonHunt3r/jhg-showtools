@@ -124,7 +124,7 @@ public final class Library {
     }
 
     /// The schema version `migrate` brings a library up to.
-    public static let schemaVersion = 6
+    public static let schemaVersion = 7
 
     /// Before an existing library is upgraded, a copy of its database as it
     /// was, beside it: `Library.sqlite.v<N>.bak`. Upgrades are additive and
@@ -244,6 +244,16 @@ public final class Library {
                 try db.exec("""
                     ALTER TABLE items ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';
                     PRAGMA user_version = 6;
+                    """)
+            }
+        }
+        // 7 (2026-09-21): each show's timeline rows, in its own order (plan,
+        // Phase 3). Additive: an empty list reads as the default order.
+        if db.userVersion < 7 {
+            try db.transaction {
+                try db.exec("""
+                    ALTER TABLE shows ADD COLUMN rows TEXT NOT NULL DEFAULT '[]';
+                    PRAGMA user_version = 7;
                     """)
             }
         }
@@ -563,13 +573,14 @@ public final class Library {
     }
 
     public func allShows() throws -> [Show] {
-        let s = try db.prepare("SELECT id, name, defaults, overlays, collection_id FROM shows ORDER BY created_at, id")
+        let s = try db.prepare("SELECT id, name, defaults, overlays, collection_id, rows FROM shows ORDER BY created_at, id")
         var shows: [Show] = []
         while try s.step() {
             shows.append(Show(id: s.int(0), name: s.text(1),
                               defaults: decode(ShowDefaults.self, s.text(2)) ?? ShowDefaults(),
                               overlays: OverlayClip.decodeList(s.text(3)),
-                              collectionID: s.isNull(4) ? nil : s.int(4)))
+                              collectionID: s.isNull(4) ? nil : s.int(4),
+                              rows: TimelineRow.decodeList(s.text(5))))
         }
         let sl = try db.prepare("SELECT id, item_id, settings FROM slides WHERE show_id = ? ORDER BY position")
         for i in shows.indices {
@@ -603,9 +614,10 @@ public final class Library {
     public func saveShow(_ show: Show) throws -> Show {
         try db.transaction {
             var show = show
-            try db.prepare("UPDATE shows SET name = ?, defaults = ?, overlays = ?, collection_id = ? WHERE id = ?")
+            try db.prepare("UPDATE shows SET name = ?, defaults = ?, overlays = ?, collection_id = ?, rows = ? WHERE id = ?")
                 .bind(.text(show.name), .text(try json(show.defaults)), .text(try json(show.overlays)),
-                      show.collectionID.map { .int($0) } ?? .null, .int(show.id)).run()
+                      show.collectionID.map { .int($0) } ?? .null, .text(try json(show.rows)),
+                      .int(show.id)).run()
 
             let insert = try db.prepare(
                 "INSERT INTO slides (show_id, position, item_id, settings) VALUES (?, ?, ?, ?)")

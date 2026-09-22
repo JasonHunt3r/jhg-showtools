@@ -16,8 +16,9 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   engine stops drawing about 0.6s after the last change; call `touch()`
   after anything visible changes.
 - App files worth knowing: `TransformOverlay` (the handles, arrow keys
-  and Rotation mode on the preview), `StorylineView` (blocks and the lane's
-  transitions row), `ImagesRow` (the lane's images row), `CollectionBrowser`
+  and Rotation mode on the preview), `StorylineView` (the timeline's rows,
+  drawn in the show's own `rows` order, with their handles and drawers;
+  the blocks and the lane's transitions row), `ImagesRow` (the lane's images row), `CollectionBrowser`
   (Edit Show's right column), `CollectionAdd` (the in-app drag type and the
   "add to collection?" question), `Libraries` (open/new/private),
   `FrameStrip`, `EffectsTimeline`, `EffectControls` (sliders, pads).
@@ -83,7 +84,7 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   and `SlideLength` are synthesized enums, so a removed case drops the
   whole setting. Keep old cases decodable, or migrate them.
 - Library schema changes are additive migrations (`Library.migrate`,
-  currently version 6), each tested by opening a library written by the
+  currently version 7), each tested by opening a library written by the
   version before. The master library upgrades itself on first open, after
   copying its database to `Library.sqlite.v<N>.bak`. A new migration must
   also raise `Library.schemaVersion`, or that copy isn't made (the

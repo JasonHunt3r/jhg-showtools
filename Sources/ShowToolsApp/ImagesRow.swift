@@ -2,10 +2,10 @@ import SwiftUI
 import UniformTypeIdentifiers
 import ShowToolsCore
 
-/// The lane's images row, over the transitions row (plan, Phase 2c).
+/// The lane's images row (plan, Phase 2c), one of the storyline's movable
+/// rows (Phase 3).
 ///
-/// Collapsed to a thin strip while empty; it opens when an image is dragged
-/// over it. Drop files from Finder or Photos to place them where they land,
+/// Full height even while empty, with a faded placeholder in it. Drop files from Finder or Photos to place them where they land,
 /// or right-click at a point and choose "Place Image Here…". Drag an image
 /// to move it and its edges to trim it; one row, so images never overlap.
 /// Every drag saves once, on release.
@@ -54,9 +54,15 @@ struct ImagesRow: View {
                 .fill(Color.white.opacity(dropTargeted ? 0.14 : 0.05))
                 .frame(width: max(CGFloat(timeline.duration * pps), 0), height: height)
                 .offset(x: inset)
-            ForEach(timeline.overlays, id: \.clip.id) { o in
-                if height > 12 { clipView(o) }
+            if timeline.overlays.isEmpty {
+                Label("Drop images here", systemImage: "photo.on.rectangle")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .frame(height: height)
+                    .offset(x: inset + 8)
+                    .allowsHitTesting(false)
             }
+            ForEach(timeline.overlays, id: \.clip.id) { o in clipView(o) }
         }
         .frame(width: width, height: height, alignment: .topLeading)
         .contentShape(Rectangle())

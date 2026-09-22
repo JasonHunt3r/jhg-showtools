@@ -456,8 +456,21 @@ to the Collection Browser and the library.
 - **Modular rows.** Every timeline row (transitions, images, slides, music)
   is a module, and the rows can be dragged into any order. Each row has a
   small **header** at its left end (like Logic's track headers, which Final
-  Cut doesn't have). You grab the header to move the row, and it holds the
-  row's controls. Reordering is built in this phase, not later.
+  Cut doesn't have). Reordering is built in this phase, not later.
+  - **The order belongs to the show** and is saved with it, so it reflects
+    how that show is built. Rearranging is a show edit, undoable with ⌘Z.
+    New shows start in the default order: images, transitions, slides,
+    music. It's stored as a list of rows, not a fixed set, so a show can
+    have more rows later (a second images row, say).
+  - **Headers are drawers.** A thin strip with a grab handle (≡) is always
+    visible. Drag it to reorder the row; click it and the drawer slides
+    out **over** the row's content (the timeline doesn't move), showing the
+    row's icon, name and controls. Click again or press Esc to close it.
+    A click opens that row's drawer; **⌥-click** opens or closes them all.
+  - **The ruler stays pinned on top.** It's not a movable row. The playhead
+    and the In/Out points live there.
+  - An **empty row keeps its full height**, with a faded placeholder in it
+    (the images row used to shrink to a thin strip).
 - **The music row** sits at the bottom by default. Songs are **copied into
   the library**, like photos, so relink, delete and export already cover them.
 - **Audio clips work like image clips.** Add as many as you want, drag one
@@ -499,6 +512,8 @@ to the Collection Browser and the library.
 #### Beat detection, the range, and rhythm (settled 2026-09-21)
 - **The range:** I and O set in and out points, drawn as two blue markers
   on the ruler with the span between them shaded (Final Cut's convention).
+  A toggle extends them as lines down through every row; off, they're
+  just the triangles on the ruler.
   It's multi-purpose by context: the part detection applies to, and, with
   loop on (⌘L), the region playback loops inside while editing. Option-X
   clears it, and a header button turns it off without losing it.

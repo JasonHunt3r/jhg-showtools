@@ -29,10 +29,33 @@ struct StorylineView: View {
     static let blockHeight: CGFloat = 64
     static let rulerHeight: CGFloat = 22
     static let inset: CGFloat = 12
-    /// The lane's transitions row, above the blocks.
+    /// The lane's transitions row.
     static let laneRowHeight: CGFloat = 22
-    /// The images row when it's open (a thin strip when empty).
-    static let imagesRowOpen: CGFloat = 30
+    /// The images row, the same height empty or not (a faded placeholder
+    /// holds its place).
+    static let imagesRowHeight: CGFloat = 30
+    /// The music row (a placeholder until Phase 3 step 2).
+    static let musicRowHeight: CGFloat = 44
+    static let rowGap: CGFloat = 4
+    /// Where the rows start in the scrolling content: below the padding and
+    /// the ruler.
+    static let rowsOrigin: CGFloat = 6 + rulerHeight + 4
+
+    static func height(of kind: TimelineRow.Kind) -> CGFloat {
+        switch kind {
+        case .images: imagesRowHeight
+        case .transitions: laneRowHeight
+        case .slides: blockHeight
+        case .music: musicRowHeight
+        }
+    }
+
+    /// Everything the storyline shows with every row in it: for the pane's
+    /// size, which shouldn't have to scroll up and down.
+    static var fullHeight: CGFloat {
+        let rows = TimelineRow.Kind.allCases.reduce(0) { $0 + height(of: $1) + rowGap }
+        return rowsOrigin + rows + 6
+    }
 
     /// A transition section being dragged: drawn as it goes, saved on release.
     private struct TransitionEdit {
@@ -47,17 +70,48 @@ struct StorylineView: View {
     }
     @State private var transitionEdit: TransitionEdit?
     @State private var hoveredJoin: Int64?
-    /// Something is being dragged over the images row: it opens up.
+    /// Something is being dragged over the images row: it lights up.
     @State private var imagesDropTargeted = false
     /// Files being dragged over the storyline: where the pointer is, for the
     /// insertion line.
     @State private var dropX: CGFloat?
 
-    /// The images row: a thin strip until it has images or one is dragged
-    /// over it. Everything below it sits `laneTop` and `blocksTop` down.
-    private var imagesRowHeight: CGFloat { timeline.overlays.isEmpty && !imagesDropTargeted ? 10 : Self.imagesRowOpen }
-    private var laneTop: CGFloat { imagesRowHeight + 2 }
-    private var blocksTop: CGFloat { laneTop + Self.laneRowHeight + 4 }
+    /// A row being dragged by its handle: where the pointer is, and the
+    /// slot it would drop into. The rows rearrange as it goes; the show
+    /// saves once, on release.
+    private struct RowDrag {
+        let id: UUID
+        var target: Int
+    }
+    @State private var rowDrag: RowDrag?
+    /// Rows whose drawers are open. View state only: not saved.
+    @State private var openDrawers: Set<UUID> = []
+
+    /// The show's rows in the order they're drawn: a row being dragged is
+    /// already in its new slot.
+    private var displayRows: [TimelineRow] {
+        var rows = show.rows
+        if let d = rowDrag, let i = rows.firstIndex(where: { $0.id == d.id }) {
+            let r = rows.remove(at: i)
+            rows.insert(r, at: min(d.target, rows.count))
+        }
+        return rows
+    }
+
+    /// Each row's top, from the top of the rows, in the order drawn.
+    private func rowTop(_ kind: TimelineRow.Kind) -> CGFloat {
+        var y: CGFloat = 0
+        for r in displayRows {
+            if r.kind == kind { return y }
+            y += Self.height(of: r.kind) + Self.rowGap
+        }
+        return y
+    }
+    private var rowsHeight: CGFloat {
+        displayRows.reduce(0) { $0 + Self.height(of: $1.kind) + Self.rowGap }
+    }
+    private var laneTop: CGFloat { rowTop(.transitions) }
+    private var blocksTop: CGFloat { rowTop(.slides) }
 
     private struct Moving {
         var ids: Set<Int64>
@@ -149,12 +203,15 @@ struct StorylineView: View {
                         .contentShape(Rectangle())
                         .gesture(scrubGesture)
                     ZStack(alignment: .topLeading) {
-                        Color.clear.frame(width: contentWidth, height: blocksTop + Self.blockHeight + 2)
+                        Color.clear.frame(width: contentWidth, height: rowsHeight)
                         ImagesRow(show: show, timeline: timeline, engine: engine, pps: pps, inset: Self.inset,
-                                  width: contentWidth, height: imagesRowHeight,
+                                  width: contentWidth, height: Self.imagesRowHeight,
                                   dropTargeted: $imagesDropTargeted, selectedOverlay: $selectedOverlay,
                                   mutate: mutate,
                                   didSelect: { selection = []; selectedTransition = nil; focused = true })
+                            .offset(y: rowTop(.images))
+                        musicRow
+                            .offset(y: rowTop(.music))
                         ForEach(placed) { p in
                             let isMoving = moving?.ids.contains(p.id) == true
                             block(p)
@@ -188,6 +245,7 @@ struct StorylineView: View {
                         }
                     }
                     .animation(.snappy(duration: 0.18), value: moving?.target)
+                    .animation(.snappy(duration: 0.18), value: displayRows.map(\.id))
                     .onDrop(of: ItemDrag.accepted, delegate: StorylineDrop(
                         update: { dropX = $0?.x },
                         perform: { providers, location in drop(providers, at: location.x, placed) }))
@@ -201,6 +259,7 @@ struct StorylineView: View {
                 })
             }
             .coordinateSpace(name: "storylineScroll")
+            .overlay(alignment: .topLeading) { rowHandles }
             .onPreferenceChange(StorylineScrollKey.self) { scrollOffset = $0 }
             .onChange(of: engine.currentIndex) { _, i in
                 // Keep the playing slide in view.
@@ -219,10 +278,88 @@ struct StorylineView: View {
         .focusEffectDisabled()
         .focused($focused)
         .onKeyPress(.escape) {
+            if !openDrawers.isEmpty {
+                openDrawers = []
+                return .handled
+            }
             guard selectedOverlay != nil else { return .ignored }
             selectedOverlay = nil
             return .handled
         }
+    }
+
+    // MARK: Rows
+
+    /// A faded placeholder until the music row is built (Phase 3 step 2).
+    private var musicRow: some View {
+        RoundedRectangle(cornerRadius: 3)
+            .fill(Color.white.opacity(0.05))
+            .frame(width: max(CGFloat(timeline.duration * pps), 0), height: Self.musicRowHeight)
+            .overlay(alignment: .leading) {
+                Label("Music", systemImage: "music.note")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .padding(.leading, 8)
+            }
+            .offset(x: Self.inset)
+            .allowsHitTesting(false)
+    }
+
+    /// Each row's handle, pinned at the left edge (it doesn't scroll
+    /// sideways), and its drawer. Drag a handle to move the row; click it
+    /// to slide the drawer out over the row; ⌥-click opens or closes them
+    /// all. Esc closes them.
+    private var rowHandles: some View {
+        ZStack(alignment: .topLeading) {
+            Color.clear.frame(width: 1, height: rowsHeight)
+            ForEach(displayRows) { row in
+                RowHandle(row: row, height: Self.height(of: row.kind),
+                          open: openDrawers.contains(row.id), dragging: rowDrag?.id == row.id,
+                          width: Self.inset,
+                          toggle: { toggleDrawer(row.id) },
+                          drag: rowDragGesture(row))
+                    .offset(y: rowTop(row.kind))
+            }
+        }
+        .coordinateSpace(name: "rowHandles")
+        .offset(y: Self.rowsOrigin)
+        .animation(.snappy(duration: 0.18), value: displayRows.map(\.id))
+        .animation(.snappy(duration: 0.15), value: openDrawers)
+    }
+
+    private func toggleDrawer(_ id: UUID) {
+        focused = true
+        if NSEvent.modifierFlags.contains(.option) {
+            openDrawers = openDrawers.count == show.rows.count ? [] : Set(show.rows.map(\.id))
+        } else if openDrawers.contains(id) {
+            openDrawers.remove(id)
+        } else {
+            openDrawers.insert(id)
+        }
+    }
+
+    private func rowDragGesture(_ row: TimelineRow) -> some Gesture {
+        DragGesture(minimumDistance: 3, coordinateSpace: .named("rowHandles"))
+            .onChanged { g in
+                // Past the middle of another row, the dragged row takes its slot.
+                let others = show.rows.filter { $0.id != row.id }
+                var y: CGFloat = 0
+                var target = others.count
+                for (i, r) in others.enumerated() {
+                    let h = Self.height(of: r.kind)
+                    if g.location.y < y + h / 2 { target = i; break }
+                    y += h + Self.rowGap
+                }
+                if rowDrag?.target != target || rowDrag?.id != row.id {
+                    rowDrag = RowDrag(id: row.id, target: target)
+                }
+            }
+            .onEnded { _ in
+                let rows = displayRows
+                rowDrag = nil
+                guard rows.map(\.id) != show.rows.map(\.id) else { return }
+                mutate("Move Row") { $0.rows = rows }
+            }
     }
 
     // MARK: Blocks
@@ -466,7 +603,7 @@ struct StorylineView: View {
                 // A trimmed start keeps its place (what follows ripples in);
                 // trimming an end or rolling moves the cut itself.
                 .offset(x: e.cutX + (isTrimStart(e.kind) ? 0 : CGFloat(e.delta * pps)) - 30,
-                        y: Self.blockHeight + 12)
+                        y: blocksTop + 38)
                 .allowsHitTesting(false)
         }
     }
@@ -949,4 +1086,79 @@ struct StorylineDrop: DropDelegate {
 struct StorylineScrollKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+// MARK: - Row handle and drawer
+
+/// A row's handle: a thin strip with a grip, always showing at the
+/// storyline's left edge. Its drawer slides out over the row's content,
+/// leaving the timeline where it is (plan, Phase 3).
+struct RowHandle<G: Gesture>: View {
+    let row: TimelineRow
+    let height: CGFloat
+    let open: Bool
+    let dragging: Bool
+    let width: CGFloat
+    let toggle: () -> Void
+    let drag: G
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(dragging || open ? Color.accentColor.opacity(0.85) : Color.white.opacity(0.14))
+                VStack(spacing: 2) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        Capsule().fill(Color.white.opacity(dragging || open ? 0.9 : 0.5)).frame(width: 5, height: 1)
+                    }
+                }
+            }
+            .frame(width: width - 2, height: height)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: toggle)
+            .gesture(drag)
+            .onHover { if $0 { NSCursor.openHand.set() } else { NSCursor.arrow.set() } }
+            .help("\(row.kind.title) row. Drag to move it; click to open its drawer; ⌥-click opens or closes them all.")
+            if open {
+                drawer
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+            }
+        }
+        .padding(.leading, 1)
+    }
+
+    /// The row's name and icon, and (as they're built) its controls.
+    private var drawer: some View {
+        HStack(spacing: 6) {
+            Image(systemName: row.kind.symbol)
+            Text(row.kind.title)
+                .lineLimit(1)
+        }
+        .font(.caption.weight(.medium))
+        .padding(.horizontal, 8)
+        .frame(width: 130, height: height, alignment: .leading)
+        .background(.regularMaterial, in: UnevenRoundedRectangle(bottomTrailingRadius: 5, topTrailingRadius: 5))
+        .overlay(alignment: .leading) { Rectangle().fill(Color.accentColor.opacity(0.85)).frame(width: 1) }
+        .shadow(radius: 3, x: 2)
+    }
+}
+
+extension TimelineRow.Kind {
+    var title: String {
+        switch self {
+        case .images: "Images"
+        case .transitions: "Transitions"
+        case .slides: "Slides"
+        case .music: "Music"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .images: "photo.on.rectangle"
+        case .transitions: "arrow.triangle.swap"
+        case .slides: "rectangle.stack"
+        case .music: "music.note"
+        }
+    }
 }

@@ -230,6 +230,51 @@ extension LibraryTests {
         XCTAssertEqual(try lib.allShows()[0].overlays, [clip])
     }
 
+    func testRowOrderRoundTrips() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        var show = try lib.createShow(name: "Rows")
+        XCTAssertEqual(show.rows.map(\.kind), [.images, .transitions, .slides, .music])
+        show.rows = [show.rows[3], show.rows[2], show.rows[0], show.rows[1]]
+        try lib.saveShow(show)
+        XCTAssertEqual(try lib.allShows()[0].rows, show.rows)
+    }
+
+    /// A version-6 library's shows have no saved rows: they read as the
+    /// default order, and the new order saves.
+    func testAVersionSixLibraryGetsRowsInTheDefaultOrder() throws {
+        let root = dir.appendingPathComponent("Six.noindex")
+        do {
+            let lib = try Library(root: root)
+            _ = try lib.createShow(name: "Old")
+        }
+        do {
+            let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
+            try db.exec("ALTER TABLE shows DROP COLUMN rows; PRAGMA user_version = 6;")
+        }
+        let lib = try Library(root: root)
+        var show = try XCTUnwrap(lib.allShows().first)
+        XCTAssertEqual(show.rows.map(\.kind), [.images, .transitions, .slides, .music])
+        show.rows.swapAt(0, 3)
+        try lib.saveShow(show)
+        XCTAssertEqual(try lib.allShows()[0].rows.map(\.kind), [.music, .transitions, .slides, .images])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("Library.sqlite.v6.bak").path))
+    }
+
+    func testRowsNormalizeToEveryKindOnce() {
+        let music = TimelineRow(kind: .music), slides = TimelineRow(kind: .slides)
+        // Missing kinds go back after the rows the default order puts before them.
+        let n = TimelineRow.normalized([music, slides])
+        XCTAssertEqual(n.map(\.kind), [.images, .transitions, .music, .slides])
+        XCTAssertEqual(n[2].id, music.id)
+        // A duplicate kind keeps its first appearance.
+        XCTAssertEqual(TimelineRow.normalized([slides, slides, music]).map(\.kind),
+                       [.images, .transitions, .slides, .music])
+        // An unreadable row is skipped; the rest are kept.
+        let json = #"[{"kind":"music","id":"\#(music.id)"},{"kind":"hologram"},{"kind":"slides"}]"#
+        XCTAssertEqual(TimelineRow.decodeList(json).map(\.kind), [.music, .slides])
+        XCTAssertEqual(TimelineRow.decodeList(json).first?.id, music.id)
+    }
+
     func testOneUnreadableOverlayDoesNotCostTheOthers() {
         let json = #"""
             [{"itemID":1,"start":0,"length":2,"blend":"screen"},

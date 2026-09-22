@@ -339,15 +339,72 @@ public struct Show: Identifiable, Hashable, Sendable {
     public var overlays: [OverlayClip]
     /// The collection it belongs to and draws its photos from.
     public var collectionID: Int64?
+    /// The timeline's rows, top to bottom (plan, Phase 3). Always complete:
+    /// see `TimelineRow.normalized`.
+    public var rows: [TimelineRow]
 
     public init(id: Int64, name: String, defaults: ShowDefaults = ShowDefaults(),
-                slides: [Slide] = [], overlays: [OverlayClip] = [], collectionID: Int64? = nil) {
+                slides: [Slide] = [], overlays: [OverlayClip] = [], collectionID: Int64? = nil,
+                rows: [TimelineRow] = TimelineRow.defaultOrder()) {
         self.id = id
         self.name = name
         self.defaults = defaults
         self.slides = slides
         self.overlays = overlays
         self.collectionID = collectionID
+        self.rows = TimelineRow.normalized(rows)
+    }
+}
+
+/// One row of a show's timeline. The rows are modules: a show keeps them in
+/// its own order, and dragging a row's handle rearranges them (plan,
+/// Phase 3). A list rather than a fixed set, so a show can have more rows
+/// later (a second images row, say).
+public struct TimelineRow: Codable, Hashable, Identifiable, Sendable {
+    public enum Kind: String, Codable, CaseIterable, Sendable {
+        case images, transitions, slides, music
+    }
+    public var id: UUID = UUID()
+    public var kind: Kind
+
+    public init(kind: Kind) { self.kind = kind }
+
+    /// Field by field, like every saved type. Without a readable kind there's
+    /// nothing to draw, so it fails and `decodeList` skips it.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try c.decode(Kind.self, forKey: .kind)
+        id = ((try? c.decodeIfPresent(UUID.self, forKey: .id)) ?? nil) ?? UUID()
+    }
+
+    /// A new show's order: images, transitions, slides, music.
+    public static func defaultOrder() -> [TimelineRow] { Kind.allCases.map { TimelineRow(kind: $0) } }
+
+    /// Every kind exactly once, the saved order kept. A kind missing from
+    /// the saved list (a show from before rows could move, or one that
+    /// predates a newer kind) goes back where the default order puts it:
+    /// after the rows that precede it there. For now each kind appears once;
+    /// that rule relaxes when a show can have more than one row of a kind.
+    public static func normalized(_ rows: [TimelineRow]) -> [TimelineRow] {
+        var out: [TimelineRow] = []
+        for r in rows where !out.contains(where: { $0.kind == r.kind }) { out.append(r) }
+        for (i, kind) in Kind.allCases.enumerated() where !out.contains(where: { $0.kind == kind }) {
+            let before = Kind.allCases[..<i]
+            let at = (out.lastIndex { before.contains($0.kind) }).map { $0 + 1 } ?? 0
+            out.insert(TimelineRow(kind: kind), at: at)
+        }
+        return out
+    }
+
+    /// A saved list, keeping every row that can be read.
+    public static func decodeList(_ json: String) -> [TimelineRow] {
+        guard let items = try? JSONDecoder().decode([Lenient].self, from: Data(json.utf8)) else { return [] }
+        return items.compactMap(\.row)
+    }
+
+    private struct Lenient: Decodable {
+        let row: TimelineRow?
+        init(from decoder: Decoder) throws { row = try? TimelineRow(from: decoder) }
     }
 }
 

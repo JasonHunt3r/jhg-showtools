@@ -49,8 +49,9 @@ struct EditShowView: View {
                                       pps: $pps, scrollOffset: $storylineOffset, mutate: mutate,
                                       openInspector: { inspectorShown = true })
                     }
-                    .frame(minHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 80 + 56,
-                           idealHeight: StorylineView.blockHeight + StorylineView.rulerHeight + 90 + 56)
+                    // Tall enough for every row, and the transport (56).
+                    .frame(minHeight: StorylineView.fullHeight + 56,
+                           idealHeight: StorylineView.fullHeight + 56 + 10)
                 }
                 .onDeleteCommand {
                     // What's selected in the lane goes first: an image is

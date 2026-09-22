@@ -13,7 +13,7 @@
 //   axtool focused <pid>                 the element that has the keyboard
 //   axtool front <pid>                   bring that app forward (do before input)
 //   axtool move <x> <y>                  move the pointer (hover)
-//   axtool click <x> <y> [right|double|cmd|shift]
+//   axtool click <x> <y> [right|double|cmd|shift|opt]
 //   axtool drag <x1> <y1> <x2> <y2> [opt|shift|cmd]
 //   axtool scroll <x> <y> <lines>        scroll wheel at a point (negative = down)
 //   axtool type <text>
@@ -206,6 +206,12 @@ case "click":
     } else if mode == "cmd" || mode == "shift" {
         let f: CGEventFlags = mode == "cmd" ? .maskCommand : .maskShift
         post(.leftMouseDown, p, flags: f); post(.leftMouseUp, p, flags: f)
+    } else if mode == "opt" {
+        // The key goes down first, as for `drag`: code that asks
+        // NSEvent.modifierFlags sees the key, not the click's flags.
+        CGEvent(keyboardEventSource: source, virtualKey: 58, keyDown: true)?.post(tap: .cghidEventTap)
+        post(.leftMouseDown, p, flags: .maskAlternate); post(.leftMouseUp, p, flags: .maskAlternate)
+        CGEvent(keyboardEventSource: source, virtualKey: 58, keyDown: false)?.post(tap: .cghidEventTap)
     } else {
         post(.leftMouseDown, p); post(.leftMouseUp, p)
         if mode == "double" { post(.leftMouseDown, p, clicks: 2); post(.leftMouseUp, p, clicks: 2) }
