@@ -13,25 +13,11 @@ planned; its test program is half run.** It has its own spec,
 reading the library read-only; Control Center opens it; shows per monitor
 and per Space. Every decision, measurement and open question is there.
 
-**FIRST THING in the next session: read the launch-at-login result.**
-Jason logged out and back in (or restarted) to test it. Two ad-hoc-signed
-probes were set up on 2026-09-22 at 12:36Z (`tools/login-probe/`):
-- `~/Applications/LoginProbe-sm.app`, registered with
-  `SMAppService.mainApp` (it reported `enabled`)
-- `~/Applications/LoginProbe-la.app`, started by
-  `~/Library/LaunchAgents/com.jhg.loginprobe.la.plist` (RunAtLoad)
+**Launch at login: done** (2026-09-22). Both probes launched at Jason's
+login, SMAppService and LaunchAgent alike; result in `spec/bgtools.md`,
+probes removed.
 
-Both showed as enabled and allowed in `sfltool dumpbtm` before logout.
-Read `~/Library/Logs/BGLoginProbe.log`: a `LAUNCHED` line from
-`[com.jhg.loginprobe.sm]` means SMAppService works unsigned; one from
-`[com.jhg.loginprobe.la]` (args `--from-launchagent`) means the
-LaunchAgent does. Each line gives seconds since boot and the last
-console login. The log before logout holds only the register and status
-lines. Record the result in `spec/bgtools.md` ("Measured", "Launch at login"),
-then run `tools/login-probe/remove.sh` to take both probes out
-(it keeps the log).
-
-Then, from the test list still open:
+From the test list still open:
 - **Power**: live Core Image drawing against a looping HEVC video, per
   monitor (not measured yet)
 - **Several monitors**: needs Jason to plug in a second display; the
@@ -45,8 +31,8 @@ Then settle `spec/bgtools.md`'s open questions with Jason one at a time
 
 **Test things still installed on Jason's Mac** (remove when done, or
 when BGTools replaces them): `~/Applications/BGControlProbe.app` and its
-two tiles in Control Center (Jason added them), the two login probes
-above, `build/DesktopProbe.app` (not running), and XcodeGen
+two tiles in Control Center (Jason added them),
+`build/DesktopProbe.app` (not running), and XcodeGen
 (`brew install xcodegen`, kept: BGTools' Control Center extension will
 need it).
 
@@ -212,7 +198,7 @@ files are both in the show keeps both ("1 stays"), Keep One disabled.
 | **3** Music + timeline | **All 7 steps built** (6 and 7 on 2026-09-22). Left: settle image stickiness with Jason |
 | **3b** Find Similar (was "duplicate finder") | **Built** 2026-09-22: Delete by context, Group/Show Similar, Keep One |
 | **4** Setlist export / import | **Built** 2026-09-22 (4a–4d); risks recorded under "Phase 4: open risks" |
-| 5 BGTools (desktop companion app) | **Planning**, own spec `spec/bgtools.md`; test program half run (see "Start here") |
+| 5 BGTools (desktop companion app) | **Planning**, own spec `spec/bgtools.md`; test program parts 1–5 done (see "Start here") |
 
 Library schema is now **version 12**. Every upgrade is additive and tested
 by opening a library of the version before (7 rows, 8 music, 9 markers,

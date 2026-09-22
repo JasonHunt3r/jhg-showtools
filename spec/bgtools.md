@@ -73,12 +73,14 @@ editor), built in this repo on ShowToolsCore's renderer (`frame(at:)` →
   saves alone). The reader leaves `Library.sqlite` and `-wal` untouched
   and writes only `-shm`, SQLite's shared index (every WAL reader marks
   its place there).
-- **Launch at login: under test.** Two ad-hoc-signed probes
-  (`tools/login-probe`), one registered with `SMAppService.mainApp`
-  (reported `enabled`), one started by a LaunchAgent; both enabled and
-  allowed in Background Task Management. Result after Jason's next login
-  in `~/Library/Logs/BGLoginProbe.log`. (Research: SMAppService is
-  reported unreliable for ad-hoc-signed apps; a LaunchAgent always works.)
+- **Launch at login: both ways work, ad hoc signed** (measured
+  2026-09-22). After Jason's logout and login at 12:44Z, both probes
+  logged `LAUNCHED` in the same second, parent pid 1 (launchd): the one
+  registered with `SMAppService.mainApp` and the one a LaunchAgent starts
+  (`--from-launchagent`). So the reported unreliability of SMAppService for
+  ad-hoc-signed apps didn't show on macOS 27.0; SMAppService is the
+  Apple-recommended way and shows in Login Items with a switch. Probes
+  removed afterwards (`tools/login-probe/remove.sh`).
 
 ## BGTools' read path (from the measurements)
 
@@ -90,7 +92,6 @@ it; follow the library when it moves (a bookmark; ShowTools tells it).
 
 ## Still to test
 
-- **Launch at login** (result pending, above)
 - **Power**: live Core Image drawing against a looping HEVC video, per
   monitor
 - **Several monitors**: needs a second display plugged in; the desktop
