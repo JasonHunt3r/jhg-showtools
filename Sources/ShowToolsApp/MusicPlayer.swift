@@ -12,15 +12,21 @@ final class MusicPlayer {
     /// One song's part of a play: from `fileStart` seconds into the file,
     /// for `duration`, starting `delay` seconds after the play starts.
     struct Segment {
+        let clipID: UUID
         let url: URL
         let delay: Double
         let fileStart: Double
         let duration: Double
-        let volume: Float
     }
 
     private let engine = AVAudioEngine()
-    private var nodes: [AVAudioPlayerNode] = []
+    private var nodes: [(clipID: UUID, node: AVAudioPlayerNode)] = []
+    /// Each song's level at a show time (its volume, fades and crossfades),
+    /// applied many times a second while it plays.
+    private var gain: ((UUID, Double) -> Float)?
+    /// The show time (within the pass) the play started from.
+    private var startLocal: Double = 0
+    private var levelTimer: Timer?
     private var files: [URL: AVAudioFile] = [:]
     /// When the scheduled sound starts, in host time.
     private var startHost: UInt64 = 0
@@ -51,7 +57,7 @@ final class MusicPlayer {
     /// Starts the segments playing together. False if nothing could be
     /// played (no segments, or no file would open): the show then runs on
     /// the system clock.
-    func start(_ segments: [Segment]) -> Bool {
+    func start(_ segments: [Segment], from local: Double, gain: @escaping (UUID, Double) -> Float) -> Bool {
         stop()
         var scheduled: [(AVAudioPlayerNode, AVAudioFile, Segment)] = []
         for seg in segments {
@@ -59,7 +65,7 @@ final class MusicPlayer {
             let node = AVAudioPlayerNode()
             engine.attach(node)
             engine.connect(node, to: engine.mainMixerNode, format: file.processingFormat)
-            node.volume = seg.volume
+            node.volume = gain(seg.clipID, local + seg.delay)
             scheduled.append((node, file, seg))
         }
         guard !scheduled.isEmpty else { return false }
@@ -78,19 +84,36 @@ final class MusicPlayer {
             node.scheduleSegment(file, startingFrame: first, frameCount: AVAudioFrameCount(count),
                                  at: AVAudioTime(sampleTime: AVAudioFramePosition(seg.delay * rate), atRate: rate))
         }
-        nodes = scheduled.map(\.0)
+        nodes = scheduled.map { ($0.2.clipID, $0.0) }
+        self.gain = gain
+        startLocal = local
         startHost = mach_absolute_time() + AVAudioTime.hostTime(forSeconds: Self.lead)
         startSample = nil
         let when = AVAudioTime(hostTime: startHost)
-        for node in nodes { node.play(at: when) }
+        for n in nodes { n.node.play(at: when) }
         isRunning = true
+        // In the common modes, so fades keep moving while something's dragged.
+        let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.applyLevels() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        levelTimer = timer
         return true
     }
 
+    private func applyLevels() {
+        guard let gain, let e = elapsed else { return }
+        let t = startLocal + e
+        for n in nodes { n.node.volume = gain(n.clipID, t) }
+    }
+
     func stop() {
-        for node in nodes {
-            node.stop()
-            engine.detach(node)
+        levelTimer?.invalidate()
+        levelTimer = nil
+        gain = nil
+        for n in nodes {
+            n.node.stop()
+            engine.detach(n.node)
         }
         nodes = []
         if engine.isRunning { engine.pause() }

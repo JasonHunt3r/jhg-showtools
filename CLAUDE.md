@@ -19,7 +19,9 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   and Rotation mode on the preview), `StorylineView` (the timeline's rows,
   drawn in the show's own `rows` order, with their handles and drawers;
   the blocks and the lane's transitions row), `ImagesRow` (the lane's images row),
-  `MusicRow` (songs and their waveforms), `MusicPlayer` (plays the songs on
+  `MusicRow` (songs and their waveforms; move, trim, overlaps),
+  `LevelLine` (the level line on song and lane-image clips: volume or
+  opacity, and the fades), `MusicPlayer` (plays the songs on
   AVAudioEngine and is the show's clock while it does; `PlaybackEngine.syncMusic`
   must follow anything that starts, stops or moves the clock), `Waveforms`
   (read once per file, cached in `<library>/Cache/Waveforms` by hash), `CollectionBrowser`

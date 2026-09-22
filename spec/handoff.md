@@ -14,7 +14,7 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 | **2a** Framing, rotation, match cuts | **Built**, except presets (Flush), which are deferred |
 | **2b** Library manager | **Built** |
 | **2c** The lane: transitions row + images row | **Built** |
-| **3** Music + timeline | **Started 2026-09-21:** steps 1–2 of 7 built (modular rows; the music row, waveform, and playback on the music's clock). Decisions and build order in `spec/plan.md` |
+| **3** Music + timeline | **Started 2026-09-21:** steps 1–3 of 7 built (modular rows; the music row, waveform, and playback on the music's clock; moving and trimming songs, crossfades, and the level line on song and image clips). Decisions and build order in `spec/plan.md` |
 | 3b–5 | Not started |
 
 Everything through 2b/2c is built, audited, and checked by hand (Jason and/or

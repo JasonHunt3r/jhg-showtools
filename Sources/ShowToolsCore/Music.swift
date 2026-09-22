@@ -54,6 +54,53 @@ public struct AudioClip: Codable, Hashable, Identifiable, Sendable {
         init(from decoder: Decoder) throws { clip = try? AudioClip(from: decoder) }
     }
 
+    /// The clip's own level at show time `t`: its volume, ramped from
+    /// silence over the fade in and back down over the fade out.
+    public func envelope(at t: Double) -> Double {
+        guard t >= start, t < end else { return 0 }
+        var g = min(max(volume, 0), 1)
+        if fadeIn > 0 { g *= min((t - start) / fadeIn, 1) }
+        if fadeOut > 0 { g *= min((end - t) / fadeOut, 1) }
+        return max(g, 0)
+    }
+
+    /// Where two songs overlap because the later one starts inside the
+    /// earlier and runs past its end, they crossfade across the overlap:
+    /// the earlier fades out as the later fades in, equal-power so the
+    /// loudness holds through the middle. A song lying wholly inside another
+    /// just plays over it (its own fades still apply).
+    public static func gain(of clip: AudioClip, at t: Double, among clips: [AudioClip]) -> Double {
+        var g = clip.envelope(at: t)
+        guard g > 0 else { return 0 }
+        for other in clips where other.id != clip.id {
+            if let o = crossfade(earlier: clip, later: other), o.contains(t) {
+                g *= cos((t - o.lowerBound) / (o.upperBound - o.lowerBound) * .pi / 2)
+            } else if let o = crossfade(earlier: other, later: clip), o.contains(t) {
+                g *= sin((t - o.lowerBound) / (o.upperBound - o.lowerBound) * .pi / 2)
+            }
+        }
+        return max(g, 0)
+    }
+
+    /// The span two songs crossfade over, if `later` starts inside
+    /// `earlier` and ends after it.
+    public static func crossfade(earlier: AudioClip, later: AudioClip) -> ClosedRange<Double>? {
+        guard later.start > earlier.start, later.start < earlier.end, later.end > earlier.end else { return nil }
+        return later.start...earlier.end
+    }
+
+    /// Every span where two songs overlap, crossfading or not, for drawing.
+    public static func overlaps(_ clips: [AudioClip]) -> [ClosedRange<Double>] {
+        var out: [ClosedRange<Double>] = []
+        for (i, a) in clips.enumerated() {
+            for b in clips[(i + 1)...] {
+                let lo = max(a.start, b.start), hi = min(a.end, b.end)
+                if hi > lo { out.append(lo...hi) }
+            }
+        }
+        return out
+    }
+
     /// What should play when the show's clock reads `local` (inside one pass
     /// of the show), up to `until`: how long from now it starts, where in the
     /// file, and for how long. Nil if nothing of it is left to play.

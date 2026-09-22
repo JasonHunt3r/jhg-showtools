@@ -280,11 +280,15 @@ final class PlaybackEngine {
         let segments: [MusicPlayer.Segment] = show.music.compactMap { clip in
             guard let item = model.itemsByID[clip.itemID], let url = model.url(for: item),
                   let seg = clip.segment(from: local, until: timeline.duration) else { return nil }
-            return MusicPlayer.Segment(url: url, delay: seg.delay, fileStart: seg.fileStart,
-                                       duration: seg.duration, volume: Float(clip.volume))
+            return MusicPlayer.Segment(clipID: clip.id, url: url, delay: seg.delay, fileStart: seg.fileStart,
+                                       duration: seg.duration)
         }
         musicPass = pass(t)
-        if music.start(segments) {
+        let clips = show.music
+        let gain: (UUID, Double) -> Float = { id, t in
+            clips.first { $0.id == id }.map { Float(AudioClip.gain(of: $0, at: t, among: clips)) } ?? 0
+        }
+        if music.start(segments, from: local, gain: gain) {
             clock.external = { [music] in music.elapsed }
         }
     }

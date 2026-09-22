@@ -68,6 +68,35 @@ final class MusicTests: XCTestCase {
         XCTAssertNil(clip.segment(from: 0, until: 10))
     }
 
+    func testEnvelopeRampsOverItsFades() {
+        var c = AudioClip(itemID: 1, start: 10, length: 10)
+        c.volume = 0.8; c.fadeIn = 2; c.fadeOut = 4
+        XCTAssertEqual(c.envelope(at: 9.99), 0)
+        XCTAssertEqual(c.envelope(at: 11), 0.4, accuracy: 1e-9)      // halfway in
+        XCTAssertEqual(c.envelope(at: 14), 0.8, accuracy: 1e-9)
+        XCTAssertEqual(c.envelope(at: 19), 0.2, accuracy: 1e-9)      // a quarter of the way out
+        XCTAssertEqual(c.envelope(at: 20), 0)
+    }
+
+    func testOverlappingSongsCrossfadeAtEqualPower() {
+        let a = AudioClip(itemID: 1, start: 0, length: 10)
+        let b = AudioClip(itemID: 2, start: 8, length: 10)
+        let all = [a, b]
+        XCTAssertEqual(AudioClip.crossfade(earlier: a, later: b), 8...10)
+        XCTAssertNil(AudioClip.crossfade(earlier: b, later: a))
+        // Before and after the overlap, each is at its own level.
+        XCTAssertEqual(AudioClip.gain(of: a, at: 7, among: all), 1, accuracy: 1e-9)
+        XCTAssertEqual(AudioClip.gain(of: b, at: 11, among: all), 1, accuracy: 1e-9)
+        // Halfway through, both at √½: the power adds back to one.
+        let ga = AudioClip.gain(of: a, at: 9, among: all), gb = AudioClip.gain(of: b, at: 9, among: all)
+        XCTAssertEqual(ga, sqrt(0.5), accuracy: 1e-9)
+        XCTAssertEqual(ga * ga + gb * gb, 1, accuracy: 1e-9)
+        // A song wholly inside another doesn't crossfade; both overlaps draw.
+        let inner = AudioClip(itemID: 3, start: 2, length: 3)
+        XCTAssertEqual(AudioClip.gain(of: a, at: 3, among: [a, inner]), 1, accuracy: 1e-9)
+        XCTAssertEqual(AudioClip.overlaps([a, b, inner]), [8...10, 2...5])
+    }
+
     func testSongsRoundTripAndOneBadClipDoesNotCostTheOthers() throws {
         let lib = try Library(root: dir.appendingPathComponent("Lib"))
         let song = try lib.insertItem(relativePath: "s.wav", hash: "s",

@@ -307,7 +307,10 @@ struct PreviewStage: View {
                     .help("Pop out the preview into its own window, e.g. for another screen")
                 }
                 .overlay(alignment: .top) {
-                    if let id = selectedOverlay, let clip = engine.show.overlays.first(where: { $0.id == id }) {
+                    // The saved show, which SwiftUI observes (the engine's copy
+                    // isn't), so the bar follows edits made elsewhere: the lane's
+                    // level line, undo.
+                    if let id = selectedOverlay, let clip = show.overlays.first(where: { $0.id == id }) {
                         overlayControls(clip)
                             .padding(.top, 48)
                     } else if let id = selectedTransition,

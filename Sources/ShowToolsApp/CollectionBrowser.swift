@@ -266,7 +266,8 @@ struct CollectionBrowser: View {
     /// `use` is which use of the file this entry is, shown when it has more
     /// than one.
     private func row(_ item: MediaItem, used: Bool, use: Int? = nil) -> some View {
-        let aspect = CGFloat(item.pixelWidth) / CGFloat(max(item.pixelHeight, 1))
+        // A song has no pixel size: its waveform tile is wide.
+        let aspect = item.kind == .audio ? 16 / 9 : CGFloat(item.pixelWidth) / CGFloat(max(item.pixelHeight, 1))
         return HStack(spacing: 8) {
             ThumbnailView(item: item, url: model.url(for: item))
                 .frame(width: aspect >= 1 ? 40 : 30 * aspect, height: aspect >= 1 ? 40 / aspect : 30)

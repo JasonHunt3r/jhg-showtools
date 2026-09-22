@@ -138,8 +138,6 @@ struct ImagesRow: View {
         let aspect = CGFloat(o.item.pixelWidth) / CGFloat(max(o.item.pixelHeight, 1))
         return ZStack(alignment: .leading) {
             RoundedRectangle(cornerRadius: 4).fill(Color(red: 0.55, green: 0.38, blue: 0.62).opacity(0.85))
-            // The fades, as ramps at the ends.
-            fadeRamps(o.clip, width: w, height: h)
             HStack(spacing: 5) {
                 ThumbnailView(item: o.item, url: model.url(for: o.item))
                     .frame(width: (h - 4) * aspect, height: h - 4)
@@ -162,23 +160,25 @@ struct ImagesRow: View {
         .gesture(drag(o, part: .move))
         .overlay(alignment: .leading) { edgeZone(o, part: .start) }
         .overlay(alignment: .trailing) { edgeZone(o, part: .end) }
+        .overlay(alignment: .topLeading) {
+            // Opacity and fades, on the clip itself (plan, Phase 3).
+            LevelLine(level: o.clip.opacity, fadeIn: o.clip.fadeIn, fadeOut: o.clip.fadeOut, length: length,
+                      pps: pps, width: w, height: h, colour: .white, name: "Opacity",
+                      begin: { select(id) },
+                      commit: { level, fadeIn, fadeOut in
+                          mutate(level != o.clip.opacity ? "Change Opacity" : "Change Fade") { s in
+                              guard let i = s.overlays.firstIndex(where: { $0.id == id }) else { return }
+                              s.overlays[i].opacity = level
+                              s.overlays[i].fadeIn = fadeIn
+                              s.overlays[i].fadeOut = fadeOut
+                          }
+                      })
+        }
         .onHover { if $0 { NSCursor.openHand.set() } else { NSCursor.arrow.set() } }
         .help("\(o.item.fileName) · \(formatSeconds(length))")
         .offset(x: inset + CGFloat(start * pps), y: 2)
     }
 
-    private func fadeRamps(_ c: OverlayClip, width: CGFloat, height: CGFloat) -> some View {
-        Canvas { ctx, _ in
-            let inW = min(CGFloat(c.fadeIn * pps), width / 2), outW = min(CGFloat(c.fadeOut * pps), width / 2)
-            var p = Path()
-            p.move(to: CGPoint(x: 0, y: 0)); p.addLine(to: CGPoint(x: inW, y: 0)); p.addLine(to: CGPoint(x: 0, y: height))
-            p.move(to: CGPoint(x: width, y: 0)); p.addLine(to: CGPoint(x: width - outW, y: 0))
-            p.addLine(to: CGPoint(x: width, y: height))
-            ctx.fill(p, with: .color(.black.opacity(0.3)))
-        }
-        .frame(width: width, height: height)
-        .allowsHitTesting(false)
-    }
 
     private func edgeZone(_ o: ResolvedOverlay, part: ClipEdit.Part) -> some View {
         Color.clear
