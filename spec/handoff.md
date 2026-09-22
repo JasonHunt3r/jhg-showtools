@@ -5,9 +5,30 @@ decision, phase by phase) first. This file is the state of play. The repo
 is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 (public, `main`).
 
-**Jason is updating his Mac to macOS 27** so step 6 (beat detection) can
-use Apple's Music Understanding framework. Check `sw_vers` first: if it
-still says 26.x, step 6 can't run yet (see "Starting step 6").
+## Start here (the session ended for a restart into macOS 27)
+
+The last session ended so Jason could restart his Mac into **macOS 27**,
+which beat detection (step 6) needs. Everything is committed and pushed
+(`main` at the "Bummer" commit or later), and no copy of the app was left
+running.
+
+1. **Run `sw_vers`.** If it still says 26.x, step 6 can't be tested yet;
+   ask Jason what he'd like to do instead (3b, the duplicate finder, was
+   the suggestion).
+2. **The Xcode tools may have changed with the update.** Run `swift test`
+   (116 tests) and `./make-app.sh` before anything else, and check the
+   `MusicUnderstanding` interface again (`xcrun --show-sdk-path`, then the
+   framework's `.swiftinterface`). The first pass was written against a
+   beta SDK.
+3. **Then test step 6's first pass**, in the order under "Starting step 6"
+   below, in a scratch library (`tools/make-test-library.sh`, plus the
+   click-track song described under "How to work on it"). The scratch
+   library from the last session was in that session's scratchpad folder,
+   which may be gone; make a new one.
+4. **Tell Jason about the one change from the proposals** (how "Fit slides
+   to markers" chooses slides, below), and ask whether the rest of the
+   proposals suit him. He said "go ahead" with a first pass, not yes to
+   each point.
 
 ## Where it stands
 
@@ -93,14 +114,28 @@ in the range (that would re-cut two slides for eight markers). Tell Jason.
   section bands on clips; double-click a section sets the range), teal
   detected markers on the ruler (select, drag, Delete, double-click line,
   snapping), a faint teal preview while the sheet is open.
-- **Checked on macOS 26.6.2** (2026-09-21): the app launches, the music
-  drawer's Detect Beats… button opens the sheet, which says it needs
-  macOS 27 (Apply disabled), and Esc closes it.
-- **Test next, on macOS 27, in order:** (2) on macOS 27, a song gets
-  analysed (the 120 BPM click track: beats every 0.5 s, and does it find
-  bars?); (3) the sheet's preview, Apply, and one-step undo; (4) Fit slides;
-  (5) dragging and deleting teal markers, a song move carrying them;
-  (6) section double-click. Never run on the real library.
+- **Checked on macOS 26.6.2** (2026-09-21): the app launches (the
+  framework is weakly linked), and the music drawer's Detect Beats… button
+  opens the sheet. The sheet says beat detection needs macOS 27 and names
+  the Mac's version. Before macOS 27 it has **one button, "Bummer"**
+  (Jason's wording), which closes it. Esc should also close it (a hidden
+  cancel shortcut), but that went **untested**: Jason's VS Code came to the
+  front mid-check and axtool rightly refused.
+- **Test next, on macOS 27, in order:**
+  1. The sheet shows Cancel and Apply, not Bummer.
+  2. A song gets analysed: the 120 BPM click track should give beats
+     every 0.5 s. Does it find bars, and any sections? Look at
+     `<library>/Cache/Rhythm/<hash>.json`. An analysis that fails shows
+     "Couldn't read the beats" with a Try Again button.
+  3. Beat and bar ticks and section bands are drawn on the song clip.
+  4. The sheet: its preview (faint teal markers on the ruler), the marker
+     count, Apply, and one ⌘Z undoing it all.
+  5. Fit slides.
+  6. Teal markers: drag, Delete, double-click for the line, snapping to
+     them, and moving the song carrying them.
+  7. Double-clicking a section sets the range.
+
+  Never run on the real library.
 
 **Decided (Jason, 2026-09-21):** use **Apple's Music Understanding
 framework** (WWDC26). It needs macOS 27. Our own detector (Accelerate,
