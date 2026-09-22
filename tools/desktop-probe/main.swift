@@ -77,16 +77,20 @@ func log(_ s: String) {
 final class LiveView: NSView {
     let name: String
     var paused = false
-    private var hue: CGFloat = CGFloat.random(in: 0...1)
+    private var hue: CGFloat
     private var timer: Timer?
 
-    init(frame: NSRect, name: String) {
+    /// `index` fixes the starting colour, a third of the wheel apart
+    /// (red, green, blue, then between), so neighbours never look alike.
+    init(frame: NSRect, name: String, index: Int = 0) {
         self.name = name
+        let starts: [CGFloat] = [0, 1.0 / 3, 2.0 / 3, 1.0 / 6, 0.5, 5.0 / 6]
+        hue = starts[index % starts.count]
         super.init(frame: frame)
         wantsLayer = true
         timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 10, repeats: true) { [weak self] _ in
             guard let self, !self.paused else { return }
-            self.hue = (self.hue + 0.002).truncatingRemainder(dividingBy: 1)
+            self.hue = (self.hue + 0.0003).truncatingRemainder(dividingBy: 1)
             self.needsDisplay = true
         }
     }
@@ -142,7 +146,7 @@ final class Probe: NSObject, NSApplicationDelegate, NSWindowDelegate {
             w.isReleasedWhenClosed = false
             w.hasShadow = false
             w.title = "BGTools probe \(screen.localizedName)"
-            w.contentView = LiveView(frame: NSRect(origin: .zero, size: screen.frame.size), name: screen.localizedName)
+            w.contentView = LiveView(frame: NSRect(origin: .zero, size: screen.frame.size), name: screen.localizedName, index: NSScreen.screens.firstIndex(of: screen) ?? 0)
             w.delegate = self
             w.setFrame(screen.frame, display: true)
             w.orderFront(nil)
@@ -166,7 +170,7 @@ final class Probe: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 w.hasShadow = false
                 let label = "\(screen.localizedName) · Space \(space.index)"
                 w.title = "BGTools probe \(label)"
-                w.contentView = LiveView(frame: NSRect(origin: .zero, size: screen.frame.size), name: label)
+                w.contentView = LiveView(frame: NSRect(origin: .zero, size: screen.frame.size), name: label, index: space.index - 1)
                 w.delegate = self
                 w.setFrame(screen.frame, display: true)
                 w.orderFront(nil)
