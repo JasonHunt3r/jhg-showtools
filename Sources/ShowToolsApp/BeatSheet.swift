@@ -174,7 +174,7 @@ struct BeatSheet: View {
             }
             .help("If beat 1 landed on the wrong beat, move it")
             Toggle("Fit slides to markers", isOn: $fitSlides)
-                .help("From the slide the range starts in, each cut lands on the next marker")
+                .help("From the slide the range starts in, each slide is resized to end on the next marker")
         }
         .formStyle(.grouped)
         .scrollDisabled(true)

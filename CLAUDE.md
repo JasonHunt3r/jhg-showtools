@@ -28,7 +28,7 @@ every decision so far, is in `spec/plan.md`: read it first. The state of play
   (Edit Show's right column), `CollectionAdd` (the in-app drag type and the
   "add to collection?" question), `Libraries` (open/new/private),
   `FrameStrip`, `EffectsTimeline`, `EffectControls` (sliders, pads).
-- `Sources/stcli/`: dev CLI. `ingest`, `show`, and `render` (writes frames
+- `Sources/stcli/`: dev CLI. `ingest`, `show` (creates a show; it doesn't print one), and `render` (writes frames
   through the Compositor to PNG, which is how transitions get checked by eye).
 - `make-app.sh`: builds `build/ShowTools.app` (a SwiftPM binary wrapped in a
   bundle, the same approach as CutSim).

@@ -545,8 +545,9 @@ to the Collection Browser and the library.
 - **The apply sheet**, run on the range: roughly how many beats per slide,
   *or* a change every roughly X seconds, *or* a rhythm pattern (below).
   It always drops markers (detected ones, so they belong to the song). A
-  **"Fit slides to markers"** checkbox also re-cuts the slides in the range
-  so their cuts land on those markers.
+  **"Fit slides to markers"** switch also resizes the slides, from the one
+  the range starts in, so each ends on the next marker. Slides are never
+  split: they're resized, and the ones after follow (Jason, 2026-09-22).
 - **Rhythm patterns**, three ways to write the same thing:
   - **text**, a short pattern repeated to fill the range, e.g.
     `w w h h q q 3e 3e 3e` (whole, half, quarter, a triplet of eighths)

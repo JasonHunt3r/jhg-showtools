@@ -5,30 +5,25 @@ decision, phase by phase) first. This file is the state of play. The repo
 is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 (public, `main`).
 
-## Start here (the session ended for a restart into macOS 27)
+## Start here (2026-09-22: step 6 tested and agreed)
 
-The last session ended so Jason could restart his Mac into **macOS 27**,
-which beat detection (step 6) needs. Everything is committed and pushed
-(`main` at the "Bummer" commit or later), and no copy of the app was left
-running.
+Step 6, beat detection, was tested on **macOS 27.0** on 2026-09-22 and
+passed all seven checks below. It was tested with the click track and with
+two real songs Jason supplied, which are kept **outside the public repo**
+in `~/Projects/ShowTools-TestMedia/`. Never copy them into the repo.
+Jason agreed proposals 1–6 as built, with two changes:
+- **×2 / ÷2 correct the bar starts too** (`da72cfa`). Before, they did
+  nothing in "Every N bars" mode.
+- **Fit slides only resizes slides.** It never splits one. Jason read
+  "re-cut" as splitting, so the tooltip and plan now say "resize". The
+  behaviour didn't change. Fit starts switched on, and he wants that.
 
-1. **Run `sw_vers`.** If it still says 26.x, step 6 can't be tested yet;
-   ask Jason what he'd like to do instead (3b, the duplicate finder, was
-   the suggestion).
-2. **The Xcode tools may have changed with the update.** Run `swift test`
-   (116 tests) and `./make-app.sh` before anything else, and check the
-   `MusicUnderstanding` interface again (`xcrun --show-sdk-path`, then the
-   framework's `.swiftinterface`). The first pass was written against a
-   beta SDK.
-3. **Then test step 6's first pass**, in the order under "Starting step 6"
-   below, in a scratch library (`tools/make-test-library.sh`, plus the
-   click-track song described under "How to work on it"). The scratch
-   library from the last session was in that session's scratchpad folder,
-   which may be gone; make a new one.
-4. **Tell Jason about the one change from the proposals** (how "Fit slides
-   to markers" chooses slides, below), and ask whether the rest of the
-   proposals suit him. He said "go ahead" with a first pass, not yes to
-   each point.
+Undo and Redo in the Edit menu already carry each edit's name ("Undo Add
+Marker"). Accessibility reports a stale plain "Undo", so check menu wording
+with a screenshot of the open menu, not with `axtool`.
+
+**Next: step 7, the rhythm patterns** (below and in the plan). Ask Jason
+first, as for every step.
 
 ## Where it stands
 
@@ -39,7 +34,7 @@ running.
 | **2a** Framing, rotation, match cuts | **Built**, except presets (Flush), which are deferred |
 | **2b** Library manager | **Built** |
 | **2c** The lane: transitions row + images row | **Built** |
-| **3** Music + timeline | **Steps 1–5 of 7 built** (below). **Step 6 (beat detection) waits for macOS 27**; step 7 (rhythm patterns) follows it |
+| **3** Music + timeline | **Steps 1–6 of 7 built**; 6 (beat detection) tested on macOS 27, 2026-09-22. Step 7 (rhythm patterns) is next |
 | 3b–5 | Not started |
 
 Library schema is now **version 10**. Every upgrade is additive and tested
@@ -97,7 +92,8 @@ Bluetooth headphones), and that the handles and drawers feel right.
 
 ## Starting step 6: beat detection
 
-**First pass written, not yet run in the app** (Jason asked for it while
+**Tested on macOS 27 (2026-09-22): all seven checks below pass.** The
+first pass was written (Jason asked for it while
 downloading macOS 27, 2026-09-21; commit after `20cde76`). It follows
 proposals 1–6 below, with one change: **"Fit slides to markers" starts at
 the slide the range begins in and uses as many slides as there are
@@ -159,8 +155,8 @@ since it was a beta SDK):
 - The WWDC session says to create the `AVURLAsset` with
   `AVURLAssetPreferPreciseDurationAndTimingKey: true`.
 
-**Proposed, not yet agreed.** Jason answered only the choice of framework,
-so raise these with him before building:
+**Agreed by Jason on 2026-09-22, as built.** "Start here" has the two
+changes, and point 4 below describes the old version:
 1. **Analyse each song automatically** when it's added, in the background,
    and cache the result per file by hash (like the waveform, e.g.
    `<library>/Cache/Rhythm/<hash>.json`, since the result types are
@@ -177,9 +173,9 @@ so raise these with him before building:
    nearest beat". Step 7 adds the rhythm patterns as a third mode, so
    leave room for it. A **live preview** of the markers shows faintly on
    the timeline while the settings change.
-4. **"Fit slides to markers"** (a checkbox, already agreed in the plan):
-   the slides whose cuts fall inside the range are re-cut so each cut lands
-   on the next marker, starting at the first cut in the range. What follows
+4. **"Fit slides to markers"** (a switch, already agreed in the plan):
+   as built, from the slide the range starts in, each slide is resized to
+   end on the next marker. Slides are never split. What follows
    ripples. Extra markers stay; slides with no marker left keep their
    lengths. Transitions stay centred on their cuts. The whole apply is one
    undo step.
@@ -201,12 +197,6 @@ There's also a multiplier for how many beats a whole note stands for. All
 of it is in the plan.
 
 **Then the end of Phase 3:** settle image stickiness with Jason (below).
-
-## While step 6 waits
-
-If Jason isn't on macOS 27 yet, **3b, the duplicate finder**, doesn't
-depend on anything in Phase 3. It was the suggestion at the end of this
-session, but Jason hadn't said yes yet.
 
 ## Still needs Jason's hands
 - **Listening:** music sync, fades, crossfades; Bluetooth headphones'
