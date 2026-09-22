@@ -37,7 +37,7 @@ first, as for every step.
 | **3** Music + timeline | **Steps 1–6 of 7 built**; 6 (beat detection) tested on macOS 27, 2026-09-22. Step 7 (rhythm patterns) is next |
 | 3b–5 | Not started |
 
-Library schema is now **version 10**. Every upgrade is additive and tested
+Library schema is now **version 11** (rhythm patterns, 2026-09-22). Every upgrade is additive and tested
 by opening a library of the version before (7 rows, 8 music, 9 markers,
 10 editing state). Jason's real library steps up to 10 the first time a
 build from this session opens it. Before an upgrade, the database is
@@ -261,8 +261,16 @@ ahead with 7x" from Jason before each one:
   beat; one ⌘Z.
 - **Grid spelling settled** (`e3c5740`): a note never runs past its bar
   line; rests fill the rest, split at bar lines (`q rw`).
-- **7f Saved patterns:** the built-ins, and Jason's named patterns stored
-  in the library (schema 11, an additive migration).
+- **7f Saved patterns: BUILT** (2026-09-22). **Schema 11**: a
+  `rhythm_patterns` table (name unique, the pattern's letters); migration
+  tested from a version-10 library, and the older rollback tests now drop
+  the table too. Jason's real library upgrades the first time this build
+  opens it, after a `Library.sqlite.v10.bak` copy. Built-ins in
+  `RhythmPattern.builtIns`: Steady `q`, Long, short, short `h q q`, Build,
+  Swing (triplet feel) `3q 3e`. The panel's **Patterns** menu (also in the
+  editing mode for Detect Beats): built-ins, saved ones, Save Pattern…
+  (a name; the same name replaces), Delete Saved Pattern (asks first).
+  Saves the letters only, not the note length. Checked in a scratch copy.
 - **7g Listen:** loop the range with a click on each note, over the song.
 
 ## Still needs Jason's hands

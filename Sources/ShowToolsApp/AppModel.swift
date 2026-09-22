@@ -21,6 +21,8 @@ final class AppModel {
     var shows: [Show] = []
     /// Library → Collection → Show (plan, 2b).
     private(set) var collections: [MediaCollection] = []
+    /// Named rhythm patterns saved in the library (plan, Phase 3 step 7).
+    private(set) var rhythmPatterns: [SavedRhythm] = []
 
     var sidebar: SidebarItem? = .library
     /// Developer hook only: a slide for the show view to select on appearing.
@@ -219,6 +221,7 @@ final class AppModel {
             itemsByID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
             shows = try lib.allShows()
             collections = try lib.allCollections()
+            rhythmPatterns = try lib.allRhythmPatterns()
             loadError = nil
         } catch {
             library = nil
@@ -429,6 +432,27 @@ final class AppModel {
         do {
             try lib.renameCollection(id: id, to: name)
             collections = try lib.allCollections()
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
+    /// Saves a rhythm pattern by name; a name already used is replaced.
+    func saveRhythmPattern(name: String, _ pattern: RhythmPattern) {
+        guard let lib = library, !name.isEmpty else { return }
+        do {
+            try lib.saveRhythmPattern(name: name, pattern)
+            rhythmPatterns = try lib.allRhythmPatterns()
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
+    func deleteRhythmPattern(_ id: Int64) {
+        guard let lib = library else { return }
+        do {
+            try lib.deleteRhythmPattern(id: id)
+            rhythmPatterns = try lib.allRhythmPatterns()
         } catch {
             loadError = "\(error)"
         }

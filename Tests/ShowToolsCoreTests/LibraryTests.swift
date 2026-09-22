@@ -249,7 +249,7 @@ extension LibraryTests {
         }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("ALTER TABLE shows DROP COLUMN editor; ALTER TABLE shows DROP COLUMN markers; ALTER TABLE shows DROP COLUMN music; ALTER TABLE shows DROP COLUMN rows; PRAGMA user_version = 6;")
+            try db.exec("DROP TABLE rhythm_patterns; ALTER TABLE shows DROP COLUMN editor; ALTER TABLE shows DROP COLUMN markers; ALTER TABLE shows DROP COLUMN music; ALTER TABLE shows DROP COLUMN rows; PRAGMA user_version = 6;")
         }
         let lib = try Library(root: root)
         var show = try XCTUnwrap(lib.allShows().first)
@@ -258,6 +258,30 @@ extension LibraryTests {
         try lib.saveShow(show)
         XCTAssertEqual(try lib.allShows()[0].rows.map(\.kind), [.music, .transitions, .slides, .images])
         XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("Library.sqlite.v6.bak").path))
+    }
+
+    func testAVersionTenLibraryGetsRhythmPatterns() throws {
+        let root = dir.appendingPathComponent("Ten.noindex")
+        do { _ = try Library(root: root) }
+        do {
+            let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
+            try db.exec("DROP TABLE rhythm_patterns; PRAGMA user_version = 10;")
+        }
+        let lib = try Library(root: root)
+        XCTAssertEqual(try lib.allRhythmPatterns(), [])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("Library.sqlite.v10.bak").path))
+    }
+
+    func testRhythmPatternsSaveByNameAndReplaceASameName() throws {
+        let lib = try Library(root: dir.appendingPathComponent("R.noindex"))
+        let a = try lib.saveRhythmPattern(name: "verse", RhythmPattern(text: "h q q"))
+        try lib.saveRhythmPattern(name: "Chorus", RhythmPattern(text: "e e q"))
+        let again = try lib.saveRhythmPattern(name: "verse", RhythmPattern(text: "w"))
+        XCTAssertEqual(again.id, a.id, "same name: replaced, not doubled")
+        XCTAssertEqual(try lib.allRhythmPatterns().map(\.name), ["Chorus", "verse"])
+        XCTAssertEqual(try lib.allRhythmPatterns().map(\.pattern.text), ["e e q", "w"])
+        try lib.deleteRhythmPattern(id: a.id)
+        XCTAssertEqual(try lib.allRhythmPatterns().map(\.name), ["Chorus"])
     }
 
     func testRowsNormalizeToEveryKindOnce() {

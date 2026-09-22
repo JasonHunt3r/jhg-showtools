@@ -125,6 +125,9 @@ struct RhythmPanelContent: View {
     @AppStorage("rhythmView") private var view: PatternView = .notes
 
     enum PatternView: String { case notes, grid }
+    @State private var naming = false
+    @State private var newName = ""
+    @State private var deleting: SavedRhythm?
 
     private var show: Show? { tool.showID.flatMap { model.show($0) } }
 
@@ -210,12 +213,15 @@ struct RhythmPanelContent: View {
 
     /// Notes or Grid.
     @ViewBuilder private var patternEditor: some View {
-        Picker("", selection: $view) {
-            Text("Notes").tag(PatternView.notes)
-            Text("Grid").tag(PatternView.grid)
+        HStack {
+            Picker("", selection: $view) {
+                Text("Notes").tag(PatternView.notes)
+                Text("Grid").tag(PatternView.grid)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            patternsMenu
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
         switch view {
         case .notes:
             patternField
@@ -290,6 +296,53 @@ struct RhythmPanelContent: View {
         let n = (q * 1000).rounded() / 1000
         let s = n == n.rounded() ? "\(Int(n))" : String(format: "%g", n)
         return "\(s) quarter note\(n == 1 ? "" : "s")"
+    }
+
+    /// The built-ins, the library's saved ones, and saving and deleting.
+    private var patternsMenu: some View {
+        Menu("Patterns") {
+            Section("Built In") {
+                ForEach(RhythmPattern.builtIns, id: \.name) { b in
+                    Button("\(b.name)   \(b.pattern.text)") { text = b.pattern.text }
+                }
+            }
+            if !model.rhythmPatterns.isEmpty {
+                Section("Saved") {
+                    ForEach(model.rhythmPatterns) { r in
+                        Button("\(r.name)   \(r.pattern.text)") { text = r.pattern.text }
+                    }
+                }
+            }
+            Divider()
+            Button("Save Pattern…") {
+                newName = ""
+                naming = true
+            }
+            .disabled(parsed.pattern.notes.isEmpty || model.library == nil)
+            if !model.rhythmPatterns.isEmpty {
+                Menu("Delete Saved Pattern") {
+                    ForEach(model.rhythmPatterns) { r in Button(r.name) { deleting = r } }
+                }
+            }
+        }
+        .fixedSize()
+        .alert("Save Pattern", isPresented: $naming) {
+            TextField("Name", text: $newName)
+            Button("Save") { model.saveRhythmPattern(name: newName.trimmingCharacters(in: .whitespaces), parsed.pattern) }
+                .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Saved in this library as “\(parsed.pattern.text)”. A pattern with the same name is replaced.")
+        }
+        .confirmationDialog("Delete “\(deleting?.name ?? "")”?", isPresented: Binding(
+            get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
+            Button("Delete", role: .destructive) {
+                if let d = deleting { model.deleteRhythmPattern(d.id) }
+                deleting = nil
+            }
+        } message: {
+            Text("The saved pattern is removed from this library. Markers already placed stay.")
+        }
     }
 
     /// Each glyph with its letter: click to add it (a "Rosetta stone").

@@ -86,6 +86,29 @@ public struct RhythmPattern: Hashable, Sendable {
     public init(text: String) { self = Self.parse(text).pattern }
 }
 
+extension RhythmPattern {
+    /// The ones every library has (plan, Phase 3 step 7).
+    public static let builtIns: [(name: String, pattern: RhythmPattern)] = [
+        ("Steady", RhythmPattern(text: "q")),
+        ("Long, short, short", RhythmPattern(text: "h q q")),
+        ("Build", RhythmPattern(text: "w h h q q q q e e e e e e e e")),
+        ("Swing (triplet feel)", RhythmPattern(text: "3q 3e")),
+    ]
+}
+
+/// A pattern saved by name in the library.
+public struct SavedRhythm: Hashable, Identifiable, Sendable {
+    public let id: Int64
+    public var name: String
+    public var pattern: RhythmPattern
+
+    public init(id: Int64, name: String, pattern: RhythmPattern) {
+        self.id = id
+        self.name = name
+        self.pattern = pattern
+    }
+}
+
 extension RhythmPattern: Codable {
     /// Saved as its text: an unreadable save is an empty pattern, never an error.
     public init(from decoder: Decoder) throws {

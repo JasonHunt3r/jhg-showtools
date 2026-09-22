@@ -124,7 +124,7 @@ public final class Library {
     }
 
     /// The schema version `migrate` brings a library up to.
-    public static let schemaVersion = 10
+    public static let schemaVersion = 11
 
     /// Before an existing library is upgraded, a copy of its database as it
     /// was, beside it: `Library.sqlite.v<N>.bak`. Upgrades are additive and
@@ -288,6 +288,21 @@ public final class Library {
                     """)
             }
         }
+        // 11 (2026-09-22): named rhythm patterns (plan, Phase 3 step 7), kept
+        // in the library like its collections. Additive: none to start with.
+        if db.userVersion < 11 {
+            try db.transaction {
+                try db.exec("""
+                    CREATE TABLE rhythm_patterns (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL UNIQUE,
+                        pattern TEXT NOT NULL,
+                        created_at REAL NOT NULL
+                    );
+                    PRAGMA user_version = 11;
+                    """)
+            }
+        }
     }
 
     // MARK: The library itself
@@ -312,6 +327,33 @@ public final class Library {
     }
 
     public static let startingCollectionName = "Untitled Collection"
+
+    // MARK: Rhythm patterns (schema 11)
+
+    /// The named patterns, by name.
+    public func allRhythmPatterns() throws -> [SavedRhythm] {
+        let s = try db.prepare("SELECT id, name, pattern FROM rhythm_patterns ORDER BY name COLLATE NOCASE, id")
+        var out: [SavedRhythm] = []
+        while try s.step() { out.append(SavedRhythm(id: s.int(0), name: s.text(1), pattern: RhythmPattern(text: s.text(2)))) }
+        return out
+    }
+
+    /// Saves a pattern under a name. A name already used is replaced, as
+    /// saving a preset over one does.
+    @discardableResult
+    public func saveRhythmPattern(name: String, _ pattern: RhythmPattern) throws -> SavedRhythm {
+        try db.prepare("""
+            INSERT INTO rhythm_patterns (name, pattern, created_at) VALUES (?, ?, ?)
+            ON CONFLICT(name) DO UPDATE SET pattern = excluded.pattern
+            """).bind(.text(name), .text(pattern.text), .double(Date().timeIntervalSince1970)).run()
+        let id = try db.prepare("SELECT id FROM rhythm_patterns WHERE name = ?").bind(.text(name))
+        _ = try id.step()
+        return SavedRhythm(id: id.int(0), name: name, pattern: pattern)
+    }
+
+    public func deleteRhythmPattern(id: Int64) throws {
+        try db.prepare("DELETE FROM rhythm_patterns WHERE id = ?").bind(.int(id)).run()
+    }
 
     // MARK: Collections
 
