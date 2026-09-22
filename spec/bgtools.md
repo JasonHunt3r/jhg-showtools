@@ -185,9 +185,43 @@ New with BGTools:
     launch.
 12. ~~Clicks~~ **Settled:** they go straight through to the desktop
     (measured working).
-13. **Control Center tiles: Open BGTools and Desktop Show on/off** (Jason,
-    2026-09-22). Jason wants to discuss what Control Center allows, "and
-    maybe build something bigger": being researched.
+13. ~~Control Center tiles~~ **Settled (Jason, 2026-09-22): Open BGTools
+    and Desktop Show on/off.** Control Center only holds buttons and
+    switches (macOS 27 SDK: `ControlWidgetButton`, `ControlWidgetToggle`,
+    optionally configured when added, a status line, draggable to the
+    menu bar), so "something bigger" is **BGTools' panel**: the Open tile
+    drops a compact floating panel near the top right, a row per monitor
+    and Space (thumbnail, mode and show, Next, Stills only) plus All same.
+    Favourite "Play X on screen Y" tiles can come later.
+
+## Build steps (proposed 2026-09-22)
+
+- **B1 Shared player.** Move `PlaybackClock`, `PlaybackEngine`,
+  `MediaProvider`/`VideoSlot`, `MusicPlayer` and `ShowCanvas` out of the
+  app into a new SwiftPM library, `ShowToolsPlayback`. The engine talks to
+  a small `ShowSource` protocol (a show by id, its timeline, an item's
+  URL, editing state) instead of `AppModel`; AppModel conforms. ShowTools
+  behaves exactly as before, so the desktop draws shows exactly as the
+  player does (the Compositor rule).
+- **B2 BGTools skeleton.** `BGTools/` (XcodeGen: the app, later its
+  Control Center extension) using the package. A read-only library reader
+  in ShowToolsCore (the read path above) that is a `ShowSource`. Desktop
+  windows per display and Space (uuid keys, one rebuild per burst of
+  notices) playing one show from `BGTOOLS_LIBRARY` (a scratch library;
+  never the real one in tests).
+- **B3 Settings and modes.** Each monitor's and Space's setting (library,
+  mode, show or collection, Stills only, sound), All same, the "new
+  screens" default, the desktop defaults; random modes build a show on the
+  fly with those defaults.
+- **B4 The panel.** `bgtools://open` shows it without activating other
+  windows; rows per monitor and Space.
+- **B5 Control Center.** Open BGTools, Desktop Show on/off (via
+  `bgtools://` URLs, measured).
+- **B6 Pausing and private libraries.** Sleep/lock, Low Power Mode,
+  inactive Spaces; Touch ID for a private library, dropped on sleep/lock.
+- **B7 ShowTools installs it.** Copy to `~/Applications` (newer build
+  replaces it), launch at login with `SMAppService`, tell BGTools when the
+  library moves.
 
 ## Originally (2026-09-20)
 
