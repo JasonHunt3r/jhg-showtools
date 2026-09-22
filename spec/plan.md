@@ -887,6 +887,12 @@ read path: `SQLITE_OPEN_READONLY`, check `user_version` and refuse a
 newer schema, poll `data_version`, read inside `BEGIN`…`COMMIT`, decode
 with ShowToolsCore's types.
 
+**Launch at login: under test** (2026-09-22, `tools/login-probe/`). Two
+ad-hoc-signed probes, one registered with `SMAppService.mainApp` (it
+reported `enabled`), one started by a LaunchAgent; both listed enabled
+and allowed by Background Task Management. Result after Jason's next
+login: see `~/Library/Logs/BGLoginProbe.log` (handoff, "Start here").
+
 Next: a throwaway test program (`tools/desktop-probe/`) checking, in
 order: the window below the icons on every monitor and Space; clicks
 passing through; a Control Center toggle loading (moved up for the crowded

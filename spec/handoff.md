@@ -7,39 +7,55 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 ## Start here (end of 2026-09-22)
 
-**Phase 4 is done** (Jason, 2026-09-22: "mark it done, record the
-risks"). 4a–4d built and checked in the app on scratch libraries; Jason
-skipped the 4e hands-on pass. Its open risks are below. **Next: plan
-Phase 5 (live desktop) by Q&A.**
+**Phase 5 (live desktop) is being planned, and its test program is half
+run.** The desktop becomes its own small app, **BGTools**, reading the
+library read-only; Control Center opens it; shows per monitor and per
+Space. Every decision and measurement so far is in the plan's Phase 5
+section ("Rethought with Jason 2026-09-22" and after).
 
-## Phase 4: open risks (not measured; recorded 2026-09-22)
+**FIRST THING in the next session: read the launch-at-login result.**
+Jason logged out and back in (or restarted) to test it. Two ad-hoc-signed
+probes were set up on 2026-09-22 at 12:36Z (`tools/login-probe/`):
+- `~/Applications/LoginProbe-sm.app`, registered with
+  `SMAppService.mainApp` (it reported `enabled`)
+- `~/Applications/LoginProbe-la.app`, started by
+  `~/Library/LaunchAgents/com.jhg.loginprobe.la.plist` (RunAtLoad)
 
-1. **iPhone HDR photos may lose HDR when stripped.** HEIC/PNG are
-   rewritten from their decoded frames, which likely drops the HDR gain
-   map (an auxiliary image). The copy still looks right in SDR. JPEG is
-   copied losslessly and isn't affected. Fix if it bites: carry the gain
-   map across (`CGImageSourceCopyAuxiliaryDataInfoAtIndex` →
-   `CGImageDestinationAddAuxiliaryDataInfo`), measured before and after.
-2. **RAW (DNG, ProRAW) can't be rewritten by ImageIO**: such files are
-   copied unstripped and listed in the banner's Details. Nothing leaks
-   silently, but nothing is stripped either.
-3. **Real iPhone video and Live Photos untested.** Only a generated video
-   was stripped. The remux keeps video and audio tracks only, which should
-   drop the timed-metadata track phones use for location; not yet seen on
-   a real file.
-4. **Big shows not timed.** Import hashes every file in the folder;
-   stripped export rewrites every file. Nothing measured at hundreds of
-   slides.
-5. **Not tried in the app, tests only:** exporting over an earlier export
-   (it goes to the real Trash), export with stripping off, Hide from
-   Spotlight on, Import Show… of a plain folder, and a TSV saved by
-   Numbers (whether Numbers can save TSV at all is unknown; if only CSV,
-   import could read `show.csv` too).
+Both showed as enabled and allowed in `sfltool dumpbtm` before logout.
+Read `~/Library/Logs/BGLoginProbe.log`: a `LAUNCHED` line from
+`[com.jhg.loginprobe.sm]` means SMAppService works unsigned; one from
+`[com.jhg.loginprobe.la]` (args `--from-launchagent`) means the
+LaunchAgent does. Each line gives seconds since boot and the last
+console login. The log before logout holds only the register and status
+lines. Record the result in the plan (Phase 5, research list, "Launch at
+login"), then run `tools/login-probe/remove.sh` to take both probes out
+(it keeps the log).
 
-To close 1–3: real files from Jason's phone (an HDR photo, a video, a Live
-Photo or ProRAW) in `~/Projects/ShowTools-TestMedia/`, never the repo.
+Then, from the test list still open:
+- **Power**: live Core Image drawing against a looping HEVC video, per
+  monitor (not measured yet)
+- **Several monitors**: needs Jason to plug in a second display; the
+  desktop probe (`tools/desktop-probe/build.sh`, `--per-space`) already
+  makes a window per display and Space, and logs screens changing
+- **A tile that changes BGTools**: the Control Center tile's action runs
+  in the sandboxed extension, so try a URL scheme or a distributed
+  notification to reach the app
+Then settle the rest of Phase 5 with Jason one question at a time (the
+list of questions from 2026-09-22 needs redoing for BGTools; he asked to
+go through them one at a time) and propose build steps.
 
-Where things stand: Phase 3 and 3b are built; 172 tests; schema 12. Image
+**Test things still installed on Jason's Mac** (remove when done, or
+when BGTools replaces them): `~/Applications/BGControlProbe.app` and its
+two tiles in Control Center (Jason added them), the two login probes
+above, `build/DesktopProbe.app` (not running), and XcodeGen
+(`brew install xcodegen`, kept: BGTools' Control Center extension will
+need it).
+
+**Parked:** a guided first run (plan "Later"; brief in
+`spec/first-run-brief.md`, Jason may take it to App Claude); Phase 4's
+open risks (below); image stickiness from Phase 3.
+
+Where things stand: Phases 1–4 are built; 172 tests; schema 12. Image
 stickiness (the end of Phase 3) stays parked until Jason has made a first
 real show.
 
@@ -197,7 +213,7 @@ files are both in the show keeps both ("1 stays"), Keep One disabled.
 | **3** Music + timeline | **All 7 steps built** (6 and 7 on 2026-09-22). Left: settle image stickiness with Jason |
 | **3b** Find Similar (was "duplicate finder") | **Built** 2026-09-22: Delete by context, Group/Show Similar, Keep One |
 | **4** Setlist export / import | **Built** 2026-09-22 (4a–4d); risks recorded under "Phase 4: open risks" |
-| 5 Live desktop | **Next: plan it with Jason** |
+| 5 Live desktop | **Planning**: BGTools rethink, test program half run (see "Start here") |
 
 Library schema is now **version 12**. Every upgrade is additive and tested
 by opening a library of the version before (7 rows, 8 music, 9 markers,
