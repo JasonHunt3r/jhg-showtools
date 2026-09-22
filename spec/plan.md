@@ -578,7 +578,7 @@ to the Collection Browser and the library.
   - **Note length:** "A quarter note = [¼, ½, 1, 2, 4, 8] beats", default
     4 beats (one bar), so `q q q q` is a slide a bar.
   - **Tempo:** a **BPM field**, filled in from the song's analysis when
-    there is one, otherwise 120; always editable.
+    there is one, otherwise 120; always editable (see below).
   - **Where it starts:** the start of the range, or of the show with no
     range. It repeats to the end, and the last repeat is cut short. On a
     song it counts the detected beats (between beats, in proportion), so a
@@ -589,8 +589,16 @@ to the Collection Browser and the library.
     and offered in a menu.
   - **Listen:** loops the range with a click on each pattern note (over
     the song when there is one), before applying.
-  - **Still open (asked 2026-09-22):** see "Step 7 questions" in
-    `spec/handoff.md`.
+  - **The Rhythm tool is a floating panel** that stays open while you
+    work, applied to the range as often as you like, with its own **Fit
+    slides** switch. It opens from the slides row's drawer and the Show
+    menu (with a shortcut). From Detect Beats, Pattern shows the pattern's
+    text with **Edit…**, which opens the panel; the pattern comes back
+    when it closes.
+  - **Typing a BPM over a song** drops the detected beats for an even
+    grid at that tempo; **"Use the song's beats"** goes back. (The BPM is
+    filled in from the song's analysis.)
+  - **No "every N beats" without a song:** a steady `q` pattern does it.
 
 ### Phase 3b: Duplicate finder
 - **Exact duplicates:** identical content, found by hash. This is instant

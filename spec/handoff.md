@@ -198,24 +198,30 @@ of it is in the plan.
 
 **Then the end of Phase 3:** settle image stickiness with Jason (below).
 
-## Step 7 questions (asked 2026-09-22)
+## Step 7: agreed, build order proposed (2026-09-22)
 
-The decisions so far are in `spec/plan.md` under "Rhythm patterns".
-Still open:
-1. **"Filled in when there's an active profile"**: does "profile" mean
-   the song's analysis, or something else?
-2. **Typing a BPM over a song:** does that drop the detected beats for an
-   even grid at the typed tempo? Suggest: yes, with a "Use the song's beats"
-   button to go back.
-3. **What the Rhythm tool is:** a floating panel that stays open while you
-   work, applied to the range as often as you like? Suggest: yes. From
-   Detect Beats, Pattern shows the pattern's text with "Edit…", which opens
-   the Rhythm tool; the pattern comes back when it closes.
-4. **The Rhythm tool on its own:** give it Fit slides as well, and open it
-   from the slides row's drawer and the Show menu, with a shortcut?
-   Suggest: yes.
-5. **"Every N beats" without a song:** drop it. A steady `q` pattern does
-   the same job. Suggest: yes.
+Every decision is in `spec/plan.md` under "Rhythm patterns" (Jason answered
+the last five: yes to each). Proposed steps, one commit each, and "go
+ahead with 7x" from Jason before each one:
+- **7a Core, no UI:** parse the letters into a pattern and write it back
+  as text; lay it on beats (the song's detected beats, or an even BPM grid)
+  from the range start, repeated and cut short at the end; rests, dots,
+  triplets, the note-length setting. Fully tested.
+- **7b The Rhythm panel, text only:** a floating panel with the text field
+  and glyph legend, BPM (from the analysis, "Use the song's beats"),
+  note length, and Fit slides; Apply drops orange markers on the range;
+  the ruler preview. Opened from the slides row's drawer and the Show menu.
+- **7c Notation:** Bravura (licence checked first, then bundled), one
+  rhythm line with beams, triplet brackets and bar lines, following the text.
+- **7d The grid:** 16 or 12 steps a bar, following the text. Question for
+  Jason when we get there: does clicking a square edit the pattern
+  (a drum machine does), or is the grid view-only because the text is
+  the input?
+- **7e Detect Beats' Pattern mode:** the pattern's text plus Edit…, which
+  opens the panel; teal markers on the detected beats.
+- **7f Saved patterns:** the built-ins, and Jason's named patterns stored
+  in the library (schema 11, an additive migration).
+- **7g Listen:** loop the range with a click on each note, over the song.
 
 ## Still needs Jason's hands
 - **Listening:** music sync, fades, crossfades; Bluetooth headphones'
