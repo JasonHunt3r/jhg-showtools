@@ -606,14 +606,40 @@ to the Collection Browser and the library.
     filled in from the song's analysis.)
   - **No "every N beats" without a song:** a steady `q` pattern does it.
 
-### Phase 3b: Duplicate finder
-- **Exact duplicates:** identical content, found by hash. This is instant
-- **Near duplicates:** the same picture resized, recompressed, or saved in
-  another format. Found with Apple's Vision framework (an image "fingerprint"
-  comparison), with a similarity slider
-- Results show side by side, grouped. The app suggests a keeper (largest
-  resolution) and you confirm. Shows that used a removed copy are pointed at
-  the keeper, so nothing breaks
+### Phase 3b: Find Similar, and Delete by context (planned with Jason 2026-09-22)
+Rethought from "duplicate finder": exact duplicates can't exist in a library
+(the hash is unique and import skips a file it already has, saying "already
+in library"), so the value is in **grouping similar pictures**, for building
+shows, and in **keeping one of a series** that got imported.
+- **Delete by context first** (Apple's Photos convention, checked in its
+  keyboard-shortcuts table: Delete removes from an album but not the
+  library; ⌘Delete deletes from the library):
+
+  | Where | Delete | ⌘Delete |
+  |---|---|---|
+  | Library | Trash, asks first | Trash, no question |
+  | A collection | Remove from the collection (undoable) | Delete from the library: Trash, **asks first** |
+  | A show's slides | Remove the slides | Same |
+  | Edit Show's collection column | Remove from the collection | Delete from the library, asks |
+
+  **Undo for collection deletions** (Jason): Remove from Collection, and
+  deleting a whole collection (its shows come back with it).
+- **Group Similar:** a switch in the Library/collection toolbar with a
+  **similarity slider**; the grid shows similar pictures together in
+  groups, regrouping live. The grid's usual actions work on them.
+- **Show Similar** on one picture's right-click menu: the grid narrows to
+  pictures like it, with the same slider.
+- **Scope:** what you're viewing (the library or one collection). Still
+  pictures only. **Fingerprints** (Vision's image feature print; the
+  older `VNGenerateImageFeaturePrintRequest` works on macOS 14) worked out
+  once per picture in the background, with progress, cached by hash.
+  No "not similar" marking: the slider is enough.
+- **Keep One…** on a group: side by side, a suggested keeper (largest, then
+  highest rated), click to change. The others go the way Delete goes where
+  you are (out of the collection, or to the Trash in the library), as one
+  undo step. **A file a show uses is left alone**, and it says so ("2 kept:
+  used in shows"). Files sent to the Trash give the keeper their tags and
+  the highest rating.
 
 ### Phase 4: Setlist export / import
 - **Export:** copy the source media into a folder, renamed in show order
