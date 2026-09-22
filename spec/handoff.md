@@ -7,11 +7,11 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 ## Start here (end of 2026-09-22)
 
-**Phase 5 (live desktop) is being planned, and its test program is half
-run.** The desktop becomes its own small app, **BGTools**, reading the
-library read-only; Control Center opens it; shows per monitor and per
-Space. Every decision and measurement so far is in the plan's Phase 5
-section ("Rethought with Jason 2026-09-22" and after).
+**Phase 5 is now BGTools, the desktop companion app, and it's being
+planned; its test program is half run.** It has its own spec,
+**`spec/bgtools.md`**: a small separate app that ShowTools installs,
+reading the library read-only; Control Center opens it; shows per monitor
+and per Space. Every decision, measurement and open question is there.
 
 **FIRST THING in the next session: read the launch-at-login result.**
 Jason logged out and back in (or restarted) to test it. Two ad-hoc-signed
@@ -27,8 +27,8 @@ Read `~/Library/Logs/BGLoginProbe.log`: a `LAUNCHED` line from
 `[com.jhg.loginprobe.la]` (args `--from-launchagent`) means the
 LaunchAgent does. Each line gives seconds since boot and the last
 console login. The log before logout holds only the register and status
-lines. Record the result in the plan (Phase 5, research list, "Launch at
-login"), then run `tools/login-probe/remove.sh` to take both probes out
+lines. Record the result in `spec/bgtools.md` ("Measured", "Launch at login"),
+then run `tools/login-probe/remove.sh` to take both probes out
 (it keeps the log).
 
 Then, from the test list still open:
@@ -40,9 +40,8 @@ Then, from the test list still open:
 - **A tile that changes BGTools**: the Control Center tile's action runs
   in the sandboxed extension, so try a URL scheme or a distributed
   notification to reach the app
-Then settle the rest of Phase 5 with Jason one question at a time (the
-list of questions from 2026-09-22 needs redoing for BGTools; he asked to
-go through them one at a time) and propose build steps.
+Then settle `spec/bgtools.md`'s open questions with Jason one at a time
+(he asked for that), and propose build steps.
 
 **Test things still installed on Jason's Mac** (remove when done, or
 when BGTools replaces them): `~/Applications/BGControlProbe.app` and its
@@ -213,7 +212,7 @@ files are both in the show keeps both ("1 stays"), Keep One disabled.
 | **3** Music + timeline | **All 7 steps built** (6 and 7 on 2026-09-22). Left: settle image stickiness with Jason |
 | **3b** Find Similar (was "duplicate finder") | **Built** 2026-09-22: Delete by context, Group/Show Similar, Keep One |
 | **4** Setlist export / import | **Built** 2026-09-22 (4a–4d); risks recorded under "Phase 4: open risks" |
-| 5 Live desktop | **Planning**: BGTools rethink, test program half run (see "Start here") |
+| 5 BGTools (desktop companion app) | **Planning**, own spec `spec/bgtools.md`; test program half run (see "Start here") |
 
 Library schema is now **version 12**. Every upgrade is additive and tested
 by opening a library of the version before (7 rows, 8 music, 9 markers,

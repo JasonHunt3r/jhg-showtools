@@ -3,6 +3,8 @@
 A macOS slideshow composer and player for Jason's own Mac. The plan, with
 every decision so far, is in `spec/plan.md`: read it first. The state of play
 (what's built, what's confirmed by hand, what's next) is in `spec/handoff.md`.
+Phase 5, BGTools (the desktop companion app ShowTools installs), has its
+own spec: `spec/bgtools.md`.
 
 ## Layout
 

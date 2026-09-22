@@ -1,4 +1,4 @@
-// Phase 5 test program, part 1 (plan: "Rethought with Jason 2026-09-22").
+// Phase 5 (BGTools) test program, part 1; see spec/bgtools.md.
 // Throwaway: proves a live window can sit beneath the desktop icons on every
 // monitor and Space, with clicks passing through, before BGTools is built.
 // It never opens a library.
