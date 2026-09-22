@@ -298,10 +298,13 @@ public enum SetlistExport {
         public var stripMetadata = true
         /// Add `.noindex` to the folder's name, so Spotlight skips it.
         public var hideFromSpotlight = false
+        /// The folder's name, as typed in the Export panel. Nil: the show's.
+        public var folderName: String?
 
-        public init(stripMetadata: Bool = true, hideFromSpotlight: Bool = false) {
+        public init(stripMetadata: Bool = true, hideFromSpotlight: Bool = false, folderName: String? = nil) {
             self.stripMetadata = stripMetadata
             self.hideFromSpotlight = hideFromSpotlight
+            self.folderName = folderName
         }
     }
 
@@ -394,7 +397,8 @@ public enum SetlistExport {
             metadataStripped: options.stripMetadata, defaults: show.defaults, slides: slides,
             overlays: overlays, music: music, markers: show.markers, rows: show.rows,
             editor: show.editor, files: files)
-        var folder = folderName(for: show.name)
+        var folder = folderName(for: options.folderName ?? show.name)
+        if folder.lowercased().hasSuffix(".noindex") { folder = String(folder.dropLast(".noindex".count)) }
         if options.hideFromSpotlight { folder += ".noindex" }
         return Plan(folderName: folder, manifest: manifest, copies: copies)
     }
@@ -435,8 +439,8 @@ public enum SetlistExport {
     /// replaced, the old one going to `discard` (the Trash, by default).
     public static func write(
         _ plan: Plan, into parent: URL, options: Options = Options(),
-        discard: (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) },
-        progress: (_ done: Int, _ total: Int) -> Void = { _, _ in }
+        discard: @Sendable (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) },
+        progress: @Sendable (_ done: Int, _ total: Int) -> Void = { _, _ in }
     ) async throws -> Result {
         let fm = FileManager.default
         let dest = parent.appendingPathComponent(plan.folderName, isDirectory: true)

@@ -42,6 +42,10 @@ struct AppCommands: Commands {
                 .keyboardShortcut("i", modifiers: [.command, .shift])
             Button("Add to Library…") { runImportPanel(model, intoCollection: false) }
                 .keyboardShortcut("i", modifiers: [.command, .shift, .option])
+            // The show in the window, or the one selected in the sidebar (plan, Phase 4).
+            Button("Export Show…") { if let id = exportShowID { runExportPanel(model, showID: id) } }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+                .disabled(exportShowID == nil || model.exportStatus?.finished == false)
             Divider()
             // The Library grid publishes these while it has a selection (2b).
             Button("Get Info") { requestLibraryGetInfo?() }
@@ -92,6 +96,12 @@ struct AppCommands: Commands {
         }
     }
 
+    private var exportShowID: Int64? {
+        if let id = activeShowID, model.show(id) != nil { return id }
+        if case .show(let id) = model.sidebar, model.show(id) != nil { return id }
+        return nil
+    }
+
     private var activeShow: Show? {
         activeShowID.flatMap { model.show($0) }.flatMap { $0.slides.isEmpty ? nil : $0 }
     }
@@ -112,6 +122,7 @@ struct SettingsView: View {
     @AppStorage(SlideRemovalNotice.suppressKey) private var suppressRemovalNotice = false
     @AppStorage(CollectionAddNotice.autoAddKey) private var autoAddToCollection = false
     @AppStorage(FinderTagsSetting.key) private var writeFinderTags = false
+    @AppStorage(ExportSettings.stripKey) private var stripOnExport = true
 
     var body: some View {
         Form {
@@ -154,6 +165,14 @@ struct SettingsView: View {
             Section("Collections") {
                 Toggle("Add files to the collection automatically", isOn: $autoAddToCollection)
                 Text("When a file that isn't in a show's collection goes into the show, add it to the collection without asking. Off: ShowTools asks first.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Export") {
+                Toggle("Strip metadata from exported files", isOn: $stripOnExport)
+                Text(stripOnExport
+                     ? "File ▸ Export Show… removes location, camera, dates and other details from the copies it makes. Songs keep their title, artist and album; only the buyer's details come off. The files in the library are never changed."
+                     : "Exported copies are exact copies of the library's files, with their location, camera and date still in them.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

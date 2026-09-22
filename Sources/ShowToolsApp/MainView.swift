@@ -85,7 +85,12 @@ struct MainView: View {
         }
         // Another library's undo steps mean nothing here (see libraryGeneration).
         .onChange(of: model.libraryGeneration) { undoManager?.removeAllActions() }
-        .overlay(alignment: .bottom) { ImportBanner() }
+        .overlay(alignment: .bottom) {
+            VStack(spacing: 0) {
+                ExportBanner()
+                ImportBanner()
+            }
+        }
         .overlay {
             if let locked = model.locked {
                 LockedLibraryView(name: locked.name)

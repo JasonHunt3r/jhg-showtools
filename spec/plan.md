@@ -782,7 +782,10 @@ Songs in such a folder aren't placed; the import lists them to add by hand
   folder goes to the Trash). Any other folder that isn't empty is refused
 - Menu names: File ▸ Export Show… (⇧⌘E) and Import Show…. File already has
   "Import…" (files into the collection) and "Add to Library…", so the names
-  must not blur with those. Check Apple's conventions before settling
+  must not blur with those. Checked 2026-09-22: Apple's guidelines define
+  only "Export As…", for document apps writing a format they don't usually
+  handle (the exported file isn't opened). Photos, the nearest app to this
+  one, names the object: "Export Photos…", ⇧⌘E. So "Export Show…", ⇧⌘E
 - Whether Numbers can save the TSV back as TSV (it may only export CSV):
   "we'll find out" (Jason, 2026-09-22), in 4e
 

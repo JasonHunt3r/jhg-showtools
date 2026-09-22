@@ -278,6 +278,8 @@ final class SetlistTests: XCTestCase {
         let plan = try SetlistExport.plan(show, from: lib, options: opts)
         let result = try await SetlistExport.write(plan, into: dir, options: opts)
         XCTAssertEqual(result.folder.lastPathComponent, "Beach Trip.noindex")
+        let named = try SetlistExport.plan(show, from: lib, options: .init(hideFromSpotlight: true, folderName: "Trip.noindex"))
+        XCTAssertEqual(named.folderName, "Trip.noindex", "typed .noindex isn't doubled")
         XCTAssertEqual(try Ingest.sha256(of: result.folder.appendingPathComponent("001_beach.jpg")), items[0].hash)
         XCTAssertEqual(try Ingest.sha256(of: result.folder.appendingPathComponent("003_beach.jpg")), items[0].hash)
         XCTAssertEqual(try Ingest.sha256(of: result.folder.appendingPathComponent("music/song.m4a")), items[3].hash)
@@ -287,11 +289,13 @@ final class SetlistTests: XCTestCase {
     func testExportingAgainReplacesTheEarlierExportButNoOtherFolder() async throws {
         let (lib, show, _) = try await makeShow()
         let first = try await SetlistExport.write(try SetlistExport.plan(show, from: lib), into: dir)
-        var discarded: [URL] = []
+        let firstJSON = try Data(contentsOf: first.folder.appendingPathComponent("show.json"))
+        let bin = dir.appendingPathComponent("Bin")
         let again = try await SetlistExport.write(try SetlistExport.plan(show, from: lib), into: dir,
-                                                  discard: { discarded.append($0); try FileManager.default.removeItem(at: $0) })
+                                                  discard: { try FileManager.default.moveItem(at: $0, to: bin) })
         XCTAssertTrue(again.replaced)
-        XCTAssertEqual(discarded.map(\.lastPathComponent), [first.folder.lastPathComponent])
+        XCTAssertEqual(try Data(contentsOf: bin.appendingPathComponent("show.json")), firstJSON,
+                       "the earlier export went to discard")
 
         // Another show of the same name is not this show's export.
         var other = try lib.createShow(name: "Beach Trip", itemIDs: [show.slides[0].itemID])

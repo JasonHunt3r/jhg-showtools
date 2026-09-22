@@ -7,17 +7,14 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 ## Start here (end of 2026-09-22)
 
-**Phase 4 (setlist export / import) is planned; 4a and 4b are built.**
+**Phase 4 (setlist export / import) is planned; 4a, 4b and 4c are built.**
 Jason answered every question on 2026-09-22; the plan's Phase 4 section was
 rewritten to fit what a show holds now (`show.json` for everything,
 `show.tsv` to read and edit, metadata stripped by default, song tags kept).
-**Next: 4c, the Export Show… panel**, on Jason's "go ahead". Build order:
-4a core export (done), 4b core import (done), 4c Export Show… panel (with
-the "Hide from Spotlight" checkbox, the Preferences "Strip metadata from
-exported files" setting, and the not-stripped list), 4d Import Show… panel
-plus the "Make a collection for it" checkbox on File ▸ Import… too, 4e a
-hands-on round trip on a scratch library, including an edit in Numbers
-(find out then whether Numbers saves TSV).
+**Next: 4d, the Import Show… panel**, plus the "Make a collection for it"
+checkbox on File ▸ Import… too, on Jason's "go ahead". Then 4e: a hands-on
+round trip on a scratch library, including an edit in Numbers (find out
+then whether Numbers saves TSV).
 
 Where things stand: Phase 3 and 3b are built; 172 tests; schema 12. Image
 stickiness (the end of Phase 3) stays parked until Jason has made a first
@@ -39,6 +36,26 @@ real show.
   (`MetadataStrip.isPersonal`).
 - `Library.identifier()`: a random id kept in `library_settings` (no
   schema change), so an export knows which library and show it came from.
+
+## Phase 4c: Export Show… (2026-09-22)
+
+- `ExportPanel.swift`: File ▸ Export Show… (⇧⌘E; the show in the window,
+  else the one selected in the sidebar). A Save panel names the folder;
+  its accessory has "Hide from Spotlight" (on when the library is private)
+  and a line saying whether metadata will be stripped. `SetlistExport.plan`
+  runs on the main actor (a missing file is an alert pointing at Relink),
+  `write` runs in a Task, and `ExportBanner` shows progress, then the
+  result: Show in Finder, Done, and a Details menu listing any file that
+  kept its metadata. The menu item is off while an export runs.
+- Settings ▸ Export: "Strip metadata from exported files"
+  (`exportStripsMetadata`, on unless set).
+- Checked in the app on a scratch library (axtool): the menu item enabled,
+  the panel's name and checkbox, Export writing all 11 test files
+  (video, HEIC, GIF included) stripped with no warnings, the banner's
+  text, and the Settings section. Not checked by hand: re-exporting over
+  the earlier folder (it goes to the real Trash; covered by tests).
+- A stale test-launch note from 2026-09-21 (pid 97389) is still in the
+  real prefs: Jason's next plain launch opens nothing once, by design.
 
 ## Phase 4b: core import (2026-09-22)
 
