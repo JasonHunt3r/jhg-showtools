@@ -751,7 +751,11 @@ Songs in such a folder aren't placed; the import lists them to add by hand
 
 - **The same checkbox on File ▸ Import…** (Jason, 2026-09-22): when a
   folder is imported, "Make a collection for it" puts its files into a new
-  collection named after the folder
+  collection named after the folder. As built (4d) it reads "Make a
+  collection for each folder", since Import… takes several: each chosen
+  folder gets its own collection (`.noindex` dropped from the name), and
+  files chosen on their own still go where "Import into" says
+- A name already taken gets a number, as New Show and New Collection do
 
 **Settled with Jason 2026-09-22 (questions 7 to 11, as suggested, plus 9):**
 - Scope: the whole show only. Exporting the range or a selection can come

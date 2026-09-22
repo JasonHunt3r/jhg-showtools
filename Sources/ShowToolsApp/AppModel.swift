@@ -388,6 +388,53 @@ final class AppModel {
         }
     }
 
+    // MARK: Import Show (plan, Phase 4)
+
+    /// Reads the folder off the main thread, imports the files the library
+    /// lacks (through the ordinary import, with its banner), then builds the
+    /// show and selects it. Anything that couldn't be read or found is
+    /// listed in an alert afterwards.
+    func importShow(from folder: URL, makeCollection: Bool) async {
+        guard let lib = library else { return }
+        var reading: SetlistImport.Reading
+        do { reading = try await SetlistImport.read(folder) } catch {
+            exportAlert("“\(folder.lastPathComponent)” couldn't be imported.", "\(error).")
+            return
+        }
+        guard library === lib else { return }
+        let urls: [URL]
+        do { urls = try SetlistImport.filesToImport(reading, lib: lib) } catch {
+            exportAlert("“\(folder.lastPathComponent)” couldn't be imported.", "\(error).")
+            return
+        }
+        let before = Set(itemsByID.keys)
+        let ids = urls.isEmpty ? [] : await importFiles(urls)
+        // The library can change while files copy; the show belongs to the one asked.
+        guard library === lib else { return }
+        let imported = Set(ids).subtracting(before)
+
+        reading.name = nextName(reading.name, taken: shows.map(\.name))
+        let collectionID = makeCollection
+            ? newCollection(named: reading.name, select: false)
+            : currentCollectionID
+        do {
+            let result = try SetlistImport.makeShow(reading, in: lib, collectionID: collectionID, imported: imported)
+            items = try lib.allItems()
+            itemsByID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+            shows = try lib.allShows()
+            collections = try lib.allCollections()
+            sidebar = .show(result.show.id)
+            if !result.problems.isEmpty {
+                let shown = result.problems.prefix(12).joined(separator: "\n")
+                let more = result.problems.count > 12 ? "\n…and \(result.problems.count - 12) more." : ""
+                exportAlert("“\(result.show.name)” was imported, with \(result.problems.count) problem\(result.problems.count == 1 ? "" : "s").",
+                            shown + more)
+            }
+        } catch {
+            exportAlert("“\(folder.lastPathComponent)” couldn't be imported.", "\(error).")
+        }
+    }
+
     // MARK: Shows
 
     /// A new show in `collectionID`, or, if none is given, in the collection
@@ -418,15 +465,20 @@ final class AppModel {
 
     func collection(_ id: Int64) -> MediaCollection? { collections.first { $0.id == id } }
 
-    func newCollection(itemIDs: [Int64] = []) {
-        guard let lib = library else { return }
+    /// A new collection, "Untitled Collection" unless named (a name already
+    /// taken gets a number). Selected in the sidebar unless `select` is off.
+    @discardableResult
+    func newCollection(named name: String? = nil, itemIDs: [Int64] = [], select: Bool = true) -> Int64? {
+        guard let lib = library else { return nil }
         do {
-            let c = try lib.createCollection(name: nextName("Untitled Collection", taken: collections.map(\.name)))
+            let c = try lib.createCollection(name: nextName(name ?? "Untitled Collection", taken: collections.map(\.name)))
             if !itemIDs.isEmpty { try lib.addItems(itemIDs, toCollection: c.id) }
             collections = try lib.allCollections()
-            sidebar = .collection(c.id)
+            if select { sidebar = .collection(c.id) }
+            return c.id
         } catch {
             loadError = "\(error)"
+            return nil
         }
     }
 
@@ -544,7 +596,7 @@ final class AppModel {
         update(s, undo: undo, action: "Rename Show")
     }
 
-    private func nextName(_ base: String, taken: [String]) -> String {
+    func nextName(_ base: String, taken: [String]) -> String {
         let names = Set(taken)
         if !names.contains(base) { return base }
         var n = 2

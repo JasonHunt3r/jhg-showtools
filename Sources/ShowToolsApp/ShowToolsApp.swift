@@ -42,6 +42,8 @@ struct AppCommands: Commands {
                 .keyboardShortcut("i", modifiers: [.command, .shift])
             Button("Add to Library…") { runImportPanel(model, intoCollection: false) }
                 .keyboardShortcut("i", modifiers: [.command, .shift, .option])
+            Button("Import Show…") { runImportShowPanel(model) }
+                .disabled(model.library == nil)
             // The show in the window, or the one selected in the sidebar (plan, Phase 4).
             Button("Export Show…") { if let id = exportShowID { runExportPanel(model, showID: id) } }
                 .keyboardShortcut("e", modifiers: [.command, .shift])

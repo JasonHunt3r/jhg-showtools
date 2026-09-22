@@ -7,14 +7,13 @@ is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 ## Start here (end of 2026-09-22)
 
-**Phase 4 (setlist export / import) is planned; 4a, 4b and 4c are built.**
-Jason answered every question on 2026-09-22; the plan's Phase 4 section was
-rewritten to fit what a show holds now (`show.json` for everything,
-`show.tsv` to read and edit, metadata stripped by default, song tags kept).
-**Next: 4d, the Import Show… panel**, plus the "Make a collection for it"
-checkbox on File ▸ Import… too, on Jason's "go ahead". Then 4e: a hands-on
-round trip on a scratch library, including an edit in Numbers (find out
-then whether Numbers saves TSV).
+**Phase 4 (setlist export / import): 4a–4d are built.** Jason answered
+every question on 2026-09-22; the plan's Phase 4 section was rewritten to
+fit what a show holds now (`show.json` for everything, `show.tsv` to read
+and edit, metadata stripped by default, song tags kept). **Next: 4e**, a
+hands-on round trip with Jason, including an edit to `show.tsv` in Numbers
+(find out whether Numbers saves TSV; if it only writes CSV, import could
+read `show.csv` too).
 
 Where things stand: Phase 3 and 3b are built; 172 tests; schema 12. Image
 stickiness (the end of Phase 3) stays parked until Jason has made a first
@@ -37,6 +36,25 @@ real show.
 - `Library.identifier()`: a random id kept in `library_settings` (no
   schema change), so an export knows which library and show it came from.
 
+## Phase 4d: Import Show… (2026-09-22)
+
+- `ImportShowPanel.swift`: File ▸ Import Show… (no shortcut). A folder
+  panel with "Make a collection for it" and a note naming the collection
+  the show otherwise goes into. `AppModel.importShow` reads the folder off
+  the main thread, imports what the library lacks through the ordinary
+  `importFiles` (so the Import banner shows), then `makeShow`; new files
+  are those not in `itemsByID` before. Problems go in one alert afterwards.
+- File ▸ Import… gains "Make a collection for each folder".
+- `newCollection(named:itemIDs:select:)` now takes a name and returns the id.
+- Checked in the app on scratch libraries (axtool): import back into the
+  exporting library (new "Test Show 2" in a new collection, no files
+  copied, all 11 slides' settings identical with seeds = original ids,
+  and defaults, rows, music, markers, editor state the same); import into
+  an empty library (11 added, all in the collection); Import… with two
+  folders (collections "Holiday Pics" and "Beach", from `Beach.noindex`).
+- A new library already has an "Untitled Collection", so Import Show's
+  "no collection yet" case (box forced on) practically never shows.
+
 ## Phase 4c: Export Show… (2026-09-22)
 
 - `ExportPanel.swift`: File ▸ Export Show… (⇧⌘E; the show in the window,
@@ -54,8 +72,8 @@ real show.
   (video, HEIC, GIF included) stripped with no warnings, the banner's
   text, and the Settings section. Not checked by hand: re-exporting over
   the earlier folder (it goes to the real Trash; covered by tests).
-- A stale test-launch note from 2026-09-21 (pid 97389) is still in the
-  real prefs: Jason's next plain launch opens nothing once, by design.
+- A stale test-launch note from 2026-09-21 (pid 97389) was deleted from
+  the real prefs at Jason's request.
 
 ## Phase 4b: core import (2026-09-22)
 

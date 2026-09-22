@@ -800,6 +800,9 @@ struct LibraryGridView: View {
 /// With `intoCollection`, the panel has an "Import into:" menu: every
 /// collection, New Collection, and Library Only, starting on the collection
 /// the sidebar is in (Library Only when the sidebar is on the Library).
+/// "Make a collection for each folder" (Jason, 2026-09-22) gives every
+/// chosen folder a new collection of its own name instead; chosen files
+/// still go where the menu says.
 @MainActor
 func runImportPanel(_ model: AppModel, intoCollection: Bool = true) {
     let panel = NSOpenPanel()
@@ -812,6 +815,7 @@ func runImportPanel(_ model: AppModel, intoCollection: Bool = true) {
 
     enum Target { static let newCollection = -1, libraryOnly = -2 }
     var popup: NSPopUpButton?
+    var perFolder: NSButton?
     if intoCollection {
         let p = NSPopUpButton(frame: .zero, pullsDown: false)
         for c in model.collections {
@@ -826,16 +830,34 @@ func runImportPanel(_ model: AppModel, intoCollection: Bool = true) {
         let start: Int = model.sidebar == .library ? Target.libraryOnly : Int(model.currentCollectionID ?? -2)
         p.selectItem(withTag: start)
         let label = NSTextField(labelWithString: "Import into:")
-        let stack = NSStackView(views: [label, p])
+        let row = NSStackView(views: [label, p])
+        let box = NSButton(checkboxWithTitle: "Make a collection for each folder", target: nil, action: nil)
+        box.toolTip = "Each folder you choose becomes a new collection named after it. Files chosen on their own go where “Import into” says."
+        perFolder = box
+        let stack = NSStackView(views: [row, box])
+        stack.orientation = .vertical
+        stack.alignment = .leading
         stack.edgeInsets = NSEdgeInsets(top: 10, left: 16, bottom: 10, right: 16)
         panel.accessoryView = stack
         panel.isAccessoryViewDisclosed = true
         popup = p
     }
     guard panel.runModal() == .OK else { return }
-    let urls = panel.urls
+    var urls = panel.urls
     let target = popup?.selectedTag() ?? Target.libraryOnly
+    var folders: [URL] = []
+    if perFolder?.state == .on {
+        folders = urls.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true }
+        urls.removeAll { folders.contains($0) }
+    }
     Task {
+        for folder in folders {
+            let ids = await model.importFiles([folder])
+            if !ids.isEmpty {
+                model.newCollection(named: SetlistImport.showName(for: folder), itemIDs: ids, select: folder == folders.last && urls.isEmpty)
+            }
+        }
+        guard !urls.isEmpty else { return }
         let ids = await model.importFiles(urls)
         guard !ids.isEmpty else { return }
         switch target {
