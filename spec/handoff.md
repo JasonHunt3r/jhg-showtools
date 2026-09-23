@@ -39,6 +39,22 @@ Cut), drag moves it, double-click removes it (Logic). Library schema
 stayed 12 — slide settings are JSON, so no migration. 195 + 12 tests.
 **V6 is Jason's: it hasn't been listened to.**
 
+**Video export is PLANNED, not started** (`spec/video-export.md`): five
+steps, E1 settings and codecs → E2 the picture track → E3 the sound track
+→ E4 the panel → E5 video slides. Settled with Jason: the frame matches
+the show's own shape (shows are framed to the main screen, not 16:9, so
+1080p would letterbox everything); H.264, HEVC and ProRes 422 HQ, all
+hardware encoders already on the Mac; stills and music first; 30fps
+default with 24/30/60 offered. **One thing needs Jason's word before E4:**
+whether a video slide in a v1 export holds its first frame (with the panel
+saying so) or whether export refuses such shows until E5.
+
+**Next: E1 and E2.** E1 is `MovieExportSettings` and the codec mapping,
+with tests for the container rule and even dimensions. E2 is the picture
+track: `AVAssetWriter` over the frame walk `stcli render` already does,
+tested by reading the file back with `AVAssetReader` and matching a
+frame's colour to what `Compositor` draws at that time.
+
 **What's left:**
 - **Listening to a video slide's sound (V6):** a clip with its middle
   dropped, a video against a song (they should just mix, no ducking), and
@@ -521,6 +537,9 @@ open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools
 - **A video slide's own sound**: muted for now. The idea is a volume line along the slide, so part of a clip can be kept (someone speaking) and part dropped (dogs barking). Punted until his first show.
 
 ## Known issues / debts
+- **A video slide's end points are half-clipped** on the storyline block:
+  the outermost level-line diamonds sit at x=0 and x=width, so the block's
+  rounded corners cut them. May want insetting.
 - **The inspector's "Style" label wraps one letter per line** when
   Transition in is set to Custom, making a vertical column of characters.
   Seen 2026-09-22 in Edit Show's inspector; the label needs room or a
