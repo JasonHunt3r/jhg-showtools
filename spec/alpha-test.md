@@ -15,22 +15,23 @@ There is a notes template at the bottom. Keep it open while you go.
 normal way. It opens your **real library** (`~/Pictures/ShowTools
 Library.noindex`), which is what you want for a crash test.
 
-**The demo show** lives in its own library so it can't disturb anything:
+**The demo show is already in your library.** Open the app and **Shorty**
+is in the sidebar — 5 slides, 24 seconds. Nothing to set up.
 
-```
-~/ShowTools Demo/Shorty.noindex
-```
+A **reference export** of it, rendered by the exporter, sits at
+`~/ShowTools Demo/Shorty (reference export).mp4`. Play that against the
+app to compare.
 
-Open it with **File ▸ Open Library…** and pick that folder. The show is
-called **Shorty** and runs 24 seconds. Go back to your own library the
-same way.
-
-To rebuild the demo from scratch at any point (it is thrown away and
-remade, so breaking it costs nothing):
+If you ever want it back, or want it fresh:
 
 ```sh
-cd ~/Projects/ShowTools && tools/make-demo-show.sh
+cd ~/Projects/ShowTools
+tools/add-demo-show.sh          # adds/replaces Shorty in your library (app quit)
+tools/make-demo-show.sh         # rebuilds the separate demo library too
 ```
+
+Shorty's media (8 files) is the only thing in your library, so deleting
+the show and its files puts you back to empty.
 
 ---
 
