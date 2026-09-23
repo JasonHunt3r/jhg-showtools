@@ -31,6 +31,13 @@ struct ShowColumns<Preview: View, List: View, Inspector: View>: NSViewRepresenta
         context.coordinator.hosts = hosts
         let split = ColumnsSplitView(main: hosts[0], list: hosts[1], inspector: hosts[2],
                                      defaultsKey: "EditShowColumns")
+        // Each column leaves the split view the half of the grab strip
+        // that falls on its side. Only the edges with a divider: the
+        // outer two are the window's, and clicks there are the content's.
+        let m = (split.grabWidth - 1) / 2
+        hosts[0].dividerMargin = (0, m)
+        hosts[1].dividerMargin = (m, m)
+        hosts[2].dividerMargin = (m, 0)
         split.setInspectorShown(inspectorShown)
         // Dragging the inspector shut (or open) keeps the toolbar button and
         // double-click in step.
@@ -68,9 +75,19 @@ struct ShowColumns<Preview: View, List: View, Inspector: View>: NSViewRepresenta
 /// column whose content was wider than it (the inspector, 2026-09-21) caught
 /// the clicks and scrolling meant for the column beside it.
 final class ColumnHost: NSHostingView<AnyView> {
+    /// Points along each edge left to the split view, where a divider is.
+    /// The grab strip straddles the divider, so half of it lies over this
+    /// column; without this the column's own content takes that half, and
+    /// the divider can only be caught from the other side — which is how
+    /// it felt to Jason, who also noticed the controls that appear on
+    /// hover taking it as he came across (2026-09-23).
+    var dividerMargin: (left: CGFloat, right: CGFloat) = (0, 0)
+
     override func hitTest(_ point: NSPoint) -> NSView? {
         // `point` is in the superview's coordinates, as `frame` is.
         guard frame.contains(point) else { return nil }
+        let x = point.x - frame.minX
+        if x < dividerMargin.left || x > frame.width - dividerMargin.right { return nil }
         return super.hitTest(point)
     }
 }
