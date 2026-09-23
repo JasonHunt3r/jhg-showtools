@@ -36,6 +36,13 @@ Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
   show it (the Edit Show preview and its pop-out share one engine). A paused
   engine stops drawing about 0.6s after the last change; call `touch()`
   after anything visible changes.
+- Video export lives in Core (`MovieExport` settings and codecs,
+  `MovieWriter` the one place that builds an `AVAssetWriter`,
+  `MoviePictureTrack`, `MovieSoundTrack`/`MovieSoundRenderer`,
+  `MovieMedia` the synchronous loader) with `MovieExportPanel` in the app.
+  **Write one off the main thread**, and feed a writer whichever input
+  will take data rather than waiting on the one that's behind — both
+  orderings deadlock, and `spec/video-export.md` says how.
 - App files worth knowing: `TransformOverlay` (the handles, arrow keys
   and Rotation mode on the preview), `StorylineView` (the timeline's rows,
   drawn in the show's own `rows` order, with their handles and drawers;
@@ -59,9 +66,9 @@ Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
   loads it, so it only exists in the built app, not under `swift run`.
 - `Sources/stcli/`: dev CLI. `ingest`, `show` (creates a show; it doesn't print one), `render` (writes frames
   through the Compositor to PNG, which is how transitions get checked by eye),
-  `movie` (writes a real picture track through the same path — video
-  export, `spec/video-export.md`) and `mix` (the show's music rendered
-  offline). The two are separate files until E4 muxes them.
+  `movie` (a real movie through the same path — video export,
+  `spec/video-export.md`) and `mix` (just the show's music, rendered
+  offline).
 - `make-app.sh`: builds `build/ShowTools.app` with Xcode, through the root
   `project.yml` (XcodeGen; `ShowTools.xcodeproj` is generated and
   gitignored). One app holds everything: the tiles in `Contents/PlugIns`,

@@ -108,12 +108,41 @@ Core doesn't decide this: a video slide's picture is whatever the caller's
     3 s fade out, over the 54 s show. Silent before 5 s and after 25 s,
     and the peak tracks `AudioClip.gain` to a ratio of 0.99–1.00 through
     the flat section. 54 s of mix renders in 0.1 s.
-- **E4 The panel — NEXT.** File ▸ Export Movie… beside Export Show…: size,
-  frame rate, format, where to save, the video-slide note, progress and
-  cancel. This is also where the two tracks finally meet: one
-  `AVAssetWriter` with both a video and an audio input, the picture loop
-  from E2 and the block loop from E3 feeding it. Runs off the main
-  thread, reporting through Phase 4's `ExportStatus` / `ExportBanner`.
+- **E4 The panel — DONE** (`MovieWriter.swift` + `MovieExportPanel.swift`,
+  9 tests). Split in two: **E4a** muxes, **E4b** is the UI.
+  - **E4a.** One `AVAssetWriter` with a video input and, when the show has
+    music, an audio input. `MoviePictureTrack.write` is now this with no
+    songs, so one place builds a writer; `MovieSoundRenderer` is E3's mix
+    turned inside out, because the muxer can only take audio when the
+    writer asks. ProRes carries Linear PCM, the delivery formats AAC.
+  - **Two deadlocks, both found by probe.** (1) A track must be marked
+    finished the moment its last sample lands: a writer throttles one
+    input while another still owes it data, so leaving the picture open
+    after its final frame hangs the sound behind it. (2) **Preferring the
+    track that is behind is not the same as waiting for it** — an input
+    that isn't ready is often waiting on the *other* track before it can
+    flush. Spinning on the one behind hung the picture permanently at
+    frame 38 of 60 while the sound input sat ready and unasked. Feed
+    whichever input will take something; sleep only when neither will.
+  - **Interleave the audio by hand.** A non-interleaved ASBD's
+    `mBytesPerFrame` counts one channel, so the writer reads a fraction of
+    each block. Copying also stops the writer reading a buffer the
+    renderer is about to overwrite.
+  - **E4b.** File ▸ Export Movie… (⇧⌥⌘E), a Save panel with size on one
+    row and rate and format on the next (Jason's layout), over a note that
+    speaks only when it has something to say: the letterbox and its inner
+    size, video slides holding a first frame, a show with no music.
+    Choosing a format renames the file, so ProRes is never left `.mp4`.
+    `MovieMedia` loads pictures synchronously — the live `MediaProvider`
+    draws nothing until a picture arrives, which is right for a player and
+    wrong for an export. Animations use the same `AnimatedFrames.delay`
+    the player reads.
+  - **Resolve file URLs before leaving the main actor.** Swift 6 caught
+    the writing task capturing the SQLite-backed `Library`; it now gets a
+    plain `[Int64: URL]`.
+  - **Checked by hand**: picking ProRes renames to `.mov`, picking 1080p
+    explains the bars ("1660×1080 inside the frame"), and a real export
+    writes 54 s at 2940×1912 with an AAC track and a working Cancel.
 - **E5 Video slides.** `AVAssetReader` per video slide, pulled forward in
   step with the writer's clock — an `AVAssetImageGenerator` per frame is
   far too slow. Their sound comes through the same `LevelCurve` the live

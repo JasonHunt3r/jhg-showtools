@@ -39,17 +39,18 @@ Cut), drag moves it, double-click removes it (Logic). Library schema
 stayed 12 — slide settings are JSON, so no migration. 195 + 12 tests.
 **V6 is Jason's: it hasn't been listened to.**
 
-**Video export: E1, E2 and E3 are BUILT** (`spec/video-export.md`; five steps,
+**Video export: E1–E4 are BUILT — it works end to end** (`spec/video-export.md`; five steps,
 E1 settings and codecs → E2 the picture track → E3 the sound track → E4
 the panel → E5 video slides). A show now writes a real, silent movie:
 
-```sh
-stcli movie <lib> <showID> 1280x800 out.mp4 30 h264   # picture (E2)
-stcli mix   <lib> <showID> out.caf                    # music  (E3)
-```
+**File ▸ Export Movie… (⇧⌥⌘E) works**: a Save panel with size, rate and
+format, a note about letterboxing and held video slides, progress and a
+Cancel, and a movie with both tracks at the end of it.
 
-They are still two files: **E4 is where they meet**, in one
-`AVAssetWriter` with a video and an audio input.
+```sh
+stcli movie <lib> <showID> 1280x800 out.mp4 30 h264   # picture + sound
+stcli mix   <lib> <showID> out.caf                    # just the mix
+```
 
 - **E1** `MovieExport.swift`: `MovieExportSettings` (size, fps, codec),
   `MovieCodec` carrying its own container, so ProRes can't end up in an
@@ -87,11 +88,32 @@ They are still two files: **E4 is where they meet**, in one
     `AudioClip.gain` to 0.99–1.00 through the flat section; 54 s of mix in
     0.1 s. 234 + 12 tests.
 
-**Next: E4, the panel.** File ▸ Export Movie… beside Export Show…: size,
-frame rate, format, where to save, the video-slide note, progress and
-cancel. It is also the muxing step — one `AVAssetWriter` taking both the
-E2 picture loop and the E3 block loop — run off the main thread through
-Phase 4's `ExportStatus` / `ExportBanner`. Then E5, real video slides.
+- **E4a** `MovieWriter.swift`: one writer, both tracks, fed in step.
+  `MoviePictureTrack.write` is now it with no songs. ProRes carries PCM,
+  the delivery formats AAC.
+  - **Two deadlocks, both found by probe, both worth remembering.** Mark a
+    track finished the moment its last sample lands, or the other track
+    hangs behind it. And **preferring the track that is behind is not
+    waiting for it**: an input that isn't ready is often waiting on the
+    other one, so spinning on the one behind hung the picture at frame 38
+    of 60 with the sound input ready and unasked.
+  - Audio is interleaved by hand: a non-interleaved ASBD's
+    `mBytesPerFrame` counts one channel.
+- **E4b** `MovieExportPanel.swift`: the Save panel, `MovieMedia` (a
+  synchronous loader — the live `MediaProvider` is deliberately
+  asynchronous and an export can't use it), the banner and Cancel.
+  Resolve item URLs on the main actor: the writing task must not hold the
+  SQLite-backed `Library`.
+
+**Next: E5, real video slides.** `AVAssetReader` per video slide, pulled
+forward in step with the writer's clock — an `AVAssetImageGenerator` per
+frame is far too slow. Their sound comes through the same `LevelCurve`
+the live player uses (`spec/video-audio.md`). Until then a video slide
+holds its first frame, and the panel says so.
+
+**Worth a listen before E5:** an exported movie alongside the same show
+playing in the app — the mix is measured and matches `AudioClip.gain`,
+but nobody has heard it.
 
 **What's left:**
 - **Listening to a video slide's sound (V6):** a clip with its middle
@@ -279,7 +301,7 @@ files are both in the show keeps both ("1 stays"), Keep One disabled.
 | **3** Music + timeline | **All 7 steps built** (6 and 7 on 2026-09-22). Left: settle image stickiness with Jason |
 | **3b** Find Similar (was "duplicate finder") | **Built** 2026-09-22: Delete by context, Group/Show Similar, Keep One |
 | **4** Setlist export / import | **Built** 2026-09-22 (4a–4d); risks recorded under "Phase 4: open risks" |
-| **E** Video export | **E1–E3 built** 2026-09-22 (settings/codecs, the picture track, the sound track); own spec `spec/video-export.md`. Next E4, the panel, which is also where the two tracks are muxed |
+| **E** Video export | **E1–E4 built** 2026-09-22: settings/codecs, picture track, sound track, muxing and File ▸ Export Movie…. Own spec `spec/video-export.md`. Left: E5, real video slides (they hold a first frame for now), and a listen |
 | 5 BGTools (desktop companion app) | **Building**, own spec `spec/bgtools.md`: questions settled, B1 (shared player), B2 (skeleton), B3 (settings and modes), B4a (the window), B4b (the panel), B5 (tiles), B6 (pausing, private libraries, the 40%→2% redraw fix), B7 (ShowTools installs it, login item) built 2026-09-22 — **every build step done**; left: Jason's hands-on pass, the Ken Burns cost, telling BGTools when a library moves |
 
 Library schema is now **version 12**. Every upgrade is additive and tested
@@ -552,7 +574,7 @@ ahead with 7x" from Jason before each one:
 ## How to work on it
 
 ```sh
-swift test                                  # 234 core + 12 BGTools tests
+swift test                                  # 243 core + 12 BGTools tests
 ./make-app.sh                               # → build/ShowTools.app
 tools/make-test-library.sh <scratch>/STTest # scratch library + generated media
 open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools.app
