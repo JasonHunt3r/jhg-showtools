@@ -245,23 +245,26 @@ struct DefaultsBar: View {
     let mutate: ShowMutator
 
     var body: some View {
-        // The bar used to scroll sideways, which put Background, Loop and
+        // Two rows, always.
+        //
+        // This used to scroll sideways, which put Background, Loop and
         // "Videos play in full" past the right edge with nothing to say they
-        // were there: at the window's own minimum width of 1100 the row needs
-        // about 1490 (measured in the running app, 2026-09-22). It now wraps
-        // instead — one line where that fits, otherwise two, otherwise three —
-        // so every control stays reachable without scrolling to it.
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 18) { naming; timing; look; toggles }
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 18) { naming; timing }
-                HStack(spacing: 18) { look; toggles }
-            }
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 18) { naming; timing }
-                look
-                toggles
-            }
+        // were there (measured in the app at x=1431, 1576 and 1645, with the
+        // window ending at 1385). On one line the row needs about 1490pt,
+        // and the whole window's minimum is 1100, so one line never fits:
+        // there is nothing to choose between, and it wraps unconditionally.
+        //
+        // Deliberately **not `ViewThatFits`**, which was the first attempt:
+        // it measures its candidates during layout, and this app has an
+        // intermittent crash in exactly that area (an exception from
+        // `-[NSWindow _postWindowNeedsUpdateConstraints]` during AppKit's
+        // display cycle — see the handoff). Nothing proved ViewThatFits
+        // caused it, and it wasn't ruled out either; since one line can
+        // never fit there is nothing for it to choose, so the simpler
+        // layout is the one to keep.
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 18) { naming; timing }
+            HStack(spacing: 18) { look; toggles }
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)

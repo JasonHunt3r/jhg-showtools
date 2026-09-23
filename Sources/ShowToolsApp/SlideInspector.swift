@@ -13,6 +13,10 @@ struct SlideInspector: View {
     /// with a close button; Edit Slides' system inspector has its toolbar
     /// toggle instead.
     var close: (() -> Void)? = nil
+    /// Only Edit Show has a preview to draw into, so only it passes an
+    /// engine; without one the sliders behave as they always did and show
+    /// their value on release.
+    var engine: PlaybackEngine? = nil
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
 
@@ -24,6 +28,23 @@ struct SlideInspector: View {
                 change(&s.slides[i].settings)
             }
         }
+        // The saved show takes over from anything a drag was drawing.
+        engine?.endLiveEdit()
+    }
+
+    /// The same change as `edit`, drawn in the preview but never saved.
+    ///
+    /// A slider drag calls this as the knob moves and `edit` once on
+    /// release, so the picture follows the drag while the history still
+    /// gets a single undo step. `showLiveEdit` is the seam the preview's
+    /// own drag handles already use.
+    private func previewEdit(_ change: (inout SlideSettings) -> Void) {
+        guard let engine else { return }
+        var s = show
+        for i in s.slides.indices where selection.contains(s.slides[i].id) {
+            change(&s.slides[i].settings)
+        }
+        engine.showLiveEdit(s)
     }
 
     /// True when the selected slides don't agree on a value.
@@ -399,6 +420,8 @@ struct SlideInspector: View {
                 }
                 AccelerationSlider(value: kb.acceleration) { a in
                     editKenBurns("Change Acceleration") { $0.acceleration = a }
+                } preview: { a in
+                    previewKenBurns { $0.acceleration = a }
                 }
                 Toggle("Freeze on transition", isOn: Binding(get: { kb.freezeOnTransition }, set: { on in
                     editKenBurns("Change Freeze on Transition") { $0.freezeOnTransition = on }
@@ -413,6 +436,15 @@ struct SlideInspector: View {
     /// rest of each move as it is.
     private func editKenBurns(_ action: String, _ change: @escaping (inout KenBurns) -> Void) {
         edit(action) { s in
+            if case .custom(var k) = s.kenBurns {
+                change(&k)
+                s.kenBurns = .custom(k)
+            }
+        }
+    }
+
+    private func previewKenBurns(_ change: @escaping (inout KenBurns) -> Void) {
+        previewEdit { s in
             if case .custom(var k) = s.kenBurns {
                 change(&k)
                 s.kenBurns = .custom(k)
@@ -440,6 +472,14 @@ struct SlideInspector: View {
                 s.transform = x == .identity ? nil : x
             }
         }
+        // The same change, drawn but not saved, for a slider being dragged.
+        func previewTransform(_ change: @escaping (inout Transform) -> Void) {
+            previewEdit { s in
+                var x = s.transform ?? .identity
+                change(&x)
+                s.transform = x == .identity ? nil : x
+            }
+        }
         return Section {
             card {
             Picker("Fit", selection: Binding(get: { first.settings.fit }, set: { f in edit("Change Fit") { $0.fit = f } })) {
@@ -448,17 +488,25 @@ struct SlideInspector: View {
             }
             CommitSlider(title: "Position X", value: t.offsetX, range: -1...1, display: 100, unit: "%") { v in
                 editTransform("Move") { $0.offsetX = v }
+            } preview: { v in
+                previewTransform { $0.offsetX = v }
             }
             CommitSlider(title: "Position Y", value: t.offsetY, range: -1...1, display: 100, unit: "%") { v in
                 editTransform("Move") { $0.offsetY = v }
+            } preview: { v in
+                previewTransform { $0.offsetY = v }
             }
             CommitSlider(title: "Zoom", value: t.scale, range: 0.1...4, display: 100, unit: "%",
                          fieldRange: 0.01...20) { v in
                 editTransform("Zoom") { $0.scale = v }
+            } preview: { v in
+                previewTransform { $0.scale = v }
             }
             CommitSlider(title: "Rotation", value: t.rotation, range: -180...180, unit: "°",
                          fieldRange: -3600...3600) { v in
                 editTransform("Rotate") { $0.rotation = v }
+            } preview: { v in
+                previewTransform { $0.rotation = v }
             }
             LabeledContent("Background") {
                 HStack(spacing: 8) {
@@ -509,6 +557,13 @@ struct SlideInspector: View {
                 s.rotation = x
             }
         }
+        func previewRotation(_ change: @escaping (inout Rotation) -> Void) {
+            previewEdit { s in
+                var x = s.rotation ?? Rotation()
+                change(&x)
+                s.rotation = x
+            }
+        }
         return Section {
             card {
             Toggle("Rotation", isOn: Binding(get: { on }, set: { v in
@@ -526,17 +581,23 @@ struct SlideInspector: View {
                 CommitSlider(title: "Start angle", value: r.startAngle, range: -360...360, unit: "°",
                              fieldRange: -36000...36000) { v in
                     editRotation("Change Start Angle") { $0.startAngle = v }
+                } preview: { v in
+                    previewRotation { $0.startAngle = v }
                 }
                 switch r.mode {
                 case .angles:
                     CommitSlider(title: "End angle", value: r.endAngle, range: -360...360, unit: "°",
                                  fieldRange: -36000...36000) { v in
                         editRotation("Change End Angle") { $0.endAngle = v }
+                    } preview: { v in
+                        previewRotation { $0.endAngle = v }
                     }
                 case .speed:
                     CommitSlider(title: "Speed", value: r.speed, range: -360...360, unit: "°/s",
                                  fieldRange: -3600...3600) { v in
                         editRotation("Change Speed") { $0.speed = v }
+                    } preview: { v in
+                        previewRotation { $0.speed = v }
                     }
                 }
                 if let note = rotationNote(first, r) {
@@ -545,6 +606,8 @@ struct SlideInspector: View {
 
                 AccelerationSlider(value: r.acceleration) { a in
                     editRotation("Change Acceleration") { $0.acceleration = a }
+                } preview: { a in
+                    previewRotation { $0.acceleration = a }
                 }
 
                 if let item = model.itemsByID[first.itemID] {

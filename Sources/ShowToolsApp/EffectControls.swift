@@ -22,6 +22,11 @@ struct CommitSlider: View {
     /// The field can go past the slider's ends (two full turns, say).
     var fieldRange: ClosedRange<Double>? = nil
     let commit: (Double) -> Void
+    /// Shows the value in the preview while the knob is moving, without
+    /// saving it. The drag still commits once, on release, so it stays one
+    /// undo step — this only draws. Left out where there's nothing to
+    /// preview (Edit Slides has no preview canvas).
+    var preview: ((Double) -> Void)? = nil
 
     @State private var dragging: Double?
 
@@ -29,7 +34,7 @@ struct CommitSlider: View {
         LabeledContent(title) {
             HStack(spacing: 6) {
                 Slider(value: Binding(get: { min(max(dragging ?? value, range.lowerBound), range.upperBound) },
-                                      set: { dragging = $0 }),
+                                      set: { dragging = $0; preview?($0) }),
                        in: range) { editing in
                     if !editing, let d = dragging {
                         dragging = nil
@@ -94,11 +99,12 @@ struct BarSlider: View {
 struct AccelerationSlider: View {
     let value: Double
     let commit: (Double) -> Void
+    var preview: ((Double) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             CommitSlider(title: "Acceleration", value: value, range: -1...1, display: 100, unit: "%",
-                         commit: commit)
+                         commit: commit, preview: preview)
             HStack {
                 Text("◀ slows down")
                 Spacer()
