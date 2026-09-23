@@ -21,6 +21,9 @@ public struct ResolvedSlide: Sendable {
     public let background: SRGBColor
     /// Seconds into the media where playback starts (video and animation).
     public let clipStart: Double
+    /// A video slide's own sound along its block (spec/video-audio.md).
+    /// Empty — the default — is silent.
+    public let audio: LevelCurve
     /// How long the slide is on screen in total: from its transition in
     /// beginning (`visibleStart`) to its transition out ending.
     public internal(set) var visibleSpan: Double
@@ -227,6 +230,7 @@ public struct ShowTimeline: Sendable {
                 rotation: slide.settings.rotation.flatMap { $0.enabled ? $0 : nil },
                 background: slide.settings.background ?? d.background,
                 clipStart: item.kind == .image ? 0 : max(slide.settings.clipStart ?? 0, 0),
+                audio: item.kind == .video ? (slide.settings.audio ?? LevelCurve()) : LevelCurve(),
                 visibleSpan: lengths[i]))
             t += lengths[i]
         }

@@ -89,6 +89,13 @@ public struct AudioClip: Codable, Hashable, Identifiable, Sendable {
         return max(g, 0)
     }
 
+    /// How this song describes itself to a level line: its volume with its
+    /// fades, as points. The saved fields don't change (the settings-JSON
+    /// rule); this is for drawing only.
+    public var curve: LevelCurve {
+        .fades(level: volume, fadeIn: fadeIn, fadeOut: fadeOut, length: length)
+    }
+
     /// Where two songs overlap because the later one starts inside the
     /// earlier and runs past its end, they crossfade across the overlap:
     /// the earlier fades out as the later fades in, equal-power so the

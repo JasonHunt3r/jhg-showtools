@@ -295,6 +295,13 @@ public struct OverlayClip: Codable, Hashable, Identifiable, Sendable {
         fadeOut = get(.fadeOut, 0.5)
     }
 
+    /// How this clip describes itself to a level line: its opacity with its
+    /// fades, as points. The saved fields don't change (the settings-JSON
+    /// rule); this is for drawing only.
+    public var curve: LevelCurve {
+        .fades(level: opacity, fadeIn: fadeIn, fadeOut: fadeOut, length: length)
+    }
+
     /// A saved list, keeping every clip that can be read: one unreadable
     /// clip mustn't cost the rest (the next save would make that permanent).
     public static func decodeList(_ json: String) -> [OverlayClip] {

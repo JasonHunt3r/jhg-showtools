@@ -621,6 +621,23 @@ struct StorylineView: View {
                 Button("Duplicate") { SlideActions.duplicate(ids, mutate: mutate) }
                 Button("Remove from Show") { SlideActions.remove(ids, selection: $selection, mutate: mutate) }
             }
+            // A video slide's own sound (spec/video-audio.md). Silent until
+            // it's turned up, so the line starts along the bottom.
+            .overlay(alignment: .topLeading) {
+                if p.slide.item.kind == .video, p.width > 24 {
+                    CurveLine(curve: p.slide.slide.settings.audio ?? LevelCurve(),
+                              length: length(p.slide), pps: pps,
+                              width: p.width, height: Self.blockHeight,
+                              colour: .orange, name: "Volume",
+                              begin: { if !selection.contains(p.id) { click(p.id) } },
+                              commit: { curve, action in
+                                  mutate(action) { s in
+                                      guard let i = s.slides.firstIndex(where: { $0.id == p.id }) else { return }
+                                      s.slides[i].settings.audio = curve.isEmpty ? nil : curve
+                                  }
+                              })
+                }
+            }
     }
 
     /// Finder-style: plain click selects one, ⌘ toggles, ⇧ extends. The

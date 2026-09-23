@@ -28,7 +28,21 @@ Confirmed by hand: a show plays, Bravura renders, the nested BGTools
 opens its window, the login item is enabled and allowed, and **Jason
 confirmed both tiles work in Control Center**.
 
+**A video slide's own sound is BUILT** (`spec/video-audio.md`, V1–V5).
+It was next because video export has to do something with a video slide's
+audio, and until now it played at full volume with no control. A
+`LevelCurve` of points per video slide, silent by default, edited on four
+surfaces that share one `CurveLine` and one commit path: the storyline
+block, the inspector's Effects timeline row, the inspector's preview, and
+numeric rows in the inspector's Sound section. ⌥-click adds a point (Final
+Cut), drag moves it, double-click removes it (Logic). Library schema
+stayed 12 — slide settings are JSON, so no migration. 195 + 12 tests.
+**V6 is Jason's: it hasn't been listened to.**
+
 **What's left:**
+- **Listening to a video slide's sound (V6):** a clip with its middle
+  dropped, a video against a song (they should just mix, no ducking), and
+  whether the level glides or steps audibly — it's set once per drawn frame.
 - **Jason's hands-on pass:** unlocking a private library with Touch ID,
   the panel closing on a click elsewhere, Space-switch pausing. Not yet
   re-done against the nested BGTools.
@@ -507,6 +521,10 @@ open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools
 - **A video slide's own sound**: muted for now. The idea is a volume line along the slide, so part of a clip can be kept (someone speaking) and part dropped (dogs barking). Punted until his first show.
 
 ## Known issues / debts
+- **The inspector's "Style" label wraps one letter per line** when
+  Transition in is set to Custom, making a vertical column of characters.
+  Seen 2026-09-22 in Edit Show's inspector; the label needs room or a
+  `fixedSize`.
 - **The Edit Slides header bar overflows** (Jason, 2026-09-21: address later). It scrolls sideways, and at normal window widths Background, Loop and "Videos play in full" sit past its right edge, out of sight. Options: wrap to two lines, or move the overflow into a menu.
 - **A song lying wholly inside another** plays over it without crossfading (only a partial overlap crossfades). Level tops out at 100%.
 - **The last slide cuts to the background** when something runs past the slides; a fade could come later.

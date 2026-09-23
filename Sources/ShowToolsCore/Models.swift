@@ -259,11 +259,17 @@ public struct SlideSettings: Codable, Hashable, Sendable {
     /// An imported slide keeps its exported id here, so its auto move stays
     /// the same in a new library (plan, Phase 4). A duplicate drops it.
     public var kenBurnsSeed: Int64?
+    /// A video slide's own sound, as a level line along the clip
+    /// (spec/video-audio.md). Nil, like an empty curve, is **silent**:
+    /// dropping a clip into a show set to music must never blast its
+    /// original audio. Stills don't have it.
+    public var audio: LevelCurve?
 
     public init(length: SlideLength? = nil, transition: Transition? = nil,
                 kenBurns: KenBurnsSetting? = nil, fit: Fit? = nil, clipStart: Double? = nil,
                 transform: Transform? = nil, background: SRGBColor? = nil,
-                rotation: Rotation? = nil, kenBurnsSeed: Int64? = nil) {
+                rotation: Rotation? = nil, kenBurnsSeed: Int64? = nil,
+                audio: LevelCurve? = nil) {
         self.length = length
         self.transition = transition
         self.kenBurns = kenBurns
@@ -273,6 +279,7 @@ public struct SlideSettings: Codable, Hashable, Sendable {
         self.background = background
         self.rotation = rotation
         self.kenBurnsSeed = kenBurnsSeed
+        self.audio = audio
     }
 
     /// Field by field, for the same reason as `ShowDefaults`.
@@ -287,6 +294,7 @@ public struct SlideSettings: Codable, Hashable, Sendable {
         background = (try? c.decodeIfPresent(SRGBColor.self, forKey: .background)) ?? nil
         rotation = (try? c.decodeIfPresent(Rotation.self, forKey: .rotation)) ?? nil
         kenBurnsSeed = (try? c.decodeIfPresent(Int64.self, forKey: .kenBurnsSeed)) ?? nil
+        audio = (try? c.decodeIfPresent(LevelCurve.self, forKey: .audio)) ?? nil
     }
 }
 

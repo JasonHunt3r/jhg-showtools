@@ -11,6 +11,10 @@ import ShowToolsPlayback
 struct EffectsTimeline: View {
     let slide: ResolvedSlide
     let timeline: ShowTimeline
+    /// A video slide's sound is the one row you can edit here as well as on
+    /// the storyline (Jason, 2026-09-22): the same `CurveLine`, the same
+    /// gestures, a bigger target. Nil leaves the timeline read-only.
+    var commitAudio: ((LevelCurve, String) -> Void)? = nil
 
     struct Bar: Identifiable {
         let id: String
@@ -94,12 +98,49 @@ struct EffectsTimeline: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             ForEach(bars) { bar in row(bar, span: s, length: length) }
+            if slide.item.kind == .video, let commitAudio {
+                volumeRow(span: s, length: length, commit: commitAudio)
+            }
         }
         .padding(.vertical, 2)
     }
 }
 
 extension EffectsTimeline {
+    /// The slide's own sound, drawn over its block alone — the curve's times
+    /// are block-relative, while the rest of this timeline spans the slide's
+    /// whole time on screen, transitions included.
+    private func volumeRow(span s: ClosedRange<Double>, length: Double,
+                           commit: @escaping (LevelCurve, String) -> Void) -> some View {
+        HStack(spacing: 6) {
+            Text("Volume")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 62, alignment: .trailing)
+            GeometryReader { g in
+                let w = g.size.width
+                let x: (Double) -> CGFloat = { t in CGFloat((t - s.lowerBound) / length) * w }
+                let blockX = x(slide.start)
+                let blockW = max(x(slide.end) - blockX, 1)
+                ZStack(alignment: .topLeading) {
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.07))
+                        .frame(width: blockW, height: Self.volumeHeight)
+                        .offset(x: blockX)
+                    CurveLine(curve: slide.audio, length: max(slide.length, 0.001),
+                              pps: Double(blockW) / max(slide.length, 0.001),
+                              width: blockW, height: Self.volumeHeight,
+                              colour: .orange, name: "Volume",
+                              begin: {}, commit: commit)
+                        .offset(x: blockX)
+                }
+            }
+            .frame(height: Self.volumeHeight)
+        }
+    }
+
+    static let volumeHeight: CGFloat = 34
+
     private func row(_ bar: Bar, span s: ClosedRange<Double>, length: Double) -> some View {
         HStack(spacing: 6) {
             Text(bar.label)

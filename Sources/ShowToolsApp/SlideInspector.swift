@@ -99,6 +99,11 @@ struct SlideInspector: View {
                                 ThumbnailView(item: item, url: model.url(for: item))
                                     .aspectRatio(16 / 10, contentMode: .fit)
                                     .clipShape(RoundedRectangle(cornerRadius: 4))
+                                    // A video slide's sound, over the preview
+                                    // itself (Jason, 2026-09-22): the same line
+                                    // as the storyline's, with the picture
+                                    // behind it to aim by.
+                                    .overlay(alignment: .bottom) { previewVolume(first, item) }
                                 LabeledContent("File", value: item.fileName)
                                 LabeledContent("Size", value: "\(item.pixelWidth) × \(item.pixelHeight)")
                             } else {
@@ -119,9 +124,15 @@ struct SlideInspector: View {
                     // with a timeline of when (Jason, 2026-09-21).
                     transformSection(first)
                     lengthSection(first)
+                    soundSection(first)
                     if let r = timeline.slides.first(where: { $0.slide.id == first.id }) {
                         Section {
-                            card { EffectsTimeline(slide: r, timeline: timeline) }
+                            card {
+                                EffectsTimeline(slide: r, timeline: timeline,
+                                                commitAudio: r.item.kind == .video
+                                                    ? { curve, action in editAudio(action) { _ in curve } }
+                                                    : nil)
+                            }
                         } header: {
                             header("Effects")
                         } footer: {
@@ -171,6 +182,128 @@ struct SlideInspector: View {
     // MARK: Sections
 
     private enum LengthMode: Hashable { case inherit, seconds, clip }
+
+    /// The level line along the bottom of the inspector's preview.
+    @ViewBuilder
+    private func previewVolume(_ first: Slide, _ item: MediaItem) -> some View {
+        if item.kind == .video,
+           let r = timeline.slides.first(where: { $0.slide.id == first.id }) {
+            GeometryReader { g in
+                CurveLine(curve: r.audio, length: max(r.length, 0.001),
+                          pps: Double(g.size.width) / max(r.length, 0.001),
+                          width: g.size.width, height: Self.previewVolumeHeight,
+                          colour: .orange, name: "Volume",
+                          begin: {},
+                          commit: { curve, action in editAudio(action) { _ in curve } })
+            }
+            .frame(height: Self.previewVolumeHeight)
+            .background(.black.opacity(0.22))
+        }
+    }
+
+    static let previewVolumeHeight: CGFloat = 54
+
+    // MARK: Sound
+
+    /// A video slide's own sound (spec/video-audio.md), mirroring the level
+    /// line on its block: one volume while the line is flat, and the points
+    /// themselves once it's been shaped. Only the first selected slide, as
+    /// the Effects timeline does — the points belong to one clip.
+    @ViewBuilder
+    private func soundSection(_ first: Slide) -> some View {
+        if let resolved = timeline.slides.first(where: { $0.slide.id == first.id }),
+           resolved.item.kind == .video {
+            let curve = first.settings.audio ?? LevelCurve()
+            let levels = Set(curve.points.map { Int(($0.level * 100).rounded()) })
+            let shaped = levels.count > 1
+            Section {
+                card {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if shaped {
+                            ForEach(curve.points) { point in
+                                pointRow(point, curve: curve, length: resolved.length)
+                            }
+                            Button("Add Point") {
+                                editAudio("Add Volume Point") {
+                                    $0.addingOnLine(at: (resolved.length / 2 * 10).rounded() / 10)
+                                }
+                            }
+                            .controlSize(.small)
+                        } else {
+                            CommitSlider(title: "Volume", value: curve.points.first?.level ?? 0,
+                                         range: 0...1, display: 100, unit: "%") { v in
+                                setFlatVolume(v, length: resolved.length)
+                            }
+                            Text(curve.isEmpty
+                                 ? "Silent. Turn it up here, or drag the line along the slide."
+                                 : "⌥-click the line along the slide to shape it.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } header: {
+                header("Sound")
+            } footer: {
+                if selected.count > 1 {
+                    Text("Showing the first selected slide.").padding(.horizontal, 16)
+                }
+            }
+        }
+    }
+
+    private func pointRow(_ point: LevelPoint, curve: LevelCurve, length: Double) -> some View {
+        HStack(spacing: 4) {
+            TextField("", value: Binding(
+                get: { point.time },
+                set: { t in
+                    editAudio("Move Volume Point") {
+                        $0.moving(point.id, toTime: min(max(t, 0), max(length, 0)), level: point.level)
+                    }
+                }), format: .number.precision(.fractionLength(1)))
+                .frame(width: 48)
+            Text("s").foregroundStyle(.secondary)
+            Spacer(minLength: 4)
+            TextField("", value: Binding(
+                get: { (point.level * 100).rounded() },
+                set: { l in
+                    editAudio("Change Volume Point") {
+                        $0.moving(point.id, toTime: point.time, level: min(max(l / 100, 0), 1))
+                    }
+                }), format: .number.precision(.fractionLength(0)))
+                .frame(width: 40)
+            Text("%").foregroundStyle(.secondary)
+            Button {
+                editAudio("Remove Volume Point") { $0.removing(point.id) }
+            } label: {
+                Image(systemName: "minus.circle")
+            }
+            .buttonStyle(.borderless)
+            .help("Remove this point")
+        }
+        .textFieldStyle(.roundedBorder)
+        .font(.caption.monospacedDigit())
+    }
+
+    /// One level across the whole clip. Turning it down to nothing clears
+    /// the field altogether, so the slide is silent again rather than
+    /// carrying a flat zero.
+    private func setFlatVolume(_ v: Double, length: Double) {
+        editAudio("Change Volume") { _ in
+            guard v > 0 else { return LevelCurve() }
+            return LevelCurve(points: [LevelPoint(time: 0, level: v),
+                                       LevelPoint(time: max(length, 0), level: v)])
+        }
+    }
+
+    /// Edits the first selected slide's curve, one undo step.
+    private func editAudio(_ action: String, _ change: @escaping (LevelCurve) -> LevelCurve) {
+        guard let first = selected.first else { return }
+        mutate(action) { s in
+            guard let i = s.slides.firstIndex(where: { $0.id == first.id }) else { return }
+            let c = change(s.slides[i].settings.audio ?? LevelCurve())
+            s.slides[i].settings.audio = c.isEmpty ? nil : c
+        }
+    }
 
     private func lengthSection(_ first: Slide) -> some View {
         let s = first.settings

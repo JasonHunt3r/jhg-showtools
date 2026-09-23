@@ -66,8 +66,13 @@ public final class MediaProvider {
         case .animatedImage:
             return animationFrame(item, at: layer.slide.clipStart + layer.localTime)
         case .video:
-            return slot(for: layer.slide)?.image(localTime: layer.localTime, slideLength: layer.slide.length,
-                                                 clipStart: layer.slide.clipStart, playing: playing)
+            guard let slot = slot(for: layer.slide) else { return nil }
+            // The slide's own sound follows its level line. One envelope in
+            // Core, applied here for the live player; an export applies the
+            // same curve to the audio it pulls out itself.
+            slot.volume = Float(layer.slide.audio.level(at: layer.localTime))
+            return slot.image(localTime: layer.localTime, slideLength: layer.slide.length,
+                              clipStart: layer.slide.clipStart, playing: playing)
         case .audio:
             return nil
         }
@@ -138,6 +143,9 @@ public final class MediaProvider {
         guard let url = urlFor(slide.item) else { return nil }
         let v = VideoSlot(url: url, duration: slide.item.duration ?? 0)
         v.muted = muteVideo
+        // Never start at full volume: a slide is silent until its line says
+        // otherwise, and a frame's worth of original audio would be heard.
+        v.volume = Float(slide.audio.level(at: 0))
         videos[slide.slide.id] = v
         return v
     }
@@ -202,6 +210,13 @@ public final class VideoSlot {
     public var muted: Bool {
         get { player.isMuted }
         set { player.isMuted = newValue }
+    }
+    /// The slide's own level at this moment (spec/video-audio.md). Set each
+    /// frame from the slide's curve; `muted` is separate, and BGTools still
+    /// uses it to silence the lot.
+    public var volume: Float {
+        get { player.volume }
+        set { if player.volume != newValue { player.volume = newValue } }
     }
 
     public init(url: URL, duration: Double) {
