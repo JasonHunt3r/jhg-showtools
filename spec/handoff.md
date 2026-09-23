@@ -677,15 +677,49 @@ open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools
     count a launch only when a *window* appears
     (`tools/list-windows.swift`), quit cleanly between trials, and use
     tens of trials.
-  - **The missing fact is the exception's reason string**, which the
-    crash report drops. `ExceptionProbe` (in the app, installed at
-    launch) now writes it to `~/Library/Logs/ShowTools-exception.log`
-    with its stack. **Check that file after the next crash** — it names
-    the fault. Delete the probe once it has.
+  - **THE REASON STRING, caught 2026-09-23** by `ExceptionProbe`, in
+    `~/Library/Logs/ShowTools-exception.log`. `NSGenericException`:
+
+    > The window has been marked as needing another Update Constraints in
+    > Window pass, but it has already had more Update Constraints in
+    > Window passes than there are views in the window.
+
+    So it is **AppKit's layout-loop guard**, not a bad frame or a broken
+    view: the window cycles through constraint passes without settling
+    and AppKit shoots it. The loop is the one the stack always showed —
+    `SplitViewChildController.hostingView(_:didUpdateMinSize:maxSize:)`
+    → `enqueueLayoutInvalidation` → `setNeedsUpdateConstraints` → round
+    again. Something in a split column keeps reporting a *new minimum
+    size* during the constraints pass, so each pass invalidates the next.
+  - **The exception is raised far more often than it crashes.** Eight
+    raises in one sitting with the app surviving every one; Jason's crash
+    was one raise that happened to be fatal. So a build that doesn't
+    crash is not a build that doesn't loop — **count entries in the log,
+    not deaths.** That is the measurement this hunt never had.
+  - **View ▸ Restore Default Layout provoked it seven times out of
+    seven** (2026-09-23), then zero times out of five on the next build,
+    with no relevant change between them. **The bursts are real**, and
+    they are what made the earlier bisect worthless. Do not conclude
+    anything from a run of trials; the log count over a long session is
+    the honest measure.
   - Reports are in `~/Library/Logs/DiagnosticReports/ShowTools-*.ips`.
-    Suspect remains layout re-entrancy around `ColumnsSplitView`, the
-    manual NSSplitView layout CLAUDE.md warns about, but nothing proves
-    it yet.
+    The suspect is now specific: a SwiftUI column whose minimum width is
+    computed from the width it is given. `MainView`'s sidebar carries a
+    `.safeAreaInset(edge: .bottom)` and truncating rows, either of which
+    could do it. Unproven.
+- **Pulling the inspector's divider far to the left breaks the layout**
+  (Jason, 2026-09-23: "smashes both sides out off the screen"). Seen
+  once in a test copy after dragging from the right edge to x=300: the
+  inspector opens at its maximum and the storyline runs off the right of
+  the window. Not yet understood, and `revealByDragging` (new the same
+  day) is the obvious suspect — it clamps the width it sets but nothing
+  re-checks the columns as a whole. Needs reproducing properly before
+  anything is changed.
+- **⌥⌘0 (Restore Default Layout) can raise the layout-loop exception**,
+  and killed the app once for Jason. Each part alone — window size,
+  sidebar, columns — raised nothing; only all three together did, and
+  then stopped doing so. See the crash entry: the bursts make trials
+  meaningless, so this is recorded, not concluded.
 - **A video slide's end points are half-clipped** on the storyline block:
   the outermost level-line diamonds sit at x=0 and x=width, so the block's
   rounded corners cut them. May want insetting.
