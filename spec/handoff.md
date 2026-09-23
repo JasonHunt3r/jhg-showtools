@@ -613,6 +613,11 @@ open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools
 - **Get click coordinates from `ax find`/`ax dump`**, never from a screenshot. Check the element is on screen first: at a high zoom a marker can sit past the window's edge, and axtool refuses the click (⇧Z fits the show).
 - `axtool click` takes `right|double|cmd|shift|opt|opt-double`. `opt` holds the Option key down, which is what `NSEvent.modifierFlags` reads.
 - Frames: `stcli render <lib> <showID> 960x540 <outdir> <t>…` draws through the real Compositor. It prints each frame's state, `background after #N` included.
+- **`pgrep` is not "the app is running".** After a test copy dies badly the
+  next launch opens no window on purpose, while the process still runs, so
+  a pgrep check reports a healthy app when there is an alert on screen and
+  nothing else. Check for a **window** (`tools/list-windows.swift`) before
+  calling a launch good.
 - Close test copies with `kill` or ⌘Q, not `kill -9`. **Check `pgrep -f ShowTools.app/Contents/MacOS` after a kill:** a copy that didn't quit means two copies on one scratch library.
 - `defaults write com.jhg.showtools editMode show` and the `snapping` switch are Jason's **real** app preferences (a scratch library doesn't change the preferences domain). Leave them as found.
 - Don't shell out to `osascript`/Finder for anything `ls`/`sqlite3`/`xattr` can already answer.
@@ -634,14 +639,23 @@ open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools
     changes (the first one predates them all), on two different scratch
     libraries, in both edit modes, with and without accessibility calls,
     and with and without a slide's transition settings changed.
-  - **A warning about how it was chased.** It came in a burst — about 25
-    reports inside fifteen minutes — and then stopped: the same build
-    afterwards ran 10 launches out of 10 clean. During the burst, three
-    trials of a build looked conclusive and were not. **Do not conclude
-    anything about this crash from a handful of launches**; it needs tens
-    of trials per build, or a real diagnosis from the exception's reason
-    string, which macOS sends to the unified log (unreadable from Claude's
-    sandbox — Jason can read it with Console).
+  - **The chase was measured wrongly, and proved nothing.** Aliveness was
+    checked with `pgrep`, which is not aliveness: after a test copy dies
+    badly, the next launch **deliberately opens no window**
+    (`TestLaunchRecord.crashRelaunchProblem`) while the process still
+    runs, so every refused launch was counted as a healthy one. A run of
+    "10 launches out of 10 clean" was ten refusals with an alert on
+    screen, which Jason was closing by hand. Reporting that refusal also
+    clears the note, so launches alternate — crash, refusal, real launch —
+    and a three-trial bisect holds barely one real launch. **Every
+    conclusion drawn that way, including "ViewThatFits caused it", was
+    unfounded.**
+  - **How to test it properly:** count a launch only when a *window*
+    appears (`tools/list-windows.swift`, or `ax dump` returning a real
+    tree), quit cleanly between trials, and use tens of trials per build.
+    Better still, read the exception's reason string: macOS sends it to
+    the unified log, which Claude's sandbox can't read but **Jason can, in
+    Console.app filtered on ShowTools**. That string is the missing fact.
   - Suspect remains layout re-entrancy around `ColumnsSplitView`, the
     manual NSSplitView layout CLAUDE.md already warns about, but nothing
     proves it. **Worth watching for during real use.**
