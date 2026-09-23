@@ -104,7 +104,11 @@ and Flush presets from 2a.
   `SplitViewChildController.hostingView(_:didUpdateMinSize:maxSize:)` →
   `enqueueLayoutInvalidation` → `setNeedsUpdateConstraints`, so something
   in a split column reports a new minimum size *during* the constraints
-  pass. It belongs to no one build (six crashed, matched by UUID). **The
+  pass. **Which** column is unproven: `MainView`'s sidebar carries a
+  `.safeAreaInset(edge: .bottom)` and truncating rows, either of which
+  could do it, and neither has been shown to. It belongs to no one build
+  (six crashed, matched by UUID) and `ViewThatFits` is cleared — the first
+  crash predates it being added. **The
   exception is raised far more often than it kills the app, so count
   entries in `~/Library/Logs/ShowTools-exception.log`, not deaths** — and
   the bursts are real, so no run of trials proves anything. Full write-up:

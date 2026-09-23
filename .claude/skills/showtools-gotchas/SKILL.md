@@ -66,14 +66,18 @@ never have guessed it. `VideoSlideTiming` now holds it for both — asked by
   SwiftUI observes. The preview's image bar read the engine's copy and
   went stale — a bug that only showed once a second control could change
   opacity.
-- **Don't measure during layout.** The app has an intermittent launch
-  crash from AppKit's layout-loop guard, and the suspect is a SwiftUI
-  column whose minimum size depends on the width it is given. `ViewThatFits`
-  measures its candidates during layout, which is why the Edit Slides
-  defaults bar is **two unconditional rows** rather than `ViewThatFits`:
-  the row needs ~1490pt on one line and the window's minimum is 1100, so
-  one line can never fit and there was nothing to choose. See
-  `spec/history/2026-09-23-crash-hunt.md`.
+- **The Edit Slides defaults bar is two unconditional rows** rather than
+  `ViewThatFits`, and the reason is arithmetic, not a bug: the row needs
+  ~1490pt on one line and the window's own minimum is 1100, so one line
+  can never fit at any window size and there is nothing to choose. Don't
+  "restore" `ViewThatFits` there.
+  **It was not removed because it caused the launch crash, and nothing
+  should be read into its removal.** The reports clear it outright — the
+  first crash predates it being added, and six builds across five
+  sessions crashed. Dropping it was housekeeping on a view that had no
+  decision to make, done while that area was under suspicion. Treating it
+  as a lead is a snipe hunt; `spec/history/2026-09-23-crash-hunt.md` says
+  what the evidence does and does not support.
 - **Modifiers on a `Group` apply to every child.** Use a `ZStack` when a
   container needs its own onAppear/onDisappear/task.
 - **A separate window's `\.undoManager` isn't the presenting window's**,
