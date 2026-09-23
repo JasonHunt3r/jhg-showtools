@@ -1,11 +1,27 @@
 # CLAUDE.md — ShowTools
 
-A macOS slideshow composer and player for Jason's own Mac. The plan, with
-every decision so far, is in `spec/plan.md`: read it first. The state of play
-(what's built, what's confirmed by hand, what's next) is in `spec/handoff.md`.
-Phase 5, BGTools (the desktop companion app that lives inside ShowTools),
-has its own spec: `spec/bgtools.md`. Both app bundles are built by one
-Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
+A macOS slideshow composer and player for Jason's own Mac.
+
+## The docs
+
+| File | | What it is |
+|---|---|---|
+| `spec/status.md` | **current** | **Read first each session.** The state of play in the present tense: what's built, what's next, what needs his hands, known issues. Rewritten each session, not appended to. |
+| `spec/plan.md` | current | Every decision, phase by phase, with its reasoning. Read before designing anything. |
+| `spec/bgtools.md` | current | Phase 5, BGTools: the desktop companion app that lives inside ShowTools. |
+| `spec/video-export.md` | current | Video export: the writer, the traps, the codecs. |
+| `spec/video-audio.md` | current | A video slide's own sound. |
+| `spec/xcode-port.md` | current | Why one Xcode project builds both bundles, and how. |
+| `spec/first-run-brief.md` | reference | A brief for whoever builds the guided first run. Not a build plan. |
+| `spec/history/` | **history** | Dated events. **Never read for current rules or current state** — only when the question is *why* something is the way it is. Start at its `README.md`. |
+
+Each feature spec opens with a status block: Planned / Building / Built
+<date>, and what's left.
+
+Two skills load on demand: **`showtools-testing`** before launching any
+test copy or doing a hands-on check, and **`showtools-gotchas`** before
+debugging something unexpected or touching export, playback, undo or
+migrations.
 
 ## Layout
 
@@ -13,7 +29,7 @@ Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
   timeline (`ShowTimeline.frame(at:)`), the `Compositor`, and setlist
   export (`Setlist`, `MetadataStrip`). Everything
   that draws a show goes through `frame(at:)` → `Compositor.compose`,
-  including the future video exporter. Keep it that way.
+  the video exporter included. Keep it that way.
 - `Sources/ShowToolsPlayback/`: the player, shared with BGTools:
   `PlaybackEngine`, `ShowCanvas`/`ShowCanvasView`, `MediaProvider`,
   `MusicPlayer`. The engine reads shows and files through `ShowSource`
@@ -24,13 +40,8 @@ Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
   `project.yml`, and the built BGTools is nested inside ShowTools at
   `Contents/Library/LoginItems/BGTools.app`.
   It opens libraries with `Library(readingOnly:)` only. Its settings and
-  the show each mode builds are in `Sources/BGToolsCore` (tested). Test it
-  with `open -n --env BGTOOLS_SETTINGS=<scratch settings.json> build/ShowTools.app/Contents/Library/LoginItems/BGTools.app`,
-  the settings pointing at a scratch library (never the real one); it
-  re-reads the file when it changes and logs to `~/Library/Logs/BGTools.log`.
-  `BGTOOLS_OPEN_WINDOW=1` opens its window at launch, `BGTOOLS_OPEN_PANEL=1`
-  its panel; `AXTOOL_APP=bgtools`
-  lets axtool drive it.
+  the show each mode builds are in `Sources/BGToolsCore` (tested). How to
+  launch and drive it is in the `showtools-testing` skill.
 - `Sources/ShowToolsApp/`: the SwiftUI/AppKit app. `PlaybackEngine` owns a
   show's clock, media and drawing, and any number of `ShowCanvas` views
   show it (the Edit Show preview and its pop-out share one engine). A paused
@@ -83,8 +94,7 @@ Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
   takes all of it. `install.sh` copies the app to `~/Applications` and
   launches it once, which is the only way the Control Center tiles
   register — testing tiles means installing, not `build/ShowTools.app`.
-  Caches lie: a new or renamed tile needs `CURRENT_PROJECT_VERSION`
-  bumped and `killall chronod`.
+  Caches lie about tiles; the `showtools-testing` skill says how.
 - `tools/`: `make-test-library.sh <dir>` builds a scratch library with
   generated media and a test show. There are also a window lister and a
   contact-sheet tool, for checking screenshots.
@@ -99,7 +109,18 @@ Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
   relaunched without its environment (the crash reporter's Reopen), so
   test launches leave a note that a proper quit removes, and the first plain
   launch after a crashed one opens nothing (`TestLaunchRecord`). Close test
-  copies with `kill` or ⌘Q; `kill -9` leaves the note, costing one refused launch.
+  copies with `kill` or ⌘Q; `kill -9` leaves the note, and **the refused
+  launch it costs is Jason's, not the next test copy's** — see below.
+- **A test copy shares Jason's preferences domain** (`com.jhg.showtools`),
+  even with a scratch library. So a crashed test copy's `TestLaunchRecord`
+  note makes **his** app refuse to open: "Library problem", an empty
+  window and a long scratch path, which reads as a broken library to
+  someone who didn't write the safety net. It happened to him twice on
+  2026-09-23. Test copies also overwrite his column widths and window
+  frames. **After any test copy dies, check and clear
+  `defaults read com.jhg.showtools runningTestLaunches`; capture his
+  layout keys before a test session and restore them after.** The
+  `showtools-testing` skill has the commands.
 - `SHOWTOOLS_DEV_PLAY="<showID>:<slideIndex>[:full]"` opens the player at
   launch, so it can be screenshotted without clicking (UI scripting
   was once off-limits; they still save clicks). `SHOWTOOLS_DEV_SHOW="<showID>[:<slideIndex>]"`
@@ -121,13 +142,10 @@ Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
   layers go stale. Check AppKit layout in a standalone harness or with a
   layer-tree dump before changing it.
 - Accessibility is granted to the Claude app (2026-09-21), so the app can
-  be clicked, dragged and typed into: `tools/axtool.swift` reads the UI
-  (`dump`, `find`, `menustate`) and acts with real events (`click`, `drag`,
-  `type`, `key`, `menu`). Run hands-on checks with it, always on a scratch
-  library, and keep them cheap: read with `find`/`dump` (text), and take a
-  screenshot only when the check is about what's on screen. Cross-app drops
-  (Finder, Photos), Touch ID, pinch, and look-and-feel still go on Jason's
-  list. Don't drive the app while Jason is using it.
+  be clicked, dragged and typed into with `tools/axtool.swift`, always on a
+  scratch library — the `showtools-testing` skill has the rules. **Don't
+  drive the app while Jason is using it.** Cross-app drops (Finder,
+  Photos), Touch ID, pinch and look-and-feel still go on his list.
 - Songs are library items of kind `.audio` and are never slides or lane
   images: anything that adds items to a show filters with `model.pictures`
   (or `model.songs` for the music row).
@@ -151,14 +169,18 @@ Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
   copying its database to `Library.sqlite.v<N>.bak`. A new migration must
   also raise `Library.schemaVersion`, or that copy isn't made (the
   new-library test fails if they disagree).
+- **"Pan and Zoom" is the user-facing name**, settled 2026-09-22, while the
+  code, the slide-settings JSON keys and the setlist columns say `KenBurns`
+  / `kenburns_*`. **Neither half is done yet** — the UI still says "Ken
+  Burns" too. See `spec/status.md`, which says why the rename is cheap now
+  and expensive later.
 - `MediaItem` is not called `LibraryItem`, and the app refers to
   `ShowToolsCore.Transition` by its full name, because both short names
   collide with SwiftUI. Likewise `SRGBColor` (not `RGBColor`, QuickDraw's)
   and `MediaCollection` (not `Collection`, Swift's).
-- Measure, don't guess: write frame, hit-test or timing probes to a file in
-  the scratchpad. `log show` returns nothing from this app in Claude's
-  sandbox, so a "no log lines" check proves nothing. Remove probes before
-  committing.
+- Measure, don't guess: write probes to a file in the scratchpad, and
+  remove them before committing. `log show` returns nothing from this app
+  in Claude's sandbox, so a "no log lines" check proves nothing.
 - In a `List`, rows drag with `.itemProvider`, never `.onDrag`. `.onDrag`
   turns a click on the row's content into drag tracking, so the row won't
   select or double-click (only its empty edges do), and a drag carries one
@@ -174,15 +196,14 @@ Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
   something, and per settled decision — the history is the model (B1–B7 is
   seven commits in forty minutes). Commit once a step builds, its tests
   pass and any hands-on check is done. Two unrelated pieces of work are two
-  commits, never one. `git status` first, stage everything related, and say
+  commits, never one. **When a step closes an item in a feature spec,
+  update that spec's status block in the same commit.** `git status` first, stage everything related, and say
   what went in and what was deliberately left out. If in doubt about the
   rhythm, read `git log` — it shows the expected cadence better than any
   instruction here. **Offer the push in the closing line**, where Jason
   reads it: the working pattern is a reply that ends "commit and push,
   then do X". An ask at the top of a long reply scrolls past unseen.
-- Tell Jason before restarting the app: he's often using it. (Until he has
-  made a first real show there is nothing to disturb, so open and drive it
-  freely on a scratch library.)
+- Tell Jason before restarting the app: he's often using it.
 - Library delete conventions (Delete asks first, ⌘Delete moves to the Trash
   without asking) and the slide-removal notice are settled decisions. See
   the plan.
