@@ -95,9 +95,10 @@ and Flush presets from 2a.
 
 ## Known issues
 
-- **An intermittent crash at launch.** `NSGenericException` from AppKit's
-  layout-loop guard: a window marked as needing another Update Constraints
-  pass more times than it has views. The loop is
+- **An intermittent crash, at launch and on entering Edit Show.**
+  `NSGenericException` from AppKit's layout-loop guard: a window marked as
+  needing another Update Constraints pass more times than it has views.
+  The loop is
   `SplitViewChildController.hostingView(_:didUpdateMinSize:maxSize:)` →
   `enqueueLayoutInvalidation` → `setNeedsUpdateConstraints`, so something
   in a split column reports a new minimum size *during* the constraints
@@ -108,7 +109,18 @@ and Flush presets from 2a.
   crash predates it being added. **The
   exception is raised far more often than it kills the app, so count
   entries in `~/Library/Logs/ShowTools-exception.log`, not deaths** — and
-  the bursts are real, so no run of trials proves anything. Full write-up:
+  the bursts are real, so no run of trials proves anything. **New
+  repro, 2026-09-23:** it also fires switching Edit Show ↔ Edit Slides
+  mid-session, not only at launch. `ShowView`'s mode switch replaces
+  `EditSlidesView` with `EditShowView`, whose `ShowColumns` (an
+  `NSViewRepresentable`) builds a brand-new `ColumnsSplitView` and three
+  fresh `NSHostingView` columns from `makeNSView` every time it's
+  constructed — a first layout, same as at launch. On this occasion the
+  crash came with the columns pushed off-window (outer columns off the
+  right edge), which fits — not proven — the same family as the divider
+  entry below. Fourteen raises logged in one session leading up to the
+  fatal one; the fatal one's stack still points at the same
+  `didUpdateMinSize:maxSize:` loop. Full write-up:
   `spec/history/2026-09-23-crash-hunt.md`.
 - **Pulling the inspector's divider far to the left breaks the layout**
   ("smashes both sides out off the screen"). Seen once in a test copy
