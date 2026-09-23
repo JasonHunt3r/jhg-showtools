@@ -50,19 +50,15 @@ slide's level line is slide settings, which are JSON.
    untested by a person.
 3. **Telling BGTools when a library moves** (B7 left it open).
 
-**Ken Burns → "Pan and Zoom" — done 2026-09-23.** Settled 2026-09-22
-(`f0bd5d8`). Renamed everywhere in one pass: 168 references across 22
-files, including `KenBurnsEditor.swift` → `PanAndZoomEditor.swift`, and
-the persisted spellings — the `panAndZoom` and `panAndZoomSeed` keys in
-slide-settings JSON, and the `panzoom_start`, `panzoom_end` and
-`default_panzoom` cells in the setlist TSV. Every show in the library was
-disposable test material, so no old spelling was kept readable. **The
-show-level default was already `.off`** (Phase 2a's settled decision that
-effects aren't a slide's default state); BGTools' random-mode default
-(`DesktopSettings.startingRandomDefaults`) was the one place still set to
-`.auto`, flipped to `.off` the same day since it's also the one that
-measurably costs CPU (see Known Issues below). `swift test`: 279 tests,
-all pass.
+**Ken Burns → "Pan and Zoom" — done 2026-09-23** (`8db7ffc`, `a0be113`),
+in the UI, the code, the slide-settings JSON keys (`panAndZoom`,
+`panAndZoomSeed`) and the setlist TSV columns (`panzoom_*`). No old
+spelling was kept readable. The show-level default was already `.off`;
+BGTools' random-mode default was the one place still `.auto`, now `.off`
+too. `~/Applications/ShowTools.app` is rebuilt and reinstalled from HEAD.
+**A setlist folder or `show.json` exported before this date will lose its
+Pan and Zoom setting, silently, on re-import** — confirmed by hand
+against a real export. Full story: `spec/history/2026-09-23-pan-and-zoom-rename.md`.
 
 Parked: image stickiness, a guided first run (`spec/first-run-brief.md`),
 and Flush presets from 2a.

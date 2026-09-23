@@ -821,7 +821,10 @@ control does. **Done 2026-09-23**, in one pass: the UI, the code
 (`PanAndZoom*` types and properties), the slide-settings JSON keys
 (`panAndZoom`, `panAndZoomSeed`) and the setlist TSV columns (`panzoom_*`,
 `default_panzoom`). Every show in the library was disposable test
-material, so no old spelling was kept decodable.
+material, so no old spelling was kept decodable — confirmed by hand
+against a real setlist folder exported just before the rename: its old
+`kenBurns`/`kenburns_*` spellings come back unread and silent (no
+`problems` entry). See `spec/status.md`.
 
 **It is an effect, and effects are not a slide's default state.** Phase 2a
 separated a slide's starting placement into the Transform section, which
