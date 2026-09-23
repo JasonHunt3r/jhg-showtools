@@ -6,6 +6,10 @@ import ShowToolsPlayback
 struct ShowToolsApp: App {
     @State private var model = AppModel()
 
+    // Catches the reason string of the crash the app has been having
+    // (ExceptionProbe). Remove with the probe.
+    init() { ExceptionProbe.install() }
+
     var body: some Scene {
         Window("ShowTools", id: "main") {
             MainView()
