@@ -33,7 +33,20 @@ struct ShowView: View {
             case .slides:
                 EditSlidesView(show: show, timeline: timeline, selection: $selection, mutate: mutate,
                                toggleInspector: { inspectorShown.toggle() })
+                    // Attached here, not to the whole mode switch, so
+                    // isPresented never has to flip in the same transaction
+                    // as the mode's content swap. Tried as a fix for the
+                    // layout-loop crash (its stack names this column's
+                    // controller, SplitViewChildController) — it didn't
+                    // hold under stress-testing, so this narrows one
+                    // coupling without closing the bug. See spec/status.md.
+                    .inspector(isPresented: $inspectorShown) {
+                        SlideInspector(show: show, timeline: timeline, selection: selection, mutate: mutate)
+                            .inspectorColumnWidth(min: 260, ideal: 290, max: 400)
+                    }
             case .show:
+                // Lays its own inspector out itself, above the storyline —
+                // no SwiftUI .inspector() column here at all.
                 EditShowView(show: show, timeline: timeline, selection: $selection, mutate: mutate,
                              inspectorShown: $inspectorShown)
             }
@@ -63,11 +76,6 @@ struct ShowView: View {
                     .keyboardShortcut("i", modifiers: [.command, .option])
                     .help("Show or hide the inspector (⌥⌘I) — or double-click a slide")
             }
-        }
-        // Edit Show lays its inspector out itself, above the storyline.
-        .inspector(isPresented: mode == .slides ? $inspectorShown : .constant(false)) {
-            SlideInspector(show: show, timeline: timeline, selection: selection, mutate: mutate)
-                .inspectorColumnWidth(min: 260, ideal: 290, max: 400)
         }
         .focusedSceneValue(\.activeShowID, showID)
         .onChange(of: showID) { selection = [] }

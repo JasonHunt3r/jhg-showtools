@@ -109,19 +109,34 @@ and Flush presets from 2a.
   crash predates it being added. **The
   exception is raised far more often than it kills the app, so count
   entries in `~/Library/Logs/ShowTools-exception.log`, not deaths** — and
-  the bursts are real, so no run of trials proves anything. **New
-  repro, 2026-09-23:** it also fires switching Edit Show ↔ Edit Slides
-  mid-session, not only at launch. `ShowView`'s mode switch replaces
-  `EditSlidesView` with `EditShowView`, whose `ShowColumns` (an
-  `NSViewRepresentable`) builds a brand-new `ColumnsSplitView` and three
-  fresh `NSHostingView` columns from `makeNSView` every time it's
-  constructed — a first layout, same as at launch. On this occasion the
-  crash came with the columns pushed off-window (outer columns off the
-  right edge), which fits — not proven — the same family as the divider
-  entry below. Fourteen raises logged in one session leading up to the
-  fatal one; the fatal one's stack still points at the same
-  `didUpdateMinSize:maxSize:` loop. Full write-up:
+  the bursts are real, so no run of trials proves anything. Full write-up:
   `spec/history/2026-09-23-crash-hunt.md`.
+  **New repro and a corrected suspect, 2026-09-23 (later the same day):**
+  it also fires switching Edit Show ↔ Edit Slides mid-session, not only at
+  launch, and on this occasion the columns were pushed off-window when it
+  happened (fits the divider entry below, not proven). The fatal stack's
+  frame 27 names the exact class: `SplitViewChildController
+  .hostingView(_:didUpdateMinSize:maxSize:)`. **That class belongs to
+  SwiftUI's own split-column machinery** (`NavigationSplitView` columns
+  and the `.inspector()` column) — **not** to `ColumnsSplitView`
+  (`ColumnsSplitView.swift`), which is a hand-rolled `NSSplitView` with
+  plain frame-based `NSHostingView` children and goes through none of
+  SwiftUI's split-column code at all. A first attempt at a fix moved
+  `ShowView`'s `.inspector()` modifier so it mounts only with
+  `EditSlidesView`, on the theory that flipping its `isPresented` in the
+  same transaction as swapping the whole mode was the trigger (commit
+  pending review). **It did not hold**: stress-testing the fixed build
+  (15 rapid mode toggles) crashed again with the identical
+  `SplitViewChildController` stack, and the exception also fired on plain
+  launches with no mode-switching at all. The better-supported suspect
+  now is `MainView`'s outer `NavigationSplitView` **detail column**
+  itself (`MainView.swift`, the `detail:` closure holding `ShowView`):
+  its content changes type — `EditSlidesView`'s `List` versus
+  `EditShowView`'s `NSViewRepresentable`/`VSplitView` tree — both the
+  first time it mounts (launch, if `editMode` was left on `.show`) and
+  every time the mode switch swaps it mid-session, which is exactly the
+  "within 20s of launch, or on this one specific transition" pattern seen
+  so far. Not proven either. Still unfixed.
 - **Pulling the inspector's divider far to the left breaks the layout**
   ("smashes both sides out off the screen"). Seen once in a test copy
   dragging from the right edge to x=300. `revealByDragging` is the obvious
