@@ -103,7 +103,7 @@ keeps its own settings. Each **Slide** has:
 Every field that can inherit does so until it's overridden. Changing the show's
 default updates every slide that hasn't been given its own value.
 
-### Video-export hook (built in from day one)
+### Video-export hook (built in from day one) — PAID OFF 2026-09-22
 
 All rendering goes through one function: **"what does the screen look like at
 time *t*?"** That covers which slide(s) are on screen, how far the transition has
@@ -451,7 +451,7 @@ to the Collection Browser and the library.
     files as macOS Finder tags
 - **Relink** files that have moved or gone missing, re-found by their hash
 
-### Phase 3: Music + timeline
+### Phase 3: Music + timeline — BUILT 2026-09-22 (all 7 steps)
 (Decisions from Jason, 2026-09-21, unless marked otherwise.)
 - **Modular rows.** Every timeline row (transitions, images, slides, music)
   is a module, and the rows can be dragged into any order. Each row has a
@@ -606,7 +606,7 @@ to the Collection Browser and the library.
     filled in from the song's analysis.)
   - **No "every N beats" without a song:** a steady `q` pattern does it.
 
-### Phase 3b: Find Similar, and Delete by context (planned with Jason 2026-09-22)
+### Phase 3b: Find Similar, and Delete by context (planned with Jason 2026-09-22) — BUILT 2026-09-22
 Rethought from "duplicate finder": exact duplicates can't exist in a library
 (the hash is unique and import skips a file it already has, saying "already
 in library"), so the value is in **grouping similar pictures**, for building
@@ -797,7 +797,7 @@ Songs in such a folder aren't placed; the import lists them to add by hand
 4d Import Show… panel (and the collection checkbox on Import…), 4e a
 hands-on round trip on a scratch library, including an edit in Numbers.
 
-### Phase 5: BGTools, the desktop companion app (renamed 2026-09-22; was "Live desktop")
+### Phase 5: BGTools, the desktop companion app (renamed 2026-09-22; was "Live desktop") — BUILT 2026-09-22
 **Its own spec: `spec/bgtools.md`** (decisions, measurements, open
 questions). In short: a small separate app that ShowTools installs, which
 plays shows as the desktop picture on each monitor and Space, reading the
@@ -810,7 +810,9 @@ Power, hidden Spaces) and private libraries behind Touch ID, and
 installation from ShowTools. See `spec/bgtools.md` for what's left.
 
 ### Later
-- Video export (the hook above)
+- ~~Video export~~ — **BUILT 2026-09-22**, E1–E5, through the hook above
+  exactly as promised: a new menu item, not a rewrite. Own spec
+  `spec/video-export.md`
 - ~~Beat detection~~ (moved into Phase 3, 2026-09-21)
 - **A strobe effect** (Jason, 2026-09-21): a slide flashing on and off
   against the background colour. Came out of the rhythm-pattern talk
