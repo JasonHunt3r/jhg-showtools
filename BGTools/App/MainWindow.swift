@@ -304,8 +304,8 @@ private struct RandomPicturesDetail: View {
                             }
                         }
                     }
-                    Toggle("Ken Burns", isOn: Binding(get: { d.kenBurns != .off },
-                                                      set: { on in set { $0.kenBurns = on ? .auto : .off } }))
+                    Toggle("Pan and Zoom", isOn: Binding(get: { d.panAndZoom != .off },
+                                                      set: { on in set { $0.panAndZoom = on ? .auto : .off } }))
                     Picker("Fit", selection: Binding(get: { d.fit }, set: { v in set { $0.fit = v } })) {
                         ForEach(Fit.allCases, id: \.self) { Text($0.title).tag($0) }
                     }

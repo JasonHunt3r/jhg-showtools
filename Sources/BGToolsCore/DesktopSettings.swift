@@ -59,14 +59,13 @@ public struct DesktopSettings: Codable, Hashable, Sendable {
     public var allSameSetting: ScreenSetting?
     /// Plays on any monitor or Space not seen before.
     public var newScreens: ScreenSetting?
-    /// Length, transition, Ken Burns and fit for the random modes, whose
+    /// Length, transition, Pan and Zoom and fit for the random modes, whose
     /// pictures aren't slides of any show.
     public var randomDefaults: ShowDefaults = DesktopSettings.startingRandomDefaults
 
     public static var startingRandomDefaults: ShowDefaults {
         var d = ShowDefaults()
         d.length = 8
-        d.kenBurns = .auto
         d.fit = .fill
         return d
     }

@@ -5,13 +5,13 @@ final class EffectsTests: XCTestCase {
 
     // MARK: Old shows still load
 
-    func testKenBurnsSavedBeforeAccelerationKeepsItsFrames() throws {
+    func testPanAndZoomSavedBeforeAccelerationKeepsItsFrames() throws {
         // Exactly what a Phase 2 save wrote: no "acceleration" key.
-        let kb = KenBurns(start: KenBurnsFrame(x: 0.3, y: 0.4, zoom: 1.5),
-                          end: KenBurnsFrame(x: 0.6, y: 0.5, zoom: 2), easing: .linear)
+        let kb = PanAndZoom(start: PanAndZoomFrame(x: 0.3, y: 0.4, zoom: 1.5),
+                          end: PanAndZoomFrame(x: 0.6, y: 0.5, zoom: 2), easing: .linear)
         var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(kb)) as! [String: Any]
         json.removeValue(forKey: "acceleration")
-        let old = try JSONDecoder().decode(KenBurns.self,
+        let old = try JSONDecoder().decode(PanAndZoom.self,
                                            from: JSONSerialization.data(withJSONObject: json))
         XCTAssertEqual(old, kb)
         XCTAssertEqual(old.acceleration, 0)
@@ -65,8 +65,8 @@ final class EffectsTests: XCTestCase {
         XCTAssertGreaterThan(Acceleration.shape(0.5, amount: -1), 0.5)   // slow finish
     }
 
-    func testZeroAccelerationLeavesKenBurnsAsBefore() {
-        let kb = KenBurns(start: .centred, end: KenBurnsFrame(x: 0.7, y: 0.5, zoom: 2))
+    func testZeroAccelerationLeavesPanAndZoomAsBefore() {
+        let kb = PanAndZoom(start: .centred, end: PanAndZoomFrame(x: 0.7, y: 0.5, zoom: 2))
         let p = 0.3, e = Easing.easeInOut.apply(p)
         XCTAssertEqual(kb.frame(at: p).zoom, 1 + e, accuracy: 1e-12)
     }
@@ -123,10 +123,10 @@ final class EffectsTests: XCTestCase {
 }
 
 extension EffectsTests {
-    func testKenBurnsLandsExactlyOnItsEndFrame() {
-        let end = KenBurnsFrame(x: 0.9, y: 0.1, zoom: 2.3)
+    func testPanAndZoomLandsExactlyOnItsEndFrame() {
+        let end = PanAndZoomFrame(x: 0.9, y: 0.1, zoom: 2.3)
         for a in [-0.6, 0, 1.0] {
-            let kb = KenBurns(start: KenBurnsFrame(x: 0.2, y: 0.8, zoom: 1), end: end, acceleration: a)
+            let kb = PanAndZoom(start: PanAndZoomFrame(x: 0.2, y: 0.8, zoom: 1), end: end, acceleration: a)
             XCTAssertEqual(kb.frame(at: 1), end)
         }
     }
@@ -170,15 +170,15 @@ extension EffectsTests {
     }
 
     func testFreezeHoldsTheStartFrameThroughTheTransitionIn() {
-        let kb = KenBurns(start: .centred, end: KenBurnsFrame(x: 0.5, y: 0.5, zoom: 2),
+        let kb = PanAndZoom(start: .centred, end: PanAndZoomFrame(x: 0.5, y: 0.5, zoom: 2),
                           easing: .linear, freezeOnTransition: true)
         let tl = twoSlides(SlideSettings(length: .seconds(4)),
-                           SlideSettings(length: .seconds(4), kenBurns: .custom(kb)))
+                           SlideSettings(length: .seconds(4), panAndZoom: .custom(kb)))
         guard case .transition(_, let b, _, _) = tl.frame(at: 4.5) else { return XCTFail() }
-        XCTAssertEqual(b.kenBurnsFrame, .centred)
+        XCTAssertEqual(b.panAndZoomFrame, .centred)
         guard case .still(let b2) = tl.frame(at: 6.5) else { return XCTFail() }
         // B moves from 5 (dissolve over) to 8 (its own end; it's last, no transition out).
-        XCTAssertEqual(b2.kenBurnsFrame.zoom, 1.5, accuracy: 1e-9)
+        XCTAssertEqual(b2.panAndZoomFrame.zoom, 1.5, accuracy: 1e-9)
     }
 }
 
@@ -381,27 +381,27 @@ final class SoftnessTests: XCTestCase {
 
     func testAFittedLargePhotoIsSharp() {
         // Fit: min(2880/4000, 1800/3000) = 0.6.
-        let r = resolved(SlideSettings(kenBurns: .off, fit: .fit))
+        let r = resolved(SlideSettings(panAndZoom: .off, fit: .fit))
         XCTAssertEqual(r.peakMagnification(outputSize: screen), 0.6, accuracy: 1e-9)
         XCTAssertFalse(r.isSoft(outputSize: screen))
     }
 
     func testTransformZoomMakesItSoft() {
         var t = Transform(); t.scale = 3; t.rotation = 30
-        let r = resolved(SlideSettings(kenBurns: .off, fit: .fit, transform: t))
+        let r = resolved(SlideSettings(panAndZoom: .off, fit: .fit, transform: t))
         XCTAssertEqual(r.peakMagnification(outputSize: screen), 1.8, accuracy: 1e-9)
         XCTAssertTrue(r.isSoft(outputSize: screen))
     }
 
-    func testKenBurnsCountsAtItsClosest() {
+    func testPanAndZoomCountsAtItsClosest() {
         // Fill: max(0.72, 0.6) = 0.72; zoomed to 2.5 at the end → 1.8.
-        let kb = KenBurns(start: .centred, end: KenBurnsFrame(x: 0.5, y: 0.5, zoom: 2.5))
-        let r = resolved(SlideSettings(kenBurns: .custom(kb), fit: .fill))
+        let kb = PanAndZoom(start: .centred, end: PanAndZoomFrame(x: 0.5, y: 0.5, zoom: 2.5))
+        let r = resolved(SlideSettings(panAndZoom: .custom(kb), fit: .fill))
         XCTAssertEqual(r.peakMagnification(outputSize: screen), 1.8, accuracy: 1e-9)
     }
 
     func testASmallFileIsSoftEvenFitted() {
-        let r = resolved(SlideSettings(kenBurns: .off, fit: .fit), w: 800, h: 600)
+        let r = resolved(SlideSettings(panAndZoom: .off, fit: .fit), w: 800, h: 600)
         XCTAssertEqual(r.peakMagnification(outputSize: screen), 3, accuracy: 1e-9)
     }
 }
@@ -415,7 +415,7 @@ final class TransitionLeadTests: XCTestCase {
         var show = Show(id: 1, name: "t")
         show.defaults.transition = Transition(style: .dissolve, duration: 1, lead: lead)
         show.defaults.loop = loop
-        show.defaults.kenBurns = .off
+        show.defaults.panAndZoom = .off
         var items: [Int64: MediaItem] = [:]
         for (i, l) in lengths.enumerated() {
             let id = Int64(i + 1)

@@ -5,7 +5,7 @@ Approved 2026-09-20.
 ## What it is
 
 A slideshow composer and player for macOS. You get as much control as possible
-over each slide: how long it shows, which transition it uses, its Ken Burns move,
+over each slide: how long it shows, which transition it uses, its Pan and Zoom move,
 and how it lines up with a music track. It plays full screen, in a window, or
 live on the desktop of each attached monitor.
 
@@ -77,7 +77,7 @@ Each **library item** records:
 - media type, pixel size, and duration for video and GIFs
 - when it was ingested and where it came from, and which shows use it
 
-A library item carries **no** slide settings. Length, transition and Ken Burns
+A library item carries **no** slide settings. Length, transition and Pan and Zoom
 belong to the slide (see below).
 
 Storage is SQLite, which is built into macOS and handles tens of thousands of
@@ -100,7 +100,7 @@ keeps its own settings. Each **Slide** has:
 | media       | a reference to a library item |
 | length      | *inherit default*, or a specific value. Video can also be "clip length" |
 | transition  | style, duration and direction for the transition *into* this slide. *Inherit default* is allowed |
-| Ken Burns   | off, or a start frame and end frame (position and zoom), plus easing |
+| Pan and Zoom   | off, or a start frame and end frame (position and zoom), plus easing |
 | fit         | fill / fit / stretch. New shows default to **fit** (changed from fill 2026-09-21) |
 | transform   | the still placement on top of fit: offset, scale, rotation, anchor (Final Cut's Transform). Always there; the identity leaves the image where fit puts it (added 2026-09-21) |
 
@@ -111,7 +111,7 @@ default updates every slide that hasn't been given its own value.
 
 All rendering goes through one function: **"what does the screen look like at
 time *t*?"** That covers which slide(s) are on screen, how far the transition has
-got, and where the Ken Burns frame is. The live player, the timeline scrubber and
+got, and where the Pan and Zoom frame is. The live player, the timeline scrubber and
 the desktop mode all call it. A future video exporter calls it too, once per
 frame, and writes the frames with `AVAssetWriter`. So adding export later is a
 new menu item, not a rewrite.
@@ -130,12 +130,12 @@ the music when a track is loaded and the system clock when it isn't.
 - Build a show from the library (Add to Show, New Show from Selection, or
   drop files onto a show)
 - Play in a window or full screen, with per-slide lengths, transitions and
-  Ken Burns (show default Off/Auto; per-slide Off/Auto)
+  Pan and Zoom (show default Off/Auto; per-slide Off/Auto)
 - Keyboard: space, ← →, Home/End, type a number + ↩ to jump, F, Esc
 - **Changed from the draft:** shows are stored in the library database, not
   as separate document files. They save on every edit. They need to be in
   one place anyway so that "random show" can find them all.
-- **Not yet:** ⌘Z undo (comes with the Phase 2 composer), a custom Ken Burns
+- **Not yet:** ⌘Z undo (comes with the Phase 2 composer), a custom Pan and Zoom
   frame editor, and a drag-and-drop from Photos tested by hand (the code
   path exists, but no one has tried an actual drag from the Photos app)
 - **Transitions dropped:** Accordion. On this macOS, Core Image's accordion
@@ -189,7 +189,7 @@ for ripping through slides and their details.
   - hovering over a block for 1 second shows its info
 - **Order list** on the right: thumbnail plus filename, drag to reorder,
   and it's the same order as the storyline
-- **Both modes:** multi-select editing shows "mixed" values; a **Ken Burns
+- **Both modes:** multi-select editing shows "mixed" values; a **Pan and Zoom
   editor** where you drag the start and end frames on the image; **⌘Z / ⇧⌘Z**
   undo and redo for every show edit
 
@@ -203,16 +203,16 @@ slide A so that the transition joins them seamlessly.
   so placing an image never depends on a motion effect being on. Scale can
   go below 1× and the image can hang past the frame's edges. Wherever the
   image doesn't cover the frame, a **background colour** set on the slide
-  shows through. Ken Burns and Rotation add motion on top of the Transform
+  shows through. Pan and Zoom and Rotation add motion on top of the Transform
 - **Inspector layout (settled 2026-09-21):** **Transform** (position,
   zoom, rotation) sits at the top of the column. It's the image's starting
-  state. Below it is everything time-based: the transition in, Ken Burns,
+  state. Below it is everything time-based: the transition in, Pan and Zoom,
   and animated Rotation. Jason counts animated rotation in that camp. The
   on-image handles edit the Transform; they never switch a motion effect on
 - **Onion skin** (built 2026-09-21, not for video slides yet). While you frame slide B, slide A's **last frame** is drawn
   semi-transparent over it (an opacity slider and a toggle). It's an editing
   aid only and never renders into the show. It shows A's end frame exactly as
-  it plays, including Ken Burns and rotation
+  it plays, including Pan and Zoom and rotation
 - **"Soft at this zoom" flag** (built 2026-09-21: an orange triangle in the
   order list and on the storyline block, a line in the inspector, and the
   exact figure in the block's hover info; flagged above 1.25× the file's
@@ -221,14 +221,14 @@ slide A so that the transition joins them seamlessly.
   upscaling hook later attaches (see the plugin seam)
 - **Effects stack per slide (mix and match).** Each slide *use* can have
   several motion effects on at once, each with its own on/off checkbox in
-  the inspector. Ken Burns (pan and zoom) and rotation are separate effects
-  that combine. 2a's effects: **Ken Burns** and **Rotation**. The stack is
+  the inspector. Pan and Zoom (pan and zoom) and rotation are separate effects
+  that combine. 2a's effects: **Pan and Zoom** and **Rotation**. The stack is
   also where later effects plug in
-- **Rotation**, which works with Ken Burns or on its own. It has its **own
+- **Rotation**, which works with Pan and Zoom or on its own. It has its **own
   interface** (its own inspector section and its own on-image editor: built
   2026-09-21 as the preview's Rotation mode, with green start and red end
   outlines, an arm per end to turn it, and pivot crosshairs), and
-  it isn't folded into the Ken Burns editor (settled 2026-09-21). It has two modes,
+  it isn't folded into the Pan and Zoom editor (settled 2026-09-21). It has two modes,
   chosen per slide:
   - **Speed:** a speed slider (°/s). Note that trimming the slide then
     changes where the rotation ends, which moves a match-cut end frame
@@ -237,16 +237,16 @@ slide A so that the transition joins them seamlessly.
   - **Acceleration** is a slider with **0 in the centre**: left decelerates,
     right accelerates. In Angles mode it shapes the way from start to end
     rather than changing the end angle
-- **Ken Burns gets the same acceleration slider** (settled 2026-09-21),
+- **Pan and Zoom gets the same acceleration slider** (settled 2026-09-21),
   alongside its current easing, so a Flush can speed up its zoom as well as
   its spin
 - **Pivot ("polar deviation").** The rotation point can be offset from the
   image centre. Two small polar grids (a joystick for start and one for
   end), with a **Lock** checkbox that keeps them the same. The pivot is
-  pinned to the image, so it moves along with a Ken Burns pan
+  pinned to the image, so it moves along with a Pan and Zoom pan
 - **Transform handles on the image (Adobe conventions,** checked against
   Adobe's Photoshop help 2026-09-21). They act on whichever frame, start
-  or end, is selected. The Ken Burns editor gets the scale handles; the
+  or end, is selected. The Pan and Zoom editor gets the scale handles; the
   rotate handle and the pivot crosshair live in the Rotation interface:
   - drag a **corner handle** to scale. Scaling is always proportional (it's a
     photo), and it's anchored on the opposite corner
@@ -275,7 +275,7 @@ slide A so that the transition joins them seamlessly.
   - a run of presses is one undo step; the run ends after about a second
     without a key
 - **Freeze on transition**: a checkbox on every effect that moves the
-  image (Ken Burns, Rotation), **off by default**. When it's on, the effect
+  image (Pan and Zoom, Rotation), **off by default**. When it's on, the effect
   holds its start frame through the transition in and its end frame through
   the transition out, and only moves while the slide is on screen alone.
   That makes a match cut through a dissolve exact. (Built in the model
@@ -346,7 +346,7 @@ on the clock.
 The inspector is the slide itself (file, rating, placement: fit, position,
 zoom, rotation, background; its length), then an **Effects** section: a
 display-only timeline of the slide's time on screen with a bar for each
-thing acting on the picture (transition in and out, Ken Burns, Rotation,
+thing acting on the picture (transition in and out, Pan and Zoom, Rotation,
 lane images over it; hatched where freeze on transition holds still), then
 the effects' controls. Built 2026-09-21. The bars may become draggable
 later; they aren't, because most timings come from other settings.
@@ -681,7 +681,7 @@ Beach Trip/
   The originals in the library are never renamed, moved or changed
 
 **`show.json`: the whole show.** The defaults, every slide's settings
-(length, transition, Ken Burns, fit, clip start, transform, background,
+(length, transition, Pan and Zoom, fit, clip start, transform, background,
 rotation), the images row, the songs (start, in point, length, volume,
 fades, their markers), the show's markers, its row order and its editing
 state. Slides, songs and overlays refer to files by their path in the
@@ -699,20 +699,20 @@ empty cell means "use the default". As built in 4a:
 # name	Beach Trip
 # default_length	5
 # default_transition	dissolve 2 lead 1
-# default_kenburns	off
+# default_panzoom	off
 # default_fit	fit
 # default_background	#000000
 # video_clip_length	yes
 # loop	yes
 # music	music/song.m4a
-file	length	transition	kenburns_start	kenburns_end	fit	rotation	background
+file	length	transition	panzoom_start	panzoom_end	fit	rotation	background
 001_beach.jpg	8		0.5,0.5,1	0.3,0.4,1.4
 002_sunset.png		swipe left 0.5
 003_beach.jpg						0 to 90
 ```
 Text forms: a length is seconds or `clip`; a transition is its style, its
 direction when the style has one, the duration, and `lead N` when the lead
-isn't 0; Ken Burns is `off`, `auto`, or `x,y,zoom` start and end; rotation
+isn't 0; Pan and Zoom is `off`, `auto`, or `x,y,zoom` start and end; rotation
 is `off`, `0 to 90` (angles) or `30/s` / `30/s from 10` (speed); a
 background is `#rrggbb`. Numbers are written with at most three decimals.
 Transform, the images row, songs and markers are in the JSON only; the
@@ -727,14 +727,14 @@ it shows.**
   matched to the JSON's slides by filename (unique, since they're numbered)
 - **A cell still reading what export wrote keeps the JSON's exact value.**
   The TSV rounds (three decimals, `#rrggbb`) and summarises (a rotation's
-  pivots, a Ken Burns move's easing aren't in it), so only a cell that
+  pivots, a Pan and Zoom move's easing aren't in it), so only a cell that
   differs from what export would write for the JSON's value replaces it.
-  A changed Ken Burns or rotation cell keeps the JSON's other details
+  A changed Pan and Zoom or rotation cell keeps the JSON's other details
 - A row copied in the spreadsheet is a second use of that slide: same
-  settings, its own auto Ken Burns move (as Duplicate gives in the app)
+  settings, its own auto Pan and Zoom move (as Duplicate gives in the app)
 - A cell that can't be read keeps the JSON's value and is listed in the
   import's problems, with its line number
-- **Auto Ken Burns stays the same move.** It's seeded from the slide's id,
+- **Auto Pan and Zoom stays the same move.** It's seeded from the slide's id,
   which a new library won't reuse, so `show.json` records each slide's
   original id and import carries it over as the slide's seed (an additive
   field in the slide settings, 4b)
@@ -815,16 +815,24 @@ installation from ShowTools. See `spec/bgtools.md` for what's left.
 
 ### Pan and Zoom, and a simple way in (Jason, 2026-09-22)
 
-**"Ken Burns" is to be renamed "Pan and Zoom"** everywhere it is shown.
-The old name is a reference, not a description; the new one says what the
-control does.
+**"Ken Burns" was renamed "Pan and Zoom"** everywhere it was shown. The old
+name was a reference, not a description; the new one says what the
+control does. **Done 2026-09-23**, in one pass: the UI, the code
+(`PanAndZoom*` types and properties), the slide-settings JSON keys
+(`panAndZoom`, `panAndZoomSeed`) and the setlist TSV columns (`panzoom_*`,
+`default_panzoom`). Every show in the library was disposable test
+material, so no old spelling was kept decodable.
 
 **It is an effect, and effects are not a slide's default state.** Phase 2a
 separated a slide's starting placement into the Transform section, which
 leaves Pan and Zoom as something applied *on top*. So it should not be on
 by default for a new slide. It belongs instead to a choice made when a
 show is started — "make me a slideshow that gently moves" — rather than a
-setting every slide quietly carries.
+setting every slide quietly carries. **The show-level default was already
+`.off`** (`ShowDefaults.panAndZoom`). BGTools'
+`DesktopSettings.startingRandomDefaults` was the one default still set to
+`.auto` — flipped to `.off` the same day, since it's also the one that
+measurably costs CPU (see Known Issues in `spec/status.md`).
 
 **The larger point, not yet designed:** this editor is deliberately
 detailed, and that makes a plain slideshow harder than it should be.

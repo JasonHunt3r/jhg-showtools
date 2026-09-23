@@ -32,14 +32,14 @@ extension SetlistTests {
     }
 
     /// The show as the import should rebuild it: same settings, with each
-    /// slide's exported id kept as its auto Ken Burns seed.
+    /// slide's exported id kept as its auto Pan and Zoom seed.
     func expectedSlides(_ show: Show) -> [SlideSettings] {
-        show.slides.map { var s = $0.settings; s.kenBurnsSeed = s.kenBurnsSeed ?? $0.id; return s }
+        show.slides.map { var s = $0.settings; s.panAndZoomSeed = s.panAndZoomSeed ?? $0.id; return s }
     }
 
     func testARoundTripIntoTheSameLibraryReusesItsFiles() async throws {
         var (lib, show, _) = try await makeShow()
-        show.slides[1].settings.kenBurns = .auto
+        show.slides[1].settings.panAndZoom = .auto
         show.defaults.length = 6.5
         show.editor.rangeIn = 0.5
         show = try lib.saveShow(show)
@@ -66,7 +66,7 @@ extension SetlistTests {
 
     func testARoundTripIntoANewLibraryBringsFilesRatingsTagsAndTheSameAutoMoves() async throws {
         var (lib, show, items) = try await makeShow()
-        show.slides[1].settings.kenBurns = .auto
+        show.slides[1].settings.panAndZoom = .auto
         show = try lib.saveShow(show)
         let folder = try await export(show, lib)
 
@@ -87,8 +87,8 @@ extension SetlistTests {
         XCTAssertEqual(got.collectionID, col.id)
 
         // The same auto move as in the first library.
-        let before = ShowTimeline.autoKenBurns(seed: show.slides[1].id)
-        let after = ShowTimeline.autoKenBurns(seed: got.slides[1].settings.kenBurnsSeed ?? got.slides[1].id)
+        let before = ShowTimeline.autoPanAndZoom(seed: show.slides[1].id)
+        let after = ShowTimeline.autoPanAndZoom(seed: got.slides[1].settings.panAndZoomSeed ?? got.slides[1].id)
         XCTAssertEqual(before, after)
 
         // Importing it again reuses everything and gives nothing new ratings.
@@ -97,13 +97,13 @@ extension SetlistTests {
         XCTAssertEqual(again.reused, 4)
         // Its slides have new ids, and still the same auto move.
         XCTAssertNotEqual(again.show.slides[1].id, show.slides[1].id)
-        XCTAssertEqual(ShowTimeline.autoKenBurns(seed: again.show.slides[1].settings.kenBurnsSeed ?? 0), before)
+        XCTAssertEqual(ShowTimeline.autoPanAndZoom(seed: again.show.slides[1].settings.panAndZoomSeed ?? 0), before)
         XCTAssertEqual(try other.allItems().first { $0.id == got.slides[1].itemID }?.rating, 1)
     }
 
     func testEditsInTheTSVWinAndUnchangedCellsKeepExactValues() async throws {
         var (lib, show, _) = try await makeShow()
-        show.slides[0].settings.kenBurns = .custom(KenBurns(start: .centred, end: KenBurnsFrame(x: 0.123456, y: 0.4, zoom: 1.4),
+        show.slides[0].settings.panAndZoom = .custom(PanAndZoom(start: .centred, end: PanAndZoomFrame(x: 0.123456, y: 0.4, zoom: 1.4),
                                                             easing: .linear, acceleration: 0.3))
         show.slides[2].settings.rotation?.pivotStart = ImagePoint(x: 0.2, y: 0.2)
         show = try lib.saveShow(show)
@@ -130,7 +130,7 @@ extension SetlistTests {
         XCTAssertEqual(s3.rotation?.pivotStart, ImagePoint(x: 0.2, y: 0.2), "what the cell doesn't carry is kept")
         XCTAssertEqual(s1.length, .seconds(3))
         XCTAssertEqual(s1.transition, show.slides[0].settings.transition, "an unreadable cell keeps the value")
-        XCTAssertEqual(s1.kenBurns, show.slides[0].settings.kenBurns, "a rounded but unchanged cell keeps the exact value")
+        XCTAssertEqual(s1.panAndZoom, show.slides[0].settings.panAndZoom, "a rounded but unchanged cell keeps the exact value")
         XCTAssertEqual(got.problems.count, 1)
         XCTAssertTrue(got.problems[0].contains("transition"), got.problems[0])
     }
@@ -179,8 +179,8 @@ extension SetlistTests {
         XCTAssertEqual(try SetlistTSV.parseTransition("Dissolve 2"), Transition(style: .dissolve, duration: 2))
         XCTAssertEqual(try SetlistTSV.parseLength("clip"), .clip)
         XCTAssertEqual(try SetlistTSV.parseColour("#FF8000"), SRGBColor(red: 1, green: 128.0 / 255, blue: 0))
-        XCTAssertEqual(try SetlistTSV.parseKenBurns(start: "0.5,0.5,1", end: "", base: nil),
-                       .custom(KenBurns(start: .centred, end: .centred)))
+        XCTAssertEqual(try SetlistTSV.parsePanAndZoom(start: "0.5,0.5,1", end: "", base: nil),
+                       .custom(PanAndZoom(start: .centred, end: .centred)))
         for bad in ["", "wobble 1", "dissolve", "dissolve fast", "swipe left 1 lead"] {
             XCTAssertThrowsError(try SetlistTSV.parseTransition(bad), bad)
         }

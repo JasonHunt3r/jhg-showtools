@@ -1233,9 +1233,9 @@ struct HoverInfo: ViewModifier {
                                  : "\(slide.transitionIn.style.title), \(formatSeconds(slide.transitionIn.duration))")
                         }
                         GridRow {
-                            Text("Ken Burns").foregroundStyle(.secondary)
-                            Text(slide.kenBurns == nil ? "Off"
-                                 : String(format: "zoom %.2f → %.2f", slide.kenBurns!.start.zoom, slide.kenBurns!.end.zoom))
+                            Text("Pan and Zoom").foregroundStyle(.secondary)
+                            Text(slide.panAndZoom == nil ? "Off"
+                                 : String(format: "zoom %.2f → %.2f", slide.panAndZoom!.start.zoom, slide.panAndZoom!.end.zoom))
                         }
                         GridRow { Text("Fit").foregroundStyle(.secondary); Text(slide.fit.title) }
                         GridRow {

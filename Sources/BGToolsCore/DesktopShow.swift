@@ -97,7 +97,7 @@ public enum DesktopShow {
         pool.sort()             // Set order isn't stable; the shuffle is the only randomness
         pool.shuffle(using: &rng)
         // The slide's id is the item's, so each picture keeps its own auto
-        // Ken Burns move every time it comes round.
+        // Pan and Zoom move every time it comes round.
         let slides = pool.prefix(randomPassLimit).map { Slide(id: $0, itemID: $0) }
         var d = defaults
         d.loop = true

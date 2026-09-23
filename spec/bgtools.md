@@ -172,7 +172,7 @@ New with BGTools:
    video sound) play. Detail for the build: if two screens have it on,
    only one should be heard (the one on the main display?).
 8. **Settings for random pictures** — **Settled (Jason, 2026-09-22): one
-   set of desktop defaults** in BGTools (length, transition, Ken Burns
+   set of desktop defaults** in BGTools (length, transition, Pan and Zoom
    on/off, fit or fill), used by every random mode on every screen.
 9. **Power** — **Settled (Jason, 2026-09-22): pause when** the display
    sleeps or the screen locks (always), in **Low Power Mode**, and when an
@@ -286,12 +286,13 @@ New with BGTools:
   **Power, measured on the way** (the "curiosity" that turned out to
   matter): one desktop window redrawing cost **40% of a core even on a
   motionless still**, because every frame was recomposed. Now
-  `FrameState.isMotionless` (a still picture, no transition, no Ken Burns,
+  `FrameState.isMotionless` (a still picture, no transition, no Pan and Zoom,
   no lane image) lets a view skip frames until the slide changes: **40% →
   ~2%**. The desktop also draws at 30 fps rather than 60
-  (`makeView(fps:)`), worth about 7 points on its own. **Ken Burns still
-  costs ~40%**, since it really does move every frame — worth a look
-  before it's left on by default.
+  (`makeView(fps:)`), worth about 7 points on its own. **Pan and Zoom still
+  costs ~40%**, since it really does move every frame — worth a look. It's
+  why the random-mode default was flipped from `.auto` to `.off`
+  2026-09-23: it's opt-in now, not a cost every random desktop show pays.
 - **B7 ShowTools installs it. BUILT 2026-09-22.** `make-app.sh` builds
   BGTools (when XcodeGen is there) into `ShowTools.app/Contents/Resources`.
   **View ▸ Desktop Show…** (or "Set Up Desktop Show…" the first time)

@@ -37,31 +37,32 @@ slide's level line is slide settings, which are JSON.
 
 ## What's next
 
-1. **Ken Burns → "Pan and Zoom"**, and it stops being a new slide's
-   default. Settled 2026-09-22 (`f0bd5d8`, which changed only the docs —
-   nothing is renamed yet: the UI still says "Ken Burns" in five files).
-   **Do it now, while it is cheap.** 168 references across 22 files,
-   including `KenBurnsEditor.swift`, and three of them are persisted
-   spellings: the `kenBurns` and `kenBurnsSeed` keys in slide-settings
-   JSON (`SlideSettings` has no explicit `CodingKeys`, so the keys are
-   synthesized from the property names), and the `kenburns_start`,
-   `kenburns_end` and `default_kenburns` cells in the setlist TSV. Every
-   show in the library today is disposable test material, so none of that
-   has to be preserved. Once a show is worth keeping it does: explicit
-   `CodingKeys` pinning the old strings, and a TSV reader taking both
-   spellings.
-2. **A listen, twice over.** (1) An exported movie against the same show
+1. **A listen, twice over.** (1) An exported movie against the same show
    playing: timing, crossfades, a video slide's sound against a song.
    (2) A video slide's sound in the app (V6): a clip with its middle
    dropped, a video against a song (they should just mix, no ducking),
    and whether the level glides or steps audibly — live it is set once
    per drawn frame, in an export per sample, so the export may be the
    smoother of the two.
-3. **A show made from Jason's own photos and music**, imported by hand.
+2. **A show made from Jason's own photos and music**, imported by hand.
    This is what v1 end-to-end still needs. The demo show was seeded by a
    script, so ingest-by-drag, building a show by hand and editing it are
    untested by a person.
-4. **Telling BGTools when a library moves** (B7 left it open).
+3. **Telling BGTools when a library moves** (B7 left it open).
+
+**Ken Burns → "Pan and Zoom" — done 2026-09-23.** Settled 2026-09-22
+(`f0bd5d8`). Renamed everywhere in one pass: 168 references across 22
+files, including `KenBurnsEditor.swift` → `PanAndZoomEditor.swift`, and
+the persisted spellings — the `panAndZoom` and `panAndZoomSeed` keys in
+slide-settings JSON, and the `panzoom_start`, `panzoom_end` and
+`default_panzoom` cells in the setlist TSV. Every show in the library was
+disposable test material, so no old spelling was kept readable. **The
+show-level default was already `.off`** (Phase 2a's settled decision that
+effects aren't a slide's default state); BGTools' random-mode default
+(`DesktopSettings.startingRandomDefaults`) was the one place still set to
+`.auto`, flipped to `.off` the same day since it's also the one that
+measurably costs CPU (see Known Issues below). `swift test`: 279 tests,
+all pass.
 
 Parked: image stickiness, a guided first run (`spec/first-run-brief.md`),
 and Flush presets from 2a.
@@ -130,7 +131,9 @@ and Flush presets from 2a.
 - **CPU** is about 33–37% while the editor plays; memory about 430 MB.
   BGTools' desktop mode is ~2% since B6, except while Pan and Zoom moves,
   which costs about 40% of a core because it really does redraw every
-  frame — worth a look, and the reason it shouldn't be a default.
+  frame — worth a look. It's why BGTools' random-mode default was flipped
+  to `.off` 2026-09-23 (it's opt-in now, not a cost every random desktop
+  show pays).
 - **Video:** it can't go in the lane yet. The frame strip shows a video's
   first frame, the onion skin skips video slides, and `stcli render` draws
   a video slide as the background colour — only `stcli movie` and the app

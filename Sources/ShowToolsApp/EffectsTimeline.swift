@@ -48,8 +48,8 @@ struct EffectsTimeline: View {
             out.append(Bar(id: "in", label: "In", detail: "\(t.style.title), \(formatSeconds(t.duration))",
                            from: s.lowerBound, to: s.lowerBound + tin, colour: .white.opacity(0.8)))
         }
-        if let kb = slide.kenBurns {
-            out.append(Bar(id: "kb", label: "Ken Burns",
+        if let kb = slide.panAndZoom {
+            out.append(Bar(id: "kb", label: "Pan and Zoom",
                            detail: String(format: "zoom %.2f → %.2f", kb.start.zoom, kb.end.zoom),
                            from: s.lowerBound, to: s.upperBound, colour: .green,
                            frozen: kb.freezeOnTransition ? frozenWindows : []))

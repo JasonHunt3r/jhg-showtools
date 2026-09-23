@@ -67,8 +67,8 @@ final class DesktopShowTests: XCTestCase {
         XCTAssertEqual(Set(c.show.slides.map(\.itemID)), [2, 4])
         XCTAssertNil(c.sourceShowID)
         XCTAssertEqual(c.show.defaults.length, 8)
-        XCTAssertEqual(c.show.defaults.kenBurns, .auto)
-        XCTAssertEqual(c.show.slides.map(\.id), c.show.slides.map(\.itemID), "slide id = item id: steady Ken Burns")
+        XCTAssertEqual(c.show.defaults.panAndZoom, .off)
+        XCTAssertEqual(c.show.slides.map(\.id), c.show.slides.map(\.itemID), "slide id = item id: steady Pan and Zoom")
         let all = try XCTUnwrap(build(.allFiles))
         XCTAssertEqual(Set(all.show.slides.map(\.itemID)), [1, 2, 3, 4, 5])
     }

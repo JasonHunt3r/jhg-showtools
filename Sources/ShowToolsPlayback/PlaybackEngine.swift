@@ -98,7 +98,7 @@ public final class PlaybackEngine {
         device = MTLCreateSystemDefaultDevice()!
         queue = device.makeCommandQueue()!
         ci = CIContext(mtlDevice: device, options: [.cacheIntermediates: false])
-        // Decode at the size of the largest screen, with headroom for Ken Burns zoom.
+        // Decode at the size of the largest screen, with headroom for Pan and Zoom zoom.
         let largest = NSScreen.screens.map { max($0.frame.width, $0.frame.height) * $0.backingScaleFactor }.max() ?? 2560
         media = MediaProvider(maxPixels: Int(min(largest * 1.25, 8192)), urlFor: { [weak model] in model?.url(for: $0) })
         media.onChange = { [weak self] in self?.touch() }

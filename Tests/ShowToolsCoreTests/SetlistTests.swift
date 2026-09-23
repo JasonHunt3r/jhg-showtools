@@ -185,11 +185,11 @@ final class SetlistTests: XCTestCase {
         r.enabled = false
         XCTAssertEqual(SetlistTSV.rotation(r), "off")
         XCTAssertEqual(SetlistTSV.colour(SRGBColor(red: 1, green: 0.5, blue: 0)), "#ff8000")
-        let kb = KenBurnsSetting.custom(KenBurns(start: .centred, end: KenBurnsFrame(x: 0.3, y: 0.4, zoom: 1.4)))
-        XCTAssertEqual(SetlistTSV.kenBurnsStart(kb), "0.5,0.5,1")
-        XCTAssertEqual(SetlistTSV.kenBurnsEnd(kb), "0.3,0.4,1.4")
-        XCTAssertEqual(SetlistTSV.kenBurnsStart(.auto), "auto")
-        XCTAssertEqual(SetlistTSV.kenBurnsEnd(.auto), "")
+        let kb = PanAndZoomSetting.custom(PanAndZoom(start: .centred, end: PanAndZoomFrame(x: 0.3, y: 0.4, zoom: 1.4)))
+        XCTAssertEqual(SetlistTSV.panAndZoomStart(kb), "0.5,0.5,1")
+        XCTAssertEqual(SetlistTSV.panAndZoomEnd(kb), "0.3,0.4,1.4")
+        XCTAssertEqual(SetlistTSV.panAndZoomStart(.auto), "auto")
+        XCTAssertEqual(SetlistTSV.panAndZoomEnd(.auto), "")
         XCTAssertEqual(SetlistExport.folderName(for: ".Trip/2024: Day 1"), "Trip-2024- Day 1")
         XCTAssertEqual(SetlistExport.folderName(for: "  "), "Untitled Show")
     }
@@ -213,7 +213,7 @@ final class SetlistTests: XCTestCase {
         try lib.setTags(["Summer"], for: sunset.id)
         var show = try lib.createShow(name: "Beach Trip", itemIDs: [beach.id, sunset.id, beach.id])
         show.slides[0].settings.length = .seconds(8)
-        show.slides[0].settings.kenBurns = .custom(KenBurns(start: .centred, end: KenBurnsFrame(x: 0.3, y: 0.4, zoom: 1.4)))
+        show.slides[0].settings.panAndZoom = .custom(PanAndZoom(start: .centred, end: PanAndZoomFrame(x: 0.3, y: 0.4, zoom: 1.4)))
         show.slides[1].settings.transition = Transition(style: .swipe, duration: 0.5)
         var rot = Rotation(); rot.endAngle = 90
         show.slides[2].settings.rotation = rot

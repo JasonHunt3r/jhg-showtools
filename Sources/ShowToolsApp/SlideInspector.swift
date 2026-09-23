@@ -163,14 +163,14 @@ struct SlideInspector: View {
                         }
                     }
                     transitionSection(first)
-                    kenBurnsSection(first)
+                    panAndZoomSection(first)
                     rotationSection(first)
                 }
                 .padding(.vertical, 12)
             }
         } else {
             ContentUnavailableView("No slide selected", systemImage: "cursorarrow.click",
-                                   description: Text("Select a slide to set its length, transition and Ken Burns."))
+                                   description: Text("Select a slide to set its length, transition and Pan and Zoom."))
         }
     }
 
@@ -387,24 +387,24 @@ struct SlideInspector: View {
 
     private enum KBMode: Hashable { case inherit, off, auto, custom }
 
-    private func kenBurnsSection(_ first: Slide) -> some View {
-        let mode: KBMode = switch first.settings.kenBurns {
+    private func panAndZoomSection(_ first: Slide) -> some View {
+        let mode: KBMode = switch first.settings.panAndZoom {
         case nil: .inherit
         case .off: .off
         case .auto: .auto
         case .custom: .custom
         }
-        let defaultTitle = show.defaults.kenBurns == .auto ? "Auto" : "Off"
+        let defaultTitle = show.defaults.panAndZoom == .auto ? "Auto" : "Off"
         return Section {
             card {
-            Picker("Ken Burns", selection: Binding(get: { mode }, set: { m in
+            Picker("Pan and Zoom", selection: Binding(get: { mode }, set: { m in
                 let seed = customStart(for: first)
-                edit("Change Ken Burns") {
+                edit("Change Pan and Zoom") {
                     switch m {
-                    case .inherit: $0.kenBurns = nil
-                    case .off: $0.kenBurns = .off
-                    case .auto: $0.kenBurns = .auto
-                    case .custom: $0.kenBurns = .custom(seed)
+                    case .inherit: $0.panAndZoom = nil
+                    case .off: $0.panAndZoom = .off
+                    case .auto: $0.panAndZoom = .auto
+                    case .custom: $0.panAndZoom = .custom(seed)
                     }
                 }
             })) {
@@ -413,52 +413,52 @@ struct SlideInspector: View {
                 Text("Auto").tag(KBMode.auto)
                 Text("Custom").tag(KBMode.custom)
             }
-            if case .custom(let kb) = first.settings.kenBurns, let item = model.itemsByID[first.itemID] {
-                KenBurnsEditor(item: item, url: model.url(for: item),
+            if case .custom(let kb) = first.settings.panAndZoom, let item = model.itemsByID[first.itemID] {
+                PanAndZoomEditor(item: item, url: model.url(for: item),
                                fit: first.settings.fit ?? show.defaults.fit, kb: kb) { new in
-                    edit("Edit Ken Burns") { $0.kenBurns = .custom(new) }
+                    edit("Edit Pan and Zoom") { $0.panAndZoom = .custom(new) }
                 }
                 AccelerationSlider(value: kb.acceleration) { a in
-                    editKenBurns("Change Acceleration") { $0.acceleration = a }
+                    editPanAndZoom("Change Acceleration") { $0.acceleration = a }
                 } preview: { a in
-                    previewKenBurns { $0.acceleration = a }
+                    previewPanAndZoom { $0.acceleration = a }
                 }
                 Toggle("Freeze on transition", isOn: Binding(get: { kb.freezeOnTransition }, set: { on in
-                    editKenBurns("Change Freeze on Transition") { $0.freezeOnTransition = on }
+                    editPanAndZoom("Change Freeze on Transition") { $0.freezeOnTransition = on }
                 }))
                 .help("Hold the start frame through the transition in and the end frame through the transition out")
             }
             }
-        } footer: { mixedNote(mixed { $0.kenBurns }).padding(.horizontal, 16) }
+        } footer: { mixedNote(mixed { $0.panAndZoom }).padding(.horizontal, 16) }
     }
 
     /// Changes one field of each selected slide's custom move, leaving the
     /// rest of each move as it is.
-    private func editKenBurns(_ action: String, _ change: @escaping (inout KenBurns) -> Void) {
+    private func editPanAndZoom(_ action: String, _ change: @escaping (inout PanAndZoom) -> Void) {
         edit(action) { s in
-            if case .custom(var k) = s.kenBurns {
+            if case .custom(var k) = s.panAndZoom {
                 change(&k)
-                s.kenBurns = .custom(k)
+                s.panAndZoom = .custom(k)
             }
         }
     }
 
-    private func previewKenBurns(_ change: @escaping (inout KenBurns) -> Void) {
+    private func previewPanAndZoom(_ change: @escaping (inout PanAndZoom) -> Void) {
         previewEdit { s in
-            if case .custom(var k) = s.kenBurns {
+            if case .custom(var k) = s.panAndZoom {
                 change(&k)
-                s.kenBurns = .custom(k)
+                s.panAndZoom = .custom(k)
             }
         }
     }
 
     /// Custom starts from whatever the slide does now, so switching to it
     /// never jumps: an Auto move is kept, Off becomes a gentle push in.
-    private func customStart(for slide: Slide) -> KenBurns {
-        if let r = timeline.slides.first(where: { $0.slide.id == slide.id }), let kb = r.kenBurns {
+    private func customStart(for slide: Slide) -> PanAndZoom {
+        if let r = timeline.slides.first(where: { $0.slide.id == slide.id }), let kb = r.panAndZoom {
             return kb
         }
-        return KenBurns(start: .centred, end: KenBurnsFrame(x: 0.5, y: 0.5, zoom: 1.25))
+        return PanAndZoom(start: .centred, end: PanAndZoomFrame(x: 0.5, y: 0.5, zoom: 1.25))
     }
 
     /// Fit plus the still placement on top of it: where the image starts

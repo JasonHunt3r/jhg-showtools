@@ -123,7 +123,7 @@ public struct MovieExportSettings: Hashable, Sendable {
     /// Shows are composed for a screen, and Jason's is roughly 16:10. A
     /// movie asked for at another shape therefore gets the whole picture,
     /// fitted and letterboxed (or pillarboxed) — never a crop, which would
-    /// cut every slide and shift every Ken Burns move. The picture itself
+    /// cut every slide and shift every Pan and Zoom move. The picture itself
     /// is composed at `picture.size`, so it is even too.
     public func plan(showAspect: CGFloat) -> MovieRenderPlan {
         let canvas = size

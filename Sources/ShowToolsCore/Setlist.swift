@@ -81,7 +81,7 @@ public struct SetlistManifest: Codable, Hashable, Sendable {
 
 /// One slide: its file in the folder, the file's library hash (import
 /// matches on it first, since a stripped copy hashes differently), the
-/// slide's id in the exporting library (auto Ken Burns is seeded from it),
+/// slide's id in the exporting library (auto Pan and Zoom is seeded from it),
 /// and its settings.
 public struct SetlistSlide: Codable, Hashable, Sendable {
     public var file: String
@@ -169,8 +169,8 @@ enum Lenient<T: Decodable> {
 /// cell replaces it.
 public enum SetlistTSV {
     public static let firstLine = "# ShowTools setlist v1"
-    public static let columns = ["file", "length", "transition", "kenburns_start",
-                                 "kenburns_end", "fit", "rotation", "background"]
+    public static let columns = ["file", "length", "transition", "panzoom_start",
+                                 "panzoom_end", "fit", "rotation", "background"]
 
     public static func text(for m: SetlistManifest) -> String {
         var lines = [firstLine]
@@ -178,7 +178,7 @@ public enum SetlistTSV {
         meta("name", clean(m.name))
         meta("default_length", number(m.defaults.length))
         meta("default_transition", transition(m.defaults.transition))
-        meta("default_kenburns", kenBurnsStart(m.defaults.kenBurns))
+        meta("default_panzoom", panAndZoomStart(m.defaults.panAndZoom))
         meta("default_fit", m.defaults.fit.rawValue)
         meta("default_background", colour(m.defaults.background))
         meta("video_clip_length", m.defaults.videoUsesClipLength ? "yes" : "no")
@@ -196,8 +196,8 @@ public enum SetlistTSV {
             s.file,
             st.length.map(length) ?? "",
             st.transition.map(transition) ?? "",
-            st.kenBurns.map(kenBurnsStart) ?? "",
-            st.kenBurns.map(kenBurnsEnd) ?? "",
+            st.panAndZoom.map(panAndZoomStart) ?? "",
+            st.panAndZoom.map(panAndZoomEnd) ?? "",
             st.fit?.rawValue ?? "",
             st.rotation.map(rotation) ?? "",
             st.background.map(colour) ?? "",
@@ -232,11 +232,11 @@ public enum SetlistTSV {
         return parts.joined(separator: " ")
     }
 
-    public static func frame(_ f: KenBurnsFrame) -> String {
+    public static func frame(_ f: PanAndZoomFrame) -> String {
         [f.x, f.y, f.zoom].map(number).joined(separator: ",")
     }
 
-    public static func kenBurnsStart(_ k: KenBurnsSetting) -> String {
+    public static func panAndZoomStart(_ k: PanAndZoomSetting) -> String {
         switch k {
         case .off: "off"
         case .auto: "auto"
@@ -244,7 +244,7 @@ public enum SetlistTSV {
         }
     }
 
-    public static func kenBurnsEnd(_ k: KenBurnsSetting) -> String {
+    public static func panAndZoomEnd(_ k: PanAndZoomSetting) -> String {
         if case .custom(let kb) = k { return frame(kb.end) }
         return ""
     }

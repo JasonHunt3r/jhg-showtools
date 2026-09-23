@@ -79,14 +79,14 @@ final class LibraryTests: XCTestCase {
         show.slides[2].settings.length = .seconds(9)
         show.slides.swapAt(0, 1)
         show.slides.remove(at: 1)
-        show.defaults.kenBurns = .auto
+        show.defaults.panAndZoom = .auto
         try lib.saveShow(show)
 
         let loaded = try lib.allShows()
         XCTAssertEqual(loaded.count, 1)
         XCTAssertEqual(loaded[0].slides.map(\.itemID), [b.id, a.id])
         XCTAssertEqual(loaded[0].slides[1].settings.length, .seconds(9))
-        XCTAssertEqual(loaded[0].defaults.kenBurns, .auto)
+        XCTAssertEqual(loaded[0].defaults.panAndZoom, .auto)
 
         try lib.deleteShow(id: show.id)
         XCTAssertTrue(try lib.allShows().isEmpty)
@@ -102,12 +102,12 @@ final class LibraryTests: XCTestCase {
 
 final class DecodingTests: XCTestCase {
     func testOneBadFieldDoesNotResetTheRest() throws {
-        let json = #"{"length":7,"kenBurns":"garbage","loop":false,"fit":"fit"}"#
+        let json = #"{"length":7,"panAndZoom":"garbage","loop":false,"fit":"fit"}"#
         let d = try JSONDecoder().decode(ShowDefaults.self, from: Data(json.utf8))
         XCTAssertEqual(d.length, 7)
         XCTAssertEqual(d.loop, false)
         XCTAssertEqual(d.fit, .fit)
-        XCTAssertEqual(d.kenBurns, .off, "unreadable field falls back alone")
+        XCTAssertEqual(d.panAndZoom, .off, "unreadable field falls back alone")
 
         let s = try JSONDecoder().decode(SlideSettings.self,
             from: Data(#"{"length":{"seconds":{"_0":3}},"transition":{"style":"nope"}}"#.utf8))
@@ -116,13 +116,13 @@ final class DecodingTests: XCTestCase {
     }
 
     /// The small value types inside the settings fall back field by field
-    /// too, so a field added later can't cost a saved Ken Burns move, pivot
+    /// too, so a field added later can't cost a saved Pan and Zoom move, pivot
     /// or background.
     func testSmallValueTypesDecodeFieldByField() throws {
-        let kb = try JSONDecoder().decode(KenBurns.self, from: Data(
+        let kb = try JSONDecoder().decode(PanAndZoom.self, from: Data(
             #"{"start":{"x":0.2,"y":0.3,"zoom":1.5},"end":{"x":0.7,"zoom":"bad"}}"#.utf8))
-        XCTAssertEqual(kb.start, KenBurnsFrame(x: 0.2, y: 0.3, zoom: 1.5))
-        XCTAssertEqual(kb.end, KenBurnsFrame(x: 0.7, y: 0.5, zoom: 1))
+        XCTAssertEqual(kb.start, PanAndZoomFrame(x: 0.2, y: 0.3, zoom: 1.5))
+        XCTAssertEqual(kb.end, PanAndZoomFrame(x: 0.7, y: 0.5, zoom: 1))
 
         let p = try JSONDecoder().decode(ImagePoint.self, from: Data(#"{"x":0.1,"future":true}"#.utf8))
         XCTAssertEqual(p, ImagePoint(x: 0.1, y: 0.5))
@@ -168,7 +168,7 @@ final class FramingTests: XCTestCase {
 
     func testZoomAndTopLeftCentreClampsInsideImage() {
         let r = Compositor.viewRegion(imageSize: CGSize(width: 4000, height: 3000), fit: .fill,
-                                      kb: KenBurnsFrame(x: 0, y: 0, zoom: 2),
+                                      kb: PanAndZoomFrame(x: 0, y: 0, zoom: 2),
                                       outputSize: CGSize(width: 1600, height: 900))
         XCTAssertEqual(r.origin, .zero)
         XCTAssertEqual(r.width, 2000, accuracy: 0.01)

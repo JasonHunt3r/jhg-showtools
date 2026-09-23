@@ -93,7 +93,7 @@ enum SlideActions {
     }
 
     /// Copies go right after their originals, with their settings, as new uses.
-    /// A copy's auto Ken Burns comes from its own new id, as it always has,
+    /// A copy's auto Pan and Zoom comes from its own new id, as it always has,
     /// so an imported slide's seed isn't copied.
     static func duplicate(_ ids: Set<Int64>, mutate: ShowMutator) {
         mutate("Duplicate") { s in
@@ -102,7 +102,7 @@ enum SlideActions {
                 out.append(slide)
                 if ids.contains(slide.id) {
                     var copy = Slide(id: 0, itemID: slide.itemID, settings: slide.settings)
-                    copy.settings.kenBurnsSeed = nil
+                    copy.settings.panAndZoomSeed = nil
                     out.append(copy)
                 }
             }
@@ -209,9 +209,9 @@ struct SlideRow: View {
                             setting(formatSeconds(r.length), custom: slide.settings.length != nil)
                             Text("·").foregroundStyle(.tertiary)
                             setting(r.transitionIn.style.title, custom: slide.settings.transition != nil)
-                            if r.kenBurns != nil {
+                            if r.panAndZoom != nil {
                                 Text("·").foregroundStyle(.tertiary)
-                                setting("Ken Burns", custom: slide.settings.kenBurns != nil)
+                                setting("Pan and Zoom", custom: slide.settings.panAndZoom != nil)
                             }
                         }
                         .font(.caption)
@@ -296,9 +296,9 @@ struct DefaultsBar: View {
     private var look: some View {
         let d = show.defaults
         return HStack(spacing: 18) {
-            labelled("Ken Burns") {
-                Picker("", selection: Binding(get: { d.kenBurns == .auto },
-                                              set: { on in mutate("Change Default Ken Burns") { $0.defaults.kenBurns = on ? .auto : .off } })) {
+            labelled("Pan and Zoom") {
+                Picker("", selection: Binding(get: { d.panAndZoom == .auto },
+                                              set: { on in mutate("Change Default Pan and Zoom") { $0.defaults.panAndZoom = on ? .auto : .off } })) {
                     Text("Off").tag(false)
                     Text("Auto").tag(true)
                 }

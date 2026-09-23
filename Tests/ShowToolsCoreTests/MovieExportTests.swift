@@ -93,7 +93,7 @@ final class MovieExportTests: XCTestCase {
 
     /// Jason's shows are roughly 16:10, which is *narrower* than 1080p's
     /// 16:9 — so at 1080p they pillarbox to 1728×1080. The picture is never
-    /// cut: every slide and every Ken Burns move is framed for 16:10.
+    /// cut: every slide and every Pan and Zoom move is framed for 16:10.
     func testASixteenTenShowPillarboxesInsideTenEightyRatherThanCropping() {
         let s = MovieExportSettings(size: CGSize(width: 1920, height: 1080))
         let plan = s.plan(showAspect: 16.0 / 10.0)

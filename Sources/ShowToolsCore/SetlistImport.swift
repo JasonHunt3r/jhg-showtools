@@ -88,16 +88,16 @@ extension SetlistTSV {
         return Transition(style: style, duration: duration, direction: direction, lead: lead)
     }
 
-    public static func parseFrame(_ s: String) throws -> KenBurnsFrame {
+    public static func parseFrame(_ s: String) throws -> PanAndZoomFrame {
         let v = try s.split(separator: ",").map { try parseNumber(String($0)) }
         guard v.count == 3, v[2] > 0 else { throw BadCell(text: s) }
-        return KenBurnsFrame(x: v[0], y: v[1], zoom: v[2])
+        return PanAndZoomFrame(x: v[0], y: v[1], zoom: v[2])
     }
 
-    /// The two Ken Burns cells together. A move with no end holds still at
+    /// The two Pan and Zoom cells together. A move with no end holds still at
     /// its start. `base` supplies what the cells don't carry (easing,
     /// acceleration, freeze).
-    public static func parseKenBurns(start: String, end: String, base: KenBurnsSetting?) throws -> KenBurnsSetting? {
+    public static func parsePanAndZoom(start: String, end: String, base: PanAndZoomSetting?) throws -> PanAndZoomSetting? {
         let s = start.trimmingCharacters(in: .whitespaces).lowercased()
         switch s {
         case "": return nil
@@ -107,7 +107,7 @@ extension SetlistTSV {
             let a = try parseFrame(s)
             let b = end.trimmingCharacters(in: .whitespaces).isEmpty ? a : try parseFrame(end)
             if case .custom(var kb) = base { kb.start = a; kb.end = b; return .custom(kb) }
-            return .custom(KenBurns(start: a, end: b))
+            return .custom(PanAndZoom(start: a, end: b))
         }
     }
 
@@ -291,11 +291,11 @@ public enum SetlistImport {
         return url.path.hasPrefix(root + "/") ? url : nil
     }
 
-    /// A slide's settings with its exported id kept as its auto Ken Burns
+    /// A slide's settings with its exported id kept as its auto Pan and Zoom
     /// seed, unless it already carries one from an earlier import.
     static func seeded(_ s: SetlistSlide) -> SlideSettings {
         var st = s.settings
-        if st.kenBurnsSeed == nil, s.id != 0 { st.kenBurnsSeed = s.id }
+        if st.panAndZoomSeed == nil, s.id != 0 { st.panAndZoomSeed = s.id }
         return st
     }
 
@@ -327,7 +327,7 @@ public enum SetlistImport {
             let js = byFile[file] ?? byFile.first { $0.key.lowercased() == file.lowercased() }?.value
             var st = js.map(seeded) ?? SlideSettings()
             // A row repeated in the spreadsheet is a second use: its own auto move.
-            if let js, used.contains(js.file) { st.kenBurnsSeed = nil }
+            if let js, used.contains(js.file) { st.panAndZoomSeed = nil }
             if let js { used.insert(js.file) }
             let at = { (col: String) in "show.tsv line \(line), \(col)" }
 
@@ -335,15 +335,15 @@ public enum SetlistImport {
                               where: at("length"), problems: &problems, parse: SetlistTSV.parseLength)
             st.transition = merge(st.transition, cell: row["transition"], written: SetlistTSV.transition,
                                   where: at("transition"), problems: &problems, parse: SetlistTSV.parseTransition)
-            if row["kenburns_start"] != nil || row["kenburns_end"] != nil {
-                let base = st.kenBurns
-                let start = row["kenburns_start"] ?? base.map(SetlistTSV.kenBurnsStart) ?? ""
-                let end = row["kenburns_end"] ?? base.map(SetlistTSV.kenBurnsEnd) ?? ""
-                let wasStart = base.map(SetlistTSV.kenBurnsStart) ?? ""
-                let wasEnd = base.map(SetlistTSV.kenBurnsEnd) ?? ""
+            if row["panzoom_start"] != nil || row["panzoom_end"] != nil {
+                let base = st.panAndZoom
+                let start = row["panzoom_start"] ?? base.map(SetlistTSV.panAndZoomStart) ?? ""
+                let end = row["panzoom_end"] ?? base.map(SetlistTSV.panAndZoomEnd) ?? ""
+                let wasStart = base.map(SetlistTSV.panAndZoomStart) ?? ""
+                let wasEnd = base.map(SetlistTSV.panAndZoomEnd) ?? ""
                 if start.trimmingCharacters(in: .whitespaces) != wasStart || end.trimmingCharacters(in: .whitespaces) != wasEnd {
-                    do { st.kenBurns = try SetlistTSV.parseKenBurns(start: start, end: end, base: base) } catch {
-                        problems.append("\(at("Ken Burns")): \(error)")
+                    do { st.panAndZoom = try SetlistTSV.parsePanAndZoom(start: start, end: end, base: base) } catch {
+                        problems.append("\(at("Pan and Zoom")): \(error)")
                     }
                 }
             }
@@ -373,14 +373,14 @@ public enum SetlistImport {
         d.transition = merge(d.transition, cell: meta["default_transition"], written: SetlistTSV.transition,
                              where: at("default_transition"), problems: &problems,
                              parse: SetlistTSV.parseTransition) ?? d.transition
-        d.kenBurns = merge(d.kenBurns, cell: meta["default_kenburns"], written: SetlistTSV.kenBurnsStart,
-                           where: at("default_kenburns"), problems: &problems) {
+        d.panAndZoom = merge(d.panAndZoom, cell: meta["default_panzoom"], written: SetlistTSV.panAndZoomStart,
+                           where: at("default_panzoom"), problems: &problems) {
             switch $0.lowercased() {
-            case "off": return KenBurnsSetting.off
+            case "off": return PanAndZoomSetting.off
             case "auto": return .auto
             default: throw SetlistTSV.BadCell(text: $0)
             }
-        } ?? d.kenBurns
+        } ?? d.panAndZoom
         d.fit = merge(d.fit, cell: meta["default_fit"], written: { $0.rawValue },
                       where: at("default_fit"), problems: &problems, parse: SetlistTSV.parseFit) ?? d.fit
         d.background = merge(d.background, cell: meta["default_background"], written: SetlistTSV.colour,

@@ -46,7 +46,7 @@ struct TransformOverlay: View {
     private enum Zone: Equatable { case move, scale(corner: Int), rotate, anchor }
 
     /// What the Transform handles and keys edit: a slide's image, or an
-    /// image from the lane (which has no Ken Burns or spin, but is placed
+    /// image from the lane (which has no Pan and Zoom or spin, but is placed
     /// by the same fit and Transform).
     enum Subject: Equatable {
         case slide(Int64)
@@ -128,7 +128,7 @@ struct TransformOverlay: View {
         let frame: CGRect
         let W: CGFloat, H: CGFloat
         /// Image pixels (Core Image, y up) → picture pixels (y up), for fit
-        /// and Ken Burns only, and with the spin and Transform too.
+        /// and Pan and Zoom only, and with the spin and Transform too.
         let base: CGAffineTransform
         let full: CGAffineTransform
         let transform: Transform
@@ -147,7 +147,7 @@ struct TransformOverlay: View {
         }
         /// The offset in view points (right and down).
         var offset: CGPoint { CGPoint(x: transform.offsetX * frame.width, y: transform.offsetY * frame.height) }
-        /// The anchor where fit and Ken Burns put it, before the Transform.
+        /// The anchor where fit and Pan and Zoom put it, before the Transform.
         var anchorBase: CGPoint { view(imageCI(transform.anchor).applying(base)) }
         /// Where the Transform turns around, on screen: the crosshair.
         var anchorOnScreen: CGPoint { anchorBase + offset }
@@ -169,7 +169,7 @@ struct TransformOverlay: View {
         let W = CGFloat(layer.slide.item.pixelWidth), H = CGFloat(layer.slide.item.pixelHeight)
         guard W > 0, H > 0, frame.width > 0, frame.height > 0 else { return nil }
         let e = CGRect(x: 0, y: 0, width: W, height: H)
-        guard let base = Compositor.placement(imageExtent: e, fit: layer.slide.fit, kb: layer.kenBurnsFrame,
+        guard let base = Compositor.placement(imageExtent: e, fit: layer.slide.fit, kb: layer.panAndZoomFrame,
                                               transform: .identity, spin: nil, outputSize: frame.size),
               let full = Compositor.placement(for: layer, imageExtent: e, outputSize: frame.size)
         else { return nil }
@@ -561,7 +561,7 @@ extension TransformOverlay {
         let e = CGRect(x: 0, y: 0, width: W, height: H)
         func view(_ p: CGPoint) -> CGPoint { CGPoint(x: frame.minX + p.x, y: frame.minY + frame.height - p.y) }
         func end(_ progress: Double) -> RotEnd? {
-            let kb = r.kenBurns?.frame(at: progress) ?? .centred
+            let kb = r.panAndZoom?.frame(at: progress) ?? .centred
             let pivot = rot.pivot(at: progress), angle = rot.angle(at: progress, span: span)
             guard let still = Compositor.placement(imageExtent: e, fit: r.fit, kb: kb, transform: r.transform,
                                                    spin: nil, outputSize: frame.size),
@@ -642,7 +642,7 @@ extension TransformOverlay {
         engine.endLiveEdit()
     }
 
-    /// The Ken Burns editor's colours: green for the start, red for the end.
+    /// The Pan and Zoom editor's colours: green for the start, red for the end.
     func rotationHandles(_ g: RotGeo) -> some View {
         Canvas { ctx, _ in
             func outlined(_ path: Path, _ colour: Color, width: CGFloat = 1.5) {

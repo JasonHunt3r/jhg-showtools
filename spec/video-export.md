@@ -20,7 +20,7 @@ exporter's inner loop, working today.
 | Frame rate | **30 default**, 24 / 30 / 60 in the list |
 
 **Why frame size is a real question.** Shows are not framed 16:9.
-`outputAspect` (`KenBurnsEditor.swift:8`) is *the main screen's* shape, and
+`outputAspect` (`PanAndZoomEditor.swift:8`) is *the main screen's* shape, and
 `outputPixelSize` is that screen in pixels — it's what the "soft at this
 zoom" badge judges against. Jason's shows are composed at roughly 16:10, so
 exporting to 1080p would letterbox or crop every slide and shift every Ken
@@ -176,7 +176,7 @@ Core doesn't decide this: a video slide's picture is whatever the caller's
     turned up are gathered, so a clip dropped into a show set to music
     never blasts its own audio (`spec/video-audio.md`).
   - **Checked by hand**: against the pre-E5 export, holding changed 10 of
-    98 frames over 3.5 s (Ken Burns alone) where playing changes 83 of 98.
+    98 frames over 3.5 s (Pan and Zoom alone) where playing changes 83 of 98.
     For sound, the generated test clip has no audio track at all — rightly
     reported as nothing to mix — so an export was ingested back as a video
     that does have sound: with the line dropped 2.3–5.0 s of an 8 s slide,

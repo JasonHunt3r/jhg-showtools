@@ -29,7 +29,7 @@ As built:
   default settings (slide length, transition, fit…), slides, songs, and
   markers.
 - **Slide**: one *use* of a file in a show, with its own settings: length,
-  transition in, Ken Burns (a pan and zoom), fit, transform (position,
+  transition in, Pan and Zoom (a pan and zoom), fit, transform (position,
   scale, rotation), background, rotation effect. The same photo can be
   several slides with different settings. Anything not set uses the show's
   default.
@@ -102,7 +102,7 @@ selected" in the inspector, "No Selection" in the Info panel.
    storyline).
 
 **Naming, settled 2026-09-22:** the effect is called **Pan and Zoom**, not
-Ken Burns — the old name is a reference rather than a description. The app
+Pan and Zoom — the old name is a reference rather than a description. The app
 has not been renamed yet (`spec/status.md` has the job), so the UI you see
-today still says "Ken Burns" everywhere. Write the onboarding words with
+today still says "Pan and Zoom" everywhere. Write the onboarding words with
 **Pan and Zoom**.

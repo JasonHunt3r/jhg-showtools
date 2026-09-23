@@ -32,16 +32,16 @@ struct SoftBadge: View {
 /// Drag the start (green) and end (red) frames on the picture. Drag inside
 /// a frame to move it; drag its corner to zoom. Framing uses the same
 /// calculation as the renderer, so what's drawn here is what plays.
-struct KenBurnsEditor: View {
+struct PanAndZoomEditor: View {
     let item: MediaItem
     let url: URL?
     let fit: Fit
-    let kb: KenBurns
-    let commit: (KenBurns) -> Void
+    let kb: PanAndZoom
+    let commit: (PanAndZoom) -> Void
 
     /// The move while a drag is under way; committed (one undo step) on release.
-    @State private var live: KenBurns?
-    @State private var dragStart: KenBurnsFrame?
+    @State private var live: PanAndZoom?
+    @State private var dragStart: PanAndZoomFrame?
 
     private enum End { case start, end }
 
@@ -92,7 +92,7 @@ struct KenBurnsEditor: View {
                 Button("Reset") {
                     var k = current
                     k.start = .centred
-                    k.end = KenBurnsFrame(x: 0.5, y: 0.5, zoom: 1.25)
+                    k.end = PanAndZoomFrame(x: 0.5, y: 0.5, zoom: 1.25)
                     commit(k)
                 }
                 Spacer()
@@ -104,7 +104,7 @@ struct KenBurnsEditor: View {
         }
     }
 
-    private func frame(_ end: End, _ f: KenBurnsFrame, colour: Color, scale: CGFloat) -> some View {
+    private func frame(_ end: End, _ f: PanAndZoomFrame, colour: Color, scale: CGFloat) -> some View {
         let r = Compositor.viewRegion(imageSize: imageSize, fit: fit, kb: f, outputSize: outputSize)
         let rect = CGRect(x: r.minX * scale, y: r.minY * scale, width: r.width * scale, height: r.height * scale)
         return ZStack(alignment: .topLeading) {
@@ -134,12 +134,12 @@ struct KenBurnsEditor: View {
         .offset(x: rect.minX, y: rect.minY)
     }
 
-    private func value(_ end: End) -> KenBurnsFrame {
+    private func value(_ end: End) -> PanAndZoomFrame {
         let k = live ?? kb
         return end == .start ? k.start : k.end
     }
 
-    private func set(_ end: End, _ f: KenBurnsFrame) {
+    private func set(_ end: End, _ f: PanAndZoomFrame) {
         var k = live ?? kb
         if end == .start { k.start = f } else { k.end = f }
         live = k
@@ -165,7 +165,7 @@ struct KenBurnsEditor: View {
                 if dragStart == nil { dragStart = origin }
                 // Width of the frame at zoom 1, then the width the drag asks for.
                 let base = Compositor.viewRegion(imageSize: imageSize, fit: fit,
-                                                 kb: KenBurnsFrame(x: 0.5, y: 0.5, zoom: 1),
+                                                 kb: PanAndZoomFrame(x: 0.5, y: 0.5, zoom: 1),
                                                  outputSize: outputSize).width
                 let startWidth = base / origin.zoom
                 let wanted = max(startWidth + g.translation.width / scale, base / 6)
@@ -180,9 +180,9 @@ struct KenBurnsEditor: View {
 
     /// Keeps a centre where it actually moves the frame: past the point where
     /// the frame meets the image edge, further dragging would do nothing.
-    private func clampCentre(_ v: Double, _ f: KenBurnsFrame, axis: KeyPath<CGSize, CGFloat>) -> Double {
+    private func clampCentre(_ v: Double, _ f: PanAndZoomFrame, axis: KeyPath<CGSize, CGFloat>) -> Double {
         let region = Compositor.viewRegion(imageSize: imageSize, fit: fit,
-                                           kb: KenBurnsFrame(x: 0.5, y: 0.5, zoom: f.zoom),
+                                           kb: PanAndZoomFrame(x: 0.5, y: 0.5, zoom: f.zoom),
                                            outputSize: outputSize)
         let half = Double((axis == \CGSize.width ? region.width : region.height) / 2)
         let span = Double(imageSize[keyPath: axis])

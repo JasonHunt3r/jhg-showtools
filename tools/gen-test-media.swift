@@ -11,7 +11,7 @@ func draw(_ w: Int, _ h: Int, hue: CGFloat, label: String) -> CGImage {
     let c2 = NSColor(hue: hue + 0.15, saturation: 0.8, brightness: 0.35, alpha: 1).cgColor
     let grad = CGGradient(colorsSpace: nil, colors: [c1, c2] as CFArray, locations: [0, 1])!
     ctx.drawLinearGradient(grad, start: .zero, end: CGPoint(x: w, y: h), options: [])
-    // Grid so Ken Burns motion is visible.
+    // Grid so Pan and Zoom motion is visible.
     ctx.setStrokeColor(NSColor.white.withAlphaComponent(0.25).cgColor)
     ctx.setLineWidth(3)
     for x in stride(from: 0, to: w, by: w / 12) { ctx.move(to: CGPoint(x: x, y: 0)); ctx.addLine(to: CGPoint(x: x, y: h)) }

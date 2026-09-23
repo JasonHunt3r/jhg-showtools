@@ -131,9 +131,9 @@ final class TimelineTests: XCTestCase {
         XCTAssertEqual(t.slides.map(\.length), [2, 9])
     }
 
-    func testAutoKenBurnsIsStablePerSlide() {
-        XCTAssertEqual(ShowTimeline.autoKenBurns(seed: 42), ShowTimeline.autoKenBurns(seed: 42))
-        XCTAssertNotEqual(ShowTimeline.autoKenBurns(seed: 42), ShowTimeline.autoKenBurns(seed: 43))
+    func testAutoPanAndZoomIsStablePerSlide() {
+        XCTAssertEqual(ShowTimeline.autoPanAndZoom(seed: 42), ShowTimeline.autoPanAndZoom(seed: 42))
+        XCTAssertNotEqual(ShowTimeline.autoPanAndZoom(seed: 42), ShowTimeline.autoPanAndZoom(seed: 43))
     }
 
     func testIndexAtTime() {
@@ -149,7 +149,7 @@ final class TimelineTests: XCTestCase {
 
     func testFillCoversOutputWithoutShowingPastEdges() {
         let img = CIImage(color: .red).cropped(to: CGRect(x: 0, y: 0, width: 4000, height: 3000))
-        let out = Compositor.placed(img, fit: .fill, kb: KenBurnsFrame(x: 0, y: 0, zoom: 1),
+        let out = Compositor.placed(img, fit: .fill, kb: PanAndZoomFrame(x: 0, y: 0, zoom: 1),
                                     in: CGSize(width: 1920, height: 1080))
         XCTAssertEqual(out.extent, CGRect(x: 0, y: 0, width: 1920, height: 1080))
     }

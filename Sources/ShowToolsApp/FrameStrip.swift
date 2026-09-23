@@ -218,7 +218,7 @@ actor FrameRenderer {
 
     func render(_ timeline: ShowTimeline, times: [Double], size: CGSize,
                 urls: [Int64: URL]) async -> [(Double, CGImage)] {
-        // Twice the frame, for Ken Burns and zoom headroom.
+        // Twice the frame, for Pan and Zoom and zoom headroom.
         let wanted = Int(max(size.width, size.height) * 2)
         if wanted != sourceSize {
             sources = [:]

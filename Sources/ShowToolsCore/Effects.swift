@@ -1,7 +1,7 @@
 import Foundation
 
 // Motion effects that stack on a slide (Phase 2a). Each one is sampled at a
-// progress 0…1 through the slide's visible span, like Ken Burns.
+// progress 0…1 through the slide's visible span, like Pan and Zoom.
 
 /// The centre-zero acceleration slider shared by every motion effect.
 ///
@@ -39,7 +39,7 @@ public struct SRGBColor: Codable, Hashable, Sendable {
     }
 }
 
-/// A point in the image's own terms, as `KenBurnsFrame` uses: 0…1 across
+/// A point in the image's own terms, as `PanAndZoomFrame` uses: 0…1 across
 /// and down the image from its top left. It can lie outside 0…1 (off the
 /// image), which a rotation pivot is allowed to do.
 public struct ImagePoint: Codable, Hashable, Sendable {
@@ -93,7 +93,7 @@ public struct Transform: Codable, Hashable, Sendable {
     }
 }
 
-/// A spin, with Ken Burns or on its own.
+/// A spin, with Pan and Zoom or on its own.
 public struct Rotation: Codable, Hashable, Sendable {
     public enum Mode: String, Codable, CaseIterable, Sendable {
         /// Degrees per second. Trimming the slide changes where it ends.
@@ -179,7 +179,7 @@ func mix(_ a: Double, _ b: Double, _ p: Double) -> Double {
 /// Points are in picture coordinates with y running down, as a view draws,
 /// in the same units as `size`. Only differences between points matter, so
 /// any common origin works. `anchor` is where the Transform's anchor sits
-/// before the Transform is applied (fit and Ken Burns only).
+/// before the Transform is applied (fit and Pan and Zoom only).
 ///
 /// In these coordinates the Transform is  q ↦ A + s·R(θ)·(q − A) + offset,
 /// where R is the usual rotation matrix, which turns clockwise when y runs

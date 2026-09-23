@@ -157,8 +157,8 @@ public enum Easing: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// One end of a Ken Burns move, in the image's own terms.
-public struct KenBurnsFrame: Codable, Hashable, Sendable {
+/// One end of a Pan and Zoom move, in the image's own terms.
+public struct PanAndZoomFrame: Codable, Hashable, Sendable {
     /// Centre of view, 0…1 across the image, measured from the left.
     public var x: Double
     /// Centre of view, 0…1 down the image, measured from the top.
@@ -170,7 +170,7 @@ public struct KenBurnsFrame: Codable, Hashable, Sendable {
         self.x = x; self.y = y; self.zoom = zoom
     }
 
-    public static let centred = KenBurnsFrame(x: 0.5, y: 0.5, zoom: 1)
+    public static let centred = PanAndZoomFrame(x: 0.5, y: 0.5, zoom: 1)
 
     /// Field by field, for the same reason as `ShowDefaults`.
     public init(from decoder: Decoder) throws {
@@ -182,9 +182,9 @@ public struct KenBurnsFrame: Codable, Hashable, Sendable {
     }
 }
 
-public struct KenBurns: Codable, Hashable, Sendable {
-    public var start: KenBurnsFrame
-    public var end: KenBurnsFrame
+public struct PanAndZoom: Codable, Hashable, Sendable {
+    public var start: PanAndZoomFrame
+    public var end: PanAndZoomFrame
     public var easing: Easing
     /// −1…1, applied alongside the easing; see `Acceleration`. 0 leaves the
     /// move exactly as it was before the slider existed.
@@ -193,7 +193,7 @@ public struct KenBurns: Codable, Hashable, Sendable {
     /// the slide is on screen alone. Off by default.
     public var freezeOnTransition: Bool
 
-    public init(start: KenBurnsFrame, end: KenBurnsFrame, easing: Easing = .easeInOut,
+    public init(start: PanAndZoomFrame, end: PanAndZoomFrame, easing: Easing = .easeInOut,
                 acceleration: Double = 0, freezeOnTransition: Bool = false) {
         self.start = start; self.end = end; self.easing = easing
         self.acceleration = acceleration
@@ -204,27 +204,27 @@ public struct KenBurns: Codable, Hashable, Sendable {
     /// key, and a synthesized decoder would throw away their frames.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        start = try c.decode(KenBurnsFrame.self, forKey: .start)
-        end = try c.decode(KenBurnsFrame.self, forKey: .end)
+        start = try c.decode(PanAndZoomFrame.self, forKey: .start)
+        end = try c.decode(PanAndZoomFrame.self, forKey: .end)
         easing = (try? c.decodeIfPresent(Easing.self, forKey: .easing)) ?? .easeInOut
         acceleration = (try? c.decodeIfPresent(Double.self, forKey: .acceleration)) ?? 0
         freezeOnTransition = (try? c.decodeIfPresent(Bool.self, forKey: .freezeOnTransition)) ?? false
     }
 
-    public func frame(at progress: Double) -> KenBurnsFrame {
+    public func frame(at progress: Double) -> PanAndZoomFrame {
         let p = easing.apply(Acceleration.shape(progress, amount: acceleration))
         func mix(_ a: Double, _ b: Double) -> Double { ShowToolsCore.mix(a, b, p) }
-        return KenBurnsFrame(x: mix(start.x, end.x), y: mix(start.y, end.y),
+        return PanAndZoomFrame(x: mix(start.x, end.x), y: mix(start.y, end.y),
                              zoom: mix(start.zoom, end.zoom))
     }
 }
 
-public enum KenBurnsSetting: Codable, Hashable, Sendable {
+public enum PanAndZoomSetting: Codable, Hashable, Sendable {
     case off
     /// A gentle move generated from the slide's id: varied across a show,
     /// but the same every time that slide plays.
     case auto
-    case custom(KenBurns)
+    case custom(PanAndZoom)
 }
 
 public enum Fit: String, Codable, CaseIterable, Sendable {
@@ -243,7 +243,7 @@ public enum SlideLength: Codable, Hashable, Sendable {
 public struct SlideSettings: Codable, Hashable, Sendable {
     public var length: SlideLength?
     public var transition: Transition?
-    public var kenBurns: KenBurnsSetting?
+    public var panAndZoom: PanAndZoomSetting?
     public var fit: Fit?
     /// Seconds into a video (or animation) where this slide starts playing
     /// it — set by trimming the front of its block. Nil means the beginning.
@@ -255,10 +255,10 @@ public struct SlideSettings: Codable, Hashable, Sendable {
     public var background: SRGBColor?
     /// Nil means no rotation. There's no show-wide default for it.
     public var rotation: Rotation?
-    /// What auto Ken Burns is generated from, when not the slide's own id.
+    /// What auto Pan and Zoom is generated from, when not the slide's own id.
     /// An imported slide keeps its exported id here, so its auto move stays
     /// the same in a new library (plan, Phase 4). A duplicate drops it.
-    public var kenBurnsSeed: Int64?
+    public var panAndZoomSeed: Int64?
     /// A video slide's own sound, as a level line along the clip
     /// (spec/video-audio.md). Nil, like an empty curve, is **silent**:
     /// dropping a clip into a show set to music must never blast its
@@ -266,19 +266,19 @@ public struct SlideSettings: Codable, Hashable, Sendable {
     public var audio: LevelCurve?
 
     public init(length: SlideLength? = nil, transition: Transition? = nil,
-                kenBurns: KenBurnsSetting? = nil, fit: Fit? = nil, clipStart: Double? = nil,
+                panAndZoom: PanAndZoomSetting? = nil, fit: Fit? = nil, clipStart: Double? = nil,
                 transform: Transform? = nil, background: SRGBColor? = nil,
-                rotation: Rotation? = nil, kenBurnsSeed: Int64? = nil,
+                rotation: Rotation? = nil, panAndZoomSeed: Int64? = nil,
                 audio: LevelCurve? = nil) {
         self.length = length
         self.transition = transition
-        self.kenBurns = kenBurns
+        self.panAndZoom = panAndZoom
         self.fit = fit
         self.clipStart = clipStart
         self.transform = transform
         self.background = background
         self.rotation = rotation
-        self.kenBurnsSeed = kenBurnsSeed
+        self.panAndZoomSeed = panAndZoomSeed
         self.audio = audio
     }
 
@@ -287,13 +287,13 @@ public struct SlideSettings: Codable, Hashable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         length = (try? c.decodeIfPresent(SlideLength.self, forKey: .length)) ?? nil
         transition = (try? c.decodeIfPresent(Transition.self, forKey: .transition)) ?? nil
-        kenBurns = (try? c.decodeIfPresent(KenBurnsSetting.self, forKey: .kenBurns)) ?? nil
+        panAndZoom = (try? c.decodeIfPresent(PanAndZoomSetting.self, forKey: .panAndZoom)) ?? nil
         fit = (try? c.decodeIfPresent(Fit.self, forKey: .fit)) ?? nil
         clipStart = (try? c.decodeIfPresent(Double.self, forKey: .clipStart)) ?? nil
         transform = (try? c.decodeIfPresent(Transform.self, forKey: .transform)) ?? nil
         background = (try? c.decodeIfPresent(SRGBColor.self, forKey: .background)) ?? nil
         rotation = (try? c.decodeIfPresent(Rotation.self, forKey: .rotation)) ?? nil
-        kenBurnsSeed = (try? c.decodeIfPresent(Int64.self, forKey: .kenBurnsSeed)) ?? nil
+        panAndZoomSeed = (try? c.decodeIfPresent(Int64.self, forKey: .panAndZoomSeed)) ?? nil
         audio = (try? c.decodeIfPresent(LevelCurve.self, forKey: .audio)) ?? nil
     }
 }
@@ -319,7 +319,7 @@ public struct ShowDefaults: Codable, Hashable, Sendable {
     /// Shows saved earlier stored their own default, so they keep it.
     public var transition: Transition = .newShowDefault
     /// Only `.off` and `.auto` make sense as a show-wide default.
-    public var kenBurns: KenBurnsSetting = .off
+    public var panAndZoom: PanAndZoomSetting = .off
     /// New shows fit the whole image in (changed from fill 2026-09-21).
     /// Shows saved earlier stored their own value, so they keep it.
     public var fit: Fit = .fit
@@ -341,7 +341,7 @@ public struct ShowDefaults: Codable, Hashable, Sendable {
         let d = ShowDefaults()
         length = get(.length, d.length)
         transition = get(.transition, d.transition)
-        kenBurns = get(.kenBurns, d.kenBurns)
+        panAndZoom = get(.panAndZoom, d.panAndZoom)
         fit = get(.fit, d.fit)
         background = get(.background, d.background)
         videoUsesClipLength = get(.videoUsesClipLength, d.videoUsesClipLength)

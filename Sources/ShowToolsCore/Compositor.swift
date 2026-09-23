@@ -72,7 +72,7 @@ public enum Compositor {
             guard let img = source(layer) else { return black }
             let c = layer.slide.background
             let ground = CIImage(color: CIColor(red: c.red, green: c.green, blue: c.blue)).cropped(to: out)
-            return placed(img, fit: layer.slide.fit, kb: layer.kenBurnsFrame,
+            return placed(img, fit: layer.slide.fit, kb: layer.panAndZoomFrame,
                           transform: layer.slide.transform, spin: layer.spin, in: size)
                 .composited(over: ground)
         }
@@ -95,14 +95,14 @@ public enum Compositor {
     // MARK: Framing
 
     /// The part of the image that fills the output, in image pixels with
-    /// the origin at the **top left** (as the Ken Burns editor draws it).
+    /// the origin at the **top left** (as the Pan and Zoom editor draws it).
     ///
     /// Works per axis: the base framing (fill, fit or stretch) sets how much
-    /// of the image the output covers; Ken Burns zoom narrows that; the
+    /// of the image the output covers; Pan and Zoom zoom narrows that; the
     /// centre is then clamped so a fill never shows past the image's edge,
     /// while a fit centres whatever is smaller than the frame (letterbox).
     /// The region can be larger than the image (fit), never smaller than zero.
-    public static func viewRegion(imageSize: CGSize, fit: Fit, kb: KenBurnsFrame,
+    public static func viewRegion(imageSize: CGSize, fit: Fit, kb: PanAndZoomFrame,
                                   outputSize size: CGSize) -> CGRect {
         let W = imageSize.width, H = imageSize.height
         guard W > 0, H > 0, size.width > 0, size.height > 0 else { return .zero }
@@ -133,15 +133,15 @@ public enum Compositor {
     }
 
     /// The part of the image to show, scaled to fill `size` exactly.
-    public static func placed(_ image: CIImage, fit: Fit, kb: KenBurnsFrame,
+    public static func placed(_ image: CIImage, fit: Fit, kb: PanAndZoomFrame,
                               in size: CGSize) -> CIImage {
         placed(image, fit: fit, kb: kb, transform: .identity, spin: nil, in: size)
     }
 
-    /// The image placed in a `size` frame: fit and Ken Burns first, then the
+    /// The image placed in a `size` frame: fit and Pan and Zoom first, then the
     /// Rotation effect's spin, then the slide's Transform. Whatever the image
     /// no longer covers is left clear, for the background to show through.
-    public static func placed(_ image: CIImage, fit: Fit, kb: KenBurnsFrame,
+    public static func placed(_ image: CIImage, fit: Fit, kb: PanAndZoomFrame,
                               transform: Transform, spin: (angle: Double, pivot: ImagePoint)?,
                               in size: CGSize) -> CIImage {
         guard let m = placement(imageExtent: image.extent, fit: fit, kb: kb,
@@ -154,7 +154,7 @@ public enum Compositor {
     /// A layer's placement now, for an image with this extent.
     public static func placement(for layer: Layer, imageExtent: CGRect,
                                  outputSize: CGSize) -> CGAffineTransform? {
-        placement(imageExtent: imageExtent, fit: layer.slide.fit, kb: layer.kenBurnsFrame,
+        placement(imageExtent: imageExtent, fit: layer.slide.fit, kb: layer.panAndZoomFrame,
                   transform: layer.slide.transform, spin: layer.spin, outputSize: outputSize)
     }
 
@@ -166,7 +166,7 @@ public enum Compositor {
     /// Scale and rotation can't distort (the Transform is a similarity), so
     /// the spin can be applied before it and still turn around its pivot as
     /// the pivot ends up on screen.
-    public static func placement(imageExtent e: CGRect, fit: Fit, kb: KenBurnsFrame,
+    public static func placement(imageExtent e: CGRect, fit: Fit, kb: PanAndZoomFrame,
                                  transform: Transform, spin: (angle: Double, pivot: ImagePoint)?,
                                  outputSize size: CGSize) -> CGAffineTransform? {
         let W = e.width, H = e.height

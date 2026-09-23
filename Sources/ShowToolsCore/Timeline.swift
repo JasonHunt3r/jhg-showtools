@@ -13,7 +13,7 @@ public struct ResolvedSlide: Sendable {
     public internal(set) var transitionIn: Transition
     /// Seconds of the transition out of this slide (the next one's in), or 0.
     public internal(set) var transitionOut: Double = 0
-    public let kenBurns: KenBurns?
+    public let panAndZoom: PanAndZoom?
     public let fit: Fit
     public let transform: Transform
     /// Nil when the slide has no rotation or its checkbox is off.
@@ -60,8 +60,8 @@ public struct Layer: Sendable {
         self.transitionOutPlays = transitionOutPlays
     }
 
-    /// 0…1 through the Ken Burns move, which spans everything visible.
-    public var kenBurnsProgress: Double {
+    /// 0…1 through the Pan and Zoom move, which spans everything visible.
+    public var panAndZoomProgress: Double {
         slide.visibleSpan > 0 ? min(max(localTime / slide.visibleSpan, 0), 1) : 0
     }
 
@@ -74,15 +74,15 @@ public struct Layer: Sendable {
     /// 0…1 through an effect's move; see `motionSpan`. Frozen, it holds 0
     /// through the transition in and 1 through the transition out.
     public func motionProgress(frozen: Bool) -> Double {
-        guard frozen else { return kenBurnsProgress }
+        guard frozen else { return panAndZoomProgress }
         let span = motionSpan(frozen: true)
         let t = localTime - transitionInPlays
         guard span > 0 else { return t < 0 ? 0 : 1 }
         return min(max(t / span, 0), 1)
     }
 
-    public var kenBurnsFrame: KenBurnsFrame {
-        guard let kb = slide.kenBurns else { return .centred }
+    public var panAndZoomFrame: PanAndZoomFrame {
+        guard let kb = slide.panAndZoom else { return .centred }
         return kb.frame(at: motionProgress(frozen: kb.freezeOnTransition))
     }
 
@@ -130,11 +130,11 @@ public enum FrameState: Sendable {
     }
 
     /// Nothing in this frame moves: one still picture, no transition, no
-    /// Ken Burns. A view that has already drawn it can skip frames until
+    /// Pan and Zoom. A view that has already drawn it can skip frames until
     /// the slide changes, which is most of a desktop show's life.
     public var isMotionless: Bool {
         guard case .still(let l) = self else { return false }
-        return l.slide.item.kind == .image && l.slide.kenBurns == nil
+        return l.slide.item.kind == .image && l.slide.panAndZoom == nil
     }
 
     public var layers: [Layer] {
@@ -216,15 +216,15 @@ public struct ShowTimeline: Sendable {
             let limit = min(lengths[i], prevLength > 0 ? prevLength : lengths[i])
             transition.duration = transition.style == .cut ? 0 : min(max(transition.duration, 0), limit)
 
-            let kb: KenBurns? = switch slide.settings.kenBurns ?? d.kenBurns {
+            let kb: PanAndZoom? = switch slide.settings.panAndZoom ?? d.panAndZoom {
             case .off: nil
-            case .auto: Self.autoKenBurns(seed: slide.settings.kenBurnsSeed ?? slide.id)
+            case .auto: Self.autoPanAndZoom(seed: slide.settings.panAndZoomSeed ?? slide.id)
             case .custom(let k): k
             }
 
             resolved.append(ResolvedSlide(
                 index: i, slide: slide, item: item, start: t, length: lengths[i],
-                transitionIn: transition, kenBurns: kb,
+                transitionIn: transition, panAndZoom: kb,
                 fit: slide.settings.fit ?? d.fit,
                 transform: slide.settings.transform ?? .identity,
                 rotation: slide.settings.rotation.flatMap { $0.enabled ? $0 : nil },
@@ -393,20 +393,20 @@ public struct ShowTimeline: Sendable {
         return slides[i].visibleStart + slides[i].transitionIn.duration
     }
 
-    // MARK: Auto Ken Burns
+    // MARK: Auto Pan and Zoom
 
     /// A slow push in or pull out with a little drift, chosen by the slide's
     /// id so it varies across a show but never between plays.
-    static func autoKenBurns(seed: Int64) -> KenBurns {
+    static func autoPanAndZoom(seed: Int64) -> PanAndZoom {
         var rng = SplitMix64(seed: UInt64(bitPattern: seed))
         let near = 1.12 + rng.unit() * 0.13          // 1.12 … 1.25
         let drift = 0.08
-        let a = KenBurnsFrame(x: 0.5, y: 0.5, zoom: 1.0)
-        let b = KenBurnsFrame(x: 0.5 + (rng.unit() * 2 - 1) * drift,
+        let a = PanAndZoomFrame(x: 0.5, y: 0.5, zoom: 1.0)
+        let b = PanAndZoomFrame(x: 0.5 + (rng.unit() * 2 - 1) * drift,
                               y: 0.5 + (rng.unit() * 2 - 1) * drift,
                               zoom: near)
-        return rng.unit() < 0.5 ? KenBurns(start: a, end: b, easing: .linear)
-                                : KenBurns(start: b, end: a, easing: .linear)
+        return rng.unit() < 0.5 ? PanAndZoom(start: a, end: b, easing: .linear)
+                                : PanAndZoom(start: b, end: a, easing: .linear)
     }
 }
 
@@ -430,7 +430,7 @@ extension ResolvedSlide {
 
     /// How much the picture enlarges the file at its closest: output pixels
     /// per file pixel, the most it reaches over the slide's time on screen
-    /// (Ken Burns, the Transform and rotation all count). Measured against
+    /// (Pan and Zoom, the Transform and rotation all count). Measured against
     /// the file's own size, not the smaller copy decoded for playback.
     public func peakMagnification(outputSize: CGSize) -> Double {
         let e = CGRect(x: 0, y: 0, width: item.pixelWidth, height: item.pixelHeight)

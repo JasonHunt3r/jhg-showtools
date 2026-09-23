@@ -192,7 +192,7 @@ private struct PanelView: View {
     private var randomSummary: String {
         let d = desktop.settings.randomDefaults
         let length = d.length == d.length.rounded() ? "\(Int(d.length)) s" : String(format: "%.1f s", d.length)
-        return [length, d.transition.style.title, d.kenBurns == .off ? nil : "Ken Burns"]
+        return [length, d.transition.style.title, d.panAndZoom == .off ? nil : "Pan and Zoom"]
             .compactMap { $0 }.joined(separator: " · ")
     }
 }

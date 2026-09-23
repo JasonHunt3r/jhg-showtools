@@ -63,7 +63,7 @@ before moving code between targets or adding a file to one.
   lane's nth image. The mode comes from the `editMode` default:
   `defaults write com.jhg.showtools editMode show`.
 - Every show edit goes through a `ShowMutator` with an undo name. Drags
-  (reorder, trim, Ken Burns) commit once, on release, so each is one undo step.
+  (reorder, trim, Pan and Zoom) commit once, on release, so each is one undo step.
 - Modifiers on a SwiftUI `Group` apply to every child. Use a `ZStack` when
   a container needs its own onAppear/onDisappear/task.
 - Edit Show's columns are `ColumnsSplitView`, a manual NSSplitView layout.
@@ -85,13 +85,13 @@ before moving code between targets or adding a file to one.
 - Settings JSON decodes field by field. Don't replace that with synthesized
   Codable: one unreadable field would reset all of them, and the next save
   would make the loss permanent. Every model type does this, including
-  `Transition`, `KenBurns`, `Rotation`, `Transform` and `OverlayClip`, down to
-  `KenBurnsFrame`, `ImagePoint` and `SRGBColor`. A new field on a synthesized
+  `Transition`, `PanAndZoom`, `Rotation`, `Transform` and `OverlayClip`, down to
+  `PanAndZoomFrame`, `ImagePoint` and `SRGBColor`. A new field on a synthesized
   type would drop every saved value that lacks it.
 - Removing or renaming an enum case is the same trap. An unreadable enum
   field falls back to its default, but `Transition` requires its `style`:
   saved transitions of a removed style become the show's default (as
-  Accordion's would have), permanently on the next save. `KenBurnsSetting`
+  Accordion's would have), permanently on the next save. `PanAndZoomSetting`
   and `SlideLength` are synthesized enums, so a removed case drops the
   whole setting. Keep old cases decodable, or migrate them.
 - Library schema changes are additive migrations (`Library.migrate`,
@@ -100,11 +100,11 @@ before moving code between targets or adding a file to one.
   copying its database to `Library.sqlite.v<N>.bak`. A new migration must
   also raise `Library.schemaVersion`, or that copy isn't made (the
   new-library test fails if they disagree).
-- **"Pan and Zoom" is the user-facing name**, settled 2026-09-22, while the
-  code, the slide-settings JSON keys and the setlist columns say `KenBurns`
-  / `kenburns_*`. **Neither half is done yet** — the UI still says "Ken
-  Burns" too. See `spec/status.md`, which says why the rename is cheap now
-  and expensive later.
+- **"Pan and Zoom" is the user-facing name**, settled 2026-09-22 and
+  renamed everywhere 2026-09-23: the UI, the code, the slide-settings JSON
+  keys and the setlist columns (`panAndZoom` / `panzoom_*`). Every show in
+  the library was disposable test material, so no old spelling was kept
+  readable.
 - `MediaItem` is not called `LibraryItem`, and the app refers to
   `ShowToolsCore.Transition` by its full name, because both short names
   collide with SwiftUI. Likewise `SRGBColor` (not `RGBColor`, QuickDraw's)
