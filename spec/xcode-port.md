@@ -104,3 +104,54 @@ Jason's hands-on pass on BGTools (private unlock, the panel closing on a
 click elsewhere, Space-switch pausing), the Ken Burns cost (~40% of a core
 while it moves), telling BGTools when a library moves, and video export
 (the plan's "Later"; the render hook is built in).
+
+## Done, 2026-09-22 (fourth session)
+
+All of P1–P7, in one pass. The project built on the first try and every
+check passed.
+
+- **The project** is `project.yml` at the repo root (`ShowTools.xcodeproj`
+  generated, gitignored), three targets, deployment target 14.0 for
+  ShowTools and 26.0 for BGTools and the tiles. XcodeGen signed the three
+  nested pieces in the right order without help; nothing had to be done
+  about signing order after all.
+- **Identities** are as planned: `com.jhg.showtools`,
+  `com.jhg.showtools.bgtools`, `com.jhg.showtools.bgcontrols`. The tiles'
+  `kind` strings are unchanged.
+- **P4** `BGToolsInstall.swift` became `BGToolsHelper.swift`: no copying,
+  no `isInstalled`, so the menu item is plain "Desktop Show…". It
+  launches the nested BGTools and calls `registerAtLogin`.
+  BGTools' `LoginItem` lost `registerOnceIfInstalled` and now uses
+  `SMAppService.loginItem(identifier:)`, not `.mainApp` — a nested app
+  can't register itself as `mainApp`, and its "Open at login" switch must
+  flip the registration ShowTools made.
+- **P5** `install.sh` passes `SHOWTOOLS_LIBRARY` through to the launch
+  when it's set, so the script itself can be checked without opening the
+  real library.
+
+### Measured
+
+- `swift test`: 175 + 12, unchanged.
+- The app opens a scratch library, plays a show, and Bravura renders in
+  the Rhythm panel — `ATSApplicationFontsPath` works in an Xcode bundle.
+- Installed copy → Desktop Show… → the nested BGTools launched, took
+  `bgtools://window` and opened its window. Background Task Management
+  lists `com.jhg.showtools.bgtools` **enabled, allowed**, with parent
+  `com.jhg.showtools`.
+- `pluginkit` lists `com.jhg.showtools.bgcontrols` from
+  `~/Applications/ShowTools.app`; **Jason confirmed both tiles work in
+  Control Center**.
+
+### Taken out (P7)
+
+`~/Applications/BGTools.app` (to the Trash) with its tiles, the nest
+probe, and the control probe's build products; `BGTools/build.sh` and
+`BGTools/project.yml`. `pluginkit` now lists one tile extension, the new
+one. The probes' sources stay in `tools/`, as the record of what was
+measured.
+
+Left behind: stale Background Task Management entries for
+`com.jhg.bgtools` and the two `com.jhg.nestprobe` ids, whose bundles are
+gone. `sfltool resetbtm` would clear them but resets every app's login
+items, so they're left for macOS to prune, or for Jason to remove in
+System Settings ▸ General ▸ Login Items.

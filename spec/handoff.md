@@ -1,49 +1,61 @@
-# ShowTools — handoff, 2026-09-22 (end of day three)
+# ShowTools — handoff, 2026-09-22 (end of day four)
 
 For the next session. Read `CLAUDE.md` (rules) and `spec/plan.md` (every
 decision, phase by phase) first. This file is the state of play. The repo
 is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 (public, `main`).
 
-## Start here (end of 2026-09-22, third session)
+## Start here (end of 2026-09-22, fourth session)
 
-**Phase 5 (BGTools) is BUILT**, steps B1–B7, and every open question is
-settled. Its spec, `spec/bgtools.md`, holds the decisions, the
-measurements and what each step did. BGTools is installed in
-`~/Applications`, registered at login, with its two Control Center tiles.
+**The Xcode port is DONE** (`spec/xcode-port.md`, P1–P7), and with it
+Phase 5. One app now holds everything:
+
+```
+ShowTools.app                             com.jhg.showtools
+  Contents/PlugIns/BGToolsControls.appex  com.jhg.showtools.bgcontrols
+  Contents/Library/LoginItems/BGTools.app com.jhg.showtools.bgtools
+  Contents/Resources/Fonts/Bravura.otf
+```
+
+Both bundles are targets of the root `project.yml` (XcodeGen);
+`./make-app.sh` builds `build/ShowTools.app`, `./install.sh` puts it in
+`~/Applications` and launches it once, which is the only way the Control
+Center tiles register. The libraries, `stcli` and the tests stay SwiftPM:
+`swift test` is 175 + 12, unchanged. View ▸ Desktop Show… launches the
+nested BGTools and registers it at login. Deleting ShowTools takes
+BGTools, its tiles and its login item with it — which was the point.
+Confirmed by hand: a show plays, Bravura renders, the nested BGTools
+opens its window, the login item is enabled and allowed, and **Jason
+confirmed both tiles work in Control Center**.
 
 **What's left:**
 - **Jason's hands-on pass:** unlocking a private library with Touch ID,
-  the panel closing on a click elsewhere, Space-switch pausing.
+  the panel closing on a click elsewhere, Space-switch pausing. Not yet
+  re-done against the nested BGTools.
 - **Ken Burns costs ~40% of a core** while it moves (a motionless still
   now costs ~2%). Decide whether it should be on by default for random
   desktop pictures.
 - **Telling BGTools when a library moves** (B7 left it open).
-- **NEXT: port the packaging to Xcode — `spec/xcode-port.md`.** Jason
-  wants one app to hold both, so deleting ShowTools takes BGTools with
-  it. Measured: a nested helper runs, takes `bgtools://` URLs and can be
-  registered at login, but **its own tiles never register**;
-  `tools/nest-probe` proved that an **Xcode-built host** can carry the
-  tile extension itself and reach the nested helper (Jason pressed the
-  tile). The plan has the steps (P1–P7), the risks and what to check.
-  The probe is still installed: `tools/nest-probe/remove.sh`.
 - Parked: image stickiness, a guided first run, video export ("Later" in
   the plan; the render hook is built in).
 
-**Test things still installed on Jason's Mac**: BGTools itself in
-`~/Applications` (it belongs there; B7 makes ShowTools install it) with
-its two Control Center tiles, `build/DesktopProbe.app` (not running),
-and XcodeGen
-(`brew install xcodegen`, kept: BGTools' Control Center extension will
-need it).
+**Test things still installed on Jason's Mac**: `ShowTools.app` in
+`~/Applications` (the real one now, with BGTools and the tiles inside),
+`build/DesktopProbe.app` (not running), and XcodeGen
+(`brew install xcodegen`, now required to build the app at all).
+Taken out this session: the old `~/Applications/BGTools.app` (to the
+Trash) and its tiles, the nest probe and the control probe's build
+products. Stale Background Task Management entries for `com.jhg.bgtools`
+and the two `com.jhg.nestprobe` ids remain — `sfltool resetbtm` would
+clear them but resets every app's login items, so they're left alone.
 
 **Parked:** a guided first run (plan "Later"; brief in
 `spec/first-run-brief.md`, Jason may take it to App Claude); Phase 4's
 open risks (below); image stickiness from Phase 3.
 
-Where things stand: Phases 1–4 are built; 172 tests; schema 12. Image
-stickiness (the end of Phase 3) stays parked until Jason has made a first
-real show.
+Where things stand: Phases 1–5 are built; 187 tests (175 + 12); schema 12.
+Image stickiness (the end of Phase 3) stays parked until Jason has made a
+first real show.
 
 ## Phase 4a: core export (2026-09-22)
 

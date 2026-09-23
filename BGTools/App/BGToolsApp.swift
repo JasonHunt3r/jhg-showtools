@@ -29,7 +29,6 @@ final class BGToolsApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let env = ProcessInfo.processInfo.environment
         if env["BGTOOLS_OPEN_WINDOW"] != nil { showWindow() }
         if env["BGTOOLS_OPEN_PANEL"] != nil { panel?.open() }
-        LoginItem.registerOnceIfInstalled()
     }
 
     /// Opening BGTools again (Finder, Spotlight, `open`) shows its window.

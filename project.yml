@@ -1,0 +1,129 @@
+# One Xcode project for both app bundles (spec/xcode-port.md).
+#
+# Everything real stays SwiftPM — ShowToolsCore, ShowToolsPlayback,
+# BGToolsCore, stcli and the tests are built and tested with `swift test`.
+# Only the bundles are built here, because a Control Center extension has
+# to be a real Xcode target to register:
+#
+#   ShowTools.app
+#     Contents/PlugIns/BGToolsControls.appex   the tiles
+#     Contents/Library/LoginItems/BGTools.app  the desktop player
+#     Contents/Resources/Fonts/Bravura.otf
+#
+# Nesting was measured with tools/nest-probe: a tile in the host reaches
+# the nested helper by URL, and SMAppService registers it at login.
+#   ./make-app.sh   → build/ShowTools.app
+name: ShowTools
+options:
+  bundleIdPrefix: com.jhg
+  deploymentTarget:
+    macOS: "14.0"
+packages:
+  ShowTools:
+    path: .
+settings:
+  base:
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    SWIFT_VERSION: "6.0"
+    ENABLE_HARDENED_RUNTIME: NO
+    # Bump when a tile is added or renamed: Control Center caches them
+    # (spec/xcode-port.md, "Caches lie").
+    CURRENT_PROJECT_VERSION: "3"
+    MARKETING_VERSION: "0.1"
+targets:
+  # The app. Its sources are the package's ShowToolsApp target, built here
+  # instead of by SwiftPM so the bundle is a real one.
+  ShowTools:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/ShowToolsApp
+      - path: Resources/Fonts
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: ShowTools
+        product: ShowToolsCore
+      - package: ShowTools
+        product: ShowToolsPlayback
+      - target: BGToolsControls
+        embed: true
+      - target: BGTools
+        embed: true
+        copy:
+          destination: wrapper
+          subpath: Contents/Library/LoginItems
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jhg.showtools
+        GENERATE_INFOPLIST_FILE: YES
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+    info:
+      path: Sources/ShowToolsApp/Info.plist
+      properties:
+        CFBundleDisplayName: ShowTools
+        LSMinimumSystemVersion: "14.0"
+        NSHighResolutionCapable: true
+        NSSupportsAutomaticTermination: false
+        # Bravura, the music font, loaded for this app alone.
+        ATSApplicationFontsPath: Fonts
+        # Files dragged within the app (from the Collection Browser).
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.jhg.showtools.items
+            UTTypeDescription: ShowTools library files
+            UTTypeConformsTo: [public.data]
+
+  # The desktop player, nested in ShowTools above (spec/bgtools.md).
+  BGTools:
+    type: application
+    platform: macOS
+    sources: [BGTools/App]
+    dependencies:
+      - package: ShowTools
+        product: ShowToolsCore
+      - package: ShowTools
+        product: ShowToolsPlayback
+      - package: ShowTools
+        product: BGToolsCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jhg.showtools.bgtools
+        GENERATE_INFOPLIST_FILE: YES
+        MACOSX_DEPLOYMENT_TARGET: "26.0"
+    info:
+      path: BGTools/App/Info.plist
+      properties:
+        CFBundleDisplayName: BGTools
+        LSUIElement: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.jhg.showtools.bgtools
+            CFBundleURLSchemes: [bgtools]
+
+  # The Control Center tiles. An extension's id must sit under its host's,
+  # so this is com.jhg.showtools.bgcontrols, not …bgtools.controls; the
+  # tiles' `kind` strings are unchanged, so their state carries over.
+  BGToolsControls:
+    type: app-extension
+    platform: macOS
+    sources: [BGTools/Controls]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jhg.showtools.bgcontrols
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: BGTools
+        MACOSX_DEPLOYMENT_TARGET: "26.0"
+    info:
+      path: BGTools/Controls/Info.plist
+      properties:
+        CFBundleDisplayName: BGTools
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: BGTools/Controls/BGToolsControls.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        # Reads the on/off state BGTools writes for the tiles; nothing else.
+        com.apple.security.temporary-exception.files.home-relative-path.read-only:
+          - /Library/Application Support/BGTools/

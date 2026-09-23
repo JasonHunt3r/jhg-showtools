@@ -1,32 +1,25 @@
 import Foundation
 import ServiceManagement
 
-/// Starting at login. `SMAppService.mainApp` works even ad hoc signed
-/// (measured 2026-09-22 with two probes), and gives BGTools a switch of
-/// its own in System Settings ▸ General ▸ Login Items.
+/// Starting at login. BGTools is nested inside ShowTools
+/// (`Contents/Library/LoginItems`), so it registers as that host's login
+/// item by identifier, not as `mainApp`. ShowTools registers it when the
+/// desktop is first turned on (`BGToolsHelper.registerAtLogin`); this is
+/// the same registration, flipped by the "Open at login" switch, and it
+/// shows in System Settings ▸ General ▸ Login Items.
 enum LoginItem {
-    /// Registered the first time BGTools runs from `~/Applications`, so
-    /// the desktop is there after a restart without being asked for.
-    static let askedKey = "registeredAtLogin"
+    static let bundleID = "com.jhg.showtools.bgtools"
 
-    static var isOn: Bool { SMAppService.mainApp.status == .enabled }
+    private static var service: SMAppService { .loginItem(identifier: bundleID) }
+
+    static var isOn: Bool { service.status == .enabled }
 
     static func setOn(_ on: Bool) {
         do {
-            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
-            Log.write("login item \(on ? "registered" : "removed"): \(SMAppService.mainApp.status.rawValue)")
+            if on { try service.register() } else { try service.unregister() }
+            Log.write("login item \(on ? "registered" : "removed"): \(service.status.rawValue)")
         } catch {
             Log.write("login item \(on ? "register" : "remove") failed: \(error)")
         }
-        UserDefaults.standard.set(true, forKey: askedKey)
-    }
-
-    /// On the first run of an installed copy, register. A test copy run
-    /// from the build folder never does.
-    static func registerOnceIfInstalled(bundle: Bundle = .main,
-                                        defaults: UserDefaults = .standard) {
-        guard !defaults.bool(forKey: askedKey),
-              bundle.bundleURL.deletingLastPathComponent().lastPathComponent == "Applications" else { return }
-        setOn(true)
     }
 }

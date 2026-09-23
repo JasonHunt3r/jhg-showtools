@@ -3,9 +3,9 @@
 A macOS slideshow composer and player for Jason's own Mac. The plan, with
 every decision so far, is in `spec/plan.md`: read it first. The state of play
 (what's built, what's confirmed by hand, what's next) is in `spec/handoff.md`.
-Phase 5, BGTools (the desktop companion app ShowTools installs), has its
-own spec: `spec/bgtools.md`. **Next up: `spec/xcode-port.md`**, moving both
-app bundles to one Xcode project so BGTools lives inside ShowTools.
+Phase 5, BGTools (the desktop companion app that lives inside ShowTools),
+has its own spec: `spec/bgtools.md`. Both app bundles are built by one
+Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
 
 ## Layout
 
@@ -19,11 +19,13 @@ app bundles to one Xcode project so BGTools lives inside ShowTools.
   `MusicPlayer`. The engine reads shows and files through `ShowSource`
   (AppModel is one; BGTools' read-only reader will be another), never the
   app's types. Anything the app uses from here must be `public`.
-- `BGTools/`: the desktop companion app (spec `spec/bgtools.md`), an
-  XcodeGen project using this package; `BGTools/build.sh` → `build/BGTools.app`.
+- `BGTools/`: the desktop companion app (spec `spec/bgtools.md`) and its
+  Control Center tiles (`BGTools/Controls`). Both are targets of the root
+  `project.yml`, and the built BGTools is nested inside ShowTools at
+  `Contents/Library/LoginItems/BGTools.app`.
   It opens libraries with `Library(readingOnly:)` only. Its settings and
   the show each mode builds are in `Sources/BGToolsCore` (tested). Test it
-  with `open -n --env BGTOOLS_SETTINGS=<scratch settings.json> build/BGTools.app`,
+  with `open -n --env BGTOOLS_SETTINGS=<scratch settings.json> build/ShowTools.app/Contents/Library/LoginItems/BGTools.app`,
   the settings pointing at a scratch library (never the real one); it
   re-reads the file when it changes and logs to `~/Library/Logs/BGTools.log`.
   `BGTOOLS_OPEN_WINDOW=1` opens its window at launch, `BGTOOLS_OPEN_PANEL=1`
@@ -57,10 +59,18 @@ app bundles to one Xcode project so BGTools lives inside ShowTools.
   loads it, so it only exists in the built app, not under `swift run`.
 - `Sources/stcli/`: dev CLI. `ingest`, `show` (creates a show; it doesn't print one), and `render` (writes frames
   through the Compositor to PNG, which is how transitions get checked by eye).
-- `make-app.sh`: builds `build/ShowTools.app` (a SwiftPM binary wrapped in a
-  bundle, the same approach as CutSim), carrying BGTools in its Resources
-  when XcodeGen is installed. View ▸ Desktop Show… copies BGTools to
-  `~/Applications` and opens it.
+- `make-app.sh`: builds `build/ShowTools.app` with Xcode, through the root
+  `project.yml` (XcodeGen; `ShowTools.xcodeproj` is generated and
+  gitignored). One app holds everything: the tiles in `Contents/PlugIns`,
+  BGTools in `Contents/Library/LoginItems`, Bravura in Resources. The
+  libraries, `stcli` and the tests stay SwiftPM — `swift test` is
+  unchanged. View ▸ Desktop Show… launches the nested BGTools and
+  registers it at login (`SMAppService.loginItem`); deleting ShowTools
+  takes all of it. `install.sh` copies the app to `~/Applications` and
+  launches it once, which is the only way the Control Center tiles
+  register — testing tiles means installing, not `build/ShowTools.app`.
+  Caches lie: a new or renamed tile needs `CURRENT_PROJECT_VERSION`
+  bumped and `killall chronod`.
 - `tools/`: `make-test-library.sh <dir>` builds a scratch library with
   generated media and a test show. There are also a window lister and a
   contact-sheet tool, for checking screenshots.

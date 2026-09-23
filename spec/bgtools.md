@@ -207,7 +207,9 @@ New with BGTools:
   URL, editing state) instead of `AppModel`; AppModel conforms. ShowTools
   behaves exactly as before, so the desktop draws shows exactly as the
   player does (the Compositor rule).
-- **B2 BGTools skeleton. BUILT 2026-09-22** (`BGTools/build.sh`;
+- **B2 BGTools skeleton. BUILT 2026-09-22** (then `BGTools/build.sh`;
+  since the Xcode port it's a target of the root `project.yml` and is
+  built, nested, by `./make-app.sh` — `spec/xcode-port.md`;
   `Library(readingOnly:)` + 3 tests; played the test show on 4 Spaces and
   noticed a save within the second). `BGTools/` (XcodeGen: the app, later its
   Control Center extension) using the package. A read-only library reader

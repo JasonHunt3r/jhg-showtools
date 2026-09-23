@@ -136,7 +136,7 @@ func type(_ text: String) {
 /// drag and key checks first, and refuses if ShowTools isn't frontmost:
 /// on 2026-09-21 typed paths landed in Jason's editor when it came forward.
 /// `AXTOOL_APP=bgtools` drives BGTools instead (the only other app allowed).
-let targetBundle = ProcessInfo.processInfo.environment["AXTOOL_APP"] == "bgtools" ? "com.jhg.bgtools" : "com.jhg.showtools"
+let targetBundle = ProcessInfo.processInfo.environment["AXTOOL_APP"] == "bgtools" ? "com.jhg.showtools.bgtools" : "com.jhg.showtools"
 
 func requireShowToolsInFront() {
     let front = NSWorkspace.shared.frontmostApplication

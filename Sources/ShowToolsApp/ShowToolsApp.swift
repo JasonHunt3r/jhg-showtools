@@ -86,10 +86,10 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(after: .toolbar) {
-            // Phase 5: the desktop is BGTools' job, and ShowTools installs
-            // it (spec/bgtools.md).
-            Button(BGToolsInstall.isInstalled ? "Desktop Show…" : "Set Up Desktop Show…") {
-                do { try BGToolsInstall.openDesktop() } catch { NSAlert(error: error).runModal() }
+            // Phase 5: the desktop is BGTools' job, and it lives inside
+            // this app (spec/bgtools.md, spec/xcode-port.md).
+            Button("Desktop Show…") {
+                do { try BGToolsHelper.openDesktop() } catch { NSAlert(error: error).runModal() }
             }
             Divider()
         }
