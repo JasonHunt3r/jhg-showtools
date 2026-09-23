@@ -59,8 +59,9 @@ Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
   loads it, so it only exists in the built app, not under `swift run`.
 - `Sources/stcli/`: dev CLI. `ingest`, `show` (creates a show; it doesn't print one), `render` (writes frames
   through the Compositor to PNG, which is how transitions get checked by eye),
-  and `movie` (writes a real picture track through the same path — video
-  export, `spec/video-export.md`; silent until E3).
+  `movie` (writes a real picture track through the same path — video
+  export, `spec/video-export.md`) and `mix` (the show's music rendered
+  offline). The two are separate files until E4 muxes them.
 - `make-app.sh`: builds `build/ShowTools.app` with Xcode, through the root
   `project.yml` (XcodeGen; `ShowTools.xcodeproj` is generated and
   gitignored). One app holds everything: the tiles in `Contents/PlugIns`,

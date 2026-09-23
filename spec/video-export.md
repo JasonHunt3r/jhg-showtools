@@ -84,13 +84,36 @@ Core doesn't decide this: a video slide's picture is whatever the caller's
   - **Checked by hand**, scratch library: the 11-slide test show exports
     at 1280×800 in 8.1 s (1620 frames, 27 MB), and frame 300 matches
     `stcli render`'s PNG at t=10.0 to a mean of 0.0018 per channel.
-- **E3 The sound track.** An offline `AVAudioEngine`
-  (`enableManualRenderingMode`), the same node-per-clip graph as
-  `MusicPlayer`, levels from `AudioClip.gain`. Test: a show with a song
-  reads back with the right number of samples, and a stretch the level
-  line silences is silent.
-- **E4 The panel.** File ▸ Export Movie… beside Export Show…: size, frame
-  rate, format, where to save, the video-slide note, progress and cancel.
+- **E3 The sound track — DONE** (`MovieSoundTrack.swift`, 16 tests).
+  An offline `AVAudioEngine` (`enableManualRenderingMode`) building the
+  same graph as `MusicPlayer` — a player node per song into the main
+  mixer, volume from `AudioClip.gain` — set once per 1024-frame block
+  (~21 ms, finer than the player's 60 Hz timer). It renders in blocks
+  through a `receive` closure, so E4 can append straight to an
+  `AVAssetWriter` input; `write()` puts the mix in a file, which is what
+  `stcli mix <lib> <showID> <out.caf>` drives. A show with no songs
+  renders silence of the right length — the caller decides whether to
+  give it a track at all. 48 kHz stereo.
+  - **Measure a crossfade as RMS, not peak.** Equal power holds the
+    *power* steady, not the peak: two different tones at gain 0.707 each
+    sum to a peak of up to 1.41 where their waves align. A peak reading
+    makes a correct crossfade look like clipping. The mix really can pass
+    full scale mid-crossfade — the live player does exactly the same, one
+    `gain` and one graph, so an export is no louder than what was heard.
+  - A peak over a window reports its *loudest* moment, not its middle, so
+    over a fade out it reads the window's start. Compare it against the
+    gain's maximum over the same window.
+  - **Checked by hand**, scratch library, with a real AAC click track
+    rather than a generated tone: a 20 s song at volume 0.8, 2 s fade in,
+    3 s fade out, over the 54 s show. Silent before 5 s and after 25 s,
+    and the peak tracks `AudioClip.gain` to a ratio of 0.99–1.00 through
+    the flat section. 54 s of mix renders in 0.1 s.
+- **E4 The panel — NEXT.** File ▸ Export Movie… beside Export Show…: size,
+  frame rate, format, where to save, the video-slide note, progress and
+  cancel. This is also where the two tracks finally meet: one
+  `AVAssetWriter` with both a video and an audio input, the picture loop
+  from E2 and the block loop from E3 feeding it. Runs off the main
+  thread, reporting through Phase 4's `ExportStatus` / `ExportBanner`.
 - **E5 Video slides.** `AVAssetReader` per video slide, pulled forward in
   step with the writer's clock — an `AVAssetImageGenerator` per frame is
   far too slow. Their sound comes through the same `LevelCurve` the live

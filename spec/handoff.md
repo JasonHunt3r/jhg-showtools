@@ -39,13 +39,17 @@ Cut), drag moves it, double-click removes it (Logic). Library schema
 stayed 12 — slide settings are JSON, so no migration. 195 + 12 tests.
 **V6 is Jason's: it hasn't been listened to.**
 
-**Video export: E1 and E2 are BUILT** (`spec/video-export.md`; five steps,
+**Video export: E1, E2 and E3 are BUILT** (`spec/video-export.md`; five steps,
 E1 settings and codecs → E2 the picture track → E3 the sound track → E4
 the panel → E5 video slides). A show now writes a real, silent movie:
 
 ```sh
-stcli movie <lib> <showID> 1280x800 out.mp4 30 h264
+stcli movie <lib> <showID> 1280x800 out.mp4 30 h264   # picture (E2)
+stcli mix   <lib> <showID> out.caf                    # music  (E3)
 ```
+
+They are still two files: **E4 is where they meet**, in one
+`AVAssetWriter` with a video and an audio input.
 
 - **E1** `MovieExport.swift`: `MovieExportSettings` (size, fps, codec),
   `MovieCodec` carrying its own container, so ProRes can't end up in an
@@ -68,12 +72,26 @@ stcli movie <lib> <showID> 1280x800 out.mp4 30 h264
   and frame 300 matches `stcli render`'s PNG at t=10.0 to a mean of
   0.0018 per channel. 218 + 12 tests.
 
-**Next: E3, the sound track.** An offline `AVAudioEngine`
-(`enableManualRenderingMode`) with the same node-per-clip graph as
-`MusicPlayer` and levels from `AudioClip.gain`, so an exported mix is by
-construction what was heard. Then E4, the panel (File ▸ Export Movie…),
-which is where the picture and sound tracks get muxed together and where
-the video-slide note appears.
+- **E3** `MovieSoundTrack.swift`: an offline `AVAudioEngine`
+  (`enableManualRenderingMode`) building the same graph as `MusicPlayer`,
+  a node per song with its volume from `AudioClip.gain`. One source for
+  levels stays one source, so the export is what was heard. Renders in
+  blocks through a closure, ready for E4 to append to a writer input.
+  - **Measure a crossfade as RMS, not peak.** Equal power holds the power,
+    not the peak: two tones at 0.707 each sum to a peak of up to 1.41.
+    Measured as a peak, a correct crossfade looks like clipping. (The mix
+    really can pass full scale there — so does the live player, identically.)
+  - A peak over a window reads its loudest moment, not its middle, so over
+    a fade out it reads the window's *start*.
+  - Checked by hand with a real AAC click track: peak tracks
+    `AudioClip.gain` to 0.99–1.00 through the flat section; 54 s of mix in
+    0.1 s. 234 + 12 tests.
+
+**Next: E4, the panel.** File ▸ Export Movie… beside Export Show…: size,
+frame rate, format, where to save, the video-slide note, progress and
+cancel. It is also the muxing step — one `AVAssetWriter` taking both the
+E2 picture loop and the E3 block loop — run off the main thread through
+Phase 4's `ExportStatus` / `ExportBanner`. Then E5, real video slides.
 
 **What's left:**
 - **Listening to a video slide's sound (V6):** a clip with its middle
@@ -261,7 +279,7 @@ files are both in the show keeps both ("1 stays"), Keep One disabled.
 | **3** Music + timeline | **All 7 steps built** (6 and 7 on 2026-09-22). Left: settle image stickiness with Jason |
 | **3b** Find Similar (was "duplicate finder") | **Built** 2026-09-22: Delete by context, Group/Show Similar, Keep One |
 | **4** Setlist export / import | **Built** 2026-09-22 (4a–4d); risks recorded under "Phase 4: open risks" |
-| **E** Video export | **E1 + E2 built** 2026-09-22 (settings/codecs, the picture track); own spec `spec/video-export.md`. Next E3 the sound track, then E4 the panel |
+| **E** Video export | **E1–E3 built** 2026-09-22 (settings/codecs, the picture track, the sound track); own spec `spec/video-export.md`. Next E4, the panel, which is also where the two tracks are muxed |
 | 5 BGTools (desktop companion app) | **Building**, own spec `spec/bgtools.md`: questions settled, B1 (shared player), B2 (skeleton), B3 (settings and modes), B4a (the window), B4b (the panel), B5 (tiles), B6 (pausing, private libraries, the 40%→2% redraw fix), B7 (ShowTools installs it, login item) built 2026-09-22 — **every build step done**; left: Jason's hands-on pass, the Ken Burns cost, telling BGTools when a library moves |
 
 Library schema is now **version 12**. Every upgrade is additive and tested
@@ -534,7 +552,7 @@ ahead with 7x" from Jason before each one:
 ## How to work on it
 
 ```sh
-swift test                                  # 218 core + 12 BGTools tests
+swift test                                  # 234 core + 12 BGTools tests
 ./make-app.sh                               # → build/ShowTools.app
 tools/make-test-library.sh <scratch>/STTest # scratch library + generated media
 open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools.app
