@@ -29,13 +29,18 @@ accelerated** (`AppleProResHW`, the Apple Silicon media engine). Nothing to
 bundle, no third-party dependency, no licensing question. Reached through
 `AVVideoCodecType` on an `AVAssetWriterInput`.
 
-## The one decision made without asking
+## The one decision made without asking — CONFIRMED 2026-09-22
 
 **A video slide in a v1 export holds its first frame**, and the panel says
 so plainly, naming how many slides are affected. Refusing to export any
 show containing video would make the feature useless to Jason, whose test
 show opens with a video; silently freezing them without saying so would be
-worse. **Confirm this.**
+worse. **Jason confirmed this**, choosing it over refusing such shows and
+over doing E5 first. `stcli movie` already says the line
+("1 video slide holding the first frame"); E4's panel carries it.
+
+Core doesn't decide this: a video slide's picture is whatever the caller's
+`source` closure hands back, so E5 changes the caller, not the writer.
 
 ## Shape of it
 
@@ -52,16 +57,33 @@ worse. **Confirm this.**
 
 ## Steps
 
-- **E1 Settings and codecs.** `MovieExportSettings` (size, fps, codec) and
-  a `Codec` enum mapping to `AVVideoCodecType` and a file extension.
-  Tests: the mapping, the container rule (ProRes is `.mov`, never `.mp4`),
-  and that sizes come out even, which encoders require.
-- **E2 The picture track.** `AVAssetWriter` with a pixel buffer pool; walk
-  `t` from 0 to the show's duration by `1/fps`, `timeline.frame(at:)` →
-  `Compositor.compose` → `CIContext.render` into the buffer. Test by
-  writing a short show and reading it back with `AVAssetReader`: frame
-  count, frame size, and a frame's colour matching what `Compositor` draws
-  at that time — the same by-eye check `stcli render` does, automated.
+- **E1 Settings and codecs — DONE** (`MovieExport.swift`, 15 tests).
+  `MovieExportSettings` (size, fps, codec), `MovieCodec` mapping to
+  `AVVideoCodecType` and carrying its container, so the ProRes-is-QuickTime
+  rule lives in one place rather than in the panel and the writer
+  separately. Sizes are forced even on the way in.
+  `settings.plan(showAspect:)` settles the framing question above: it
+  fits the show's shape inside the asked-for frame and letterboxes,
+  never crops. A 16:10 show at 1080p comes out **1728×1080** — it
+  pillarboxes, being narrower than 16:9, which is the opposite of what
+  the first draft of the test assumed.
+- **E2 The picture track — DONE** (`MoviePictureTrack.swift`, 8 tests).
+  `AVAssetWriter` with a pixel buffer pool, walking `t` by `1/fps` through
+  `frame(at:)` → `Compositor.compose` → `CIContext.render`. Blocking on
+  purpose, with `progress` and `isCancelled` closures: **call it off the
+  main thread** — E4 does the dispatching. A cancel removes the
+  part-written file. `stcli movie <lib> <showID> <WxH> <out> [fps]
+  [h264|hevc|prores]` drives it.
+  - **Tag the colours, or the picture comes back wrong.** Untagged, the
+    encoder wrote YCbCr by one matrix and the reader read it by another:
+    green went in at 0.1 and came back at **0.016**, on every codec,
+    ProRes included. A `CIColor` rendered straight to a pixel buffer
+    round-tripped exactly, which placed the loss in the encode rather
+    than the Compositor. Declaring Rec. 709 in `AVVideoColorProperties`
+    fixes it, and frames now match to 0.02 on every channel.
+  - **Checked by hand**, scratch library: the 11-slide test show exports
+    at 1280×800 in 8.1 s (1620 frames, 27 MB), and frame 300 matches
+    `stcli render`'s PNG at t=10.0 to a mean of 0.0018 per channel.
 - **E3 The sound track.** An offline `AVAudioEngine`
   (`enableManualRenderingMode`), the same node-per-clip graph as
   `MusicPlayer`, levels from `AudioClip.gain`. Test: a show with a song

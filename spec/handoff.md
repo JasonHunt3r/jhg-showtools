@@ -39,21 +39,41 @@ Cut), drag moves it, double-click removes it (Logic). Library schema
 stayed 12 — slide settings are JSON, so no migration. 195 + 12 tests.
 **V6 is Jason's: it hasn't been listened to.**
 
-**Video export is PLANNED, not started** (`spec/video-export.md`): five
-steps, E1 settings and codecs → E2 the picture track → E3 the sound track
-→ E4 the panel → E5 video slides. Settled with Jason: the frame matches
-the show's own shape (shows are framed to the main screen, not 16:9, so
-1080p would letterbox everything); H.264, HEVC and ProRes 422 HQ, all
-hardware encoders already on the Mac; stills and music first; 30fps
-default with 24/30/60 offered. **One thing needs Jason's word before E4:**
-whether a video slide in a v1 export holds its first frame (with the panel
-saying so) or whether export refuses such shows until E5.
+**Video export: E1 and E2 are BUILT** (`spec/video-export.md`; five steps,
+E1 settings and codecs → E2 the picture track → E3 the sound track → E4
+the panel → E5 video slides). A show now writes a real, silent movie:
 
-**Next: E1 and E2.** E1 is `MovieExportSettings` and the codec mapping,
-with tests for the container rule and even dimensions. E2 is the picture
-track: `AVAssetWriter` over the frame walk `stcli render` already does,
-tested by reading the file back with `AVAssetReader` and matching a
-frame's colour to what `Compositor` draws at that time.
+```sh
+stcli movie <lib> <showID> 1280x800 out.mp4 30 h264
+```
+
+- **E1** `MovieExport.swift`: `MovieExportSettings` (size, fps, codec),
+  `MovieCodec` carrying its own container, so ProRes can't end up in an
+  `.mp4`. Sizes are forced even. `plan(showAspect:)` fits the show's shape
+  inside the asked-for frame and letterboxes — **never crops**, so no
+  slide is cut and no Ken Burns move shifts. A 16:10 show at 1080p is
+  1728×1080.
+- **E2** `MoviePictureTrack.swift`: `AVAssetWriter` over the frame walk
+  `stcli render` has always done. It **blocks — call it off the main
+  thread** (E4 dispatches it); `progress` and `isCancelled` are closures,
+  and a cancel removes the part-written file.
+- **Tag the colours.** Untagged, green went in at 0.1 and came back at
+  0.016, on every codec including ProRes — the encoder and the reader
+  disagreed about the YCbCr matrix. `AVVideoColorProperties` set to
+  Rec. 709 fixes it. A `CIColor` rendered straight to a pixel buffer
+  round-trips exactly, which is what placed the fault in the encode.
+- **Jason confirmed** a video slide holds its first frame in a v1 export,
+  with the panel saying how many are affected.
+- Checked by hand: the 11-slide test show exports at 1280×800 in 8.1 s,
+  and frame 300 matches `stcli render`'s PNG at t=10.0 to a mean of
+  0.0018 per channel. 218 + 12 tests.
+
+**Next: E3, the sound track.** An offline `AVAudioEngine`
+(`enableManualRenderingMode`) with the same node-per-clip graph as
+`MusicPlayer` and levels from `AudioClip.gain`, so an exported mix is by
+construction what was heard. Then E4, the panel (File ▸ Export Movie…),
+which is where the picture and sound tracks get muxed together and where
+the video-slide note appears.
 
 **What's left:**
 - **Listening to a video slide's sound (V6):** a clip with its middle
@@ -241,6 +261,7 @@ files are both in the show keeps both ("1 stays"), Keep One disabled.
 | **3** Music + timeline | **All 7 steps built** (6 and 7 on 2026-09-22). Left: settle image stickiness with Jason |
 | **3b** Find Similar (was "duplicate finder") | **Built** 2026-09-22: Delete by context, Group/Show Similar, Keep One |
 | **4** Setlist export / import | **Built** 2026-09-22 (4a–4d); risks recorded under "Phase 4: open risks" |
+| **E** Video export | **E1 + E2 built** 2026-09-22 (settings/codecs, the picture track); own spec `spec/video-export.md`. Next E3 the sound track, then E4 the panel |
 | 5 BGTools (desktop companion app) | **Building**, own spec `spec/bgtools.md`: questions settled, B1 (shared player), B2 (skeleton), B3 (settings and modes), B4a (the window), B4b (the panel), B5 (tiles), B6 (pausing, private libraries, the 40%→2% redraw fix), B7 (ShowTools installs it, login item) built 2026-09-22 — **every build step done**; left: Jason's hands-on pass, the Ken Burns cost, telling BGTools when a library moves |
 
 Library schema is now **version 12**. Every upgrade is additive and tested
@@ -513,7 +534,7 @@ ahead with 7x" from Jason before each one:
 ## How to work on it
 
 ```sh
-swift test                                  # 108 core tests
+swift test                                  # 218 core + 12 BGTools tests
 ./make-app.sh                               # → build/ShowTools.app
 tools/make-test-library.sh <scratch>/STTest # scratch library + generated media
 open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools.app
