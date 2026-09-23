@@ -1,7 +1,12 @@
 # Edit Slides' inspector: off SwiftUI's `.inspector()`, onto `ColumnsSplitView`
 
-**Status:** Planned 2026-09-23. **Left:** everything — this is the plan,
-not the work.
+**Status:** Built 2026-09-23. `ColumnsSplitView` got the two-pane shape
+(option 1, §"Two ways to close that gap"), `ShowColumns.swift` got
+`TwoColumns` for it, and `ShowView`'s `.slides` case uses it in place of
+`.inspector()`. Verified with the exact repro from the crash hunt: 32
+toggles against a copy of the real library, zero new exceptions. **Left:**
+nothing from this plan — see "What this doesn't cover" below for the two
+unrelated issues found alongside it.
 
 ## Why
 

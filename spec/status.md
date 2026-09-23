@@ -37,10 +37,6 @@ slide's level line is slide settings, which are JSON.
 
 ## What's next
 
-0. **Fix the layout-loop crash** — `spec/edit-slides-inspector-port.md`.
-   Cause found 2026-09-23 (SwiftUI's `.inspector()` on Edit Slides); the
-   app currently crashes on selecting a show or switching modes. This
-   blocks everything else below.
 1. **A listen, twice over.** (1) An exported movie against the same show
    playing: timing, crossfades, a video slide's sound against a song.
    (2) A video slide's sound in the app (V6): a clip with its middle
@@ -99,21 +95,20 @@ and Flush presets from 2a.
 
 ## Known issues
 
-- **The layout-loop crash — cause found 2026-09-23, not yet fixed.**
-  `NSGenericException` from AppKit's layout-loop guard, on selecting a
-  show or switching Edit Slides ↔ Edit Show. **Confirmed cause:** SwiftUI's
-  `.inspector()` modifier on `ShowView`'s `.slides` case. Stripping it
-  out (no replacement UI — a test, not a fix) survived 16 rapid mode
-  toggles against a copy of the real library where every other build
-  tried tonight crashed, including code from *before* the Ken Burns
-  rename with a completely blank preferences domain — both once-plausible
-  causes, ruled out by direct test, not just cleared by suspicion.
-  Matches an independent, unrelated bug report on the identical OS build
-  (macOS 27.0, 26A428) with app-level causes ruled out the same way — an
-  AppKit/SwiftUI regression, not something in ShowTools' own code.
-  **The fix:** `spec/edit-slides-inspector-port.md` — port Edit Slides'
-  inspector onto the same hand-rolled mechanism `EditShowView` already
-  uses instead of SwiftUI's `.inspector()`. Not yet done. Full story:
+- **The layout-loop crash — fixed 2026-09-23.** `NSGenericException` from
+  AppKit's layout-loop guard, on selecting a show or switching Edit Slides
+  ↔ Edit Show. **Confirmed cause:** SwiftUI's `.inspector()` modifier on
+  `ShowView`'s `.slides` case (`spec/history/2026-09-23-crash-hunt-session3.md`).
+  **The fix, landed:** `spec/edit-slides-inspector-port.md` — Edit Slides'
+  inspector is now ported onto the same hand-rolled `ColumnsSplitView`
+  mechanism `EditShowView` already used (a new two-pane shape, main +
+  inspector, no middle list column). Verified against a clean rebuild and
+  the exact repro that crashed every prior build: a copy of the real
+  library, "Trucks to the Future" selected, 32 rapid Edit Slides ↔ Edit
+  Show toggles at ~0.4s pacing — zero new entries in
+  `~/Library/Logs/ShowTools-exception.log` (6060 before and after), and
+  the ported inspector opens/closes from the toolbar and by double-click
+  and shows the right slide's settings. Full story:
   `spec/history/2026-09-23-crash-hunt.md`,
   `spec/history/2026-09-23-crash-hunt-session2.md`,
   `spec/history/2026-09-23-crash-hunt-session3.md` (the one with the
