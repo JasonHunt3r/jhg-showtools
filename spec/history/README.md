@@ -17,6 +17,7 @@ are `spec/plan.md`.
 | `2026-09-22-phase-3b.md` | Find Similar, Delete by context, Keep One | — |
 | `2026-09-22-phase-4-setlist.md` | Setlist export and import, 4a–4d (reordered here into a–d; the handoff had them in the order they were written) | `spec/status.md` for the open risks |
 | `2026-09-23-crash-hunt.md` | The intermittent launch crash: 25 reports, the reason string, and why the earlier bisect was worthless | `spec/status.md` carries the short version and points here |
+| `2026-09-23-docs-restructure-brief.md` | The brief this folder was made from: why the docs had drifted, and the layout Jason approved | Carried out the same day; the result is the current docs |
 
 ## Where this came from
 
