@@ -163,7 +163,9 @@ Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
   commits, never one. `git status` first, stage everything related, and say
   what went in and what was deliberately left out. If in doubt about the
   rhythm, read `git log` — it shows the expected cadence better than any
-  instruction here.
+  instruction here. **Offer the push in the closing line**, where Jason
+  reads it: the working pattern is a reply that ends "commit and push,
+  then do X". An ask at the top of a long reply scrolls past unseen.
 - Tell Jason before restarting the app: he's often using it. (Until he has
   made a first real show there is nothing to disturb, so open and drive it
   freely on a scratch library.)
