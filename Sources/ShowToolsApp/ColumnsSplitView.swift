@@ -38,9 +38,40 @@ final class ColumnsSplitView: NSSplitView {
     /// NSSplitView tracks a divider drag inside mouseDown, returning when
     /// the mouse comes up — so the whole drag happens within this call.
     override func mouseDown(with event: NSEvent) {
+        // Closed, the inspector is a collapsed subview at the very right
+        // edge, and AppKit offers no divider beside a collapsed column —
+        // measured 2026-09-23, which is why pulling it back open did
+        // nothing however wide its grab strip was made. So that one drag
+        // is tracked here instead.
+        if !inspectorShown, convert(event.locationInWindow, from: nil).x >= bounds.width - grabWidth {
+            revealByDragging()
+            return
+        }
         draggingDivider = true
         defer { draggingDivider = false }
         super.mouseDown(with: event)
+    }
+
+    /// Pull the closed inspector out from the right edge.
+    private func revealByDragging() {
+        guard let window else { return }
+        var opened = false
+        while let event = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]),
+              event.type != .leftMouseUp {
+            let wanted = bounds.width - convert(event.locationInWindow, from: nil).x
+            // A small twitch shouldn't open it: a hand that means to drag
+            // travels further than one that meant to click.
+            guard opened || wanted >= 12 else { continue }
+            if !opened {
+                opened = true
+                inspectorShown = true
+                onInspectorShownChange?(true)
+            }
+            inspectorWidth = min(max(wanted, inspectorRange.lowerBound), inspectorRange.upperBound)
+            arrange()
+        }
+        guard opened else { return }
+        UserDefaults.standard.set(Double(inspectorWidth), forKey: defaultsKey + ".inspector")
     }
 
     override func setPosition(_ position: CGFloat, ofDividerAt index: Int) {
@@ -123,7 +154,12 @@ final class ColumnsSplitView: NSSplitView {
         }
         main.frame = NSRect(x: 0, y: 0, width: mainW, height: H)
         list.frame = NSRect(x: mainW + t, y: 0, width: listW, height: H)
-        inspector.isHidden = !inspectorShown
+        // Closed, the inspector is simply zero-width. It used to be sent
+        // isHidden as well; that was removed after measuring that AppKit
+        // marks a zero-width subview collapsed (and hidden) by itself, so
+        // the line changed nothing either way. What it does not do is
+        // offer a divider beside a collapsed column, which is why
+        // mouseDown tracks that one drag itself.
         inspector.frame = NSRect(x: mainW + t + listW + t, y: 0, width: insW, height: H)
     }
 
@@ -158,8 +194,35 @@ final class ColumnsSplitView: NSSplitView {
 
     // MARK: Divider limits (called by ColumnsDelegate)
 
+    /// How wide a divider is to the mouse. The line drawn is 1pt, which is
+    /// fiddly with a trackpad and worse with touch — Jason kept missing
+    /// them, and one miss that registered as a double-click is what broke
+    /// the layout on 2026-09-23.
+    var grabWidth: CGFloat = 11
+
+    /// The strip that counts as the divider, over and above the 1pt line.
+    func splitView(_ sv: NSSplitView, additionalEffectiveRectOfDividerAt i: Int) -> NSRect {
+        // Closed, the inspector's divider sits on the window's right edge,
+        // where half a centred strip would be off the window: put all of
+        // it inside, so there is something to pull the inspector out by.
+        if i == 1, !inspectorShown {
+            return NSRect(x: bounds.width - grabWidth, y: 0, width: grabWidth, height: bounds.height)
+        }
+        let centre = i == 0 ? main.frame.maxX : list.frame.maxX
+        return NSRect(x: centre - (grabWidth - dividerThickness) / 2, y: 0,
+                      width: grabWidth, height: bounds.height)
+    }
+
     func splitView(_ sv: NSSplitView, constrainMinCoordinate proposed: CGFloat, ofSubviewAt i: Int) -> CGFloat {
-        i == 0 ? mainMin : list.frame.minX + listRange.lowerBound
+        if i == 0 { return mainMin }
+        // Closed, the inspector's space was given to the main column, so
+        // dragging it back open takes that space back and the list keeps
+        // its width. Measuring from the list's current position instead
+        // put the minimum (1309) past the maximum (1055), and a divider
+        // whose range is empty cannot be dragged at all — which is why it
+        // looked stuck (2026-09-23).
+        if !inspectorShown { return mainMin + dividerThickness + listWidth }
+        return list.frame.minX + listRange.lowerBound
     }
 
     func splitView(_ sv: NSSplitView, constrainMaxCoordinate proposed: CGFloat, ofSubviewAt i: Int) -> CGFloat {
@@ -191,11 +254,16 @@ final class ColumnsSplitView: NSSplitView {
                 onInspectorShownChange?(false)
             }
             arrange()
+        } else if !inspectorShown {
+            // Dragged back open. The collapse handed the inspector's space
+            // to the main column, so the reveal takes it back from there:
+            // arrange() puts the list at its remembered width again.
+            inspectorShown = true
+            onInspectorShownChange?(true)
+            inspectorWidth = min(max(inspector.frame.width, inspectorRange.lowerBound),
+                                 inspectorRange.upperBound)
+            arrange()
         } else {
-            if !inspectorShown {
-                inspectorShown = true
-                onInspectorShownChange?(true)
-            }
             listWidth = min(max(list.frame.width, listRange.lowerBound), listRange.upperBound)
             inspectorWidth = min(max(inspector.frame.width, inspectorRange.lowerBound), inspectorRange.upperBound)
         }
@@ -230,6 +298,9 @@ private final class ColumnsDelegate: NSObject, @preconcurrency NSSplitViewDelega
     }
     func splitView(_ sv: NSSplitView, shouldAdjustSizeOfSubview v: NSView) -> Bool {
         owner.splitView(sv, shouldAdjustSizeOfSubview: v)
+    }
+    func splitView(_ sv: NSSplitView, additionalEffectiveRectOfDividerAt i: Int) -> NSRect {
+        owner.splitView(sv, additionalEffectiveRectOfDividerAt: i)
     }
     func splitViewDidResizeSubviews(_ notification: Notification) {
         owner.splitViewDidResizeSubviews(notification)
