@@ -1,7 +1,8 @@
 import AppKit
 
-/// Three columns — main, list, inspector — laid out by hand, because a
-/// constraint-based split view can't do all of these at once:
+/// Two or three columns — main, an optional list, inspector — laid out by
+/// hand, because a constraint-based split view can't do all of these at
+/// once:
 ///
 /// - dragging a divider resizes only the two columns beside it;
 /// - resizing the window resizes only the main column;
@@ -11,6 +12,12 @@ import AppKit
 ///
 /// With holding priorities, whichever column ranks lowest absorbs every
 /// change, including divider drags that don't touch it (measured 2026-09-21).
+///
+/// Edit Show has a preview, a list and an inspector; Edit Slides has no
+/// middle list column. Rather than fake one, the two-pane initializer skips
+/// it: `hasList` is false, `listWidth`/`listRange` go unused, and every
+/// method that indexed subviews positionally for `list` now goes through
+/// the `list` accessor, which is `nil` when there isn't one.
 @MainActor
 final class ColumnsSplitView: NSSplitView {
     var mainMin: CGFloat = 420
@@ -23,6 +30,11 @@ final class ColumnsSplitView: NSSplitView {
     private(set) var listWidth: CGFloat
     private(set) var inspectorWidth: CGFloat
     private let defaultsKey: String
+    /// False for the two-pane shape (Edit Slides): no middle list column.
+    private let hasList: Bool
+    /// The divider between the (list or main) column and the inspector:
+    /// index 1 in three panes, index 0 — the only divider — in two.
+    private var inspectorDividerIndex: Int { hasList ? 1 : 0 }
 
     /// Called when the user collapses or reveals the inspector by dragging.
     var onInspectorShownChange: ((Bool) -> Void)?
@@ -82,6 +94,7 @@ final class ColumnsSplitView: NSSplitView {
 
     init(main: NSView, list: NSView, inspector: NSView, defaultsKey: String) {
         self.defaultsKey = defaultsKey
+        hasList = true
         let d = UserDefaults.standard
         listWidth = CGFloat(d.object(forKey: defaultsKey + ".list") as? Double ?? 230)
         inspectorWidth = CGFloat(d.object(forKey: defaultsKey + ".inspector") as? Double ?? 290)
@@ -96,14 +109,32 @@ final class ColumnsSplitView: NSSplitView {
         }
     }
 
+    /// The two-pane shape (Edit Slides): no middle list column.
+    init(main: NSView, inspector: NSView, defaultsKey: String) {
+        self.defaultsKey = defaultsKey
+        hasList = false
+        listWidth = 0
+        let d = UserDefaults.standard
+        inspectorWidth = CGFloat(d.object(forKey: defaultsKey + ".inspector") as? Double ?? 290)
+        super.init(frame: NSRect(x: 0, y: 0, width: 1200, height: 400))
+        isVertical = true
+        dividerStyle = .thin
+        rules = ColumnsDelegate(self)
+        delegate = rules
+        for v in [main, inspector] {
+            v.translatesAutoresizingMaskIntoConstraints = true
+            addSubview(v)
+        }
+    }
+
     required init?(coder: NSCoder) { fatalError("not used") }
 
     /// Held here: `delegate` is weak.
     private var rules: ColumnsDelegate?
 
     private var main: NSView { subviews[0] }
-    private var list: NSView { subviews[1] }
-    private var inspector: NSView { subviews[2] }
+    private var list: NSView? { hasList ? subviews[1] : nil }
+    private var inspector: NSView { subviews[hasList ? 2 : 1] }
 
     var isInspectorShown: Bool { inspectorShown }
 
@@ -118,11 +149,11 @@ final class ColumnsSplitView: NSSplitView {
     /// Layout). Saved here as well as arranged, because nothing else is
     /// dragging a divider to save them.
     func setWidths(list: CGFloat, inspector: CGFloat) {
-        listWidth = min(max(list, listRange.lowerBound), listRange.upperBound)
+        if hasList { listWidth = min(max(list, listRange.lowerBound), listRange.upperBound) }
         inspectorWidth = min(max(inspector, inspectorRange.lowerBound), inspectorRange.upperBound)
         arrange()
         let d = UserDefaults.standard
-        d.set(Double(listWidth), forKey: defaultsKey + ".list")
+        if hasList { d.set(Double(listWidth), forKey: defaultsKey + ".list") }
         d.set(Double(inspectorWidth), forKey: defaultsKey + ".inspector")
     }
 
@@ -137,30 +168,38 @@ final class ColumnsSplitView: NSSplitView {
         // Remembered widths are held to their limits here, not only when a
         // narrow window squeezes: a width saved under older limits (the
         // inspector's 260) would otherwise come back as it was.
-        var listW = min(max(listWidth, listRange.lowerBound), listRange.upperBound)
+        var listW = hasList ? min(max(listWidth, listRange.lowerBound), listRange.upperBound) : 0
         var insW = inspectorShown ? min(max(inspectorWidth, inspectorRange.lowerBound), inspectorRange.upperBound) : 0
         // A narrow window squeezes the side columns before the main one
         // goes below its minimum.
-        // One gap when the inspector is hidden (no line at the window edge).
-        let gaps: CGFloat = inspectorShown ? 2 : 1
+        // One gap per visible divider (none at the window edge when the
+        // inspector is hidden, and none for a list column that isn't there).
+        let dividerCount = (hasList ? 1 : 0) + (inspectorShown ? 1 : 0)
+        let gaps = CGFloat(dividerCount)
         var mainW = W - listW - insW - gaps * t
         if mainW < mainMin {
             var short = mainMin - mainW
             let insGive = inspectorShown ? min(short, insW - inspectorRange.lowerBound) : 0
             insW -= max(insGive, 0); short -= max(insGive, 0)
-            let listGive = min(short, listW - listRange.lowerBound)
-            listW -= max(listGive, 0)
+            if hasList {
+                let listGive = min(short, listW - listRange.lowerBound)
+                listW -= max(listGive, 0)
+            }
             mainW = max(W - listW - insW - gaps * t, 0)
         }
         main.frame = NSRect(x: 0, y: 0, width: mainW, height: H)
-        list.frame = NSRect(x: mainW + t, y: 0, width: listW, height: H)
         // Closed, the inspector is simply zero-width. It used to be sent
         // isHidden as well; that was removed after measuring that AppKit
         // marks a zero-width subview collapsed (and hidden) by itself, so
         // the line changed nothing either way. What it does not do is
         // offer a divider beside a collapsed column, which is why
         // mouseDown tracks that one drag itself.
-        inspector.frame = NSRect(x: mainW + t + listW + t, y: 0, width: insW, height: H)
+        if hasList, let list {
+            list.frame = NSRect(x: mainW + t, y: 0, width: listW, height: H)
+            inspector.frame = NSRect(x: mainW + t + listW + t, y: 0, width: insW, height: H)
+        } else {
+            inspector.frame = NSRect(x: mainW + t, y: 0, width: insW, height: H)
+        }
     }
 
     // MARK: Divider lines
@@ -205,10 +244,10 @@ final class ColumnsSplitView: NSSplitView {
         // Closed, the inspector's divider sits on the window's right edge,
         // where half a centred strip would be off the window: put all of
         // it inside, so there is something to pull the inspector out by.
-        if i == 1, !inspectorShown {
+        if i == inspectorDividerIndex, !inspectorShown {
             return NSRect(x: bounds.width - grabWidth, y: 0, width: grabWidth, height: bounds.height)
         }
-        let centre = i == 0 ? main.frame.maxX : list.frame.maxX
+        let centre = i == 0 ? main.frame.maxX : (list?.frame.maxX ?? main.frame.maxX)
         return NSRect(x: centre - (grabWidth - dividerThickness) / 2, y: 0,
                       width: grabWidth, height: bounds.height)
     }
@@ -222,11 +261,11 @@ final class ColumnsSplitView: NSSplitView {
         // whose range is empty cannot be dragged at all — which is why it
         // looked stuck (2026-09-23).
         if !inspectorShown { return mainMin + dividerThickness + listWidth }
-        return list.frame.minX + listRange.lowerBound
+        return (list?.frame.minX ?? 0) + listRange.lowerBound
     }
 
     func splitView(_ sv: NSSplitView, constrainMaxCoordinate proposed: CGFloat, ofSubviewAt i: Int) -> CGFloat {
-        if i == 0 {
+        if i == 0, let list {
             return min(list.frame.maxX - listRange.lowerBound, list.frame.maxX)
         }
         // Past this the inspector would be too narrow; further still and
@@ -264,11 +303,13 @@ final class ColumnsSplitView: NSSplitView {
                                  inspectorRange.upperBound)
             arrange()
         } else {
-            listWidth = min(max(list.frame.width, listRange.lowerBound), listRange.upperBound)
+            if hasList, let list {
+                listWidth = min(max(list.frame.width, listRange.lowerBound), listRange.upperBound)
+            }
             inspectorWidth = min(max(inspector.frame.width, inspectorRange.lowerBound), inspectorRange.upperBound)
         }
         let d = UserDefaults.standard
-        d.set(Double(listWidth), forKey: defaultsKey + ".list")
+        if hasList { d.set(Double(listWidth), forKey: defaultsKey + ".list") }
         d.set(Double(inspectorWidth), forKey: defaultsKey + ".inspector")
     }
 }

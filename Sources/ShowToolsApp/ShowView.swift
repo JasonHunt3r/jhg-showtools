@@ -31,19 +31,16 @@ struct ShowView: View {
         Group {
             switch mode {
             case .slides:
-                EditSlidesView(show: show, timeline: timeline, selection: $selection, mutate: mutate,
-                               toggleInspector: { inspectorShown.toggle() })
-                    // Attached here, not to the whole mode switch, so
-                    // isPresented never has to flip in the same transaction
-                    // as the mode's content swap. Tried as a fix for the
-                    // layout-loop crash (its stack names this column's
-                    // controller, SplitViewChildController) — it didn't
-                    // hold under stress-testing, so this narrows one
-                    // coupling without closing the bug. See spec/status.md.
-                    .inspector(isPresented: $inspectorShown) {
-                        SlideInspector(show: show, timeline: timeline, selection: selection, mutate: mutate)
-                            .inspectorColumnWidth(min: 260, ideal: 290, max: 400)
-                    }
+                // Laid out by hand on `ColumnsSplitView` (`TwoColumns`), the
+                // same proven mechanism `EditShowView` uses — not SwiftUI's
+                // `.inspector()`, which is the confirmed cause of the
+                // layout-loop crash. See spec/edit-slides-inspector-port.md.
+                TwoColumns(
+                    inspectorShown: $inspectorShown, model: model,
+                    main: EditSlidesView(show: show, timeline: timeline, selection: $selection, mutate: mutate,
+                                         toggleInspector: { inspectorShown.toggle() }),
+                    inspector: SlideInspector(show: show, timeline: timeline, selection: selection,
+                                              mutate: mutate, close: { inspectorShown = false }))
             case .show:
                 // Lays its own inspector out itself, above the storyline —
                 // no SwiftUI .inspector() column here at all.

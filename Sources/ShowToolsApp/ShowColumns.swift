@@ -70,6 +70,63 @@ struct ShowColumns<Preview: View, List: View, Inspector: View>: NSViewRepresenta
     private func wrap<V: View>(_ v: V) -> AnyView { AnyView(v.environment(model)) }
 }
 
+/// Edit Slides' two columns — the slide list and its inspector — on the
+/// same hand-rolled `ColumnsSplitView` mechanism as `ShowColumns`, just
+/// without its middle list column. See `ColumnsSplitView` for why.
+struct TwoColumns<Main: View, Inspector: View>: NSViewRepresentable {
+    @Binding var inspectorShown: Bool
+    let model: AppModel
+    let main: Main
+    let inspector: Inspector
+
+    @MainActor final class Coordinator {
+        var inspectorShown: Binding<Bool>
+        var hosts: [ColumnHost] = []
+        init(_ b: Binding<Bool>) { inspectorShown = b }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator($inspectorShown) }
+
+    func makeNSView(context: Context) -> ColumnsSplitView {
+        let hosts = [wrap(main), wrap(inspector)].map { view -> ColumnHost in
+            let h = ColumnHost(rootView: view)
+            h.sizingOptions = []
+            h.clipsToBounds = true
+            return h
+        }
+        context.coordinator.hosts = hosts
+        let split = ColumnsSplitView(main: hosts[0], inspector: hosts[1],
+                                     defaultsKey: "EditSlidesColumns")
+        let m = (split.grabWidth - 1) / 2
+        hosts[0].dividerMargin = (0, m)
+        hosts[1].dividerMargin = (m, 0)
+        split.setInspectorShown(inspectorShown)
+        let coordinator = context.coordinator
+        split.onInspectorShownChange = { shown in
+            Task { @MainActor in
+                if coordinator.inspectorShown.wrappedValue != shown { coordinator.inspectorShown.wrappedValue = shown }
+            }
+        }
+        return split
+    }
+
+    func updateNSView(_ split: ColumnsSplitView, context: Context) {
+        context.coordinator.inspectorShown = $inspectorShown
+        let hosts = context.coordinator.hosts
+        hosts[0].rootView = wrap(main)
+        hosts[1].rootView = wrap(inspector)
+        if split.isInspectorShown != inspectorShown {
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.2
+                ctx.allowsImplicitAnimation = true
+                split.setInspectorShown(inspectorShown)
+            }
+        }
+    }
+
+    private func wrap<V: View>(_ v: V) -> AnyView { AnyView(v.environment(model)) }
+}
+
 /// A column's hosting view that takes the mouse only inside its own frame.
 /// SwiftUI hit-tests a hosting view's whole content, clipped or not, so a
 /// column whose content was wider than it (the inspector, 2026-09-21) caught
