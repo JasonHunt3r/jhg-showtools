@@ -111,34 +111,45 @@ and Flush presets from 2a.
   entries in `~/Library/Logs/ShowTools-exception.log`, not deaths** — and
   the bursts are real, so no run of trials proves anything. Full write-up:
   `spec/history/2026-09-23-crash-hunt.md`.
-  **A much tighter repro, found 2026-09-23 (later the same day):**
-  **fresh launch onto the Library, then select any show in the sidebar —
-  crashed 9 times out of 9** across three different builds (unmodified,
-  and two attempted fixes below), both by hand (one click, through
-  Accessibility) and via `SHOWTOOLS_DEV_SHOW`. No mode-switching, no
-  divider dragging, no rapid clicking needed. **Whatever the previous
-  "bursts are real" framing meant, this particular transition is not
-  bursty: it currently fails every time.** The fatal stack's frame names
-  the exact class: `SplitViewChildController
+  **A more specific repro, found 2026-09-23 (later the same day):**
+  the fatal stack's frame names the exact class: `SplitViewChildController
   .hostingView(_:didUpdateMinSize:maxSize:)`. **That class belongs to
   SwiftUI's own split-column machinery** (`NavigationSplitView` columns
   and the `.inspector()` column) — **not** to `ColumnsSplitView`
   (`ColumnsSplitView.swift`), which is a hand-rolled `NSSplitView` with
   plain frame-based `NSHostingView` children and goes through none of
-  SwiftUI's split-column code at all. It also isn't specific to
+  SwiftUI's split-column code at all — correcting the standing suspicion
+  of `MainView`'s sidebar above only in that it clears `ColumnsSplitView`
+  specifically, not the sidebar. It also isn't specific to
   `EditShowView`: the default mode is Edit Slides (a plain `List`), and
-  selecting a show still crashed reliably while in that mode. The
-  suspect is `MainView`'s outer `NavigationSplitView` **detail column**
-  (`MainView.swift`, the `detail:` closure holding `ShowView`): its
-  content changes type — `LibraryGridView`'s grid versus `ShowView`'s
-  toolbar-plus-List (or NSSplitView tree) — whenever the sidebar
-  selection moves onto or off of a show. Not proven, but well supported
-  by today's testing. **Three fix attempts, all reverted, none held**
-  (each rebuilt, retested against the repro above, and rolled back
-  clean — `git diff` shows none of them in the tree):
+  selecting a show crashed at least once while in that mode too. The
+  best-supported trigger now is layout churn arriving **too soon after a
+  transition, before AppKit finishes settling** in `MainView`'s outer
+  `NavigationSplitView` **detail column** (the `detail:` closure holding
+  `ShowView`, whose content changes type — grid vs. list vs. NSSplitView
+  tree — when the sidebar selection or the mode changes): 20 rapid
+  mode-toggles (0.4s apart) crashed a clean build reliably; launching
+  straight into a show via `SHOWTOOLS_DEV_SHOW`, whose `.task` selects it
+  on the very next run-loop tick, failed more often than it survived;
+  selecting a show by hand a few seconds after a settled launch mostly
+  didn't crash, but did at least once. **A false lead, recorded so it
+  isn't retried:** a run of *fresh* launches once crashed 9/9 on nothing
+  more than "select a show," which briefly looked like a solid,
+  non-bursty repro — it turned out to be a bad binary from this session's
+  own repeated incremental Xcode rebuilds (`build/xcode` derived data
+  left stale after several rapid `swift build` + `make-app.sh` cycles);
+  a build from wiped derived data (`rm -rf build/xcode build/ShowTools.app`
+  before `./make-app.sh`) survived the identical repro 5/5. **The
+  underlying bug is still genuinely bursty**, exactly as the original
+  write-up said — a later, ordinary-paced repeat of the very same "settled
+  launch, click a show" sequence crashed on a build that had just
+  survived it five times running. No run of trials, in either direction,
+  proves anything on its own. **Three fix attempts, all reverted, none
+  held** (each rebuilt clean, retested against the 20-toggle stress
+  repro, and rolled back — `git diff` shows none of them in the tree):
   1. Move `ShowView`'s `.inspector()` modifier so it mounts only with
      `EditSlidesView`, instead of toggling `isPresented` in the same
-     transaction as the mode switch. Crashed again under a 15-toggle
+     transaction as the mode switch. Crashed again under the 20-toggle
      mode-switch stress test with the identical stack.
   2. Give the detail column a fixed floor (`.frame(minWidth: 920)` on
      `MainView`'s `detail:` content), so its reported minimum size
