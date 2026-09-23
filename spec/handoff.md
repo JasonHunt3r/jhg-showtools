@@ -145,9 +145,10 @@ by hand, and editing it are still untested by a person.
 - **Jason's hands-on pass:** unlocking a private library with Touch ID,
   the panel closing on a click elsewhere, Space-switch pausing. Not yet
   re-done against the nested BGTools.
-- **Ken Burns costs ~40% of a core** while it moves (a motionless still
-  now costs ~2%). Decide whether it should be on by default for random
-  desktop pictures.
+- **Ken Burns → "Pan and Zoom"**, and it is an effect, so it should not be
+  a slide's default (Jason, 2026-09-22; see the plan). Not yet renamed in
+  the UI. Its ~40% of a core while moving now matters less as a default
+  question and more for BGTools' desktop.
 - **Telling BGTools when a library moves** (B7 left it open).
 - Parked: image stickiness (does a lane image stay on the clock or move
   with its slide?), a guided first run, and Flush presets from 2a.
@@ -622,6 +623,18 @@ open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools
 - **A video slide's own sound**: muted for now. The idea is a volume line along the slide, so part of a clip can be kept (someone speaking) and part dropped (dogs barking). Punted until his first show.
 
 ## Known issues / debts
+- **A crash, seen once, not reproduced** (2026-09-22). Switching Edit
+  Slides → Edit Show aborted the app: an Objective-C exception thrown
+  from `-[NSWindow _postWindowNeedsUpdateConstraints]` during AppKit's
+  update-constraints pass, with SwiftUI invalidating layout underneath it
+  (`AppKitPlatformViewHost.invalidateLayout` →
+  `NSHostingView.beginTransaction` → `setNeedsUpdateConstraints`). Report:
+  `~/Library/Logs/DiagnosticReports/ShowTools-2026-09-22-204142.ips`.
+  Seven attempts to reproduce failed, including mode switches with a slide
+  selected, the inspector scrolled and accessibility dumps in between — so
+  the accessibility traversal may have contributed. Layout re-entrancy in
+  `ColumnsSplitView` is the obvious suspect (it is a manual NSSplitView
+  layout; see CLAUDE.md). **Worth watching for during real use.**
 - **A video slide's end points are half-clipped** on the storyline block:
   the outermost level-line diamonds sit at x=0 and x=width, so the block's
   rounded corners cut them. May want insetting.

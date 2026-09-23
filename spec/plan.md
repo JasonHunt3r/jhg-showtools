@@ -809,6 +809,27 @@ window and panel, its two Control Center tiles, pausing (sleep, lock, Low
 Power, hidden Spaces) and private libraries behind Touch ID, and
 installation from ShowTools. See `spec/bgtools.md` for what's left.
 
+### Pan and Zoom, and a simple way in (Jason, 2026-09-22)
+
+**"Ken Burns" is to be renamed "Pan and Zoom"** everywhere it is shown.
+The old name is a reference, not a description; the new one says what the
+control does.
+
+**It is an effect, and effects are not a slide's default state.** Phase 2a
+separated a slide's starting placement into the Transform section, which
+leaves Pan and Zoom as something applied *on top*. So it should not be on
+by default for a new slide. It belongs instead to a choice made when a
+show is started — "make me a slideshow that gently moves" — rather than a
+setting every slide quietly carries.
+
+**The larger point, not yet designed:** this editor is deliberately
+detailed, and that makes a plain slideshow harder than it should be.
+There should be a simple way in — a way for the app to look easy for
+someone who just wants pictures in order with music, while everything
+underneath stays where it is. Related to the guided first run below, but
+not the same thing: that teaches the app as it is, this changes what you
+meet first. **To be designed with Jason.**
+
 ### Later
 - ~~Video export~~ — **BUILT 2026-09-22**, E1–E5, through the hook above
   exactly as promised: a new menu item, not a rewrite. Own spec
