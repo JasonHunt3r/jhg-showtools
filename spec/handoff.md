@@ -5,6 +5,28 @@ decision, phase by phase) first. This file is the state of play. The repo
 is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 (public, `main`).
 
+## Since then (2026-09-23)
+
+The app Jason runs (`~/Applications/ShowTools.app`) had been three commits
+stale — built before the Style-label fix, the Edit Slides header-bar wrap,
+the level-line end-point fix, the Pan and Zoom rename and the live slider
+preview. It is now built and installed from HEAD.
+
+**The "broken library" was the safety net, not a broken library.** What
+Jason saw — a long filepath and a missing file where the images should be
+— is `TestLaunchRecord`'s refusal screen, which prints the scratch
+library's full path. `~/Pictures/ShowTools Library.noindex` is healthy:
+schema 12, 8 items, Shorty and its 5 slides. Worth knowing that the
+refusal *reads* as a broken library to a person who didn't write it.
+
+**His real library now holds the demo**: Shorty plus the generated test
+media it was seeded with (`photo_01…06.jpg`, `spinner.gif`,
+`song-low.m4a`). Clutter, not damage, and it is his to keep or clear.
+
+The crash entry under Known issues has been rewritten from the reports:
+25 of them, one exception, always at launch, and the builds that crashed
+identified by UUID. `ExceptionProbe` now catches the reason string.
+
 ## Start here (end of 2026-09-22, fifth session)
 
 **The Xcode port is DONE** (`spec/xcode-port.md`, P1–P7), and with it
@@ -628,37 +650,42 @@ open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools
 - **A video slide's own sound**: muted for now. The idea is a volume line along the slide, so part of a clip can be kept (someone speaking) and part dropped (dogs barking). Punted until his first show.
 
 ## Known issues / debts
-- **An intermittent crash, seven times on 2026-09-22, cause unknown.**
-  One signature every time: an Objective-C exception thrown from
-  `-[NSWindow(NSDisplayCycle) _postWindowNeedsUpdateConstraints]` during
-  AppKit's display or layout cycle, with SwiftUI invalidating underneath
-  it (`NSHostingView.requestUpdate` / `invalidateSafeAreaInsets` →
-  `setNeedsUpdateConstraints`). Reports are in
-  `~/Library/Logs/DiagnosticReports/ShowTools-2026-09-22-*.ips`.
-  - **What was ruled out:** it happens with and without that session's
-    changes (the first one predates them all), on two different scratch
-    libraries, in both edit modes, with and without accessibility calls,
-    and with and without a slide's transition settings changed.
-  - **The chase was measured wrongly, and proved nothing.** Aliveness was
-    checked with `pgrep`, which is not aliveness: after a test copy dies
-    badly, the next launch **deliberately opens no window**
-    (`TestLaunchRecord.crashRelaunchProblem`) while the process still
-    runs, so every refused launch was counted as a healthy one. A run of
-    "10 launches out of 10 clean" was ten refusals with an alert on
-    screen, which Jason was closing by hand. Reporting that refusal also
-    clears the note, so launches alternate — crash, refusal, real launch —
-    and a three-trial bisect holds barely one real launch. **Every
-    conclusion drawn that way, including "ViewThatFits caused it", was
-    unfounded.**
-  - **How to test it properly:** count a launch only when a *window*
-    appears (`tools/list-windows.swift`, or `ax dump` returning a real
-    tree), quit cleanly between trials, and use tens of trials per build.
-    Better still, read the exception's reason string: macOS sends it to
-    the unified log, which Claude's sandbox can't read but **Jason can, in
-    Console.app filtered on ShowTools**. That string is the missing fact.
-  - Suspect remains layout re-entrancy around `ColumnsSplitView`, the
-    manual NSSplitView layout CLAUDE.md already warns about, but nothing
-    proves it. **Worth watching for during real use.**
+- **An intermittent crash: 25 reports on 2026-09-22, still unnamed but
+  now well described.** Read from the reports themselves, 2026-09-23.
+  - **Always the same exception**, from
+    `-[NSWindow(NSDisplayCycle) _postWindowNeedsUpdateConstraints]` —
+    AppKit's guard against constraints being invalidated while it is
+    already updating them.
+  - **Always within twenty seconds of launch**, never mid-edit. This is
+    the window's first layout, not something anyone did.
+  - **Two paths reach it, one fault.** Nineteen: AppKit's layout engine
+    resizes an `NSHostingView` inside `-[NSView layout]`
+    (`NSViewActuallyUpdateFrameFromLayoutEngine`), and the hosting view
+    answers by invalidating its safe-area insets → constraints. Six:
+    SwiftUI's `SplitViewChildController.hostingView(_:didUpdateMinSize:maxSize:)`
+    reports a new min/max size for a split column *during* the constraints
+    pass. Both say the same thing: something in a column whose minimum
+    size depends on the width it is given — measurement during layout.
+    The "Style" label collapsing at 320pt was the same family.
+  - **Six different builds crashed**, matched by each report's binary
+    UUID: five test builds and the `~/Applications` copy Jason had been
+    using. So it belongs to no one session's changes. `ViewThatFits` is
+    cleared — the first crash predates its being added.
+  - **The earlier chase proved nothing** and its conclusions were
+    withdrawn: aliveness was checked with `pgrep`, so every refused
+    crash-relaunch counted as a healthy launch. To test it properly,
+    count a launch only when a *window* appears
+    (`tools/list-windows.swift`), quit cleanly between trials, and use
+    tens of trials.
+  - **The missing fact is the exception's reason string**, which the
+    crash report drops. `ExceptionProbe` (in the app, installed at
+    launch) now writes it to `~/Library/Logs/ShowTools-exception.log`
+    with its stack. **Check that file after the next crash** — it names
+    the fault. Delete the probe once it has.
+  - Reports are in `~/Library/Logs/DiagnosticReports/ShowTools-*.ips`.
+    Suspect remains layout re-entrancy around `ColumnsSplitView`, the
+    manual NSSplitView layout CLAUDE.md warns about, but nothing proves
+    it yet.
 - **A video slide's end points are half-clipped** on the storyline block:
   the outermost level-line diamonds sit at x=0 and x=width, so the block's
   rounded corners cut them. May want insetting.
