@@ -348,8 +348,16 @@ struct SlideInspector: View {
                 Text("Custom").tag(true)
             }
             if let t {
-                LabeledContent("Style") {
+                // The label is fixed so it can't be squeezed. `TransitionPicker`
+                // is three controls wide, and in a card (a plain VStack, not a
+                // Form) `LabeledContent` gives the content what it asks for and
+                // compresses the label to nothing — which drew "Style" as a
+                // column of single letters. Measured in a harness at the
+                // inspector's narrowest width, 320pt, 2026-09-22.
+                LabeledContent {
                     TransitionPicker(transition: t) { new in edit("Change Transition") { $0.transition = new } }
+                } label: {
+                    Text("Style").fixedSize()
                 }
             }
             }

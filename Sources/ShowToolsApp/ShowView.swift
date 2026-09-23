@@ -245,53 +245,89 @@ struct DefaultsBar: View {
     let mutate: ShowMutator
 
     var body: some View {
-        let d = show.defaults
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 18) {
-                ShowNameField(show: show)
-                    .textFieldStyle(.plain)
-                    .font(.title3.weight(.semibold))
-                    .frame(minWidth: 140, maxWidth: 240)
-
-                Divider().frame(height: 22)
-
-                labelled("Length") {
-                    SecondsField(value: d.length) { v in mutate("Change Default Length") { $0.defaults.length = v } }
-                }
-                labelled("Transition") {
-                    TransitionPicker(transition: d.transition) { t in mutate("Change Default Transition") { $0.defaults.transition = t } }
-                }
-                labelled("Ken Burns") {
-                    Picker("", selection: Binding(get: { d.kenBurns == .auto },
-                                                  set: { on in mutate("Change Default Ken Burns") { $0.defaults.kenBurns = on ? .auto : .off } })) {
-                        Text("Off").tag(false)
-                        Text("Auto").tag(true)
-                    }
-                    .labelsHidden().fixedSize()
-                }
-                labelled("Fit") {
-                    Picker("", selection: Binding(get: { d.fit }, set: { f in mutate("Change Default Fit") { $0.defaults.fit = f } })) {
-                        ForEach(Fit.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    .labelsHidden().fixedSize()
-                }
-                labelled("Background") {
-                    // Behind every slide that hasn't its own, and after the
-                    // last slide while an image or song runs on (plan, Phase 3).
-                    SettledColorPicker(title: "", colour: d.background) { c in
-                        mutate("Change Default Background") { $0.defaults.background = c }
-                    }
-                    .labelsHidden()
-                    .help("The show's background: behind slides that don't set their own, and after the last slide")
-                }
-                Toggle("Loop", isOn: Binding(get: { d.loop }, set: { v in mutate("Change Loop") { $0.defaults.loop = v } }))
-                Toggle("Videos play in full", isOn: Binding(get: { d.videoUsesClipLength },
-                                                            set: { v in mutate("Change Video Length") { $0.defaults.videoUsesClipLength = v } }))
-                    .help("Video slides use their clip's length unless given their own")
+        // The bar used to scroll sideways, which put Background, Loop and
+        // "Videos play in full" past the right edge with nothing to say they
+        // were there: at the window's own minimum width of 1100 the row needs
+        // about 1490 (measured in the running app, 2026-09-22). It now wraps
+        // instead — one line where that fits, otherwise two, otherwise three —
+        // so every control stays reachable without scrolling to it.
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 18) { naming; timing; look; toggles }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 18) { naming; timing }
+                HStack(spacing: 18) { look; toggles }
             }
-            .padding(.horizontal, 14).padding(.vertical, 10)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 18) { naming; timing }
+                look
+                toggles
+            }
         }
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(.bar)
+    }
+
+    private var naming: some View {
+        HStack(spacing: 18) {
+            ShowNameField(show: show)
+                .textFieldStyle(.plain)
+                .font(.title3.weight(.semibold))
+                .frame(minWidth: 140, maxWidth: 240)
+            Divider().frame(height: 22)
+        }
+    }
+
+    private var timing: some View {
+        let d = show.defaults
+        return HStack(spacing: 18) {
+            labelled("Length") {
+                SecondsField(value: d.length) { v in mutate("Change Default Length") { $0.defaults.length = v } }
+            }
+            labelled("Transition") {
+                TransitionPicker(transition: d.transition) { t in mutate("Change Default Transition") { $0.defaults.transition = t } }
+            }
+        }
+    }
+
+    private var look: some View {
+        let d = show.defaults
+        return HStack(spacing: 18) {
+            labelled("Ken Burns") {
+                Picker("", selection: Binding(get: { d.kenBurns == .auto },
+                                              set: { on in mutate("Change Default Ken Burns") { $0.defaults.kenBurns = on ? .auto : .off } })) {
+                    Text("Off").tag(false)
+                    Text("Auto").tag(true)
+                }
+                .labelsHidden().fixedSize()
+            }
+            labelled("Fit") {
+                Picker("", selection: Binding(get: { d.fit }, set: { f in mutate("Change Default Fit") { $0.defaults.fit = f } })) {
+                    ForEach(Fit.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .labelsHidden().fixedSize()
+            }
+            labelled("Background") {
+                // Behind every slide that hasn't its own, and after the
+                // last slide while an image or song runs on (plan, Phase 3).
+                SettledColorPicker(title: "", colour: d.background) { c in
+                    mutate("Change Default Background") { $0.defaults.background = c }
+                }
+                .labelsHidden()
+                .help("The show's background: behind slides that don't set their own, and after the last slide")
+            }
+        }
+    }
+
+    private var toggles: some View {
+        let d = show.defaults
+        return HStack(spacing: 18) {
+            Toggle("Loop", isOn: Binding(get: { d.loop }, set: { v in mutate("Change Loop") { $0.defaults.loop = v } }))
+            Toggle("Videos play in full", isOn: Binding(get: { d.videoUsesClipLength },
+                                                        set: { v in mutate("Change Video Length") { $0.defaults.videoUsesClipLength = v } }))
+                .help("Video slides use their clip's length unless given their own")
+        }
+        .fixedSize()
     }
 
     private func labelled<C: View>(_ title: String, @ViewBuilder _ content: () -> C) -> some View {

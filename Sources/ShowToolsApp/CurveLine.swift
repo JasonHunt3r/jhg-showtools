@@ -117,6 +117,24 @@ struct CurveLine: View {
 
     private func percent(_ l: Double) -> Int { Int((l * 100).rounded()) }
 
+    /// Where a point's diamond is drawn, kept far enough from the block's
+    /// edges to be whole.
+    ///
+    /// A point at the very start or end sits at x=0 or x=width, so half its
+    /// diamond hung outside the block and over the gap to the next one.
+    /// Only the handle moves: the line itself still runs to the true x, so
+    /// nothing about the timing is redrawn, and because the line is flat
+    /// between an edge and the outermost point, the nudged handle still sits
+    /// exactly on it. Insetting the line instead would have shifted every
+    /// point against the ruler by about half a diamond.
+    private func dotX(_ time: Double) -> CGFloat {
+        // A square turned 45° is √2 times as wide as its side, so half of
+        // one is dot/√2, not dot/2 — plus the block's border.
+        let margin = Self.dot / 2 * 1.414 + 1
+        guard width > margin * 2 else { return x(time) }
+        return min(max(x(time), margin), width - margin)
+    }
+
     private func dot(_ point: LevelPoint) -> some View {
         // A diamond, as Final Cut draws a volume keyframe.
         Rectangle()
@@ -126,7 +144,7 @@ struct CurveLine: View {
             .frame(width: Self.dot, height: Self.dot)
             .padding(3)                                     // a bigger target than it looks
             .contentShape(Rectangle())
-            .offset(x: x(point.time) - Self.dot / 2 - 3, y: y(point.level) - Self.dot / 2 - 3)
+            .offset(x: dotX(point.time) - Self.dot / 2 - 3, y: y(point.level) - Self.dot / 2 - 3)
             .onHover { if $0 { NSCursor.openHand.set() } else { NSCursor.arrow.set() } }
             // Checked on the event rather than with a double-tap gesture,
             // which would hold every single click back while it waits for a
