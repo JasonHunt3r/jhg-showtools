@@ -89,6 +89,7 @@ struct MainView: View {
         .overlay(alignment: .bottom) {
             VStack(spacing: 0) {
                 ExportBanner()
+                MovieExportBanner()
                 ImportBanner()
             }
         }

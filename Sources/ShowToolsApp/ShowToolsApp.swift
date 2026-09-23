@@ -49,6 +49,9 @@ struct AppCommands: Commands {
             Button("Export Show…") { if let id = exportShowID { runExportPanel(model, showID: id) } }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
                 .disabled(exportShowID == nil || model.exportStatus?.finished == false)
+            Button("Export Movie…") { if let id = exportShowID { runMovieExportPanel(model, showID: id) } }
+                .keyboardShortcut("e", modifiers: [.command, .shift, .option])
+                .disabled(exportShowID == nil || model.movieExportStatus?.finished == false)
             Divider()
             // The Library grid publishes these while it has a selection (2b).
             Button("Get Info") { requestLibraryGetInfo?() }

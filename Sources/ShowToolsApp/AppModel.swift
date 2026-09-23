@@ -53,6 +53,8 @@ final class AppModel {
     var importStatus: ImportStatus?
     /// File ▸ Export Show…'s progress and result (plan, Phase 4).
     var exportStatus: ExportStatus?
+    /// File ▸ Export Movie…'s progress and result (spec/video-export.md).
+    var movieExportStatus: MovieExportStatus?
 
     /// A private library waiting to be unlocked: the master, at launch.
     private(set) var locked: Library?
