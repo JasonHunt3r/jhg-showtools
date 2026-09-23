@@ -623,18 +623,28 @@ open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools
 - **A video slide's own sound**: muted for now. The idea is a volume line along the slide, so part of a clip can be kept (someone speaking) and part dropped (dogs barking). Punted until his first show.
 
 ## Known issues / debts
-- **A crash, seen once, not reproduced** (2026-09-22). Switching Edit
-  Slides → Edit Show aborted the app: an Objective-C exception thrown
-  from `-[NSWindow _postWindowNeedsUpdateConstraints]` during AppKit's
-  update-constraints pass, with SwiftUI invalidating layout underneath it
-  (`AppKitPlatformViewHost.invalidateLayout` →
-  `NSHostingView.beginTransaction` → `setNeedsUpdateConstraints`). Report:
-  `~/Library/Logs/DiagnosticReports/ShowTools-2026-09-22-204142.ips`.
-  Seven attempts to reproduce failed, including mode switches with a slide
-  selected, the inspector scrolled and accessibility dumps in between — so
-  the accessibility traversal may have contributed. Layout re-entrancy in
-  `ColumnsSplitView` is the obvious suspect (it is a manual NSSplitView
-  layout; see CLAUDE.md). **Worth watching for during real use.**
+- **An intermittent crash, seven times on 2026-09-22, cause unknown.**
+  One signature every time: an Objective-C exception thrown from
+  `-[NSWindow(NSDisplayCycle) _postWindowNeedsUpdateConstraints]` during
+  AppKit's display or layout cycle, with SwiftUI invalidating underneath
+  it (`NSHostingView.requestUpdate` / `invalidateSafeAreaInsets` →
+  `setNeedsUpdateConstraints`). Reports are in
+  `~/Library/Logs/DiagnosticReports/ShowTools-2026-09-22-*.ips`.
+  - **What was ruled out:** it happens with and without that session's
+    changes (the first one predates them all), on two different scratch
+    libraries, in both edit modes, with and without accessibility calls,
+    and with and without a slide's transition settings changed.
+  - **A warning about how it was chased.** It came in a burst — about 25
+    reports inside fifteen minutes — and then stopped: the same build
+    afterwards ran 10 launches out of 10 clean. During the burst, three
+    trials of a build looked conclusive and were not. **Do not conclude
+    anything about this crash from a handful of launches**; it needs tens
+    of trials per build, or a real diagnosis from the exception's reason
+    string, which macOS sends to the unified log (unreadable from Claude's
+    sandbox — Jason can read it with Console).
+  - Suspect remains layout re-entrancy around `ColumnsSplitView`, the
+    manual NSSplitView layout CLAUDE.md already warns about, but nothing
+    proves it. **Worth watching for during real use.**
 - **A video slide's end points are half-clipped** on the storyline block:
   the outermost level-line diamonds sit at x=0 and x=width, so the block's
   rounded corners cut them. May want insetting.
