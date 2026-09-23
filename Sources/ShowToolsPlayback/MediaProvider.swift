@@ -241,13 +241,11 @@ public final class VideoSlot {
     /// through the transition out of it, too. It loops (back to the clip
     /// start) only when its slide is longer than what's left of the clip.
     public func image(localTime: Double, slideLength: Double, clipStart: Double, playing: Bool) -> CIImage? {
-        let lastFrame = max(duration - 0.04, 0)
-        let span = max(duration - clipStart, 0.04)
-        let loops = slideLength > span + 0.1
-        let target = duration <= 0 ? localTime
-            : loops && localTime < slideLength ? clipStart + localTime.truncatingRemainder(dividingBy: span)
-            : min(clipStart + localTime, lastFrame)
-        let holding = localTime >= (loops ? slideLength : span - 0.04)
+        // One source for a video slide's clock: the exporter asks the same
+        // function, so a rendered video slide is the frame that played.
+        let (target, holding, _) = VideoSlideTiming.position(
+            localTime: localTime, slideLength: slideLength,
+            clipStart: clipStart, duration: duration)
         let current = player.currentTime().seconds
 
         if !seeking {

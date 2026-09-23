@@ -7,8 +7,8 @@ import ShowToolsPlayback
 //
 // A Save panel with the options in its accessory view, the way Export
 // Show… does it: the size on one row, the rate and format on the next,
-// over a note that only speaks when it has something to say (a
-// letterbox, held video slides, the music). Laid out with Jason, 2026-09-22.
+// over a note that only speaks when it has something to say (a letterbox,
+// a show with no music). Laid out with Jason, 2026-09-22.
 
 /// A movie export's progress, then its result, for `MovieExportBanner`.
 struct MovieExportStatus {
@@ -38,15 +38,13 @@ final class MovieExportOptions {
     var settings: MovieExportSettings
     let showSize: CGSize
     let showAspect: CGFloat
-    let videoSlides: Int
     let songs: Int
     var onChange: (() -> Void)?
 
-    init(showSize: CGSize, videoSlides: Int, songs: Int) {
+    init(showSize: CGSize, songs: Int) {
         let even = MovieExportSettings.even(showSize)
         self.showSize = even
         self.showAspect = even.height > 0 ? even.width / even.height : 16.0 / 9.0
-        self.videoSlides = videoSlides
         self.songs = songs
         self.settings = MovieExportSettings(size: even)
     }
@@ -68,10 +66,6 @@ final class MovieExportOptions {
                          + "(\(Int(plan.picture.width))×\(Int(plan.picture.height)) inside the frame). "
                          + "Nothing is cut off.")
         }
-        if videoSlides > 0 {
-            parts.append("\(videoSlides) video slide\(videoSlides == 1 ? "" : "s") "
-                         + "hold\(videoSlides == 1 ? "s" : "") its first frame.")
-        }
         if songs == 0 {
             parts.append("The show has no music, so the movie is silent.")
         }
@@ -90,10 +84,8 @@ func runMovieExportPanel(_ model: AppModel, showID: Int64) {
         return
     }
 
-    let videoSlides = show.slides.filter { items[$0.itemID]?.kind == .video }.count
     let songs = MovieSoundTrack.songs(of: show, items: items) { lib.url(for: $0) }
-    let options = MovieExportOptions(showSize: outputPixelSize,
-                                     videoSlides: videoSlides, songs: songs.count)
+    let options = MovieExportOptions(showSize: outputPixelSize, songs: songs.count)
 
     let panel = NSSavePanel()
     panel.prompt = "Export"
@@ -285,8 +277,11 @@ extension AppModel {
         text += mins > 0 ? "\(mins)m \(secs)s" : "\(secs)s"
         text += ", \(Int(r.size.width))×\(Int(r.size.height)) at \(r.frameRate) fps"
         text += r.hasSound ? ", with sound" : ", silent"
+        // Only videos that wouldn't open are held now (E5), so this is a
+        // fault worth naming rather than the normal state of things.
         if videoSlidesHeld > 0 {
-            text += " · \(videoSlidesHeld) video slide\(videoSlidesHeld == 1 ? "" : "s") held a first frame"
+            text += " · \(videoSlidesHeld) video slide\(videoSlidesHeld == 1 ? "" : "s") "
+                  + "couldn't be read, and held a frame"
         }
         return text
     }

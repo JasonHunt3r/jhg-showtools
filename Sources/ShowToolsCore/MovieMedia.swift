@@ -29,16 +29,28 @@ public final class MovieMedia {
 
     private var stills: [Int64: CIImage] = [:]
     private var animations: [Int64: Animation] = [:]
+    /// Keyed by *slide* id: each use of a video plays on its own.
+    private var videos: [Int64: MovieVideoFrames] = [:]
     /// Files that wouldn't decode, so they aren't retried every frame.
     private var failed: Set<Int64> = []
 
-    /// How many video slides were drawn as a held first frame.
+    /// Video slides drawn as a held first frame rather than played: only
+    /// those whose video wouldn't open, unless `holdFirstFrame` is set.
     public private(set) var videoSlidesHeld: Set<Int64> = []
+
+    /// Hold every video slide's first frame instead of playing it — what a
+    /// v1 export did before E5. Kept so the behaviour can be compared.
+    public var holdFirstFrame = false
 
     public init(maxPixels: Int = 4096, urlFor: @escaping (MediaItem) -> URL?) {
         self.maxPixels = maxPixels
         self.urlFor = urlFor
     }
+
+    /// How many times a video reader had to start again — once per slide,
+    /// plus once per loop. Anything more means the export asked for frames
+    /// out of order, which is slow.
+    public var videoSeeks: Int { videos.values.reduce(0) { $0 + $1.seeks } }
 
     /// A slide's picture at its own local time.
     public func image(for layer: Layer) -> CIImage? {
@@ -50,13 +62,41 @@ public final class MovieMedia {
             // As they play: the frame the show's clock is standing on.
             return frame(of: item, at: layer.slide.clipStart + layer.localTime)
         case .video:
-            // A v1 export holds a video slide's first frame (settled with
-            // Jason, 2026-09-22). E5 gives it its own frames.
-            videoSlidesHeld.insert(layer.slide.slide.id)
-            return still(item)
+            return videoFrame(layer) ?? still(item)
         case .audio:
             return nil
         }
+    }
+
+    /// A video slide's own frame (E5), at the moment `VideoSlideTiming`
+    /// puts it — the same function the live player asks, so an exported
+    /// video slide shows what played.
+    ///
+    /// One reader per *slide*: the same file used twice is at two different
+    /// moments, and a transition wants both at once.
+    private func videoFrame(_ layer: Layer) -> CIImage? {
+        guard !holdFirstFrame else {
+            videoSlidesHeld.insert(layer.slide.slide.id)
+            return still(layer.slide.item)
+        }
+        let id = layer.slide.slide.id
+        if videos[id] == nil {
+            guard !failed.contains(layer.slide.item.id),
+                  let url = urlFor(layer.slide.item),
+                  let reader = MovieVideoFrames(url: url) else {
+                // No video track to read: hold the first frame instead of
+                // drawing nothing.
+                videoSlidesHeld.insert(id)
+                return still(layer.slide.item)
+            }
+            videos[id] = reader
+        }
+        guard let reader = videos[id] else { return nil }
+        let at = VideoSlideTiming.position(localTime: layer.localTime,
+                                           slideLength: layer.slide.length,
+                                           clipStart: layer.slide.clipStart,
+                                           duration: reader.duration)
+        return reader.frame(at: at.time)
     }
 
     /// The lane's image. Video in the lane isn't supported yet, as in the

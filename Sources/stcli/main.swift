@@ -100,27 +100,7 @@ case "movie":
     let items = Dictionary(uniqueKeysWithValues: try lib.allItems().map { ($0.id, $0) })
     let timeline = ShowTimeline(show: show, items: items)
 
-    // A video slide holds its first frame in a v1 export (settled with
-    // Jason, 2026-09-22); E5 gives it its own frames.
-    var cache: [Int64: CIImage] = [:]
-    func load(_ item: MediaItem) -> CIImage? {
-        if let hit = cache[item.id] { return hit }
-        let url = lib.url(for: item)
-        var image: CIImage?
-        if item.kind == .video {
-            let gen = AVAssetImageGenerator(asset: AVURLAsset(url: url))
-            gen.appliesPreferredTrackTransform = true
-            if let cg = try? gen.copyCGImage(at: .zero, actualTime: nil) { image = CIImage(cgImage: cg) }
-        } else if let src = CGImageSourceCreateWithURL(url as CFURL, nil),
-                  let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, [
-                      kCGImageSourceCreateThumbnailFromImageAlways: true,
-                      kCGImageSourceCreateThumbnailWithTransform: true,
-                      kCGImageSourceThumbnailMaxPixelSize: 3000] as CFDictionary) {
-            image = CIImage(cgImage: cg)
-        }
-        cache[item.id] = image
-        return image
-    }
+    let media = MovieMedia { lib.url(for: $0) }
 
     let aspect = CGFloat(dims[0] / dims[1])
     let started = Date()
@@ -128,19 +108,19 @@ case "movie":
     let songs = MovieSoundTrack.songs(of: show, items: items) { lib.url(for: $0) }
     let result = try MovieExport.write(
         timeline: timeline, songs: songs, to: out, settings: settings, showAspect: aspect,
-        overlaySource: { load($0.overlay.item) },
+        overlaySource: { media.image(for: $0) },
         progress: { p in
             let step = Int(p * 20)
             if step != lastShown { lastShown = step; FileHandle.standardError.write(Data("\r\(Int(p * 100))%".utf8)) }
         },
-        source: { load($0.slide.item) })
-    let videos = show.slides.filter { items[$0.itemID]?.kind == .video }.count
+        source: { media.image(for: $0) })
+    let held = media.videoSlidesHeld.count
     let size = "\(Int(result.size.width))x\(Int(result.size.height))"
     let timing = String(format: "%.2fs, in %.1fs", result.duration, Date().timeIntervalSince(started))
-    let held = videos > 0 ? " (\(videos) video slide\(videos == 1 ? "" : "s") holding the first frame)" : ""
+    let note = held > 0 ? " (\(held) video slide\(held == 1 ? "" : "s") couldn't be read)" : ""
     let sound = result.hasSound ? "\(result.songsMixed) song(s)" : "silent"
     let name = out.lastPathComponent
-    print("\r\(name): \(result.frameCount) frames, \(size) at \(result.frameRate) fps, \(sound), \(timing)\(held)")
+    print("\r\(name): \(result.frameCount) frames, \(size) at \(result.frameRate) fps, \(sound), \(timing)\(note)")
 
 case "mix":
     guard args.count >= 5, let showID = Int64(args[3]) else { die("mix <lib> <showID> <out.caf>") }
