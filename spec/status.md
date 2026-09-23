@@ -111,32 +111,50 @@ and Flush presets from 2a.
   entries in `~/Library/Logs/ShowTools-exception.log`, not deaths** — and
   the bursts are real, so no run of trials proves anything. Full write-up:
   `spec/history/2026-09-23-crash-hunt.md`.
-  **New repro and a corrected suspect, 2026-09-23 (later the same day):**
-  it also fires switching Edit Show ↔ Edit Slides mid-session, not only at
-  launch, and on this occasion the columns were pushed off-window when it
-  happened (fits the divider entry below, not proven). The fatal stack's
-  frame 27 names the exact class: `SplitViewChildController
+  **A much tighter repro, found 2026-09-23 (later the same day):**
+  **fresh launch onto the Library, then select any show in the sidebar —
+  crashed 9 times out of 9** across three different builds (unmodified,
+  and two attempted fixes below), both by hand (one click, through
+  Accessibility) and via `SHOWTOOLS_DEV_SHOW`. No mode-switching, no
+  divider dragging, no rapid clicking needed. **Whatever the previous
+  "bursts are real" framing meant, this particular transition is not
+  bursty: it currently fails every time.** The fatal stack's frame names
+  the exact class: `SplitViewChildController
   .hostingView(_:didUpdateMinSize:maxSize:)`. **That class belongs to
   SwiftUI's own split-column machinery** (`NavigationSplitView` columns
   and the `.inspector()` column) — **not** to `ColumnsSplitView`
   (`ColumnsSplitView.swift`), which is a hand-rolled `NSSplitView` with
   plain frame-based `NSHostingView` children and goes through none of
-  SwiftUI's split-column code at all. A first attempt at a fix moved
-  `ShowView`'s `.inspector()` modifier so it mounts only with
-  `EditSlidesView`, on the theory that flipping its `isPresented` in the
-  same transaction as swapping the whole mode was the trigger (commit
-  pending review). **It did not hold**: stress-testing the fixed build
-  (15 rapid mode toggles) crashed again with the identical
-  `SplitViewChildController` stack, and the exception also fired on plain
-  launches with no mode-switching at all. The better-supported suspect
-  now is `MainView`'s outer `NavigationSplitView` **detail column**
-  itself (`MainView.swift`, the `detail:` closure holding `ShowView`):
-  its content changes type — `EditSlidesView`'s `List` versus
-  `EditShowView`'s `NSViewRepresentable`/`VSplitView` tree — both the
-  first time it mounts (launch, if `editMode` was left on `.show`) and
-  every time the mode switch swaps it mid-session, which is exactly the
-  "within 20s of launch, or on this one specific transition" pattern seen
-  so far. Not proven either. Still unfixed.
+  SwiftUI's split-column code at all. It also isn't specific to
+  `EditShowView`: the default mode is Edit Slides (a plain `List`), and
+  selecting a show still crashed reliably while in that mode. The
+  suspect is `MainView`'s outer `NavigationSplitView` **detail column**
+  (`MainView.swift`, the `detail:` closure holding `ShowView`): its
+  content changes type — `LibraryGridView`'s grid versus `ShowView`'s
+  toolbar-plus-List (or NSSplitView tree) — whenever the sidebar
+  selection moves onto or off of a show. Not proven, but well supported
+  by today's testing. **Three fix attempts, all reverted, none held**
+  (each rebuilt, retested against the repro above, and rolled back
+  clean — `git diff` shows none of them in the tree):
+  1. Move `ShowView`'s `.inspector()` modifier so it mounts only with
+     `EditSlidesView`, instead of toggling `isPresented` in the same
+     transaction as the mode switch. Crashed again under a 15-toggle
+     mode-switch stress test with the identical stack.
+  2. Give the detail column a fixed floor (`.frame(minWidth: 920)` on
+     `MainView`'s `detail:` content), so its reported minimum size
+     doesn't change with content type. Crashed again under the same
+     stress test.
+  3. The same floor via `.navigationSplitViewColumnWidth(min: 920,
+     ideal: 920)` instead of `.frame` — **this one made it worse**: the
+     app then crashed on the very first show selection, before any
+     stress test, where it hadn't before. Reverted immediately.
+  4. `.transaction { $0.disablesAnimations = true }` around the
+     `detail:` switch, on the theory that an implicit crossfade/resize
+     between two very differently-shaped contents was driving the
+     min/max thrashing. Crashed 6/6 on the tight repro above, unchanged.
+  Still unfixed. The one code change kept from today is #1's
+  `.inspector()` move (`c03032b`) — harmless and a real simplification
+  on its own, but it does not touch this bug.
 - **Pulling the inspector's divider far to the left breaks the layout**
   ("smashes both sides out off the screen"). Seen once in a test copy
   dragging from the right edge to x=300. `revealByDragging` is the obvious
