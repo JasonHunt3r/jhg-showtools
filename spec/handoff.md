@@ -123,8 +123,16 @@ video slides change 83 of 98 frames where holding a first frame changed
 10; and a video slide's level line dropped 2.3–5.0 s of an 8 s slide comes
 out exactly silent 2.6–4.5 s. 267 + 12 tests.
 
-**Next: a listen.** Nothing in the export plan is left to build; what is
-left is ears. See "What's left" below.
+**The alpha test passed** (Jason, 2026-09-22). He drove the demo show
+`Shorty` in the app, exported it, and played the movie back: nothing
+broke, in the app or in the export. That is the first time a person has
+taken the app end to end, and it clears the export plan's last open
+item — the listen.
+
+**What it does *not* yet cover**, and what v1 end-to-end still needs, is a
+show made from **his own photos and music**, imported by hand. Shorty was
+seeded into the database by a script, so ingest-by-drag, building a show
+by hand, and editing it are still untested by a person.
 
 **What's left:**
 - **A listen, twice over.** (1) **An exported movie** against the same

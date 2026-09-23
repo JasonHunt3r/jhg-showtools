@@ -1,5 +1,10 @@
 # Alpha test drive (2026-09-22)
 
+**Result: passed.** Jason played Shorty in the app, exported it, and
+played the movie — nothing broke either side. The remaining items below
+are the ones he hasn't reached yet, led by the big one: **a show built by
+hand from his own photos and music**.
+
 Everything planned is built — Phases 1–5 and video export. This is the
 crash-test pass: use it properly, break it, and write down everything that
 is wrong, ugly, or surprising. **Notes are the deliverable.** Nothing here
