@@ -35,8 +35,13 @@ enum DefaultLayout {
     /// same constraints pass gives the window another reason to go round.
     /// Handing back to the run loop lets one settle before the next.
     @MainActor static func restore() {
-        guard let window = NSApp.windows.first(where: { $0.isVisible && $0.contentView != nil })
-        else { return }
+        // The *main* window, by name. "the first visible window" picked up
+        // whichever panel happened to be open — the Rhythm panel, Get Info
+        // — and quietly resized that instead, which is why the command
+        // looked like it did nothing at all (Jason, 2026-09-23).
+        let window = NSApp.windows.first { $0.frameAutosaveName == "main" }
+            ?? NSApp.windows.first { $0.isVisible && $0.contentView != nil }
+        guard let window else { return }
         steps(for: window).forEach(later)
     }
 
