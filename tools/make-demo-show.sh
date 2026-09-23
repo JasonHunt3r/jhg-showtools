@@ -1,7 +1,7 @@
 #!/bin/bash
 # Build the "Shorty" demo library: a 24-second show laid out so each thing
 # worth checking happens on its own, one at a time, with nothing else going
-# on to confuse it. Made for Jason's alpha test drive (spec/alpha-test.md).
+# on to confuse it. Made for Jason's alpha test drive (spec/history/2026-09-22-alpha-test.md).
 #
 #   tools/make-demo-show.sh [dir]        (default: ~/ShowTools Demo)
 #
@@ -140,4 +140,4 @@ sqlite3 "$DB" "UPDATE shows SET overlays='[
 echo
 echo "Shorty is ready:  $LIB"
 echo "Open it with File ▸ Open Library…  (the show is called Shorty, 24 seconds)"
-echo "What to listen and look for: spec/alpha-test.md"
+echo "What to listen and look for: spec/history/2026-09-22-alpha-test.md"

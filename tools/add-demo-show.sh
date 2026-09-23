@@ -11,7 +11,7 @@
 # reads the database when it loads, so a show added underneath a running
 # copy won't appear and may be overwritten.
 #
-# What the show is, second by second: spec/alpha-test.md
+# What the show is, second by second: spec/history/2026-09-22-alpha-test.md
 set -euo pipefail
 cd "$(dirname "$0")/.."
 LIB="${1:-$HOME/Pictures/ShowTools Library.noindex}"
@@ -72,4 +72,4 @@ sqlite3 "$DB" "UPDATE shows SET overlays='[
 
 echo
 echo "Added “Shorty” (24s) to $LIB"
-echo "Open ShowTools and it's in the sidebar. What to look for: spec/alpha-test.md"
+echo "Open ShowTools and it's in the sidebar. What to look for: spec/history/2026-09-22-alpha-test.md"
