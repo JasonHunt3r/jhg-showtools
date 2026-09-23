@@ -106,8 +106,10 @@ case "movie":
     let started = Date()
     var lastShown = -1
     let songs = MovieSoundTrack.songs(of: show, items: items) { lib.url(for: $0) }
+    let videoSound = MovieVideoSound.all(of: show, items: items) { lib.url(for: $0) }
     let result = try MovieExport.write(
-        timeline: timeline, songs: songs, to: out, settings: settings, showAspect: aspect,
+        timeline: timeline, songs: songs, videoSound: videoSound,
+        to: out, settings: settings, showAspect: aspect,
         overlaySource: { media.image(for: $0) },
         progress: { p in
             let step = Int(p * 20)
@@ -118,7 +120,13 @@ case "movie":
     let size = "\(Int(result.size.width))x\(Int(result.size.height))"
     let timing = String(format: "%.2fs, in %.1fs", result.duration, Date().timeIntervalSince(started))
     let note = held > 0 ? " (\(held) video slide\(held == 1 ? "" : "s") couldn't be read)" : ""
-    let sound = result.hasSound ? "\(result.songsMixed) song(s)" : "silent"
+    var sound = "silent"
+    if result.hasSound {
+        var bits: [String] = []
+        if result.songsMixed > 0 { bits.append("\(result.songsMixed) song(s)") }
+        if result.videoSlidesMixed > 0 { bits.append("\(result.videoSlidesMixed) video slide(s)") }
+        sound = bits.joined(separator: " + ")
+    }
     let name = out.lastPathComponent
     print("\r\(name): \(result.frameCount) frames, \(size) at \(result.frameRate) fps, \(sound), \(timing)\(note)")
 

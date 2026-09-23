@@ -22,11 +22,12 @@ public enum MovieExport {
     /// encoder; `progress` and `isCancelled` are called on this thread, and
     /// a cancel removes the part-written file.
     ///
-    /// A video slide's picture is whatever `source` hands back — its first
-    /// frame in a v1 export, settled with Jason, 2026-09-22.
+    /// A video slide's picture is whatever `source` hands back, and its own
+    /// sound comes in through `videoSound` (E5).
     @discardableResult
     public static func write(timeline: ShowTimeline,
                              songs: [MovieSong] = [],
+                             videoSound: [MovieVideoSound] = [],
                              to url: URL,
                              settings: MovieExportSettings,
                              showAspect: CGFloat,
@@ -46,11 +47,14 @@ public enum MovieExport {
         // The mix, if there is one. Built before the writer so a bad song
         // fails before a file is made.
         var sound: MovieSoundRenderer?
-        if !songs.isEmpty {
-            let renderer = try MovieSoundRenderer(songs: songs, duration: timeline.duration)
-            // A show whose songs have all gone gets no track, rather than a
+        if !songs.isEmpty || !videoSound.isEmpty {
+            let renderer = try MovieSoundRenderer(songs: songs, videos: videoSound,
+                                                  duration: timeline.duration)
+            // A show whose sound has all gone gets no track, rather than a
             // silent one nobody asked for.
-            if renderer.result.songsMixed > 0 { sound = renderer }
+            if renderer.result.songsMixed > 0 || renderer.result.videoSlidesMixed > 0 {
+                sound = renderer
+            }
         }
 
         try? FileManager.default.removeItem(at: url)
@@ -204,7 +208,8 @@ public enum MovieExport {
             throw MovieExportError.writerFailed(writer.error?.localizedDescription ?? "the file wouldn't finish")
         }
         return MovieExportResult(url: url, size: plan.canvas, frameCount: totalFrames, frameRate: fps,
-                                 soundFrames: soundFrames, songsMixed: sound?.result.songsMixed ?? 0)
+                                 soundFrames: soundFrames, songsMixed: sound?.result.songsMixed ?? 0,
+                                 videoSlidesMixed: sound?.result.videoSlidesMixed ?? 0)
     }
 
     /// A block of the mix as something a writer input will take.

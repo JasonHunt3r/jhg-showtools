@@ -32,6 +32,8 @@ public struct MovieExportResult: Hashable, Sendable {
     public var soundFrames: AVAudioFramePosition = 0
     /// How many songs went into the mix.
     public var songsMixed: Int = 0
+    /// How many video slides put their own sound in the mix (E5b).
+    public var videoSlidesMixed: Int = 0
 
     /// The movie's length in seconds: `frameCount / frameRate`.
     public var duration: Double { frameRate > 0 ? Double(frameCount) / Double(frameRate) : 0 }

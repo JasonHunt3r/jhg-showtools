@@ -67,7 +67,7 @@ final class MovieExportOptions {
                          + "Nothing is cut off.")
         }
         if songs == 0 {
-            parts.append("The show has no music, so the movie is silent.")
+            parts.append("The show has no sound, so the movie is silent.")
         }
         return parts.joined(separator: " ")
     }
@@ -85,7 +85,10 @@ func runMovieExportPanel(_ model: AppModel, showID: Int64) {
     }
 
     let songs = MovieSoundTrack.songs(of: show, items: items) { lib.url(for: $0) }
-    let options = MovieExportOptions(showSize: outputPixelSize, songs: songs.count)
+    // Video slides with their level line turned up (E5b).
+    let videoSound = MovieVideoSound.all(of: show, items: items) { lib.url(for: $0) }
+    let options = MovieExportOptions(showSize: outputPixelSize,
+                                     songs: songs.count + videoSound.count)
 
     let panel = NSSavePanel()
     panel.prompt = "Export"
@@ -103,7 +106,7 @@ func runMovieExportPanel(_ model: AppModel, showID: Int64) {
     panel.accessoryView = accessory
 
     guard panel.runModal() == .OK, let url = panel.url else { return }
-    model.exportMovie(timeline: timeline, songs: songs, to: url,
+    model.exportMovie(timeline: timeline, songs: songs, videoSound: videoSound, to: url,
                       settings: options.settings, showAspect: options.showAspect,
                       showName: show.name, lib: lib)
 }
@@ -223,7 +226,8 @@ final class MovieExportAccessory: NSView {
 
 extension AppModel {
     /// Writes the movie off the main thread, reporting to `movieExportStatus`.
-    func exportMovie(timeline: ShowTimeline, songs: [MovieSong], to url: URL,
+    func exportMovie(timeline: ShowTimeline, songs: [MovieSong],
+                     videoSound: [MovieVideoSound], to url: URL,
                      settings: MovieExportSettings, showAspect: CGFloat,
                      showName: String, lib: Library) {
         let status = MovieExportStatus(showName: showName)
@@ -239,7 +243,8 @@ extension AppModel {
             let media = MovieMedia { urls[$0.id] }
             do {
                 let result = try MovieExport.write(
-                    timeline: timeline, songs: songs, to: url, settings: settings,
+                    timeline: timeline, songs: songs, videoSound: videoSound,
+                    to: url, settings: settings,
                     showAspect: showAspect,
                     overlaySource: { media.image(for: $0) },
                     progress: { fraction in

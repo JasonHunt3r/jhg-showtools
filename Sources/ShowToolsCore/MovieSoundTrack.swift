@@ -30,6 +30,8 @@ public struct MovieSoundResult: Hashable, Sendable {
     public var channels: Int
     /// How many of the songs asked for actually opened.
     public var songsMixed: Int
+    /// How many video slides contributed their own sound (E5b).
+    public var videoSlidesMixed: Int = 0
 
     public var duration: Double { sampleRate > 0 ? Double(frameCount) / sampleRate : 0 }
 }
@@ -60,16 +62,19 @@ public final class MovieSoundRenderer {
 
     public let format: AVAudioFormat
     public private(set) var framesRendered: AVAudioFramePosition = 0
+    /// How many video slides put their own sound in the mix.
+    public private(set) var videoSlidesMixed = 0
     private var finished = false
 
     public var progress: Double { total > 0 ? min(Double(framesRendered) / Double(total), 1) : 1 }
 
     public var result: MovieSoundResult {
         MovieSoundResult(frameCount: framesRendered, sampleRate: format.sampleRate,
-                         channels: Int(format.channelCount), songsMixed: players.count)
+                         channels: Int(format.channelCount), songsMixed: players.count,
+                         videoSlidesMixed: videoSlidesMixed)
     }
 
-    public init(songs: [MovieSong], duration: Double,
+    public init(songs: [MovieSong], videos: [MovieVideoSound] = [], duration: Double,
                 format: AVAudioFormat = MovieSoundTrack.format(),
                 blockFrames: AVAudioFrameCount = 1024) throws {
         let rate = format.sampleRate
@@ -92,6 +97,19 @@ public final class MovieSoundRenderer {
         }
         players = built
 
+        // Video slides' own sound (E5b). Their level line is already baked
+        // into the samples, so these nodes play at 1 — one curve, applied
+        // once. A slide whose line is at the floor never gets here.
+        var videoBuffers: [(node: AVAudioPlayerNode, buffer: AVAudioPCMBuffer, start: Double)] = []
+        for slide in videos {
+            guard let buffer = try? MovieVideoAudio.buffer(for: slide, format: format) else { continue }
+            let node = AVAudioPlayerNode()
+            engine.attach(node)
+            engine.connect(node, to: mixer, format: format)
+            videoBuffers.append((node, buffer, slide.start))
+        }
+        videoSlidesMixed = videoBuffers.count
+
         try engine.enableManualRenderingMode(.offline, format: format, maximumFrameCount: blockFrames)
         do { try engine.start() } catch {
             throw MovieExportError.writerFailed("the offline audio engine wouldn't start: \(error.localizedDescription)")
@@ -111,6 +129,13 @@ public final class MovieSoundRenderer {
             p.node.scheduleSegment(p.file, startingFrame: first,
                                    frameCount: AVAudioFrameCount(count), at: at)
             p.node.play()
+        }
+
+        for v in videoBuffers {
+            let at = AVAudioTime(sampleTime: AVAudioFramePosition(max(v.start, 0) * rate), atRate: rate)
+            v.node.scheduleBuffer(v.buffer, at: at, options: [])
+            v.node.volume = 1
+            v.node.play()
         }
 
         guard let b = AVAudioPCMBuffer(pcmFormat: engine.manualRenderingFormat,
@@ -192,13 +217,14 @@ public enum MovieSoundTrack {
     /// track at all.
     @discardableResult
     public static func render(songs: [MovieSong],
+                              videos: [MovieVideoSound] = [],
                               duration: Double,
                               format: AVAudioFormat = MovieSoundTrack.format(),
                               blockFrames: AVAudioFrameCount = 1024,
                               progress: ((Double) -> Void)? = nil,
                               isCancelled: (() -> Bool)? = nil,
                               receive: (AVAudioPCMBuffer) throws -> Void) throws -> MovieSoundResult {
-        let renderer = try MovieSoundRenderer(songs: songs, duration: duration,
+        let renderer = try MovieSoundRenderer(songs: songs, videos: videos, duration: duration,
                                               format: format, blockFrames: blockFrames)
         while let block = try renderer.next() {
             if isCancelled?() == true { throw MovieExportError.cancelled }
@@ -212,6 +238,7 @@ public enum MovieSoundTrack {
     /// the tests listen to what came out.
     @discardableResult
     public static func write(songs: [MovieSong],
+                             videos: [MovieVideoSound] = [],
                              duration: Double,
                              to url: URL,
                              format: AVAudioFormat = MovieSoundTrack.format(),
@@ -225,7 +252,7 @@ public enum MovieSoundTrack {
         let file = try AVAudioFile(forWriting: url, settings: settings,
                                    commonFormat: .pcmFormatFloat32, interleaved: false)
         do {
-            return try render(songs: songs, duration: duration, format: format,
+            return try render(songs: songs, videos: videos, duration: duration, format: format,
                               progress: progress, isCancelled: isCancelled) { buffer in
                 try file.write(from: buffer)
             }
