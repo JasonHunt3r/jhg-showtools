@@ -1,11 +1,11 @@
-# ShowTools — handoff, 2026-09-22 (end of day four)
+# ShowTools — handoff, 2026-09-22 (end of day five)
 
 For the next session. Read `CLAUDE.md` (rules) and `spec/plan.md` (every
 decision, phase by phase) first. This file is the state of play. The repo
 is `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 (public, `main`).
 
-## Start here (end of 2026-09-22, fourth session)
+## Start here (end of 2026-09-22, fifth session)
 
 **The Xcode port is DONE** (`spec/xcode-port.md`, P1–P7), and with it
 Phase 5. One app now holds everything:
@@ -39,90 +39,101 @@ Cut), drag moves it, double-click removes it (Logic). Library schema
 stayed 12 — slide settings are JSON, so no migration. 195 + 12 tests.
 **V6 is Jason's: it hasn't been listened to.**
 
-**Video export is BUILT, E1–E5 — the whole plan** (`spec/video-export.md`; five steps,
-E1 settings and codecs → E2 the picture track → E3 the sound track → E4
-the panel → E5 video slides). A show now writes a real, silent movie:
+**Video export is BUILT — the whole plan, E1–E5** (`spec/video-export.md`),
+in one session. A show goes out as a real movie: picture, music, and video
+slides with their own sound.
 
-**File ▸ Export Movie… (⇧⌥⌘E) works**: a Save panel with size, rate and
-format, a note about letterboxing and held video slides, progress and a
-Cancel, and a movie with both tracks at the end of it.
+**File ▸ Export Movie… (⇧⌥⌘E)**: a Save panel with size on one row and
+rate and format on the next, over a note that speaks only when it has
+something to say (a letterbox and its inner size, a show with no sound),
+then progress and a working Cancel.
 
 ```sh
-stcli movie <lib> <showID> 1280x800 out.mp4 30 h264   # picture + sound
-stcli mix   <lib> <showID> out.caf                    # just the mix
+stcli movie <lib> <showID> 1280x800 out.mp4 30 h264   # a whole movie
+stcli mix   <lib> <showID> out.caf                    # just the music mix
 ```
 
-- **E1** `MovieExport.swift`: `MovieExportSettings` (size, fps, codec),
-  `MovieCodec` carrying its own container, so ProRes can't end up in an
-  `.mp4`. Sizes are forced even. `plan(showAspect:)` fits the show's shape
-  inside the asked-for frame and letterboxes — **never crops**, so no
+- **E1** `MovieExport.swift` — `MovieExportSettings` (size, fps, codec) and
+  `MovieCodec`, which carries its own container so ProRes can't end up in
+  an `.mp4`. Sizes are forced even. `plan(showAspect:)` fits the show's
+  shape inside the asked-for frame and boxes it — **never crops**, so no
   slide is cut and no Ken Burns move shifts. A 16:10 show at 1080p is
-  1728×1080.
-- **E2** `MoviePictureTrack.swift`: `AVAssetWriter` over the frame walk
-  `stcli render` has always done. It **blocks — call it off the main
-  thread** (E4 dispatches it); `progress` and `isCancelled` are closures,
-  and a cancel removes the part-written file.
-- **Tag the colours.** Untagged, green went in at 0.1 and came back at
-  0.016, on every codec including ProRes — the encoder and the reader
-  disagreed about the YCbCr matrix. `AVVideoColorProperties` set to
-  Rec. 709 fixes it. A `CIColor` rendered straight to a pixel buffer
-  round-trips exactly, which is what placed the fault in the encode.
-- **Jason confirmed** a video slide holds its first frame in a v1 export,
-  with the panel saying how many are affected.
-- Checked by hand: the 11-slide test show exports at 1280×800 in 8.1 s,
-  and frame 300 matches `stcli render`'s PNG at t=10.0 to a mean of
-  0.0018 per channel. 218 + 12 tests.
-
-- **E3** `MovieSoundTrack.swift`: an offline `AVAudioEngine`
+  1728×1080 (it *pillar*boxes: it is narrower than 16:9).
+- **E2** `MoviePictureTrack.swift` — the frame walk `stcli render` has done
+  since Phase 1, into a writer. **Blocks; call it off the main thread.**
+- **E3** `MovieSoundTrack.swift` — an offline `AVAudioEngine`
   (`enableManualRenderingMode`) building the same graph as `MusicPlayer`,
   a node per song with its volume from `AudioClip.gain`. One source for
-  levels stays one source, so the export is what was heard. Renders in
-  blocks through a closure, ready for E4 to append to a writer input.
-  - **Measure a crossfade as RMS, not peak.** Equal power holds the power,
-    not the peak: two tones at 0.707 each sum to a peak of up to 1.41.
-    Measured as a peak, a correct crossfade looks like clipping. (The mix
-    really can pass full scale there — so does the live player, identically.)
-  - A peak over a window reads its loudest moment, not its middle, so over
-    a fade out it reads the window's *start*.
-  - Checked by hand with a real AAC click track: peak tracks
-    `AudioClip.gain` to 0.99–1.00 through the flat section; 54 s of mix in
-    0.1 s. 234 + 12 tests.
+  levels stays one source, so an exported mix is what was heard.
+  `MovieSoundRenderer` is that mix pulled a block at a time.
+- **E4** `MovieWriter.swift` + `MovieExportPanel.swift` — one
+  `AVAssetWriter` with both tracks, and the UI.
+  `MoviePictureTrack.write` is now the same writer with no songs, so one
+  place builds a writer. ProRes carries PCM, the delivery formats AAC.
+  `MovieMedia` loads pictures synchronously.
+- **E5** `MovieVideoFrames.swift`, `MovieVideoSound.swift`,
+  `VideoSlideTiming.swift` — video slides play, picture and sound. An
+  `AVAssetReader` per *slide* (not per file: the same video used twice is
+  at two different moments, and a transition wants both at once), pulled
+  forward with the writer's clock.
 
-- **E4a** `MovieWriter.swift`: one writer, both tracks, fed in step.
-  `MoviePictureTrack.write` is now it with no songs. ProRes carries PCM,
-  the delivery formats AAC.
-  - **Two deadlocks, both found by probe, both worth remembering.** Mark a
-    track finished the moment its last sample lands, or the other track
-    hangs behind it. And **preferring the track that is behind is not
-    waiting for it**: an input that isn't ready is often waiting on the
-    other one, so spinning on the one behind hung the picture at frame 38
-    of 60 with the sound input ready and unasked.
-  - Audio is interleaved by hand: a non-interleaved ASBD's
-    `mBytesPerFrame` counts one channel.
-- **E4b** `MovieExportPanel.swift`: the Save panel, `MovieMedia` (a
-  synchronous loader — the live `MediaProvider` is deliberately
-  asynchronous and an export can't use it), the banner and Cancel.
-  Resolve item URLs on the main actor: the writing task must not hold the
-  SQLite-backed `Library`.
+**The traps, all found by measuring rather than reading.** None announced
+itself as an error; each is a day's confusion if it is met fresh:
 
-- **E5** video slides play, picture and sound. An `AVAssetReader` per
-  *slide*, pulled forward with the writer's clock; `VideoSlideTiming` is
-  now the one source for which moment of a file a slide shows, asked by
-  the player and the exporter alike. **A slide held longer than its video
-  loops it** (the line is 0.1 s) — easy to miss, now tested. Their sound
-  goes through the same `LevelCurve`, applied per sample, and stays
-  silent unless the line has been turned up.
+- **Tag the colours.** Untagged, encoder and reader disagree about the
+  YCbCr matrix: green went in at 0.1 and came back at **0.016**, on every
+  codec including ProRes. `AVVideoColorProperties` set to Rec. 709 fixes
+  it. A `CIColor` rendered straight to a pixel buffer round-trips exactly,
+  which is what placed the fault in the encode rather than the Compositor.
+- **A writer with two inputs deadlocks two ways**, both silent hangs.
+  (1) Mark a track finished the moment its last sample lands — an
+  unfinished track hangs the other behind it. (2) **Preferring the track
+  that is behind is not waiting for it**: an input that isn't ready is
+  usually waiting on the *other* track before it can flush. Spinning on
+  the one behind hung the picture at frame 38 of 60 with the sound input
+  sitting ready and unasked. Feed whichever input will take data.
+- **Interleave audio by hand** for a writer: a non-interleaved ASBD's
+  `mBytesPerFrame` counts one channel, so the writer reads a fraction of
+  each block.
+- **Don't discard a frame decoded before its moment.** One stashed and
+  then overwritten by the next decode lost every frame beginning just
+  before the time asked for, so any time just past a frame boundary
+  returned the previous frame.
+- **`VideoSlideTiming` is the one source for a video slide's clock**, now
+  asked by `VideoSlot` and the exporter alike. It carries the rule easiest
+  to lose: **a slide held longer than its video plays it again from
+  `clipStart`** rather than freezing, and the line is 0.1 s (held 4.5 s, a
+  4 s video loops).
+- **Resolve file URLs before leaving the main actor.** Swift 6 caught the
+  writing task capturing the SQLite-backed `Library`; it now gets a plain
+  `[Int64: URL]`.
 
-**Next: a listen.** Nothing in the export plan is left to build. What is
-left is ears: play an exported movie against the same show in the app —
-the timing, the crossfades, a video slide's sound against a song. Every
-level in it is measured and matches the player's own functions, but no
-one has heard it. After that, the open items below.
+**Measuring sound has its own two traps**, and each caught me twice:
+an **equal-power crossfade holds RMS, not peak** (two tones at 0.707 sum
+to a peak of up to 1.41, so a correct crossfade read as a peak looks like
+clipping), and **a peak over a window reports its loudest moment, not its
+middle**, so over a fade it reads the window's louder edge. Expected
+levels now come from `AudioClip.gain` over the same window, not by hand.
+
+**Checked by hand** at each step, on a scratch library: frame 300 matches
+`stcli render`'s PNG to a mean of 0.0018 per channel; the music mix tracks
+`AudioClip.gain` to 0.99–1.00 with a real AAC click track; the muxed
+sound track is AAC 2ch/48 kHz at exactly 54.000 s beside the picture;
+video slides change 83 of 98 frames where holding a first frame changed
+10; and a video slide's level line dropped 2.3–5.0 s of an 8 s slide comes
+out exactly silent 2.6–4.5 s. 267 + 12 tests.
+
+**Next: a listen.** Nothing in the export plan is left to build; what is
+left is ears. See "What's left" below.
 
 **What's left:**
-- **Listening to a video slide's sound (V6):** a clip with its middle
+- **A listen, twice over.** (1) **An exported movie** against the same
+  show playing: timing, crossfades, a video slide's sound against a song.
+  (2) **A video slide's sound in the app (V6):** a clip with its middle
   dropped, a video against a song (they should just mix, no ducking), and
-  whether the level glides or steps audibly — it's set once per drawn frame.
+  whether the level glides or steps audibly — live, it's set once per
+  drawn frame; in an export it's per sample, so the export may well be
+  the smoother of the two.
 - **Jason's hands-on pass:** unlocking a private library with Touch ID,
   the panel closing on a click elsewhere, Space-switch pausing. Not yet
   re-done against the nested BGTools.
@@ -130,8 +141,8 @@ one has heard it. After that, the open items below.
   now costs ~2%). Decide whether it should be on by default for random
   desktop pictures.
 - **Telling BGTools when a library moves** (B7 left it open).
-- Parked: image stickiness, a guided first run, video export ("Later" in
-  the plan; the render hook is built in).
+- Parked: image stickiness (does a lane image stay on the clock or move
+  with its slide?), a guided first run, and Flush presets from 2a.
 
 **Test things still installed on Jason's Mac**: `ShowTools.app` in
 `~/Applications` (the real one now, with BGTools and the tiles inside),
@@ -147,9 +158,9 @@ clear them but resets every app's login items, so they're left alone.
 `spec/first-run-brief.md`, Jason may take it to App Claude); Phase 4's
 open risks (below); image stickiness from Phase 3.
 
-Where things stand: Phases 1–5 are built; 187 tests (175 + 12); schema 12.
-Image stickiness (the end of Phase 3) stays parked until Jason has made a
-first real show.
+Where things stand: **Phases 1–5 and video export (E1–E5) are all built**;
+279 tests (267 + 12); schema 12. Image stickiness (the end of Phase 3)
+stays parked until Jason has made a first real show.
 
 ## Phase 4a: core export (2026-09-22)
 
@@ -306,14 +317,15 @@ files are both in the show keeps both ("1 stays"), Keep One disabled.
 | **3b** Find Similar (was "duplicate finder") | **Built** 2026-09-22: Delete by context, Group/Show Similar, Keep One |
 | **4** Setlist export / import | **Built** 2026-09-22 (4a–4d); risks recorded under "Phase 4: open risks" |
 | **E** Video export | **BUILT, E1–E5** 2026-09-22: settings/codecs, picture track, sound track, muxing, File ▸ Export Movie…, and video slides with their own sound. Own spec `spec/video-export.md`. Left: **a listen** |
-| 5 BGTools (desktop companion app) | **Building**, own spec `spec/bgtools.md`: questions settled, B1 (shared player), B2 (skeleton), B3 (settings and modes), B4a (the window), B4b (the panel), B5 (tiles), B6 (pausing, private libraries, the 40%→2% redraw fix), B7 (ShowTools installs it, login item) built 2026-09-22 — **every build step done**; left: Jason's hands-on pass, the Ken Burns cost, telling BGTools when a library moves |
+| 5 BGTools (desktop companion app) | **Built**, own spec `spec/bgtools.md`: questions settled, B1 (shared player), B2 (skeleton), B3 (settings and modes), B4a (the window), B4b (the panel), B5 (tiles), B6 (pausing, private libraries, the 40%→2% redraw fix), B7 (ShowTools installs it, login item) built 2026-09-22 — **every build step done**; left: Jason's hands-on pass, the Ken Burns cost, telling BGTools when a library moves |
 
 Library schema is now **version 12**. Every upgrade is additive and tested
 by opening a library of the version before (7 rows, 8 music, 9 markers,
 10 editing state, 11 rhythm patterns, 12 their note length). Jason's real
 library steps up to 12 the first time a current build opens it. Before an
 upgrade, the database is copied to `Library.sqlite.v<N>.bak`, named for
-the version it was at. 154 core tests.
+the version it was at. **Video export needed no schema change**: a video
+slide's level line is slide settings, which are JSON. 267 core tests.
 
 ## Phase 3, as built (2026-09-21, fourth session)
 
@@ -615,12 +627,25 @@ open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools
 - **The row drawers hold no controls yet.** Scrub audio (a music-row toggle, plan) isn't built; scrubbing is silent.
 - **CPU** is about 33–37% while playing. This needs work before Phase 5's desktop mode.
 - Memory is about 430 MB while playing.
-- **Video:** it can't go in the lane yet. The frame strip shows a video's first frame. The onion skin skips video slides.
+- **Video:** it can't go in the lane yet. The frame strip shows a video's first frame. The onion skin skips video slides. `stcli render` still draws a video slide as the background colour — only `stcli movie` and the app go through `MovieMedia`.
+- **A video slide's sound is decoded whole into memory** when exporting (`MovieVideoAudio`). Fine for slides; worth revisiting if whole films ever become slides.
 - The zoomed-out work area doesn't draw a lane image's overhang past the frame.
 - Inspector sliders have no live preview while dragging; they update on release.
 - Accordion was dropped, and Page Curl is offered as "Page Turn".
 
 ## Lessons (details in memory)
+- **AVFoundation fails quietly.** Everything that went wrong in video
+  export looked like a hang or a plausible picture, never an error: an
+  untagged colour matrix, two different two-input writer deadlocks, a
+  non-interleaved ASBD, a frame decoded early and thrown away. Each was
+  found with a probe or a measurement, none by re-reading the code.
+- **Measure the right quantity.** An equal-power crossfade holds RMS, not
+  peak; a peak over a window is its loudest moment, not its middle. Both
+  made correct code look broken, and both caught me a second time after
+  I had written the first one down.
+- **Extract a rule rather than reimplement it.** A video slide loops when
+  it is held longer than its video — a rule living in the player that an
+  exporter would never guess. `VideoSlideTiming` now holds it for both.
 - **`PlaybackEngine.show` is `@ObservationIgnored`.** A view that reads it doesn't redraw when the show changes, so read the saved `show` that SwiftUI observes. The preview's image bar read the engine's copy and went stale, a bug that only showed once a second control could change opacity.
 - **Undo restores a whole-show snapshot.** Anything that lives in `Show` but shouldn't be undone (the editing state) has to be carried over explicitly when undoing, as `AppModel.update` now does.
 - **A new column breaks the older-version tests.** Each "a version-N library upgrades" test fakes an old library by dropping columns, so every newer column must be dropped too (the tests now chain `DROP COLUMN`s).
