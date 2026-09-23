@@ -11,11 +11,12 @@ import ShowToolsCore
 //   stcli show   <library> <name>              new show from every item
 //   stcli render <library> <showID> <width>x<height> <out-dir> <t>...
 //   stcli movie  <library> <showID> <width>x<height> <out.mp4> [fps] [codec]
+//   stcli mix    <library> <showID> <out.caf>
 //
 // `render` goes through the same Compositor the player uses, so it is also
 // the first sketch of video export: frames at times, written to disk.
-// `movie` is that loop for real (E2), writing a picture track. No sound
-// yet — that is E3.
+// `movie` is that loop for real (E2), writing a picture track. `mix` is
+// the show's music rendered offline (E3). They meet in E4's panel.
 
 let args = CommandLine.arguments
 func die(_ m: String) -> Never { FileHandle.standardError.write(Data((m + "\n").utf8)); exit(1) }
@@ -138,6 +139,19 @@ case "movie":
     let held = videos > 0 ? " (\(videos) video slide\(videos == 1 ? "" : "s") holding the first frame)" : ""
     let name = out.lastPathComponent
     print("\r\(name): \(result.frameCount) frames, \(size) at \(result.frameRate) fps, \(timing)\(held)")
+
+case "mix":
+    guard args.count >= 5, let showID = Int64(args[3]) else { die("mix <lib> <showID> <out.caf>") }
+    guard let show = try lib.allShows().first(where: { $0.id == showID }) else { die("no show \(showID)") }
+    let items = Dictionary(uniqueKeysWithValues: try lib.allItems().map { ($0.id, $0) })
+    let timeline = ShowTimeline(show: show, items: items)
+    let songs = MovieSoundTrack.songs(of: show, items: items) { lib.url(for: $0) }
+    let outURL = URL(fileURLWithPath: args[4])
+    let began = Date()
+    let mix = try MovieSoundTrack.write(songs: songs, duration: timeline.duration, to: outURL)
+    let took = String(format: "%.2fs of sound in %.1fs", mix.duration, Date().timeIntervalSince(began))
+    print("\(outURL.lastPathComponent): \(mix.songsMixed) song(s), \(mix.frameCount) frames "
+          + "at \(Int(mix.sampleRate)) Hz, \(took)")
 
 default:
     die("unknown command \(args[1])")
