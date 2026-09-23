@@ -12,6 +12,7 @@ A macOS slideshow composer and player for Jason's own Mac.
 | `spec/video-export.md` | current | Video export: the writer, the traps, the codecs. |
 | `spec/video-audio.md` | current | A video slide's own sound. |
 | `spec/xcode-port.md` | current | Why one Xcode project builds both bundles, and how. |
+| `spec/edit-slides-inspector-port.md` | planned | The fix for the layout-loop crash: port Edit Slides' inspector off SwiftUI's `.inspector()`. |
 | `spec/layout.md` | reference | The file-by-file map: which target owns what. Read before moving code between targets or adding a file. |
 | `spec/first-run-brief.md` | reference | A brief for whoever builds the guided first run. Not a build plan. |
 | `spec/history/` | **history** | Dated events. **Never read for current rules or current state** — only when the question is *why* something is the way it is. Start at its `README.md`. |

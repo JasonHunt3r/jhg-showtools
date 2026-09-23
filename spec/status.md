@@ -37,6 +37,10 @@ slide's level line is slide settings, which are JSON.
 
 ## What's next
 
+0. **Fix the layout-loop crash** — `spec/edit-slides-inspector-port.md`.
+   Cause found 2026-09-23 (SwiftUI's `.inspector()` on Edit Slides); the
+   app currently crashes on selecting a show or switching modes. This
+   blocks everything else below.
 1. **A listen, twice over.** (1) An exported movie against the same show
    playing: timing, crossfades, a video slide's sound against a song.
    (2) A video slide's sound in the app (V6): a clip with its middle
@@ -95,90 +99,25 @@ and Flush presets from 2a.
 
 ## Known issues
 
-- **An intermittent crash, at launch and on entering Edit Show.**
-  `NSGenericException` from AppKit's layout-loop guard: a window marked as
-  needing another Update Constraints pass more times than it has views.
-  The loop is
-  `SplitViewChildController.hostingView(_:didUpdateMinSize:maxSize:)` →
-  `enqueueLayoutInvalidation` → `setNeedsUpdateConstraints`, so something
-  in a split column reports a new minimum size *during* the constraints
-  pass. **Which** column is unproven: `MainView`'s sidebar carries a
-  `.safeAreaInset(edge: .bottom)` and truncating rows, either of which
-  could do it, and neither has been shown to. It belongs to no one build
-  (six crashed, matched by UUID) and `ViewThatFits` is cleared — the first
-  crash predates it being added. **The
-  exception is raised far more often than it kills the app, so count
-  entries in `~/Library/Logs/ShowTools-exception.log`, not deaths** — and
-  the bursts are real, so no run of trials proves anything. Full write-up:
-  `spec/history/2026-09-23-crash-hunt.md`.
-  **A second session, 2026-09-23 (later the same day) — flag the
-  frequency claims below as unverified.** Jason reported a single click
-  on the mode toggle crashing it for him, reliably; this session's own
-  automated trials gave inconsistent answers about how often the same
-  sequence crashes (see the false-9/9 lead a few lines down), and that
-  contradiction was never resolved before the session was stopped. Read
-  `spec/history/2026-09-23-crash-hunt-session2.md` for exactly what was
-  tried (stack-trace reading, three reverted fix attempts, the pacing
-  and build-hygiene mistakes in the repro counting) — it's written for
-  the methods, not the conclusions. Only the symbol-name finding
-  (`SplitViewChildController`, next paragraph) rests on something firmer
-  than a trial count.
-
-  **A more specific repro, this same second session:** the fatal
-  stack's frame names the exact class: `SplitViewChildController
-  .hostingView(_:didUpdateMinSize:maxSize:)`. **That class belongs to
-  SwiftUI's own split-column machinery** (`NavigationSplitView` columns
-  and the `.inspector()` column) — **not** to `ColumnsSplitView`
-  (`ColumnsSplitView.swift`), which is a hand-rolled `NSSplitView` with
-  plain frame-based `NSHostingView` children and goes through none of
-  SwiftUI's split-column code at all — correcting the standing suspicion
-  of `MainView`'s sidebar above only in that it clears `ColumnsSplitView`
-  specifically, not the sidebar. It also isn't specific to
-  `EditShowView`: the default mode is Edit Slides (a plain `List`), and
-  selecting a show crashed at least once while in that mode too. The
-  best-supported trigger now is layout churn arriving **too soon after a
-  transition, before AppKit finishes settling** in `MainView`'s outer
-  `NavigationSplitView` **detail column** (the `detail:` closure holding
-  `ShowView`, whose content changes type — grid vs. list vs. NSSplitView
-  tree — when the sidebar selection or the mode changes): 20 rapid
-  mode-toggles (0.4s apart) crashed a clean build reliably; launching
-  straight into a show via `SHOWTOOLS_DEV_SHOW`, whose `.task` selects it
-  on the very next run-loop tick, failed more often than it survived;
-  selecting a show by hand a few seconds after a settled launch mostly
-  didn't crash, but did at least once. **A false lead, recorded so it
-  isn't retried:** a run of *fresh* launches once crashed 9/9 on nothing
-  more than "select a show," which briefly looked like a solid,
-  non-bursty repro — it turned out to be a bad binary from this session's
-  own repeated incremental Xcode rebuilds (`build/xcode` derived data
-  left stale after several rapid `swift build` + `make-app.sh` cycles);
-  a build from wiped derived data (`rm -rf build/xcode build/ShowTools.app`
-  before `./make-app.sh`) survived the identical repro 5/5. **The
-  underlying bug is still genuinely bursty**, exactly as the original
-  write-up said — a later, ordinary-paced repeat of the very same "settled
-  launch, click a show" sequence crashed on a build that had just
-  survived it five times running. No run of trials, in either direction,
-  proves anything on its own. **Three fix attempts, all reverted, none
-  held** (each rebuilt clean, retested against the 20-toggle stress
-  repro, and rolled back — `git diff` shows none of them in the tree):
-  1. Move `ShowView`'s `.inspector()` modifier so it mounts only with
-     `EditSlidesView`, instead of toggling `isPresented` in the same
-     transaction as the mode switch. Crashed again under the 20-toggle
-     mode-switch stress test with the identical stack.
-  2. Give the detail column a fixed floor (`.frame(minWidth: 920)` on
-     `MainView`'s `detail:` content), so its reported minimum size
-     doesn't change with content type. Crashed again under the same
-     stress test.
-  3. The same floor via `.navigationSplitViewColumnWidth(min: 920,
-     ideal: 920)` instead of `.frame` — **this one made it worse**: the
-     app then crashed on the very first show selection, before any
-     stress test, where it hadn't before. Reverted immediately.
-  4. `.transaction { $0.disablesAnimations = true }` around the
-     `detail:` switch, on the theory that an implicit crossfade/resize
-     between two very differently-shaped contents was driving the
-     min/max thrashing. Crashed 6/6 on the tight repro above, unchanged.
-  Still unfixed. The one code change kept from today is #1's
-  `.inspector()` move (`c03032b`) — harmless and a real simplification
-  on its own, but it does not touch this bug.
+- **The layout-loop crash — cause found 2026-09-23, not yet fixed.**
+  `NSGenericException` from AppKit's layout-loop guard, on selecting a
+  show or switching Edit Slides ↔ Edit Show. **Confirmed cause:** SwiftUI's
+  `.inspector()` modifier on `ShowView`'s `.slides` case. Stripping it
+  out (no replacement UI — a test, not a fix) survived 16 rapid mode
+  toggles against a copy of the real library where every other build
+  tried tonight crashed, including code from *before* the Ken Burns
+  rename with a completely blank preferences domain — both once-plausible
+  causes, ruled out by direct test, not just cleared by suspicion.
+  Matches an independent, unrelated bug report on the identical OS build
+  (macOS 27.0, 26A428) with app-level causes ruled out the same way — an
+  AppKit/SwiftUI regression, not something in ShowTools' own code.
+  **The fix:** `spec/edit-slides-inspector-port.md` — port Edit Slides'
+  inspector onto the same hand-rolled mechanism `EditShowView` already
+  uses instead of SwiftUI's `.inspector()`. Not yet done. Full story:
+  `spec/history/2026-09-23-crash-hunt.md`,
+  `spec/history/2026-09-23-crash-hunt-session2.md`,
+  `spec/history/2026-09-23-crash-hunt-session3.md` (the one with the
+  actual cause).
 - **Pulling the inspector's divider far to the left breaks the layout**
   ("smashes both sides out off the screen"). Seen once in a test copy
   dragging from the right edge to x=300. `revealByDragging` is the obvious

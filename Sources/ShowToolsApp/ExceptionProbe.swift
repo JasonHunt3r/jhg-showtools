@@ -61,6 +61,8 @@ enum ExceptionProbe {
         var entry = "\n\(Date()) \(how) \(exception.name.rawValue)\n"
         entry += "reason: \(exception.reason ?? "(none)")\n"
         for line in Thread.callStackSymbols { entry += "  \(line)\n" }
+        entry += "recent setNeedsUpdateConstraints (LayoutLoopProbe, most recent last):\n"
+        entry += LayoutLoopProbe.dump() + "\n"
 
         guard let data = entry.data(using: .utf8) else { return }
         let fm = FileManager.default
