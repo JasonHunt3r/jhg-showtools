@@ -154,7 +154,19 @@ Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
   Show's columns use `ColumnHost`, which takes the mouse only inside its
   frame. Keep it, or content wider than its column steals the next column's
   clicks and scrolling.
-- Tell Jason before restarting the app: he's often using it.
+- **Commit at each step, without being asked.** Jason treats commits as his
+  safety net, so work doesn't sit in the working tree waiting for
+  permission. One commit per plan step, per measurement that settles
+  something, and per settled decision — the history is the model (B1–B7 is
+  seven commits in forty minutes). Commit once a step builds, its tests
+  pass and any hands-on check is done. Two unrelated pieces of work are two
+  commits, never one. `git status` first, stage everything related, and say
+  what went in and what was deliberately left out. If in doubt about the
+  rhythm, read `git log` — it shows the expected cadence better than any
+  instruction here.
+- Tell Jason before restarting the app: he's often using it. (Until he has
+  made a first real show there is nothing to disturb, so open and drive it
+  freely on a scratch library.)
 - Library delete conventions (Delete asks first, ⌘Delete moves to the Trash
   without asking) and the slide-removal notice are settled decisions. See
   the plan.
