@@ -39,7 +39,11 @@ Xcode project, so BGTools is nested inside ShowTools: `spec/xcode-port.md`.
 - Video export lives in Core (`MovieExport` settings and codecs,
   `MovieWriter` the one place that builds an `AVAssetWriter`,
   `MoviePictureTrack`, `MovieSoundTrack`/`MovieSoundRenderer`,
-  `MovieMedia` the synchronous loader) with `MovieExportPanel` in the app.
+  `MovieMedia` the synchronous loader, `MovieVideoFrames`/`MovieVideoSound`
+  for video slides) with `MovieExportPanel` in the app.
+  `VideoSlideTiming` decides which moment of a file a video slide shows,
+  for the player and the exporter both — a slide held longer than its
+  video loops it, which is easy to lose when touching either.
   **Write one off the main thread**, and feed a writer whichever input
   will take data rather than waiting on the one that's behind — both
   orderings deadlock, and `spec/video-export.md` says how.

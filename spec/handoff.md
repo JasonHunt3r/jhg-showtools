@@ -39,7 +39,7 @@ Cut), drag moves it, double-click removes it (Logic). Library schema
 stayed 12 — slide settings are JSON, so no migration. 195 + 12 tests.
 **V6 is Jason's: it hasn't been listened to.**
 
-**Video export: E1–E4 are BUILT — it works end to end** (`spec/video-export.md`; five steps,
+**Video export is BUILT, E1–E5 — the whole plan** (`spec/video-export.md`; five steps,
 E1 settings and codecs → E2 the picture track → E3 the sound track → E4
 the panel → E5 video slides). A show now writes a real, silent movie:
 
@@ -105,15 +105,19 @@ stcli mix   <lib> <showID> out.caf                    # just the mix
   Resolve item URLs on the main actor: the writing task must not hold the
   SQLite-backed `Library`.
 
-**Next: E5, real video slides.** `AVAssetReader` per video slide, pulled
-forward in step with the writer's clock — an `AVAssetImageGenerator` per
-frame is far too slow. Their sound comes through the same `LevelCurve`
-the live player uses (`spec/video-audio.md`). Until then a video slide
-holds its first frame, and the panel says so.
+- **E5** video slides play, picture and sound. An `AVAssetReader` per
+  *slide*, pulled forward with the writer's clock; `VideoSlideTiming` is
+  now the one source for which moment of a file a slide shows, asked by
+  the player and the exporter alike. **A slide held longer than its video
+  loops it** (the line is 0.1 s) — easy to miss, now tested. Their sound
+  goes through the same `LevelCurve`, applied per sample, and stays
+  silent unless the line has been turned up.
 
-**Worth a listen before E5:** an exported movie alongside the same show
-playing in the app — the mix is measured and matches `AudioClip.gain`,
-but nobody has heard it.
+**Next: a listen.** Nothing in the export plan is left to build. What is
+left is ears: play an exported movie against the same show in the app —
+the timing, the crossfades, a video slide's sound against a song. Every
+level in it is measured and matches the player's own functions, but no
+one has heard it. After that, the open items below.
 
 **What's left:**
 - **Listening to a video slide's sound (V6):** a clip with its middle
@@ -301,7 +305,7 @@ files are both in the show keeps both ("1 stays"), Keep One disabled.
 | **3** Music + timeline | **All 7 steps built** (6 and 7 on 2026-09-22). Left: settle image stickiness with Jason |
 | **3b** Find Similar (was "duplicate finder") | **Built** 2026-09-22: Delete by context, Group/Show Similar, Keep One |
 | **4** Setlist export / import | **Built** 2026-09-22 (4a–4d); risks recorded under "Phase 4: open risks" |
-| **E** Video export | **E1–E4 built** 2026-09-22: settings/codecs, picture track, sound track, muxing and File ▸ Export Movie…. Own spec `spec/video-export.md`. Left: E5, real video slides (they hold a first frame for now), and a listen |
+| **E** Video export | **BUILT, E1–E5** 2026-09-22: settings/codecs, picture track, sound track, muxing, File ▸ Export Movie…, and video slides with their own sound. Own spec `spec/video-export.md`. Left: **a listen** |
 | 5 BGTools (desktop companion app) | **Building**, own spec `spec/bgtools.md`: questions settled, B1 (shared player), B2 (skeleton), B3 (settings and modes), B4a (the window), B4b (the panel), B5 (tiles), B6 (pausing, private libraries, the 40%→2% redraw fix), B7 (ShowTools installs it, login item) built 2026-09-22 — **every build step done**; left: Jason's hands-on pass, the Ken Burns cost, telling BGTools when a library moves |
 
 Library schema is now **version 12**. Every upgrade is additive and tested
@@ -574,7 +578,7 @@ ahead with 7x" from Jason before each one:
 ## How to work on it
 
 ```sh
-swift test                                  # 243 core + 12 BGTools tests
+swift test                                  # 267 core + 12 BGTools tests
 ./make-app.sh                               # → build/ShowTools.app
 tools/make-test-library.sh <scratch>/STTest # scratch library + generated media
 open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools.app

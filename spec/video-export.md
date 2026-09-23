@@ -143,10 +143,48 @@ Core doesn't decide this: a video slide's picture is whatever the caller's
   - **Checked by hand**: picking ProRes renames to `.mov`, picking 1080p
     explains the bars ("1660×1080 inside the frame"), and a real export
     writes 54 s at 2940×1912 with an AAC track and a working Cancel.
-- **E5 Video slides.** `AVAssetReader` per video slide, pulled forward in
-  step with the writer's clock — an `AVAssetImageGenerator` per frame is
-  far too slow. Their sound comes through the same `LevelCurve` the live
-  player now uses (`spec/video-audio.md`).
+- **E5 Video slides — DONE** (`MovieVideoFrames.swift`,
+  `MovieVideoSound.swift`, `VideoSlideTiming.swift`, 24 tests).
+  - **E5a the picture.** An `AVAssetReader` per *slide* (not per file: the
+    same video used twice is at two different moments, and a transition
+    wants both at once), pulled forward in step with the writer's clock.
+    It seeks twice over a slide's life — once at the start, once per loop
+    — where an `AVAssetImageGenerator` per frame would seek and decode
+    from a keyframe every time.
+  - **`VideoSlideTiming` is now the one source for a video slide's
+    clock**, asked by both `VideoSlot` and the exporter. It carries a rule
+    that is easy to miss when reimplementing it: **a slide held longer
+    than the video's remaining length plays it again from `clipStart`**
+    rather than freezing, and the line between holding and looping is
+    0.1 s (held 4.5 s, a 4 s video loops).
+  - **Don't throw away a frame decoded early.** A frame read before its
+    moment came was stashed, then overwritten by the next decode, so every
+    frame beginning just before the moment asked for was lost and any time
+    just past a frame boundary returned the previous frame. Consume what's
+    held before decoding more.
+  - **E5b the sound.** `AVAudioFile` won't open a video, so the slide's
+    audio comes out through an `AVAssetReader` and is laid along the slide
+    by `VideoSlideTiming` — so picture and sound loop together, and past
+    the end the picture holds its last frame while the sound stops (a held
+    frame isn't a held note). The `LevelCurve` is applied per sample and
+    baked in, so the node plays at 1: one curve, applied once.
+  - **Silent by default is load-bearing.** Only slides whose line has been
+    turned up are gathered, so a clip dropped into a show set to music
+    never blasts its own audio (`spec/video-audio.md`).
+  - **Checked by hand**: against the pre-E5 export, holding changed 10 of
+    98 frames over 3.5 s (Ken Burns alone) where playing changes 83 of 98.
+    For sound, the generated test clip has no audio track at all — rightly
+    reported as nothing to mix — so an export was ingested back as a video
+    that does have sound: with the line dropped 2.3–5.0 s of an 8 s slide,
+    the movie is exactly silent 2.6–4.5 s and sounds either side.
+
+## Still open
+
+- **Nobody has listened to an export yet**, against the same show playing.
+- A very long video slide's sound is decoded whole into memory. Fine for
+  slides; worth revisiting if whole films ever become slides.
+- `stcli render` still draws video slides as the background colour; only
+  `stcli movie` and the app go through `MovieMedia`.
 
 ## Not in this
 
