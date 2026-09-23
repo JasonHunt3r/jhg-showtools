@@ -1,10 +1,15 @@
 # BGTools — the desktop companion app
 
+**Status:** Built 2026-09-22 (B1–B7). **Left:** Jason's hands-on pass
+(private unlock with Touch ID, the panel closing on a click elsewhere,
+Space-switch pausing, none re-done against the nested BGTools); the Pan
+and Zoom cost; telling BGTools when a library moves.
+
 Phase 5 of ShowTools (renamed 2026-09-22; it was "Live desktop"). This file
-holds BGTools' decisions and measurements; `spec/plan.md` points here.
-**Nothing of BGTools is built yet.** What exists is research and throwaway
-test programs (`tools/desktop-probe`, `control-probe`, `library-probe`,
-`login-probe`), which answer "will this work?".
+holds BGTools' decisions and measurements; `spec/plan.md` points here. It
+began as research and throwaway test programs (`tools/desktop-probe`,
+`control-probe`, `library-probe`, `login-probe`) answering "will this
+work?" — they did, and it was built.
 
 ## What it is
 
@@ -130,53 +135,56 @@ it; follow the library when it moves (a bookmark; ShowTools tells it).
   drawing and video): live Core Image drawing against a looping HEVC
   video, per monitor
 
-## Open questions (to settle with Jason one at a time)
+## Settled (with Jason, one at a time)
+
+These were the open questions. All thirteen are answered; the wording is
+as it was when each was settled.
 
 From the 2026-09-20 plan, still applying:
-1. ~~Play modes~~ **Settled (Jason, 2026-09-22): all five**, per monitor
+1. **Play modes** — **Settled (Jason, 2026-09-22): all five**, per monitor
    and Space: a show in order · a show shuffled · random from a
    collection · a random show · random from all files. Songs are never
    slides.
-2. ~~"All same"~~ **Settled (Jason, 2026-09-22): one switch overrides
+2. **"All same"** — **Settled (Jason, 2026-09-22): one switch overrides
    all.** On, one choice plays on every monitor and every Space, in sync
    (the same slide at the same moment). Off, each monitor's and Space's own
    settings come back; they're kept while it's on.
-3. ~~Monitors coming and going~~ **Settled (Jason, 2026-09-22):** a
+3. **Monitors coming and going** — **Settled (Jason, 2026-09-22):** a
    **"new screens" default** in BGTools (e.g. Random from all files, or a
    chosen collection) plays on any monitor or Space it hasn't seen; after
    that it's remembered by id (monitors) and uuid (Spaces).
-4. ~~Videos and GIFs~~ **Settled (Jason, 2026-09-22):** they play;
+4. **Videos and GIFs** — **Settled (Jason, 2026-09-22):** they play;
    **"Stills only" is part of each monitor's and Space's setting** (video
    on one display, stills on another). With it on, a show skips its video
    and GIF slides.
-5. ~~Wallpaper fallback~~ **Settled (Jason, 2026-09-22): never touch
+5. **Wallpaper fallback** — **Settled (Jason, 2026-09-22): never touch
    it.** BGTools never changes the system wallpaper; when it stops,
    whatever Jason had shows through.
 
 New with BGTools:
-6. ~~How ShowTools installs it~~ **Settled (Jason, 2026-09-22): copy to
+6. **How ShowTools installs it** — **Settled (Jason, 2026-09-22): copy to
    `~/Applications`.** ShowTools carries BGTools inside it and copies it
    out the first time the desktop is turned on, replacing the copy when a
    newer build arrives. A normal, visible app (where tiles were measured
    to load); deleting ShowTools leaves it behind.
-7. ~~Sound~~ **Settled (Jason, 2026-09-22): silent, with a switch** in
+7. **Sound** — **Settled (Jason, 2026-09-22): silent, with a switch** in
    each monitor's and Space's setting that lets its show's music (and
    video sound) play. Detail for the build: if two screens have it on,
    only one should be heard (the one on the main display?).
-8. ~~Settings for random pictures~~ **Settled (Jason, 2026-09-22): one
+8. **Settings for random pictures** — **Settled (Jason, 2026-09-22): one
    set of desktop defaults** in BGTools (length, transition, Ken Burns
    on/off, fit or fill), used by every random mode on every screen.
-9. ~~Power~~ **Settled (Jason, 2026-09-22): pause when** the display
+9. **Power** — **Settled (Jason, 2026-09-22): pause when** the display
    sleeps or the screen locks (always), in **Low Power Mode**, and when an
    app is **full screen on that display**. Not on battery as such. (A
    full-screen app is its own Space, so this falls out of pausing every
    window whose Space isn't the active one on its display, which saves
    the hidden Spaces too; resume where it left off.)
-10. ~~Which library~~ **Settled (Jason, 2026-09-22): per monitor and
+10. **Which library** — **Settled (Jason, 2026-09-22): per monitor and
     Space.** Each monitor's and Space's setting names its own library,
     starting with the one ShowTools has open. A library switch in
     ShowTools doesn't change the desktop.
-11. ~~Private libraries~~ **Settled (Jason, 2026-09-22): Touch ID when
+11. **Private libraries** — **Settled (Jason, 2026-09-22): Touch ID when
     one is chosen; back to public on sleep or lock.** Choosing a private
     library for a screen asks for Touch ID (BGTools' own prompt). When the
     Mac sleeps or the screen locks, every screen playing a private library
@@ -186,9 +194,9 @@ New with BGTools:
     the lid"). The switch happens on the sleep/lock notice, before the
     screen can be seen again; a private choice is never restored at
     launch.
-12. ~~Clicks~~ **Settled:** they go straight through to the desktop
+12. **Clicks** — **Settled:** they go straight through to the desktop
     (measured working).
-13. ~~Control Center tiles~~ **Settled (Jason, 2026-09-22): Open BGTools
+13. **Control Center tiles** — **Settled (Jason, 2026-09-22): Open BGTools
     and Desktop Show on/off.** Control Center only holds buttons and
     switches (macOS 27 SDK: `ControlWidgetButton`, `ControlWidgetToggle`,
     optionally configured when added, a status line, draggable to the

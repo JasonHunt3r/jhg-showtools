@@ -1,4 +1,6 @@
-# Porting ShowTools' packaging to Xcode (planned 2026-09-22)
+# Porting ShowTools' packaging to Xcode
+
+**Status:** Built 2026-09-22 (P1–P7). **Left:** nothing.
 
 **Why.** Jason: BGTools shouldn't be orphaned when ShowTools is deleted —
 one app should hold both. Measured the same day: a helper app nested in
@@ -102,8 +104,9 @@ ShowTools.app                            (Xcode target, com.jhg.showtools)
 
 Jason's hands-on pass on BGTools (private unlock, the panel closing on a
 click elsewhere, Space-switch pausing), the Ken Burns cost (~40% of a core
-while it moves), telling BGTools when a library moves, and video export
-(the plan's "Later"; the render hook is built in).
+while it moves), and telling BGTools when a library moves. Video export
+was also outside it — that has since been built (`spec/video-export.md`);
+the render hook this port left in place is what it uses.
 
 ## Done, 2026-09-22 (fourth session)
 

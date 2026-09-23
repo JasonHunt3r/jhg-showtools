@@ -24,8 +24,12 @@ live on the desktop of each attached monitor.
 
 Built the same way as CutSim (see `jhg-cutcheck/spec/macos_panels_guide.md`):
 
-- SwiftUI app with AppKit underneath, built with SwiftPM and wrapped into a
-  `.app` by a shell script. No Xcode project.
+- SwiftUI app with AppKit underneath. **Updated 2026-09-22:** the app is
+  built by one Xcode project (XcodeGen, `project.yml`), which is what lets
+  BGTools and its Control Center tiles nest inside the ShowTools bundle —
+  see `spec/xcode-port.md`. The libraries, `stcli` and the tests stay
+  SwiftPM, so `swift test` is unchanged. It was originally SwiftPM
+  throughout, wrapped into a `.app` by a shell script.
 - Floating side panels are `NSPanel` utility windows that snap together and
   remember where they were. The code pattern gets copied over from CutSim.
 - Rendering uses Core Animation layers plus Core Image's built-in transition
@@ -892,4 +896,6 @@ meet first. **To be designed with Jason.**
 
 ## Open questions
 
-None. Plan approved 2026-09-20; Phase 2a added and settled 2026-09-21.
+Plan approved 2026-09-20; Phase 2a added and settled 2026-09-21. The live
+list is in `spec/status.md` → Open questions; image stickiness (the end of
+Phase 3) is the one still open here.

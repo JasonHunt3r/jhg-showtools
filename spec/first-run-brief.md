@@ -8,7 +8,7 @@ or decided yet beyond what's marked as Jason's.
 A macOS slideshow composer and player for Jason's own Mac (SwiftUI and
 AppKit). You get as much control as possible over each slide: how long it
 shows, its transition, its movement, and how it lines up with music. It
-plays in a window, full screen, or (later) live on each monitor's desktop.
+plays in a window, full screen, or live on each monitor's desktop.
 Timelines follow Final Cut Pro's conventions.
 
 ## How things are organised (Jason's words, 2026-09-22, first time stated)
@@ -54,6 +54,8 @@ As built:
 - **Rhythm panel** (⌘R): rhythm patterns for placing slides on the beat.
 - **Export Show… / Import Show…**: a show as a folder of numbered files,
   plus `show.json` and `show.tsv`.
+- **Export Movie… (⇧⌥⌘E)**: the show as a real movie file — picture,
+  music, and video slides with their own sound.
 
 ## What exists now
 
@@ -96,4 +98,11 @@ selected" in the inspector, "No Selection" in the Info panel.
 3. What "first" means: per Mac (preferences) or per library.
 4. Skipping all of it, and seeing it again (Help ▸ …?).
 5. The words themselves: a short glossary (library, collection, show,
-   slide, song, transition, Ken Burns, transform, effect, lane, storyline).
+   slide, song, transition, Pan and Zoom, transform, effect, lane,
+   storyline).
+
+**Naming, settled 2026-09-22:** the effect is called **Pan and Zoom**, not
+Ken Burns — the old name is a reference rather than a description. The app
+has not been renamed yet (`spec/status.md` has the job), so the UI you see
+today still says "Ken Burns" everywhere. Write the onboarding words with
+**Pan and Zoom**.

@@ -1,4 +1,8 @@
-# Video export (planned with Jason, 2026-09-22)
+# Video export
+
+**Status:** Built 2026-09-22 (E1–E5, the whole plan in one session).
+**Left:** a listen — an exported movie against the same show playing,
+for timing, crossfades, and a video slide's sound against a song.
 
 The hook has been in since day one (plan, "Video-export hook"): everything
 that draws goes through `ShowTimeline.frame(at:)` → `Compositor.compose`,
@@ -180,7 +184,10 @@ Core doesn't decide this: a video slide's picture is whatever the caller's
 
 ## Still open
 
-- **Nobody has listened to an export yet**, against the same show playing.
+- **Nobody has listened to an export yet**, against the same show
+  playing. Jason's alpha test (2026-09-22, `077568f`) played an exported
+  movie back and nothing broke, so the export works end to end — but that
+  was a drive-through, not a listen against the app.
 - A very long video slide's sound is decoded whole into memory. Fine for
   slides; worth revisiting if whole films ever become slides.
 - `stcli render` still draws video slides as the background colour; only

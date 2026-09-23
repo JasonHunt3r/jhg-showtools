@@ -1,4 +1,7 @@
-# A video slide's own sound (planned with Jason, 2026-09-22)
+# A video slide's own sound
+
+**Status:** Built 2026-09-22 (V1–V5). **Left:** V6, Jason's — it has not
+been listened to.
 
 **Why now.** Video export has to do *something* with a video slide's
 audio, and today it does the wrong thing twice over: the sound plays at
@@ -25,6 +28,11 @@ ShowTools video slides play their original audio at 100%, uncontrollably.
 Nothing to preserve: Jason hasn't built a real show yet, so defaulting
 existing video slides to silent costs nothing. Check this still holds
 before building.
+
+**Note, 2026-09-23:** that premise has expired. His library holds shows
+now. They are disposable test material today (Jason, 2026-09-23), so
+nothing is at risk yet — but any future change to the silent default has
+saved slides to respect, and should migrate rather than assume.
 
 ## The model
 
