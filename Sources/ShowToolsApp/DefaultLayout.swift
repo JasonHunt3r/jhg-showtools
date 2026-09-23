@@ -27,31 +27,61 @@ enum DefaultLayout {
     /// waiting for a relaunch: the point is to rescue a window that is
     /// unusable *now*. Preferences follow, because each view saves its
     /// own width as it changes.
+    /// **One change per run-loop turn, and no animation.** Doing all three
+    /// in one pass is what made ⌥⌘0 raise AppKit's layout-loop exception
+    /// and, once, kill the app (2026-09-23; the reason string is in the
+    /// handoff). Each change moves a hosting view, each move makes SwiftUI
+    /// report a new minimum size, and a second change arriving inside that
+    /// same constraints pass gives the window another reason to go round.
+    /// Handing back to the run loop lets one settle before the next.
     @MainActor static func restore() {
         guard let window = NSApp.windows.first(where: { $0.isVisible && $0.contentView != nil })
         else { return }
+        steps(for: window).forEach(later)
+    }
 
-        var frame = window.frame
-        // Grow from the top-left, the corner AppKit keeps still, so the
-        // title bar doesn't slide out from under the pointer.
-        frame.origin.y += frame.height - windowSize.height
-        frame.size = windowSize
-        if let screen = window.screen ?? NSScreen.main {
-            frame = constrain(frame, to: screen.visibleFrame)
+    /// Runs `work` on its own turn of the run loop, in order.
+    @MainActor private static var pending: [@MainActor () -> Void] = []
+    @MainActor private static func later(_ work: @escaping @MainActor () -> Void) {
+        pending.append(work)
+        guard pending.count == 1 else { return }   // one drain at a time
+        func drain() {
+            guard !pending.isEmpty else { return }
+            pending.removeFirst()()
+            DispatchQueue.main.async { drain() }
         }
-        window.setFrame(frame, display: true, animate: true)
+        DispatchQueue.main.async { drain() }
+    }
 
-        guard let content = window.contentView else { return }
-        // The sidebar is SwiftUI's own NavigationSplitView. It is the
-        // outermost plain NSSplitView in the window; Edit Show's columns
-        // are a ColumnsSplitView, which is asked separately.
-        for split in splitViews(in: content) {
-            if let columns = split as? ColumnsSplitView {
-                columns.setWidths(list: listWidth, inspector: inspectorWidth)
-            } else if split.isVertical, split.arrangedSubviews.count >= 2 {
-                split.setPosition(sidebarWidth, ofDividerAt: 0)
-            }
-        }
+    @MainActor private static func steps(for window: NSWindow) -> [@MainActor () -> Void] {
+        [
+            {
+                var frame = window.frame
+                // Grow from the top-left, the corner AppKit keeps still, so
+                // the title bar doesn't slide out from under the pointer.
+                frame.origin.y += frame.height - windowSize.height
+                frame.size = windowSize
+                if let screen = window.screen ?? NSScreen.main {
+                    frame = constrain(frame, to: screen.visibleFrame)
+                }
+                window.setFrame(frame, display: true, animate: false)
+            },
+            // The sidebar is deliberately NOT restored here. It is
+            // SwiftUI's own NavigationSplitView, and setting its divider
+            // from outside is what raised AppKit's layout-loop exception
+            // — measured 2026-09-23, and staging the changes a run-loop
+            // turn apart didn't help, so it is the poking and not the
+            // timing. It no longer needs rescuing anyway: the sidebar is
+            // capped at 360 (MainView), so the worst it can do now is be
+            // too wide, which one drag undoes. Only the two things this
+            // app owns outright are put back.
+            {
+                guard let content = window.contentView else { return }
+                for case let columns as ColumnsSplitView in splitViews(in: content) {
+                    columns.setWidths(list: listWidth, inspector: inspectorWidth)
+                }
+            },
+        ]
     }
 
     /// Keeps a window on screen without changing its size.
