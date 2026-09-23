@@ -1,6 +1,7 @@
 import Foundation
 import CoreImage
 import ImageIO
+import AVFoundation
 import UniformTypeIdentifiers
 import ShowToolsCore
 
@@ -9,9 +10,12 @@ import ShowToolsCore
 //   stcli ingest <library> <file-or-folder>...
 //   stcli show   <library> <name>              new show from every item
 //   stcli render <library> <showID> <width>x<height> <out-dir> <t>...
+//   stcli movie  <library> <showID> <width>x<height> <out.mp4> [fps] [codec]
 //
 // `render` goes through the same Compositor the player uses, so it is also
 // the first sketch of video export: frames at times, written to disk.
+// `movie` is that loop for real (E2), writing a picture track. No sound
+// yet — that is E3.
 
 let args = CommandLine.arguments
 func die(_ m: String) -> Never { FileHandle.standardError.write(Data((m + "\n").utf8)); exit(1) }
@@ -75,6 +79,65 @@ case "render":
         }
         print(file.lastPathComponent, desc)
     }
+
+case "movie":
+    guard args.count >= 6, let showID = Int64(args[3]) else {
+        die("movie <lib> <showID> <WxH> <out.mp4> [fps] [h264|hevc|prores]")
+    }
+    let dims = args[4].split(separator: "x").compactMap { Double($0) }
+    guard dims.count == 2 else { die("size looks like 1920x1080") }
+    let out = URL(fileURLWithPath: args[5])
+    let rate = args.count > 6 ? (Int(args[6]).flatMap(MovieFrameRate.init(rawValue:)) ?? .default) : .default
+    let codec: MovieCodec = switch args.count > 7 ? args[7] : "h264" {
+    case "hevc": .hevc
+    case "prores": .proRes422HQ
+    default: .h264
+    }
+    var settings = MovieExportSettings(size: CGSize(width: dims[0], height: dims[1]),
+                                       frameRate: rate, codec: codec)
+    guard let show = try lib.allShows().first(where: { $0.id == showID }) else { die("no show \(showID)") }
+    let items = Dictionary(uniqueKeysWithValues: try lib.allItems().map { ($0.id, $0) })
+    let timeline = ShowTimeline(show: show, items: items)
+
+    // A video slide holds its first frame in a v1 export (settled with
+    // Jason, 2026-09-22); E5 gives it its own frames.
+    var cache: [Int64: CIImage] = [:]
+    func load(_ item: MediaItem) -> CIImage? {
+        if let hit = cache[item.id] { return hit }
+        let url = lib.url(for: item)
+        var image: CIImage?
+        if item.kind == .video {
+            let gen = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+            gen.appliesPreferredTrackTransform = true
+            if let cg = try? gen.copyCGImage(at: .zero, actualTime: nil) { image = CIImage(cgImage: cg) }
+        } else if let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+                  let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, [
+                      kCGImageSourceCreateThumbnailFromImageAlways: true,
+                      kCGImageSourceCreateThumbnailWithTransform: true,
+                      kCGImageSourceThumbnailMaxPixelSize: 3000] as CFDictionary) {
+            image = CIImage(cgImage: cg)
+        }
+        cache[item.id] = image
+        return image
+    }
+
+    let aspect = CGFloat(dims[0] / dims[1])
+    let started = Date()
+    var lastShown = -1
+    let result = try MoviePictureTrack.write(
+        timeline: timeline, to: out, settings: settings, showAspect: aspect,
+        overlaySource: { load($0.overlay.item) },
+        progress: { p in
+            let step = Int(p * 20)
+            if step != lastShown { lastShown = step; FileHandle.standardError.write(Data("\r\(Int(p * 100))%".utf8)) }
+        },
+        source: { load($0.slide.item) })
+    let videos = show.slides.filter { items[$0.itemID]?.kind == .video }.count
+    let size = "\(Int(result.size.width))x\(Int(result.size.height))"
+    let timing = String(format: "%.2fs, in %.1fs", result.duration, Date().timeIntervalSince(started))
+    let held = videos > 0 ? " (\(videos) video slide\(videos == 1 ? "" : "s") holding the first frame)" : ""
+    let name = out.lastPathComponent
+    print("\r\(name): \(result.frameCount) frames, \(size) at \(result.frameRate) fps, \(timing)\(held)")
 
 default:
     die("unknown command \(args[1])")
