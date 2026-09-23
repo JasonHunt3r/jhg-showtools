@@ -55,7 +55,7 @@ SHOW=$(sqlite3 "$DB" "SELECT id FROM shows WHERE name = 'Shorty' ORDER BY id DES
 sqlite3 "$DB" "DELETE FROM slides WHERE show_id = $SHOW;"
 add() { sqlite3 "$DB" "INSERT INTO slides (show_id, position, item_id, settings) VALUES ($SHOW, $1, $2, '$3');"; }
 
-add 0 "$P1"   '{"length":{"seconds":{"_0":4}},"fit":"fill","kenBurns":{"auto":{}}}'
+add 0 "$P1"   '{"length":{"seconds":{"_0":4}},"fit":"fill","panAndZoom":{"auto":{}}}'
 add 1 "$P2"   '{"length":{"seconds":{"_0":4}},"fit":"fill","transition":{"style":"cut","duration":0}}'
 add 2 "$GIF"  '{"length":{"seconds":{"_0":4}},"fit":"fit","transition":{"style":"dissolve","duration":1}}'
 add 3 "$P3"   '{"length":{"seconds":{"_0":2}},"fit":"fill","transition":{"style":"cut","duration":0}}'

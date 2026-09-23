@@ -8,7 +8,7 @@
 # Open it from the app: File ▸ Open Library… → <dir>/Shorty.noindex
 #
 # What the show is built to show, in order:
-#   0–4s   a still with Ken Burns, over a click track on every beat
+#   0–4s   a still with Pan and Zoom, over a click track on every beat
 #   4s     a HARD CUT, landing exactly on a beat
 #   4–8s   a still, then a 1s dissolve
 #   8–12s  an animated GIF (does it run at the right speed?)
@@ -114,8 +114,8 @@ P1=$(id_of "photo_01"); P2=$(id_of "photo_02"); P3=$(id_of "photo_03"); P4=$(id_
 sqlite3 "$DB" "DELETE FROM slides WHERE show_id = 1;"
 add() { sqlite3 "$DB" "INSERT INTO slides (show_id, position, item_id, settings) VALUES (1, $1, $2, '$3');"; }
 
-# 0–4s  Ken Burns on a still, so motion is visible from the first second.
-add 0 "$P1" '{"length":{"seconds":{"_0":4}},"fit":"fill","kenBurns":{"auto":{}}}'
+# 0–4s  Pan and Zoom on a still, so motion is visible from the first second.
+add 0 "$P1" '{"length":{"seconds":{"_0":4}},"fit":"fill","panAndZoom":{"auto":{}}}'
 # 4–8s  A HARD CUT onto a beat. No transition at all: it should snap.
 add 1 "$P2" '{"length":{"seconds":{"_0":4}},"fit":"fill","transition":{"style":"cut","duration":0}}'
 # 8–12s An animated GIF, reached by a 1s dissolve.
