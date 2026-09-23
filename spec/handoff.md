@@ -626,6 +626,15 @@ swift test                                  # 267 core + 12 BGTools tests
 tools/make-test-library.sh <scratch>/STTest # scratch library + generated media
 open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools.app
 ```
+- **A test copy that crashes shuts Jason's real app out.** The note
+  `TestLaunchRecord` leaves lives in the shared preferences domain, so
+  the refusal is read by *his* app, not the next test copy: he gets
+  "Library problem" and an empty window, and his library looks broken.
+  It happened twice on 2026-09-23. After any test copy dies, check
+  `defaults read com.jhg.showtools runningTestLaunches` and clear it
+  before handing the app back. Test copies also share that domain for
+  column widths and window frames, so **capture his layout keys before a
+  test session and put them back after**.
 - **Never** run against the real library. Always set `SHOWTOOLS_LIBRARY`.
 - Dev hooks are listed in `CLAUDE.md` (show, slide, image, rotation mode, transition, lane image, play).
 - **A test song:** a click on every beat makes timing checkable by eye and by ear. Generate a WAV with Python's `wave` module (the session used 120 BPM: a 1 kHz click every 0.5 s over a quiet 220 Hz tone), `afconvert -f m4af -d aac` it to AAC, then `stcli ingest <lib> <file>`. `stcli ingest` doesn't add to a collection: add a `collection_items` row with `sqlite3` so the song shows in the collection list.
