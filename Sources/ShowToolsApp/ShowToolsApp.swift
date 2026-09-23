@@ -89,6 +89,8 @@ struct AppCommands: Commands {
         CommandGroup(before: .toolbar) {
             Toggle("Show Frame Strip", isOn: $frameStripShown)
                 .keyboardShortcut("f", modifiers: [.command, .option])
+            Button("Restore Default Layout") { DefaultLayout.restore() }
+                .keyboardShortcut("0", modifiers: [.command, .option])
             Divider()
         }
 

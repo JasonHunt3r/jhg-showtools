@@ -50,7 +50,11 @@ struct MainView: View {
                     }
                 }
             }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 210)
+            // The max is the point: without one, a double-click on the
+            // divider took the sidebar to 1355pt in a 1374pt window and
+            // pushed everything else off the right edge (2026-09-23).
+            // A sidebar of names never needs more than this.
+            .navigationSplitViewColumnWidth(min: 180, ideal: DefaultLayout.sidebarWidth, max: 360)
             .safeAreaInset(edge: .bottom) {
                 HStack {
                     Menu {

@@ -83,6 +83,18 @@ final class ColumnsSplitView: NSSplitView {
         arrange()
     }
 
+    /// Put the columns back to given widths (View ▸ Restore Default
+    /// Layout). Saved here as well as arranged, because nothing else is
+    /// dragging a divider to save them.
+    func setWidths(list: CGFloat, inspector: CGFloat) {
+        listWidth = min(max(list, listRange.lowerBound), listRange.upperBound)
+        inspectorWidth = min(max(inspector, inspectorRange.lowerBound), inspectorRange.upperBound)
+        arrange()
+        let d = UserDefaults.standard
+        d.set(Double(listWidth), forKey: defaultsKey + ".list")
+        d.set(Double(inspectorWidth), forKey: defaultsKey + ".inspector")
+    }
+
     // MARK: Layout
 
     /// Places every column from the remembered widths. The main column
