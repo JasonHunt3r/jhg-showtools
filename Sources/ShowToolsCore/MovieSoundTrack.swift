@@ -34,6 +34,133 @@ public struct MovieSoundResult: Hashable, Sendable {
     public var duration: Double { sampleRate > 0 ? Double(frameCount) / sampleRate : 0 }
 }
 
+/// The mix, a block at a time, pulled rather than pushed.
+///
+/// The muxer (E4) needs to take audio only when the writer asks for it, in
+/// step with the picture, so the render loop can't own the calling thread.
+/// `MovieSoundTrack.render` is a loop over this; both go through the same
+/// engine, the same scheduling and the same `AudioClip.gain`.
+///
+/// **Not thread-safe, and off the main thread** — one renderer, one thread.
+public final class MovieSoundRenderer {
+    /// One block of the mix, and where it belongs on the show's clock.
+    public struct Block {
+        public var buffer: AVAudioPCMBuffer
+        /// The frame this block starts at, from the top of the show.
+        public var frame: AVAudioFramePosition
+        public var time: Double
+    }
+
+    private let engine = AVAudioEngine()
+    private let players: [(node: AVAudioPlayerNode, song: MovieSong, file: AVAudioFile)]
+    private let clips: [AudioClip]
+    private let buffer: AVAudioPCMBuffer
+    private let total: AVAudioFramePosition
+    private let blockFrames: AVAudioFrameCount
+
+    public let format: AVAudioFormat
+    public private(set) var framesRendered: AVAudioFramePosition = 0
+    private var finished = false
+
+    public var progress: Double { total > 0 ? min(Double(framesRendered) / Double(total), 1) : 1 }
+
+    public var result: MovieSoundResult {
+        MovieSoundResult(frameCount: framesRendered, sampleRate: format.sampleRate,
+                         channels: Int(format.channelCount), songsMixed: players.count)
+    }
+
+    public init(songs: [MovieSong], duration: Double,
+                format: AVAudioFormat = MovieSoundTrack.format(),
+                blockFrames: AVAudioFrameCount = 1024) throws {
+        let rate = format.sampleRate
+        total = AVAudioFramePosition((duration * rate).rounded())
+        guard total > 0 else { throw MovieExportError.emptyShow }
+        self.format = format
+        self.blockFrames = blockFrames
+        clips = songs.map(\.clip)
+
+        // Touching mainMixerNode builds it; it must exist before the format
+        // is fixed by enableManualRenderingMode.
+        let mixer = engine.mainMixerNode
+        var built: [(AVAudioPlayerNode, MovieSong, AVAudioFile)] = []
+        for song in songs {
+            guard let file = try? AVAudioFile(forReading: song.url) else { continue }
+            let node = AVAudioPlayerNode()
+            engine.attach(node)
+            engine.connect(node, to: mixer, format: file.processingFormat)
+            built.append((node, song, file))
+        }
+        players = built
+
+        try engine.enableManualRenderingMode(.offline, format: format, maximumFrameCount: blockFrames)
+        do { try engine.start() } catch {
+            throw MovieExportError.writerFailed("the offline audio engine wouldn't start: \(error.localizedDescription)")
+        }
+
+        // Schedule each song where it sits on the show's clock. The frame
+        // positions inside the file are in the file's own rate; the time it
+        // starts is in the render format's.
+        for p in players {
+            let fileRate = p.file.processingFormat.sampleRate
+            let first = AVAudioFramePosition(p.song.clip.inPoint * fileRate)
+            guard first < p.file.length else { continue }
+            let wanted = AVAudioFramePosition(p.song.clip.length * fileRate)
+            let count = min(wanted, p.file.length - first)
+            guard count > 0 else { continue }
+            let at = AVAudioTime(sampleTime: AVAudioFramePosition(max(p.song.clip.start, 0) * rate), atRate: rate)
+            p.node.scheduleSegment(p.file, startingFrame: first,
+                                   frameCount: AVAudioFrameCount(count), at: at)
+            p.node.play()
+        }
+
+        guard let b = AVAudioPCMBuffer(pcmFormat: engine.manualRenderingFormat,
+                                       frameCapacity: blockFrames) else {
+            throw MovieExportError.noPixelBuffer
+        }
+        buffer = b
+    }
+
+    deinit {
+        engine.stop()
+        engine.disableManualRenderingMode()
+    }
+
+    /// The next block, or nil once the show's length has been rendered.
+    /// The buffer is reused, so a caller that keeps one must copy it.
+    public func next() throws -> Block? {
+        guard !finished, framesRendered < total else { finish(); return nil }
+
+        // The levels for this block, from the one shared function.
+        let at = framesRendered
+        let t = Double(at) / format.sampleRate
+        for p in players {
+            p.node.volume = Float(AudioClip.gain(of: p.song.clip, at: t, among: clips))
+        }
+
+        let n = AVAudioFrameCount(min(AVAudioFramePosition(blockFrames), total - at))
+        switch try engine.renderOffline(n, to: buffer) {
+        case .success:
+            framesRendered += AVAudioFramePosition(buffer.frameLength)
+            return Block(buffer: buffer, frame: at, time: t)
+        case .insufficientDataFromInputNode:
+            // No live input here; nothing more is coming.
+            framesRendered = total
+            finish()
+            return nil
+        case .cannotDoInCurrentContext, .error:
+            throw MovieExportError.writerFailed("the offline audio engine stopped after \(at) frames")
+        @unknown default:
+            throw MovieExportError.writerFailed("the offline audio engine returned an unknown status")
+        }
+    }
+
+    private func finish() {
+        guard !finished else { return }
+        finished = true
+        engine.stop()
+    }
+}
+
 public enum MovieSoundTrack {
 
     /// The mix's format. 48 kHz stereo: what the video containers expect,
@@ -71,85 +198,14 @@ public enum MovieSoundTrack {
                               progress: ((Double) -> Void)? = nil,
                               isCancelled: (() -> Bool)? = nil,
                               receive: (AVAudioPCMBuffer) throws -> Void) throws -> MovieSoundResult {
-
-        let rate = format.sampleRate
-        let total = AVAudioFramePosition((duration * rate).rounded())
-        guard total > 0 else { throw MovieExportError.emptyShow }
-
-        let engine = AVAudioEngine()
-        // Touching mainMixerNode builds it; it must exist before the format
-        // is fixed by enableManualRenderingMode.
-        let mixer = engine.mainMixerNode
-
-        var players: [(node: AVAudioPlayerNode, song: MovieSong, file: AVAudioFile)] = []
-        for song in songs {
-            guard let file = try? AVAudioFile(forReading: song.url) else { continue }
-            let node = AVAudioPlayerNode()
-            engine.attach(node)
-            engine.connect(node, to: mixer, format: file.processingFormat)
-            players.append((node, song, file))
-        }
-
-        try engine.enableManualRenderingMode(.offline, format: format, maximumFrameCount: blockFrames)
-        do { try engine.start() } catch {
-            throw MovieExportError.writerFailed("the offline audio engine wouldn't start: \(error.localizedDescription)")
-        }
-        defer {
-            engine.stop()
-            engine.disableManualRenderingMode()
-        }
-
-        // Schedule each song where it sits on the show's clock. The frame
-        // positions inside the file are in the file's own rate; the time it
-        // starts is in the render format's.
-        let clips = songs.map(\.clip)
-        for p in players {
-            let fileRate = p.file.processingFormat.sampleRate
-            let first = AVAudioFramePosition(p.song.clip.inPoint * fileRate)
-            guard first < p.file.length else { continue }
-            let wanted = AVAudioFramePosition(p.song.clip.length * fileRate)
-            let count = min(wanted, p.file.length - first)
-            guard count > 0 else { continue }
-            let at = AVAudioTime(sampleTime: AVAudioFramePosition(max(p.song.clip.start, 0) * rate), atRate: rate)
-            p.node.scheduleSegment(p.file, startingFrame: first,
-                                   frameCount: AVAudioFrameCount(count), at: at)
-            p.node.play()
-        }
-
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: engine.manualRenderingFormat,
-                                            frameCapacity: blockFrames) else {
-            throw MovieExportError.noPixelBuffer
-        }
-
-        var done: AVAudioFramePosition = 0
-        while done < total {
+        let renderer = try MovieSoundRenderer(songs: songs, duration: duration,
+                                              format: format, blockFrames: blockFrames)
+        while let block = try renderer.next() {
             if isCancelled?() == true { throw MovieExportError.cancelled }
-
-            // The levels for this block, from the one shared function.
-            let t = Double(done) / rate
-            for p in players {
-                p.node.volume = Float(AudioClip.gain(of: p.song.clip, at: t, among: clips))
-            }
-
-            let n = AVAudioFrameCount(min(AVAudioFramePosition(blockFrames), total - done))
-            let status = try engine.renderOffline(n, to: buffer)
-            switch status {
-            case .success:
-                try receive(buffer)
-                done += AVAudioFramePosition(buffer.frameLength)
-            case .insufficientDataFromInputNode:
-                // No live input here; nothing more is coming.
-                done = total
-            case .cannotDoInCurrentContext, .error:
-                throw MovieExportError.writerFailed("the offline audio engine stopped after \(done) frames")
-            @unknown default:
-                throw MovieExportError.writerFailed("the offline audio engine returned an unknown status")
-            }
-            progress?(min(Double(done) / Double(total), 1))
+            try receive(block.buffer)
+            progress?(renderer.progress)
         }
-
-        return MovieSoundResult(frameCount: done, sampleRate: rate,
-                                channels: Int(format.channelCount), songsMixed: players.count)
+        return renderer.result
     }
 
     /// The mix as a standalone audio file. `stcli` uses it, and it is how

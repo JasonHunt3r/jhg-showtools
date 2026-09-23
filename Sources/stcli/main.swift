@@ -125,8 +125,9 @@ case "movie":
     let aspect = CGFloat(dims[0] / dims[1])
     let started = Date()
     var lastShown = -1
-    let result = try MoviePictureTrack.write(
-        timeline: timeline, to: out, settings: settings, showAspect: aspect,
+    let songs = MovieSoundTrack.songs(of: show, items: items) { lib.url(for: $0) }
+    let result = try MovieExport.write(
+        timeline: timeline, songs: songs, to: out, settings: settings, showAspect: aspect,
         overlaySource: { load($0.overlay.item) },
         progress: { p in
             let step = Int(p * 20)
@@ -137,8 +138,9 @@ case "movie":
     let size = "\(Int(result.size.width))x\(Int(result.size.height))"
     let timing = String(format: "%.2fs, in %.1fs", result.duration, Date().timeIntervalSince(started))
     let held = videos > 0 ? " (\(videos) video slide\(videos == 1 ? "" : "s") holding the first frame)" : ""
+    let sound = result.hasSound ? "\(result.songsMixed) song(s)" : "silent"
     let name = out.lastPathComponent
-    print("\r\(name): \(result.frameCount) frames, \(size) at \(result.frameRate) fps, \(timing)\(held)")
+    print("\r\(name): \(result.frameCount) frames, \(size) at \(result.frameRate) fps, \(sound), \(timing)\(held)")
 
 case "mix":
     guard args.count >= 5, let showID = Int64(args[3]) else { die("mix <lib> <showID> <out.caf>") }

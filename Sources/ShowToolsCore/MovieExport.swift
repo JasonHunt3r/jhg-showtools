@@ -37,6 +37,32 @@ public enum MovieCodec: String, CaseIterable, Codable, Sendable {
 
     /// What the format popup reads: "H.264 (.mp4)".
     public var menuTitle: String { "\(name) (.\(fileExtension))" }
+
+    /// How the sound is stored beside the picture. ProRes is a mastering
+    /// codec and its `.mov` takes uncompressed sound, so it gets Linear
+    /// PCM; the delivery formats get AAC, which is what an `.mp4` carries
+    /// everywhere.
+    public func audioSettings(sampleRate: Double, channels: AVAudioChannelCount) -> [String: Any] {
+        switch self {
+        case .proRes422HQ:
+            return [
+                AVFormatIDKey: kAudioFormatLinearPCM,
+                AVSampleRateKey: sampleRate,
+                AVNumberOfChannelsKey: Int(channels),
+                AVLinearPCMBitDepthKey: 16,
+                AVLinearPCMIsFloatKey: false,
+                AVLinearPCMIsBigEndianKey: false,
+                AVLinearPCMIsNonInterleaved: false,
+            ]
+        case .h264, .hevc:
+            return [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVSampleRateKey: sampleRate,
+                AVNumberOfChannelsKey: Int(channels),
+                AVEncoderBitRateKey: 192_000,
+            ]
+        }
+    }
 }
 
 public enum MovieContainer: String, Codable, Sendable {
