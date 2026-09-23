@@ -17,6 +17,7 @@ are `spec/plan.md`.
 | `2026-09-22-phase-3b.md` | Find Similar, Delete by context, Keep One | — |
 | `2026-09-22-phase-4-setlist.md` | Setlist export and import, 4a–4d (reordered here into a–d; the handoff had them in the order they were written) | `spec/status.md` for the open risks |
 | `2026-09-23-crash-hunt.md` | The intermittent launch crash: 25 reports, the reason string, and why the earlier bisect was worthless | `spec/status.md` carries the short version and points here |
+| `2026-09-23-crash-hunt-session2.md` | Same crash, a second session: the methods tried (stack-trace reading, three reverted fix attempts, automated repro counting) and where the repro counting went wrong — read for method, its conclusions are flagged suspect | `spec/status.md`'s Known Issues entry, itself flagged there as unverified against Jason's own hands |
 | `2026-09-23-docs-restructure-brief.md` | The brief this folder was made from: why the docs had drifted, and the layout Jason approved | Carried out the same day; the result is the current docs |
 | `2026-09-23-pan-and-zoom-rename.md` | Ken Burns → Pan and Zoom carried out (168 refs, three shell scripts missed by the first pass), the stale installed app rebuilt, and the confirmed breakage: an export from before this date loses Pan and Zoom silently on re-import | `spec/status.md` carries the short version and points here |
 

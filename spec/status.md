@@ -111,8 +111,21 @@ and Flush presets from 2a.
   entries in `~/Library/Logs/ShowTools-exception.log`, not deaths** — and
   the bursts are real, so no run of trials proves anything. Full write-up:
   `spec/history/2026-09-23-crash-hunt.md`.
-  **A more specific repro, found 2026-09-23 (later the same day):**
-  the fatal stack's frame names the exact class: `SplitViewChildController
+  **A second session, 2026-09-23 (later the same day) — flag the
+  frequency claims below as unverified.** Jason reported a single click
+  on the mode toggle crashing it for him, reliably; this session's own
+  automated trials gave inconsistent answers about how often the same
+  sequence crashes (see the false-9/9 lead a few lines down), and that
+  contradiction was never resolved before the session was stopped. Read
+  `spec/history/2026-09-23-crash-hunt-session2.md` for exactly what was
+  tried (stack-trace reading, three reverted fix attempts, the pacing
+  and build-hygiene mistakes in the repro counting) — it's written for
+  the methods, not the conclusions. Only the symbol-name finding
+  (`SplitViewChildController`, next paragraph) rests on something firmer
+  than a trial count.
+
+  **A more specific repro, this same second session:** the fatal
+  stack's frame names the exact class: `SplitViewChildController
   .hostingView(_:didUpdateMinSize:maxSize:)`. **That class belongs to
   SwiftUI's own split-column machinery** (`NavigationSplitView` columns
   and the `.inspector()` column) — **not** to `ColumnsSplitView`
