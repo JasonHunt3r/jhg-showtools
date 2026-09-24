@@ -93,18 +93,17 @@ final class PaneLayoutTests: XCTestCase {
     }
 
     /// ShowTools' shape, the demanding example: a timeline pane edge to edge
-    /// under a Library pane, and three columns beside it.
+    /// under a Library pane, and three columns beside it — built from
+    /// `.row(…)`, the same recipe Edit Show's preview/list/inspector uses.
     static let showTools: PaneNode =
         .split("window", .vertical, sized: .second, size: 240, range: 120...600, title: "Timeline",
                .split("top", .horizontal, sized: .first, size: 219, range: 180...360, title: "Library",
                       .pane("library", title: "Library", popOut: .panel),
-                      .split("columns", .horizontal, sized: .second, size: 566, range: 240...900,
-                             title: "Browser and Inspector",
-                             .pane("viewer", title: "Viewer", minSize: 300),
-                             .split("right", .horizontal, sized: .second, size: 320, range: 260...480,
-                                    title: "Inspector",
-                                    .pane("browser", title: "Browser", popOut: .panel),
-                                    .pane("inspector", title: "Inspector", popOut: .panel)))),
+                      .row("columns", .horizontal, mainFirst: true,
+                           main: Pane("viewer", title: "Viewer", minSize: 300),
+                           near: Pane("browser", title: "Browser", popOut: .panel), nearDefault: 245, nearMax: 419,
+                           far: Pane("inspector", title: "Inspector", popOut: .panel),
+                           farSize: 320, farRange: 260...480)),
                .pane("timeline", title: "Timeline", popOut: .window))
 
     func testShowToolsShape() {
@@ -125,11 +124,11 @@ final class PaneLayoutTests: XCTestCase {
     func testClosingTheInspectorKeepsTheOtherSizes() {
         let window = CGRect(x: 0, y: 0, width: 1376, height: 835)
         let r = PaneLayout.layout(Self.showTools, in: window,
-                                  state: PaneKitState(splits: ["right": SplitState(collapsed: true)]))
+                                  state: PaneKitState(splits: ["columns.near": SplitState(collapsed: true)]))
         XCTAssertNil(r.panes["inspector"])
         XCTAssertEqual(r.panes["viewer"]?.width, 589)
         XCTAssertEqual(r.panes["browser"], CGRect(x: 810, y: 0, width: 554, height: 594))
-        XCTAssertEqual(r.handles["right"], CGRect(x: 1364, y: 0, width: 12, height: 594))
+        XCTAssertEqual(r.handles["columns.near"], CGRect(x: 1364, y: 0, width: 12, height: 594))
     }
 
     /// Popping out the browser and the inspector empties the columns'
@@ -146,9 +145,10 @@ final class PaneLayoutTests: XCTestCase {
     }
 
     func testMinimumExtentOfANestedTree() {
-        // Across: library's range minimum (180) + 1 + the columns' (240 + 1 + viewer's 300).
+        // Across: library's range minimum (180) + 1 + the columns' own floor
+        // (browser's 80 + 1 + inspector's 260, `.row`'s own arithmetic) + 1 + viewer's 300.
         XCTAssertEqual(PaneLayout.minExtent(Self.showTools, along: .horizontal, state: PaneKitState()),
-                       180 + 1 + 240 + 1 + 300)
+                       180 + 1 + (80 + 1 + 260) + 1 + 300)
         // Down: the timeline's minimum (120) + 1 + the top's tallest minimum.
         XCTAssertEqual(PaneLayout.minExtent(Self.showTools, along: .vertical, state: PaneKitState()),
                        120 + 1 + 300)
@@ -177,7 +177,76 @@ final class PaneLayoutTests: XCTestCase {
     func testEdges() {
         XCTAssertEqual(Self.showTools.split("window")?.edge, .bottom)
         XCTAssertEqual(Self.showTools.split("top")?.edge, .leading)
-        XCTAssertEqual(Self.showTools.split("right")?.edge, .trailing)
-        XCTAssertEqual(Self.showTools.split("right")?.sizedTitle, "Inspector")
+        XCTAssertEqual(Self.showTools.split("columns.near")?.edge, .trailing)
+        XCTAssertEqual(Self.showTools.split("columns.near")?.sizedTitle, "Inspector")
+    }
+
+    // MARK: `.row` — three independently-sized siblings from two nested splits
+
+    /// A synthetic row: `main` first, `near` next to it, `far` at the edge.
+    static let row: PaneNode = .row("row", .horizontal, mainFirst: true,
+                                    main: Pane("main", minSize: 400),
+                                    near: Pane("near", minSize: 100), nearDefault: 150, nearMax: 300,
+                                    far: Pane("far", minSize: 150), farSize: 200, farRange: 150...250)
+
+    func testRowDefaults() {
+        let r = PaneLayout.layout(Self.row, in: CGRect(x: 0, y: 0, width: 1000, height: 500), state: PaneKitState())
+        XCTAssertEqual(r.panes["far"]?.width, 200)
+        XCTAssertEqual(r.panes["near"]?.width, 150)
+        XCTAssertEqual(r.panes["main"]?.width, 1000 - 1 - 200 - 1 - 150)
+    }
+
+    /// The two invariants `.row` promises for all three panes, not just two:
+    /// a divider only moves its own two neighbors, and a resize goes to
+    /// `main`.
+    func testRowDividerIsolationAndMainAbsorbsResize() {
+        let rect = CGRect(x: 0, y: 0, width: 1000, height: 500)
+        // Dragging main|near (the outer split) changes main and near, never far.
+        var s = PaneKitState()
+        s.splits["row"] = SplitState(size: 260 + 1 + 200)   // near widened to 260
+        var r = PaneLayout.layout(Self.row, in: rect, state: s)
+        XCTAssertEqual(r.panes["far"]?.width, 200)
+        XCTAssertEqual(r.panes["near"]?.width, 260)
+        XCTAssertEqual(r.panes["main"]?.width, 1000 - 1 - 260 - 1 - 200)
+        // Dragging near|far (the inner split) changes near and far, never main.
+        s = PaneKitState()
+        s.splits["row.near"] = SplitState(size: 230)   // far widened to 230
+        r = PaneLayout.layout(Self.row, in: rect, state: s)
+        XCTAssertEqual(r.panes["main"]?.width, 1000 - 1 - 150 - 1 - 200)   // the default combo, unmoved
+        XCTAssertEqual(r.panes["far"]?.width, 230)
+        XCTAssertEqual(r.panes["near"]?.width, 150 + 1 + 200 - 1 - 230)
+        // A window resize goes to main; near and far keep their widths.
+        let wider = CGRect(x: 0, y: 0, width: 1400, height: 500)
+        r = PaneLayout.layout(Self.row, in: wider, state: PaneKitState())
+        XCTAssertEqual(r.panes["far"]?.width, 200)
+        XCTAssertEqual(r.panes["near"]?.width, 150)
+        XCTAssertEqual(r.panes["main"]?.width, 1400 - 1 - 200 - 1 - 150)
+    }
+
+    /// A narrow row squeezes `near` before `far`: `main` first, down to its
+    /// floor; then `near`, down to its; `far` doesn't move until both do.
+    func testRowNearGivesWayBeforeFar() {
+        // main's floor (400) + 1 + near.minSize (100) + 1 + far's default (200) = 702.
+        let justFitting = CGRect(x: 0, y: 0, width: 702, height: 500)
+        var r = PaneLayout.layout(Self.row, in: justFitting, state: PaneKitState())
+        XCTAssertEqual(r.panes["main"]?.width, 400)
+        XCTAssertEqual(r.panes["near"]?.width, 100)
+        XCTAssertEqual(r.panes["far"]?.width, 200)
+        // Narrower still: near is already at its floor, so far gives way.
+        let narrower = CGRect(x: 0, y: 0, width: 680, height: 500)
+        r = PaneLayout.layout(Self.row, in: narrower, state: PaneKitState())
+        XCTAssertEqual(r.panes["main"]?.width, 400)
+        XCTAssertEqual(r.panes["near"]?.width, 100)
+        XCTAssertEqual(r.panes["far"]?.width, 178)
+    }
+
+    /// Closing `far` hands its space to `near` (its neighbor), not `main`.
+    func testRowClosingFarGrowsNear() {
+        let rect = CGRect(x: 0, y: 0, width: 1000, height: 500)
+        let r = PaneLayout.layout(Self.row, in: rect,
+                                  state: PaneKitState(splits: ["row.near": SplitState(collapsed: true)]))
+        XCTAssertNil(r.panes["far"])
+        XCTAssertEqual(r.panes["main"]?.width, 1000 - 1 - 200 - 1 - 150)
+        XCTAssertEqual(r.panes["near"]?.width, 200 + 1 + 150 - 12)
     }
 }

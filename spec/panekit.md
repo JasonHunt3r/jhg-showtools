@@ -5,10 +5,14 @@ tested clean on the Mac, and the harness's hands-on checks all passed,
 Jason's own hands. Step 2: ShowTools' main window is on PaneKit —
 `NavigationSplitView` is gone; the Library pane and the detail are a real
 PaneKit split. Step 3: Edit Show's and Edit Slides' columns are on
-PaneKit too — `ColumnsSplitView` and `VSplitView` are both gone. **Left:**
-step 4 (panes popping out — the show session). PaneKit is a local package
-dependency now (`Package.swift` and `project.yml`), named PaneKit, and
-lives in this repo for now (settled, Jason).
+PaneKit too — `ColumnsSplitView` and `VSplitView` are both gone, and
+building Edit Show's three columns turned into `PaneNode.row(…)`, a
+reusable recipe for a row of three independently-sized panes ("Building a
+row" below) — not ShowTools-specific, since a second app hitting the same
+shape shouldn't have to re-derive it. **Left:** step 4 (panes popping
+out — the show session). PaneKit is a local package dependency now
+(`Package.swift` and `project.yml`), named PaneKit, and lives in this
+repo for now (settled, Jason).
 
 ## What it is
 
@@ -108,6 +112,40 @@ Assistant). Not needed for our fix.
   closed pane is skipped.
 - **Pops out, and back in** (Jason, 2026-09-24: built in, not added
   later). See the next section.
+
+## Building a row (added 2026-09-24)
+
+The primitive is strictly two panes. Three or more independently-sized
+siblings in a row — a common shape (Mail, Xcode's navigator/editor/
+inspector, this app's own Edit Show) — take two or more nested splits, and
+the nesting forces a nontrivial choice with no single right answer: which
+pane absorbs a squeeze first when the window's too narrow for all of them,
+and which divider moves what. **`PaneNode.row(…)`** (`PaneModel.swift`)
+captures the answer that keeps both of a pane's promises — a divider only
+moves its own two neighbors, and a resize goes to `main` — for a row of
+three: `main`, `near` (next to it) and `far` (the outer edge). It's built
+from finding this out the hard way for Edit Show's preview/list/inspector
+(`spec/edit-slides-inspector-port.md`'s successor decision below), so a
+future app gets the recipe instead of re-deriving it:
+
+- `near` gives way before `far` as the window narrows (`main` shrinks
+  first, being main; `near` has no cap, only a floor; `far` alone keeps a
+  real, independently-remembered range).
+- Closing `far` (only it can) hands its space to `near`, not `main` —
+  `near` is what's adjacent to it.
+- This is one specific, opinionated trade — not the only one a three-pane
+  row could make (an app could instead cap both `near` and `far` and give
+  `main` the far end of the row, the way Mail's own three columns read;
+  the harness's Mail shape does this, and a comment on it notes what that
+  costs: the mailboxes|list divider ends up moving the *message* pane, not
+  list, since list is protected as the inner split's own sized side).
+  `.row` is what covers ShowTools' real case, checked against a real
+  demo show, not a general theory of rows — a fourth call worth adding if
+  a second real shape needs a different trade, not before.
+- Proven, not just typed: `PaneKitTests.testRow*` pin the arithmetic;
+  `EditColumnsLayout.threeColumns` (ShowTools) and the harness's `.showTools`
+  case both build from it now, replacing hand-nested splits that said the
+  same thing three separate times.
 
 ## Pane ⇄ panel: popping out, built in
 
@@ -337,7 +375,9 @@ opening or closing (changes are instant for now).
    and `VSplitView` go.~~ — **done 2026-09-24**
    (`ShowColumns.swift` → `EditColumnsLayout`, `AppModel.editShowColumns`
    and `.editSlidesColumns`). Both files (`ColumnsSplitView.swift`, the
-   old `ShowColumns`/`TwoColumns`) are gone.
+   old `ShowColumns`/`TwoColumns`) are gone. Edit Show's three columns are
+   built from **`PaneNode.row`** (generalized right after, below, once the
+   choice below was made and proven against this real case).
 
    Edit Show's three columns (preview, list, inspector) aren't PaneKit's
    binary primitive done once — they're two nested splits, and the

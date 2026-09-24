@@ -121,6 +121,53 @@ public indirect enum PaneNode: Sendable, Equatable {
                       title: title, first: first, second: second))
     }
 
+    /// A row of three: `main`, which absorbs a window resize, and two more
+    /// panes trailing off it in visual order — `near` (next to `main`) and
+    /// `far` (at the outer edge). Two nested splits, not PaneKit's binary
+    /// primitive done three ways at once: three independently-sized
+    /// siblings can't share one split, so this composes two, chosen so
+    /// that **a divider only ever moves its own two neighbors** and **a
+    /// window resize goes to `main`** — the two invariants every pane
+    /// promises — hold for all three, not just two (`spec/panekit.md`,
+    /// "Building a row"; found building Edit Show's preview/list/inspector,
+    /// which is what this generalizes).
+    ///
+    /// The trade-off that forces a choice: `near` gives way before `far`
+    /// as the window narrows (`near`'s own floor is `near.minSize`, no
+    /// upper bound — it's the inner split's "main" side); the reverse
+    /// (`far` giving way first) is reachable only by breaking divider
+    /// isolation, moving `far` when the main|near divider drags. `far` is
+    /// the only one of the three that keeps a real upper bound. Closing
+    /// `far` (it can, `near` and `main` can't) hands its space to `near`,
+    /// not to `main` — `near` is what's adjacent to it.
+    ///
+    /// - Parameters:
+    ///   - mainFirst: `main` reads first (left/top) when true, matching
+    ///     Edit Show's preview; false puts it last, as a reading pane at
+    ///     the end of the row would be.
+    ///   - nearDefault/nearMax: `near` has no split of its own to carry a
+    ///     stored range, so these only seed the combined near+far region's
+    ///     starting size and how wide a drag can make it; `near` itself is
+    ///     floored at `near.minSize`, never capped.
+    public static func row(_ id: String, _ axis: PaneAxis, mainFirst: Bool, main: Pane,
+                           near: Pane, nearDefault: CGFloat, nearMax: CGFloat,
+                           far: Pane, farSize: CGFloat, farRange: ClosedRange<CGFloat>,
+                           farCollapsible: Bool = true) -> PaneNode {
+        let d = PaneLayout.dividerThickness
+        let comboDefault = nearDefault + d + farSize
+        let comboRange = (near.minSize + d + farRange.lowerBound)...(nearMax + d + farRange.upperBound)
+        let inner: PaneNode = mainFirst
+            ? .split("\(id).near", axis, sized: .second, size: farSize, range: farRange,
+                     collapsible: farCollapsible, .leaf(near), .leaf(far))
+            : .split("\(id).near", axis, sized: .first, size: farSize, range: farRange,
+                     collapsible: farCollapsible, .leaf(far), .leaf(near))
+        return mainFirst
+            ? .split(id, axis, sized: .second, size: comboDefault, range: comboRange, collapsible: false,
+                     .leaf(main), inner)
+            : .split(id, axis, sized: .first, size: comboDefault, range: comboRange, collapsible: false,
+                     inner, .leaf(main))
+    }
+
     /// Every pane's id, in order.
     public var paneIDs: [String] {
         switch self {

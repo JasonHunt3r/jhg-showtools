@@ -56,9 +56,9 @@ struct EditShowView: View {
                                       openInspector: { inspectorShown = true })
                     }.environment(model)),
                 ])
-                .onAppear { model.editShowColumns.setOpen("listInspector", inspectorShown) }
-                .onChange(of: inspectorShown) { _, shown in model.editShowColumns.setOpen("listInspector", shown) }
-                .onChange(of: model.editShowColumns.isOpen("listInspector")) { _, shown in
+                .onAppear { model.editShowColumns.setOpen("columns.near", inspectorShown) }
+                .onChange(of: inspectorShown) { _, shown in model.editShowColumns.setOpen("columns.near", shown) }
+                .onChange(of: model.editShowColumns.isOpen("columns.near")) { _, shown in
                     if shown != inspectorShown { inspectorShown = shown }
                 }
                 .onDeleteCommand {

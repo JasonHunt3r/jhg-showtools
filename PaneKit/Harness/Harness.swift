@@ -67,6 +67,17 @@ enum Shape: String, CaseIterable {
                    .pane("sidebar", title: "Sidebar", popOut: .panel),
                    .pane("files", title: "Files", minSize: 240))
         case .mail:
+            // NOTE (2026-09-24, found building `.row`): this nests message
+            // as the innermost main, mailboxes as the outermost sized —
+            // which gives both mailboxes and the message list a real,
+            // independent cap, but at a cost not spotted when this shape
+            // was first written: dragging the mailboxes|list divider (outer
+            // split's own) changes mailboxes and the *message* pane, not
+            // list, since list is protected as reading's own sized side.
+            // Divider isolation says it should move only mailboxes and
+            // list. `.row` (below, and PaneKitTests) makes the opposite
+            // trade instead — see its doc comment. Left as it was for the
+            // harness's own three-column demo; not a real app.
             .split("window", .horizontal, sized: .first, size: 190, range: 150...300, title: "Mailboxes",
                    .pane("mailboxes", title: "Mailboxes", popOut: .panel),
                    .split("reading", .horizontal, sized: .first, size: 340, range: 240...520, title: "Message List",
@@ -76,13 +87,11 @@ enum Shape: String, CaseIterable {
             .split("window", .vertical, sized: .second, size: 240, range: 120...600, title: "Timeline",
                    .split("top", .horizontal, sized: .first, size: 219, range: 180...360, title: "Library",
                           .pane("library", title: "Library", popOut: .panel),
-                          .split("columns", .horizontal, sized: .second, size: 566, range: 240...900,
-                                 title: "Browser and Inspector",
-                                 .pane("viewer", title: "Viewer", minSize: 300),
-                                 .split("right", .horizontal, sized: .second, size: 320, range: 260...480,
-                                        title: "Inspector",
-                                        .pane("browser", title: "Browser", popOut: .panel),
-                                        .pane("inspector", title: "Inspector", popOut: .panel)))),
+                          .row("columns", .horizontal, mainFirst: true,
+                               main: Pane("viewer", title: "Viewer", minSize: 300),
+                               near: Pane("browser", title: "Browser", popOut: .panel), nearDefault: 245, nearMax: 419,
+                               far: Pane("inspector", title: "Inspector", popOut: .panel),
+                               farSize: 320, farRange: 260...480)),
                    .pane("timeline", title: "Timeline", popOut: .window))
         }
     }
