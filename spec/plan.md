@@ -857,6 +857,27 @@ underneath stays where it is. Related to the guided first run below, but
 not the same thing: that teaches the app as it is, this changes what you
 meet first. **To be designed with Jason.**
 
+### Groups inside collections (Jason, 2026-09-24) — Planned, to build right away
+
+A collection gets **groups**: sub-folders of its files, so a big
+collection can be organised without splitting it into several
+collections. Being designed now, then built by the Mac session.
+
+*What exists today (from the code):*
+- Collections are flat: `collections` (id, name, created_at) and
+  `collection_items` (collection, item, added_at). A file can be in
+  several collections.
+- Every show belongs to one collection (`shows.collection_id`) and draws
+  its pictures from it.
+- The library is at **schema version 12**. Groups need new tables, so
+  they're **migration 13**: additive, `Library.schemaVersion` raised to
+  13, and tested by opening a version-12 library (CLAUDE.md).
+- **A name clash:** the grid's **Group Similar** already calls its
+  look-alike sets "groups". One of the two needs another name.
+
+*Questions (for Jason):* see the conversation of 2026-09-24; the answers
+go here.
+
 ### Later
 - ~~Video export~~ — **BUILT 2026-09-22**, E1–E5, through the hook above
   exactly as promised: a new menu item, not a rewrite. Own spec
