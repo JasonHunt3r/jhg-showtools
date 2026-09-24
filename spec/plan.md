@@ -881,20 +881,24 @@ From Jason's first-test notes (`showtools_work_order_2026-09-24.md`).
   from the right-click of either end and of the range button. **Locked
   ends simply fade**; no lock icon.
 
-**Undo a playhead jump.**
-- *Decided:* when a stray click on the ruler moves the playhead and the
-  work jumps out of view, **⌘Z puts back the playhead and the view**
+**Getting back after a playhead jump: Go Back, not ⌘Z.**
+- *Decided (first):* when a stray click on the ruler moves the playhead
+  and the work jumps out of view, a way back to the playhead and the view
   (the timeline's scroll and zoom).
-- *Settled (Jason, 2026-09-24):* with the mouse, **one step per click and
-  release**: a click that jumps, or a scrub drag from press to release, is
-  one undo step. With the keyboard, **each nudge is its own step.**
-  Playback and J, K, L don't register.
+- ***Settled (Jason, 2026-09-24): the playhead stays out of ⌘Z.*** Undo
+  stays for edits. When you A/B a change by clicking back to a spot to
+  listen again, ⌘Z shouldn't be fighting you with playhead steps.
+  Instead, a separate **Go Back** command (⌘[, as in Finder and Safari)
+  walks a history of its own: the playhead with its scroll and zoom.
+  **The range stays in ⌘Z:** it's a deliberate tool that can be locked,
+  so undoing while fiddling with its setup is wanted.
+- **Go Back's steps** (settled): with the mouse, one step per click and
+  release (a click that jumps, or a scrub drag from press to release);
+  with the keyboard, one per nudge. Playback and J, K, L don't register.
+  A matching **Go Forward** (⌘]) retraces them.
 - *Undo history:* nothing limits it today (`levelsOfUndo` isn't set, so
   it's unlimited within a session). It's cleared on switching libraries
   and doesn't survive quitting.
-- *Still to understand before building (Jason):* how playhead steps sit
-  with edits in the one history, and the "editing state" undo carries
-  over. Claude to explain; then Jason decides.
 
 **The range button.**
 - *Decided:* a **plain click** shows or hides the range, as now. **⌥⌘-click**

@@ -242,8 +242,8 @@ From `showtools_work_order_2026-09-24.md`. *Decided* is Jason's;
    them), each with its Spaces inside it, beside the stacked list, which
    stays. Two views of the same settings. `NSScreen.frame` gives the
    arrangement.
-   - *Proposal:* a **segmented control (Map | List)** above the list, and
-     the choice is **remembered**.
+   - *Settled (Jason, 2026-09-24):* a **Map | List** switch above the list,
+     and the choice is **remembered**.
 5. **The window opens on your screen, showing your screen** (*decided*):
    the full settings window opens on the monitor it was called from, with
    that monitor's current Space already selected. "Called from" means the

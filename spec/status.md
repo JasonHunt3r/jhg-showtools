@@ -181,11 +181,12 @@ preferences-domain rules).
       show), the Show menu items and the button's right-click; locked
       beeps. *Check:* each sets the range as described; a locked range
       refuses with a beep.
-   8. **⏸ P6. Undo a playhead jump,** with the view. *Check:* click far along
-      the ruler, ⌘Z returns the playhead, scroll and zoom; several jumps in
-      a row undo as one; undoing a real edit afterwards isn't blocked by
-      playhead steps. Load `showtools-gotchas` first (undo).
-   9. **⏸ P7. BGTools: the map view** beside the stack. *Check:* the monitors
+   8. **Go Back / Go Forward (⌘[ / ⌘]) for the playhead,** with its scroll
+      and zoom; the playhead stays out of ⌘Z. *Check:* click far along the
+      ruler, ⌘[ returns the playhead and the view; each click-and-release
+      and each key nudge is one step; ⌘Z still undoes only edits (and the
+      range).
+   9. **BGTools: the map view** beside the stack. *Check:* the monitors
       sit as on the desk, each with its Spaces; the choice between views
       is remembered.
    10. **⏸ P8, P9. Fill Range with Images…** *Check:* fill a 10-second range
@@ -202,11 +203,9 @@ preferences-domain rules).
      name> Space 1", 2, and so on.
    - **P5** If the BGTools window is already open, does it stay put and
      only change the selection (proposed), or move to the calling screen?
-   - **P6** Partly settled: one step per mouse click-and-release, one per
-     keyboard nudge. Jason wants to understand how playhead steps and the
-     editing state sit in the undo history before the build.
-     (`spec/plan.md`, "Undo a playhead jump")
-   - **P7** Map | List as a segmented control, remembered (proposed)?
+   - ~~P6~~ Settled: the playhead stays out of ⌘Z and gets its own Go Back
+     (⌘[) and Go Forward (⌘]); the range stays in ⌘Z.
+   - ~~P7~~ Settled: a Map | List switch, remembered.
    - ~~P8~~ Settled: the fill always fits exactly, since it computes the
      lengths. Open: which rhythm choices can still be greyed out (only
      ones tied to fixed beats?), and the proposed preview line.

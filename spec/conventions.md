@@ -65,6 +65,7 @@ itself. Names follow `spec/anatomy.md`.
 | **⌥⌘-click the range button** | Set the range to the part of the timeline in view | A locked range refuses it, with a beep | Settled (Jason, 2026-09-24) |
 | **⇧⌥⌘-click the range button** | Set the range to the whole show | A locked range refuses it | Settled (Jason, 2026-09-24) |
 | **Drag a range end** (I or O) on the ruler | Move that end; one undo step | Not while the range is locked | Settled (Jason, 2026-09-24) |
+| **⌘[ / ⌘]** | Go Back / Go Forward: the playhead's own history, with the timeline's scroll and zoom. The playhead is never in ⌘Z | — | Settled (Jason, 2026-09-24); not built |
 
 ### How ⌥ is used elsewhere (for deciding ⌥-click)
 
