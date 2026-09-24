@@ -164,20 +164,20 @@ preferences-domain rules).
    2. **BGTools: a Quit you can find.** "Quit BGTools (stops desktop
       shows)" on the panel; ⌘Q with the settings window open. *Check:*
       both quit, and the desktop shows stop.
-   3. **⏸ P1. The slide progress line fills left to right,** with a setting
+   3. **The slide progress line fills left to right,** with a setting
       to hide it and Slide Progress on/off in the viewer's right-click.
       *Check:* the line grows through each slide; the setting and the menu
       item hide and show it; it still dims when paused.
    4. **⏸ P5. BGTools: the settings window opens on your screen**, with that
       screen's current Space selected. *Check:* with two monitors, open it
       from the panel on each; it lands there, selected.
-   5. **⏸ P4. BGTools: naming screens,** with the model-name tag. *Check:* name
+   5. **BGTools: naming screens,** with the model-name tag. *Check:* name
       a monitor; the name shows in the window, the panel and the logs, with
       the tag; it survives unplugging and plugging back in.
-   6. **⏸ P2. The range: undoable, draggable ends, a lock.** *Check:* drag an
+   6. **The range: undoable, draggable ends, a lock.** *Check:* drag an
       end, ⌘Z puts it back; locked, a drag does nothing but I, O and ⌥X
       still work; undoing an ordinary edit still works as before.
-   7. **⏸ P3. The range button:** ⌥⌘-click (the view), ⇧⌥⌘-click (the whole
+   7. **The range button:** ⌥⌘-click (the view), ⇧⌥⌘-click (the whole
       show), the Show menu items and the button's right-click; locked
       beeps. *Check:* each sets the range as described; a locked range
       refuses with a beep.
@@ -194,23 +194,23 @@ preferences-domain rules).
        rhythms say why.
 
    **Waiting on Jason (Claude's proposals):**
-   - **P1** Does the progress line's hide setting apply to the whole app
-     (proposed), or save with each show?
-   - **P2** One lock for the whole range, set from either end's or the
-     button's right-click, shown on both ends (proposed)?
-   - **P3** With no range set, does a plain click on the range button make
-     one from the view (proposed), or do nothing?
-   - **P4** Can Spaces be named too, as "Work Monitor · Mixing" (proposed,
-     optional)?
+   - ~~P1~~ Settled: the hide setting applies to the whole app.
+   - ~~P2~~ Settled: one lock, from either end's or the button's
+     right-click; locked ends fade, no icon.
+   - ~~P3~~ Settled: a plain click with no range makes one from the view.
+   - ~~P4~~ Settled: Spaces can be named; they default to "<monitor
+     name> Space 1", 2, and so on.
    - **P5** If the BGTools window is already open, does it stay put and
      only change the selection (proposed), or move to the calling screen?
-   - **P6** The playhead-undo rules (ruler jumps only, consecutive jumps
-     collapse; `spec/plan.md`), or a separate Go Back command?
+   - **P6** Partly settled: one step per mouse click-and-release, one per
+     keyboard nudge. Jason wants to understand how playhead steps and the
+     editing state sit in the undo history before the build.
+     (`spec/plan.md`, "Undo a playhead jump")
    - **P7** Map | List as a segmented control, remembered (proposed)?
-   - **P8** A run shorter than the range extends its last slide to the out
-     point, and the dialog previews the result before OK (proposed)?
-   - **P9** In Displace, is the first slide's trimmed-off tail dropped?
-     (App Claude's reading, to confirm.)
+   - ~~P8~~ Settled: the fill always fits exactly, since it computes the
+     lengths. Open: which rhythm choices can still be greyed out (only
+     ones tied to fixed beats?), and the proposed preview line.
+   - ~~P9~~ Settled: the first slide is just shortened; there's no tail.
 
 Then: the right-click conversation (the plan at the end of
 `spec/conventions.md`), the show session (`spec/windows.md`), and the

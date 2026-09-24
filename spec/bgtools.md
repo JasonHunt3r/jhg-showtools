@@ -233,9 +233,10 @@ From `showtools_work_order_2026-09-24.md`. *Decided* is Jason's;
    are keyed by the display's uuid, as settings already are, and show
    everywhere a screen appears: the settings window, the panel, the logs.
    A new field in the settings file, decoded on its own.
-   - *Proposal:* **Spaces can be named too, optionally**, shown as "Work
-     Monitor · Mixing"; unnamed, they stay "Space 2". They're already
-     keyed by uuid, so the name has a stable home.
+   - *Settled (Jason, 2026-09-24):* **Spaces can be named too.** Once a
+     monitor has its own name, its Spaces default to that name with a
+     number, "Work Monitor Space 1", "Work Monitor Space 2", and each can
+     be renamed. They're keyed by uuid, so the names have a stable home.
 4. **A map as well as the stack** (*decided*): a **spatial view** of the
    monitors as they sit on the desk (as System Settings ▸ Displays shows
    them), each with its Spaces inside it, beside the stacked list, which

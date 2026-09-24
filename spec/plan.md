@@ -877,21 +877,24 @@ From Jason's first-test notes (`showtools_work_order_2026-09-24.md`).
   Locked ends still take the I and O keys and ⌥X, since keys are a
   deliberate act. Today an end only answers a double-click (its line,
   `StorylineView.rangeEnd`).
-- *Proposal:* **one lock for the whole range**, not one per end. It's set
-  from the right-click of either end and from the range button's
-  right-click, and shows as a small lock on both ends.
+- *Settled (Jason, 2026-09-24):* **one lock for the whole range**, set
+  from the right-click of either end and of the range button. **Locked
+  ends simply fade**; no lock icon.
 
 **Undo a playhead jump.**
 - *Decided:* when a stray click on the ruler moves the playhead and the
   work jumps out of view, **⌘Z puts back the playhead and the view**
   (the timeline's scroll and zoom).
-- *Proposal:* only a **ruler click that jumps** registers; playback, arrow
-  nudges and J, K, L don't. A scrub drag is one step. **Consecutive jumps
-  collapse into one step**, so ⌘Z always returns to "where I was
-  working" and never makes you press through a pile of playhead steps to
-  undo a real edit (why Final Cut doesn't do this). The fallback, if that
-  can't be made clean: a separate **Go Back** command with its own short
-  history.
+- *Settled (Jason, 2026-09-24):* with the mouse, **one step per click and
+  release**: a click that jumps, or a scrub drag from press to release, is
+  one undo step. With the keyboard, **each nudge is its own step.**
+  Playback and J, K, L don't register.
+- *Undo history:* nothing limits it today (`levelsOfUndo` isn't set, so
+  it's unlimited within a session). It's cleared on switching libraries
+  and doesn't survive quitting.
+- *Still to understand before building (Jason):* how playhead steps sit
+  with edits in the one history, and the "editing state" undo carries
+  over. Claude to explain; then Jason decides.
 
 **The range button.**
 - *Decided:* a **plain click** shows or hides the range, as now. **⌥⌘-click**
@@ -902,9 +905,9 @@ From Jason's first-test notes (`showtools_work_order_2026-09-24.md`).
   right-click, since modifier clicks can't be seen (audit F1). The button
   is disabled today when there's no range; it has to be enabled for
   these.
-- *Proposal:* a **plain click with no range set acts like ⌥⌘-click**:
-  there's nothing to show or hide, so it makes a range from the view.
-  That's more useful than a button that does nothing.
+- *Settled (Jason, 2026-09-24):* a **plain click with no range set acts
+  like ⌥⌘-click** and makes a range from the view, following the
+  conventions already set.
 
 **Fill the range with images.**
 - *Decided:* **right-click the range on the ruler → Fill Range with
@@ -935,15 +938,18 @@ From Jason's first-test notes (`showtools_work_order_2026-09-24.md`).
 - **Rules kept:** slides are never split. These are trims, and a trimmed
   slide keeps its settings. The whole fill is **one undo step**. A locked
   range can still be filled, since its ends don't move.
-- *Proposals:*
-  - a run **shorter** than the range extends its last slide to the out
-    point, so the range is always exactly filled (and Replace's "keeps its
-    position" holds);
-  - a **preview line** in the dialog before OK: the count, each slide's
-    length, and whether the run fills the range.
-- *To confirm with Jason:* in Displace, the first slide's trimmed-off tail
-  is simply **dropped**, not moved after the run. (App Claude's reading,
-  not Jason's words.)
+- *Settled (Jason, 2026-09-24):* **the fill always fits the range
+  exactly.** There's never a shorter run: the fill does the maths and sets
+  the slides' lengths so they fill the range, following the settings
+  chosen.
+- *Settled (Jason):* in Displace (and Replace), **the first slide is just
+  shortened** to end at the in point. There's no tail to place anywhere.
+- *Open:* with lengths scaled to fit, a rhythm pattern never overruns, so
+  the "greyed out if it runs past the range" rule may only apply to
+  choices tied to fixed beats (a detected song's beats can't be
+  stretched). Asked.
+- *Proposal:* a **preview line** in the dialog before OK: the count and
+  each slide's length.
 
 ### Groups inside collections (Jason, 2026-09-24) — Built 2026-09-24, Core through UI
 
