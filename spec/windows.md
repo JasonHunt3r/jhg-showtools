@@ -163,6 +163,20 @@ the small native behaviours (focus, VoiceOver, the toolbar button,
 remembered widths), and the fact that only a Mac can run it. The
 harness below is what keeps that cost small.
 
+**And the other built-in split (Jason, 2026-09-24): don't use the
+built-ins for panes at all.**
+- What `NavigationSplitView` gives is **one divider** (the left pane's),
+  plus the extras listed above. The full-width timeline pane removes that
+  divider anyway, since it can't coexist with a full-height left pane.
+- Edit Show's columns and timeline pane are split by `VSplitView`, the
+  thin system line, which is exactly the kind of divider edge handles
+  replace.
+- The custom splits already work: Edit Show's three columns and Edit
+  Slides' two, on `ColumnsSplitView`, since the crash fix.
+- So: **every pane edge on the app's own split view, with handles.** The
+  built-ins become the reference for what to recreate (focus, the
+  toggle, the look, remembered sizes), not parts of the app.
+
 **Suggested approach:** a standalone harness first. It would have a
 window with a left list, a content area, and a full-width bottom pane on
 `ColumnsSplitView`, with edge handles. The harness answers "does it hold
