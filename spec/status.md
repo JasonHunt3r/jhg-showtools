@@ -65,10 +65,11 @@ preferences-domain rules).
      popup never opened; the drop registered no undo step), so this
      stays on the "still needs Jason's hands" list rather than counting
      as verified.
-2. **⌘A in the Library grid: top priority** (audit A1; Jason: hand-
-   clicking 4,000 test images). Edit ▸ Select All selects every tile in
-   view, as a menu item through a focused scene value, so it works
-   whether or not the grid has the keyboard.
+2. ~~**⌘A in the Library grid: top priority**~~ — done 2026-09-24 (audit
+   A1). Joins Delete/⌘Delete in the grid's `SingleKeys` monitor rather
+   than a menu item (simpler, and the same fix the grid's focus problem
+   already got); selects every tile in `visible`. Checked with a real
+   ⌘A: 11/11 tiles, and the Search field's own select-all still works.
 3. **The rest of batch 1** (`spec/hig-audit.md`): the Delete key in the
    Library pane (D1, following the settled delete conventions), and undo
    for Delete Show (D2) and Rename Collection (D3).
