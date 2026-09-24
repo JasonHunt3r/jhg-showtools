@@ -94,12 +94,15 @@ text fields and `List`s, and nowhere else.
   `tileSize`, so ↑/↓ needs that number. `.adaptive` columns don't expose
   it, so it has to be worked out the same way, or the grid changed to
   fixed columns.
-- **B3 (Med) — ⇧-click only ever adds.** `MainView.swift:793` does
-  `selection.formUnion(range)`. In Finder, ⇧-click *replaces* the last
-  ⇧-range with the new one, from the same anchor. Click 5, ⇧-click 10,
-  ⇧-click 7: Finder has 5–7 selected, this grid has 5–10. It's a small
-  logic fix, and it can be unit-tested if the logic moves into a plain
-  type (see batch 3).
+- **B3 (Med) — ⇧-click only ever adds.** **Fixed 2026-09-24** (batch 4):
+  `MainView.swift`'s `click(_:)` now calls `GridSelection.shiftClick`,
+  which replaces the previous ⇧-range from the anchor rather than
+  unioning with it — the click-5-⇧-click-10-⇧-click-7 example is one of
+  `GridSelectionTests`' worked examples. `swift test` is clean; a real
+  ⇧-click in the grid still wants Jason's hands. ~~`MainView.swift:793`
+  does `selection.formUnion(range)`. In Finder, ⇧-click *replaces* the
+  last ⇧-range with the new one, from the same anchor. Click 5, ⇧-click
+  10, ⇧-click 7: Finder has 5–7 selected, this grid has 5–10.~~
 - **B4 (Low) — No rubber-band selection.** Dragging on the empty space
   between tiles selects nothing (in Finder and Photos it draws a
   selection rectangle, and ⌘ or ⇧ adds to what's selected). The
@@ -218,10 +221,16 @@ Browser. Elsewhere they're thin, or missing altogether:
 ## E. The storyline (Edit Show)
 
 - **E1 (Med) — ⇧-click extends from the first selected slide, not from
-  the last click, and only ever adds** (`StorylineView.swift:650`). Click
-  slide 2, ⌘-click 8, ⇧-click 10: Finder and Final Cut would add 8–10;
-  here it selects 2–10. It's the same fix as B3, with an anchor that
-  remembers the last plain click or ⌘-click.
+  the last click, and only ever adds.** **Fixed 2026-09-24** (batch 4):
+  `StorylineView` now keeps its own `anchor`/`selectionBase` state (it had
+  none before — the old code derived an "anchor" fresh each time from
+  "the first selected slide") and calls the same `GridSelection` used in
+  the grid. The click-2-⌘-click-8-⇧-click-10 example is one of
+  `GridSelectionTests`' worked examples. `swift test` is clean; a real
+  ⇧-click in the storyline still wants Jason's hands. ~~(`StorylineView.
+  swift:650`). Click slide 2, ⌘-click 8, ⇧-click 10: Finder and Final Cut
+  would add 8–10; here it selects 2–10. It's the same fix as B3, with an
+  anchor that remembers the last plain click or ⌘-click.~~
 - **E2 (Med) — No keyboard movement between slides.** The player already
   uses ←/→ for the previous or next slide, and Home/End
   (`PlayerWindow.swift:104`), but the editor doesn't. Final Cut uses ↑/↓
@@ -300,7 +309,7 @@ Today they disagree on several of the "should match" items:
 | | Edit Slides (list) | Edit Show (storyline) |
 |---|---|---|
 | Arrow keys, ⇧-arrows, ⌘A | Yes (a `List` gives them) | No (E2, A1) |
-| ⇧-click | Finder's rule (a `List`) | Grows from the first selected slide (E1) |
+| ⇧-click | Finder's rule (a `List`) | Finder's rule too, fixed 2026-09-24 (E1) |
 | Double-click a slide | **Toggles** the inspector (`ShowView.swift:171`) | **Opens** it, never closes it (`StorylineView.swift:662`) |
 | Context menu | Duplicate, Remove, **Play from Here** | Duplicate, Remove (C4) |
 | Space, J/K/L | Nothing | Play and shuttle |

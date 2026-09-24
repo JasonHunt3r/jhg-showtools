@@ -12,8 +12,8 @@ Repo: `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 ## Where it stands
 
 **Everything planned is built**, including Groups inside collections
-(below). Phases 1–5, Phase 3b, Phase 4 and video export. **291 tests**
-(279 core + 12 BGTools). **Library schema 13.**
+(below). Phases 1–5, Phase 3b, Phase 4 and video export. **305 tests**
+(293 core + 12 BGTools). **Library schema 13.**
 
 | Phase | State |
 |---|---|
@@ -108,10 +108,23 @@ preferences-domain rules).
    `spec/plan.md`, "Groups inside collections". Real dragging (group
    onto group, onto its own collection, onto another) still wants
    Jason's hands — built and reasoned about, not clicked.
-6. **Batch 4: selection logic in Core, with tests.** ⇧-click replaces
-   the previous range; arrow-key steps given a column count (B3, E1,
-   B2, E2 in the audit; the settled rules are in `spec/conventions.md`
-   §1–2).
+6. ~~**Batch 4: selection logic in Core, with tests**~~ — done 2026-09-24.
+   `GridSelection` (`Sources/ShowToolsCore/GridSelection.swift`): pure
+   functions over the caller's own `selected`/`anchor`/`base`/`cursor` —
+   `click`, `commandClick`, `shiftClick` (fixes B3 and E1: a ⇧-click
+   selects the range from the anchor, *replacing* the previous ⇧-range,
+   not adding to it), and `step` (the arrow-key index arithmetic for
+   B2/E2 — ± the column count for ↑/↓ in a grid, ±1 for a plain list;
+   not wired into either view yet, since B2 waits for the grid's keyboard
+   batch and E2 waits on Jason's ↑/↓-vs-←/→ decision). 14 new tests,
+   including B3's and E1's exact worked examples from the audit. Wired
+   into the Library grid's and the storyline's `click(_:)`, replacing
+   each one's own buggy `.formUnion` logic (only ever added) and, in the
+   storyline, an anchor that was wrongly derived from "the first selected
+   slide" each time rather than kept as its own state.
+   `swift test` (305, was 291) and `./make-app.sh` clean; smoke-launched
+   again, no crash. *Check* (per the plan): the tests pass; a real
+   ⇧-click in the grid and the storyline still wants Jason's hands.
 7. **The PaneKit harness** (`spec/panekit.md`, "The order", step 1): a
    standalone app in `tools/` with dummy content, checked on the Mac and
    felt by Jason.
@@ -179,6 +192,10 @@ and Flush presets from 2a.
   collection to un-nest it, and onto a different collection**, with the
   "images will be added" notice and its suppression checkbox. All of it
   only smoke-tested (launch, no crash), not clicked by a person.
+- **⇧-click in the Library grid and the storyline** (batch 4, built
+  2026-09-24): `GridSelection`'s logic is unit-tested against the audit's
+  own worked examples, but a real ⇧-click, ⇧-click, ⇧-click hasn't been
+  tried by hand in either place.
 - **The Rhythm tool** (step 7): the panel's look (the space around the
   form, the notation's size: a staff space is 5.5 pt), Listen by ear on
   real music, Space stopping Listen, and whether 145 BPM is right for
@@ -289,7 +306,7 @@ resets every app's login items, so they are left alone.
 ## Quick start
 
 ```sh
-swift test                                  # 279 core + 12 BGTools tests
+swift test                                  # 293 core + 12 BGTools tests
 ./make-app.sh                               # → build/ShowTools.app
 tools/make-test-library.sh <scratch>/STTest # scratch library + generated media
 open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools.app

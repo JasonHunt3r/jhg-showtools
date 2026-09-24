@@ -562,6 +562,11 @@ struct LibraryGridView: View {
         }
     }
     @State private var anchor: Int64?
+    /// The selection at the moment `anchor` was last set by a plain or
+    /// ⌘-click, and where a ⇧-click or step last landed — both feed
+    /// `GridSelection`'s pure functions (batch 4, B3).
+    @State private var selectionBase: Set<Int64> = []
+    @State private var cursor: Int64?
     @State private var dropTargeted = false
     // Find Similar (plan, Phase 3b).
     /// Find Similar Images (was "Group Similar"; renamed 2026-09-24 so
@@ -795,7 +800,7 @@ struct LibraryGridView: View {
         }
         .navigationTitle(navigationName)
         .navigationSubtitle(selection.isEmpty ? "\(visible.count) items" : "\(selection.count) selected")
-        .onChange(of: navScope) { selection = []; anchor = nil; similarTo = nil }
+        .onChange(of: navScope) { selection = []; anchor = nil; selectionBase = []; cursor = nil; similarTo = nil }
         // Fingerprints for what's in view, worked out once each.
         .task(id: similarActive ? comparable.map(\.id) : []) {
             guard similarActive else { return }
@@ -838,6 +843,7 @@ struct LibraryGridView: View {
             if event.keyCode == 0, event.plainModifiers == [.command] {
                 guard !visible.isEmpty else { return false }
                 selection = Set(visible.map(\.id))
+                selectionBase = selection
                 return true
             }
             guard event.keyCode == 51 || event.keyCode == 117, !selection.isEmpty else { return false }
@@ -1159,20 +1165,24 @@ struct LibraryGridView: View {
         visible.map(\.id).filter(selection.contains)
     }
 
-    /// Finder-style clicking: plain replaces, ⌘ toggles, ⇧ extends a range.
+    /// Finder-style clicking: plain replaces, ⌘ toggles, ⇧ selects the
+    /// range from the anchor, replacing the previous ⇧-range rather than
+    /// adding to it (batch 4, B3; `GridSelection`, unit-tested there).
     private func click(_ id: Int64) {
         let mods = NSEvent.modifierFlags
+        let items = visible.map(\.id)
+        let r: GridSelection.Result<Int64>
         if mods.contains(.command) {
-            if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
-            anchor = id
-        } else if mods.contains(.shift), let a = anchor,
-                  let i = visible.firstIndex(where: { $0.id == a }),
-                  let j = visible.firstIndex(where: { $0.id == id }) {
-            selection.formUnion(visible[min(i, j)...max(i, j)].map(\.id))
+            r = GridSelection.commandClick(id, selected: selection)
+        } else if mods.contains(.shift) {
+            r = GridSelection.shiftClick(id, anchor: anchor, base: selectionBase, in: items)
         } else {
-            selection = [id]
-            anchor = id
+            r = GridSelection.click(id)
         }
+        selection = r.selected
+        anchor = r.anchor
+        selectionBase = r.base
+        cursor = r.cursor
         focused = true
     }
 }
