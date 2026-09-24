@@ -153,7 +153,9 @@ divider, and empty groups are skipped:
 | Find Similar Images set header (was Group Similar) | **Settled 2026-09-24.** Select Group, Keep One… ✓, **Keep as Group** · New Show from Group…, Add Group to Collection ▸ |
 | Library pane: a group | *To settle with groups* (`spec/plan.md`, "Groups inside collections"). Drop files onto it; it lists beside the collection's shows |
 | Empty grid space | **Settled 2026-09-24.** Import…, Select All, New Collection |
-| Slide (list or timeline) | Play from Here (✓ list only) · Duplicate ✓ · Show in Library, Show in Finder, Open Inspector · Remove from Show ✓ |
+| Slide (list or timeline) | **Settled for Edit Slides, 2026-09-24.** Play from Here ✓, Play Full Screen (from the slide) · Duplicate ✓, Copy, Paste (**with ⌥ held: Copy Settings, Paste Settings**) · Show in Library, Open Inspector · Remove from Show ✓. No Show in Finder. Quick settings: to settle |
+| Edit Slides: empty list space | **Settled 2026-09-24, to try.** Add from Collection…, Import…, Paste, Select All (today it shows the slide menu with nothing to act on) |
+| Edit Slides: the defaults bar | **Settled 2026-09-24, to try by hand.** Use Defaults for All Slides (clears each slide's own values), Save as Preset… (the New Show presets), Reset to App Defaults |
 | Lane image | Duplicate · Show in Library, Show in Finder · Remove Image (C1) |
 | Transition | its style (submenu), Use Show Default · Remove Transition (leaves a cut) (C2) |
 | Audio clip | Detect Beats… ✓ · Show in Library, Show in Finder · Remove Audio Clip ✓ |
@@ -301,7 +303,27 @@ universals first.
     `spec/simple-things-fast.md`.
 - **Groups inside collections** (Jason, 2026-09-24): raised here, to be
   built right away: `spec/plan.md`, "Groups".
-- **3. Edit Slides:** next.
+- **3. Edit Slides: done 2026-09-24, except quick settings.** Jason's answers:
+  - **Play:** Play from Here, and **Play Full Screen** (from the selected
+    slide).
+  - **Copy and Paste** of slides on the menu; **Copy Settings and Paste
+    Settings** appear **only while ⌥ is held**. They swap in and out live
+    as ⌥ is pressed and let go with the menu open. That's AppKit's
+    *alternate* menu items (as Finder's File menu does with Close and
+    Close All): an `NSMenuItem` marked alternate, with the ⌥ modifier.
+    SwiftUI's context menus may not offer it, so the build may need an
+    AppKit menu here.
+  - **Show in Library** yes. **Show in Finder** no: the file was copied
+    into the library, and where the original went is unknown, so there's
+    nothing useful to reveal.
+  - **Empty list space:** Add from Collection…, Import…, Paste, Select
+    All. Try it.
+  - **The defaults bar:** Use Defaults for All Slides, Save as Preset…,
+    Reset to App Defaults. Sounds good; to be tried by hand.
+  - **Anything missing:** nothing yet.
+  - **Quick settings in the menu:** needs a clearer proposal (asked
+    again).
+- **4. Edit Show, the viewer:** next.
 
 **The route, in the anatomy's order:**
 1. **Library pane:** the Library row, a collection row, a show row, empty
