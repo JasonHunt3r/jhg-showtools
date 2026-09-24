@@ -3,7 +3,10 @@
 **Status:** Built 2026-09-22 (B1–B7). **Left:** Jason's hands-on pass
 (private unlock with Touch ID, the panel closing on a click elsewhere,
 Space-switch pausing, none re-done against the nested BGTools); the Pan
-and Zoom cost; telling BGTools when a library moves.
+and Zoom cost; telling BGTools when a library moves; and **Jason's
+first-test list** (2026-09-24, below): a Quit you can find, All same →
+Synchronize, naming screens, a map view, and the window opening on your
+screen.
 
 Phase 5 of ShowTools (renamed 2026-09-22; it was "Live desktop"). This file
 holds BGTools' decisions and measurements; `spec/plan.md` points here. It
@@ -145,7 +148,8 @@ From the 2026-09-20 plan, still applying:
    and Space: a show in order · a show shuffled · random from a
    collection · a random show · random from all files. Songs are never
    slides.
-2. **"All same"** — **Settled (Jason, 2026-09-22): one switch overrides
+2. **"Synchronize"** (called "All same" until 2026-09-24, renamed by
+   Jason) — **Settled (Jason, 2026-09-22): one switch overrides
    all.** On, one choice plays on every monitor and every Space, in sync
    (the same slide at the same moment). Off, each monitor's and Space's own
    settings come back; they're kept while it's on.
@@ -204,6 +208,51 @@ New with BGTools:
     drops a compact floating panel near the top right, a row per monitor
     and Space (thumbnail, mode and show, Next, Stills only) plus All same.
     Favourite "Play X on screen Y" tiles can come later.
+
+## Jason's first-test list (2026-09-24)
+
+From `showtools_work_order_2026-09-24.md`. *Decided* is Jason's;
+*Proposal* is Claude's, for him to settle.
+
+1. **A Quit you can find.** Quit exists, but only as the last item in the
+   settings window's ⋯ toolbar menu (`MainWindow.swift`), and Jason
+   didn't find it. Add it to the **floating panel**, worded so it says
+   what it does: **"Quit BGTools (stops desktop shows)"**. Make **⌘Q** work
+   while the settings window is open, since BGTools is a regular app then
+   (`BGToolsApp.swift` switches the activation policy).
+2. **All same → Synchronize** (*decided*): the switch, its row, its help
+   text, the note shown on a screen while it's on, and the panel. The
+   settings file keeps its key, `allSame`: `DesktopSettings` decodes field
+   by field by its `CodingKeys`, so renaming the key would drop every
+   saved setting on the next save unless it's migrated. The user-facing
+   words change; the stored key doesn't.
+3. **Naming screens** (*decided*): each monitor gets a name of its own,
+   like **Work Monitor**, shown with a small tag of macOS's model name
+   (PA279CRV), so the physical screen is always identifiable. Unnamed
+   screens show the model name, as now (`screen.localizedName`). Names
+   are keyed by the display's uuid, as settings already are, and show
+   everywhere a screen appears: the settings window, the panel, the logs.
+   A new field in the settings file, decoded on its own.
+   - *Proposal:* **Spaces can be named too, optionally**, shown as "Work
+     Monitor · Mixing"; unnamed, they stay "Space 2". They're already
+     keyed by uuid, so the name has a stable home.
+4. **A map as well as the stack** (*decided*): a **spatial view** of the
+   monitors as they sit on the desk (as System Settings ▸ Displays shows
+   them), each with its Spaces inside it, beside the stacked list, which
+   stays. Two views of the same settings. `NSScreen.frame` gives the
+   arrangement.
+   - *Proposal:* a **segmented control (Map | List)** above the list, and
+     the choice is **remembered**.
+5. **The window opens on your screen, showing your screen** (*decided*):
+   the full settings window opens on the monitor it was called from, with
+   that monitor's current Space already selected. "Called from" means the
+   screen with the pointer, when opened from the panel or a Control Center
+   tile. Today it calls `center()` (the main screen) with a frame
+   autosave, and nothing is preselected (`BGToolsApp.swift`).
+   - *Proposal:* **if the window is already open, it stays where it is**
+     (you put it there), comes to the front, and **only the selection
+     changes** to the calling screen. Only a fresh open goes to the calling
+     monitor.
 
 ## Build steps (proposed 2026-09-22)
 
