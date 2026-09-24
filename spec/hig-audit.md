@@ -34,7 +34,7 @@ only stack-like thing the grid has.
 | Library grid | Click, ⌘-click, ⇧-click; Delete / ⌘Delete; a full context menu | Arrow keys, ⇧-arrows, ⌘A, rubber-band selection, Space (Quick Look), Return, double-click |
 | Edit Slides list | Everything a `List` gives: arrows, ⇧-arrows, ⌘A, Delete, drag to reorder | Duplicate on ⌘D, a fuller context menu |
 | Storyline | Click, ⌘-click, ⇧-click; J/K/L, Space, I/O, M, N, ⇧Z | Arrow keys between slides, ⌘A, Escape for slides; context menus on lane images, transitions, markers |
-| Sidebar | Right-click Rename…, Delete… | The Delete key, Return or click-to-rename, undo for two of its actions |
+| Library pane | Right-click Rename…, Delete… | The Delete key, Return or click-to-rename, undo for two of its actions |
 | Menu bar | File, View, Show | Edit Show's commands (all hidden), the inspector toggle, a real Help menu |
 
 ## A. The Edit menu
@@ -79,7 +79,7 @@ text fields and `List`s, and nowhere else.
   *Fix direction:* either keep going with `SingleKeys` (a key monitor,
   already proven in this window), or put the grid on an AppKit view that
   can be first responder. The monitor is the smaller change. It must still
-  let keys through to Search and to a List (the sidebar) that has the
+  let keys through to Search and to a List (the Library pane) that has the
   keyboard, as the Delete handler already does.
 - **B2 (Med) — Arrow keys don't move the selection.** Finder and Photos:
   ←/→ move to the previous or next tile, ↑/↓ move a row, ⇧ with an arrow
@@ -137,7 +137,7 @@ Browser. Elsewhere they're thin, or missing altogether:
   Here, Show in Finder, Open Inspector.
 - **C5 (Low) — Songs:** Detect Beats… and Remove Song
   (`MusicRow.swift:125`). Add Show in Finder.
-- **C6 (Low) — The sidebar.** The Library row has no menu at all (Import…,
+- **C6 (Low) — The Library pane.** The Library row has no menu at all (Import…,
   New Collection would fit). Show rows lack Duplicate Show, Export Show…
   and Export Movie…, which are otherwise only in the File menu.
 - **C7 (Low) — One action, two names.** Deleting a file from the library
@@ -151,17 +151,17 @@ Browser. Elsewhere they're thin, or missing altogether:
   a bare-letter key equivalent without also turning it into a window-wide
   shortcut that eats typing. If they don't, leave the titles as they are.
 
-## D. The sidebar
+## D. The Library pane
 
 - **D1 (Med) — Delete does nothing on a selected show or collection.** The
-  sidebar `List` (`MainView.swift:24`) has no `onDeleteCommand`, so
+  Library pane `List` (`MainView.swift:24`) has no `onDeleteCommand`, so
   deleting means right-clicking. Following the settled convention (plan,
   2b): Delete asks first, and ⌘Delete moves it without asking.
 - **D2 (Med) — Delete Show can't be undone.** `AppModel.deleteShow`
   (`AppModel.swift:723`) takes no undo manager, and its dialog doesn't
   offer undo. Delete Collection *is* undoable, and says so. So is a show
   deleted along with its collection, but a show deleted on its own isn't.
-  That's an inconsistency, and the one irreversible action in the sidebar.
+  That's an inconsistency, and the one irreversible action in the Library pane.
 - **D3 (Low) — Rename Collection can't be undone** (`AppModel.swift:488`
   takes no undo manager). Rename Show can be.
 - **D4 (Low) — Renaming is an alert, not in place.** Finder and Photos:
@@ -266,7 +266,7 @@ Today they disagree on several of the "should match" items:
   `AppModel.append` (`AppModel.swift`) takes an optional undo manager, and
   none of its callers pass one:
   - a drop onto the Edit Slides list (`ShowView.swift:181`)
-  - a drop onto a show in the sidebar (`MainView.swift:213`)
+  - a drop onto a show in the Library pane (`MainView.swift:213`)
   - the grid's Add to Show menu (`MainView.swift:760`)
 
   So `update` registers no undo step, and ⌘Z undoes whatever came before.
@@ -280,7 +280,7 @@ Today they disagree on several of the "should match" items:
   collection stay in it (adding to a collection has no undo anywhere,
   which is a separate matter). *Check:* drop two files onto the Edit Slides
   list, then Edit ▸ Undo reads "Undo Add Slides" and ⌘Z removes them. Do
-  the same with a drop onto a sidebar show and with Add to Show.
+  the same with a drop onto a show in the Library pane and with Add to Show.
 - **G2 (Med) — A drop onto the Edit Slides list ignores where it lands.**
   Dropping between slides 3 and 4 still appends to the end, while the same
   drop onto the storyline inserts there. A `List` shows an insertion line
@@ -329,7 +329,7 @@ Today they disagree on several of the "should match" items:
   that by accident", so it creates nothing. **Nothing is ever called
   Untitled unless someone clicked OK on that name.** The field starts
   with a suggested name, selected, so Return accepts it. Once inline
-  rename (D4) exists, the naming can happen in the sidebar row itself,
+  rename (D4) exists, the naming can happen in the Library pane row itself,
   under the same rule: Esc removes the new row.
   - **New Show asks for more than a name (Jason):** made from a
     selection, it used fixed defaults with no dialog, so the lengths and
@@ -390,10 +390,10 @@ Today they disagree on several of the "should match" items:
 ## I. Panes lost past the window's edge (Jason, 2026-09-24)
 
 - **I1 (Med) — A pane dragged to the edge can vanish with nothing to grab
-  back.** Jason dragged the sidebar's divider (the library and
-  collections, on the left) to the window's edge, and the sidebar went
+  back.** Jason dragged the Library pane's divider (the library and
+  collections, on the left) to the window's edge, and the Library pane went
   past it and couldn't be recovered. It happened on the right side too,
-  at one point. The sidebar is SwiftUI's `NavigationSplitView`, which
+  at one point. The Library pane is SwiftUI's `NavigationSplitView`, which
   collapses below its 180-point minimum and leaves no handle. *(Check:*
   whether a toolbar or View-menu sidebar toggle brings it back. The app
   doesn't add `SidebarCommands`, so the View menu may have no Show
@@ -422,7 +422,7 @@ ordered from least to most risk.
    once; New Collection goes straight to its name; an empty collection
    and an empty show each offer their buttons; double-click a slide twice
    in each mode.
-3. **Sidebar Delete key** (D1). *Check:* Delete asks first, and ⌘Delete
+3. **Library pane Delete key** (D1). *Check:* Delete asks first, and ⌘Delete
    doesn't.
 4. **Selection logic, moved into Core and unit-tested** (B3, E1, and the
    index arithmetic for B2/E2): a small `GridSelection` type (anchor,

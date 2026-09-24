@@ -54,7 +54,7 @@ slide's level line is slide settings, which are JSON.
    and Quick Look in the grid; context menus on lane images, transitions
    and markers; Edit Show's commands in no menu; Edit Slides and Edit
    Show disagreeing. One real bug: **adding slides by a drop onto Edit
-   Slides, a sidebar show or Add to Show can't be undone** (G1). Eight fix
+   Slides, a show in the Library pane or Add to Show can't be undone** (G1). Eight fix
    batches, least risky first; three decisions for Jason.
 
 **Ken Burns → "Pan and Zoom" — done 2026-09-23** (`8db7ffc`, `a0be113`),
@@ -143,8 +143,8 @@ and Flush presets from 2a.
 - **⌥⌘0 (Restore Default Layout) raised the layout-loop exception once**,
   and killed the app, on 2026-09-23: *before* the cause was confirmed as
   SwiftUI's `.inspector()` and fixed. Not seen since the fix; probably that
-  same crash. The sidebar was a suspect only by coincidence (Jason). Its
-  known bugs are display bugs. `DefaultLayout` still skips the sidebar on
+  same crash. The Library pane was a suspect only by coincidence (Jason). Its
+  known bugs are display bugs. `DefaultLayout` still skips the Library pane on
   that stale reasoning, which is worth retrying.
 - **A song lying wholly inside another** plays over it without crossfading
   (only a partial overlap crossfades). Level tops out at 100%.

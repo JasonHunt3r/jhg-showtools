@@ -42,7 +42,7 @@ As built:
 
 ## Where things are on screen (the places a first encounter could happen)
 
-- **Sidebar**: Library, then collections, each holding its shows.
+- **Library pane**: Library, then collections, each holding its shows.
 - **Library / collection grid**: thumbnails; Delete, Get Info, Find Similar.
 - **Info panel** (⌘I): a file's details, rating and tags.
 - **A show** has two modes:

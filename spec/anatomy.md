@@ -37,9 +37,9 @@ thing.
 
 | Name | Where | Also called |
 |---|---|---|
-| **Main window** | The one window with the sidebar | |
-| **Sidebar** *(to be renamed)* | Left column: Library, then Collections with their Shows | source list |
-| **Detail** | Everything right of the sidebar. Shows one of: the grid, or a show in one of two modes | |
+| **Main window** | The one window with the Library pane | |
+| **Library pane** | Left column: the Library row, then Collections with their Shows. Called **the Library** for short | sidebar (the old name), source list |
+| **Detail** | Everything right of the Library pane. Shows one of: the grid, or a show in one of two modes | |
 | **Library grid** | Detail, when the Library or a collection is selected: tiles of files | the grid |
 | **Filter bar** | Top of the grid: Search, Filter, Sort, Similar | the bar |
 | **Edit Slides** | A show's list mode | |
@@ -64,13 +64,15 @@ thing.
 rows. That keeps "row" for the timeline's bands, and "layer" for what's
 drawn on top of what.
 
-**"Sidebar" is to be renamed (Jason, 2026-09-24).** It names a position,
-not a thing: the browser and the inspector are sidebars too, when open.
-The left pane needs a name that says what it holds (the library, its
-collections and shows). Until it's chosen, "sidebar" in these docs means
-that left pane only.
+**The left pane is the Library pane (Jason, 2026-09-24),** "the Library"
+for short. It was "the sidebar", which names a position, not a thing:
+the browser and the inspector are sidebars too, when open. "Pane" sets it
+apart from the **library panel**, the floating window it can launch.
+Older docs and the code (`SidebarItem`, `model.sidebar`) keep the old
+word. "Sidebar" is still right for Apple's own things: the Mac's
+translucent sidebar look, and the Show Sidebar menu item.
 
-**A map to print (planned).** PNGs of each view with every area labelled
+**A map to print (planned, on hold until the terms are settled).** PNGs of each view with every area labelled
 by its name here: a map to point at when saying where something should
 be or how it should work. Schematic versions can be drawn from this file
 (the container has a browser engine that can render them). Labelled
@@ -86,7 +88,7 @@ Slide Editor).
 ```
 Main window
 ├─ Toolbar                       (changes with the detail: grid tools, or show tools)
-├─ Sidebar
+├─ Library pane
 │   ├─ Library
 │   └─ Collections
 │       └─ Collection  ▸  its Shows
@@ -136,7 +138,7 @@ Main window
 
 ## 3. Each area: what it's for, what it holds, what it affects
 
-### Sidebar
+### Library pane
 
 - **For:** choosing what the detail shows.
 - **Holds:** the Library, collections (each opens and closes), and their

@@ -124,7 +124,7 @@ The way forward depends on *why* it's empty:
   first time, it welcomes and teaches; after that, it's a short reminder
   with the same button. The story: a new collection gave no hint of how
   to fill it, short of hunting for a small Import button or dragging onto
-  a small sidebar row.
+  a small row in the Library pane.
 - **Hidden by a search or filter:** say so, and offer to clear it.
 - **Waiting for a selection** (the inspector): say what to select.
 - **A row waiting for a drop:** a quiet hint, no button.
@@ -226,7 +226,7 @@ that difference was the crash.
 - **Measure, don't guess.** It's a CLAUDE.md rule, because guesses in
   this codebase have been wrong in convincing ways.
 - **Stale knowledge is a guess too.** On 2026-09-24 an old code comment
-  said setting the sidebar caused the layout-loop crash. It was written
+  said setting the Library pane caused the layout-loop crash. It was written
   before the real cause (SwiftUI's `.inspector()`) was found, and it was
   repeated as fact until Jason caught it. Caught early, it cost one
   paragraph. Caught late, it could have steered a long build. Check a

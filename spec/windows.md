@@ -37,7 +37,7 @@ menu**, and it can be put back.
 
 | Area | Why in its own window |
 |---|---|
-| **Sidebar** (collections and shows) | Next to Finder or Photos, as a drop target |
+| **Library pane** (collections and shows) | Next to Finder or Photos, as a drop target |
 | **Library** as a list | The same, and as a source to drag from while Edit Show fills the main window |
 | **Browser** | Its files beside the timeline pane on a second screen |
 | **Inspector** | Settings where they're wanted, and the columns get its width back |
@@ -82,12 +82,12 @@ The same flexibility, before any pane leaves the window: every pane can
 close against the window's edge, and come back from it.
 
 **The fail state it came from:**
-- Jason dragged the **sidebar's** divider (the library and collections,
-  on the left) to the window's edge. The sidebar disappeared past the
+- Jason dragged the **Library pane's** divider (the library and collections,
+  on the left) to the window's edge. The Library pane disappeared past the
   edge, and there was nothing left to grab.
 - It wasn't the only pane he lost that way. The right side went too, at
   one point. Whether that can still happen isn't known.
-- *From the code:* the sidebar is SwiftUI's own `NavigationSplitView`,
+- *From the code:* the Library pane is SwiftUI's own `NavigationSplitView`,
   which collapses when dragged past its minimum (180 points) and puts
   nothing on the edge to pull it back. Edit Show's inspector, on the
   right, is the other pane that collapses. It leaves an invisible strip
@@ -101,12 +101,12 @@ close against the window's edge, and come back from it.
   clickable. It's the same kind of grip as the bar over the frame strip
   (12 points, with a capsule), which replaced a system line that was too
   fiddly to grab.
-- **Where things close to:** the sidebar to the left edge; the timeline
+- **Where things close to:** the Library pane to the left edge; the timeline
   pane to the bottom edge; the browser (the collection's files) and the
   inspector to the right edge.
-- *The sidebar is the hard one:* it's SwiftUI's own split view, which
+- *The Library pane is the hard one:* it's SwiftUI's own split view, which
   offers no edge handle. Adding one means either an overlay that asks
-  SwiftUI to show the sidebar again, or taking the sidebar onto
+  SwiftUI to show the Library pane again, or taking the Library pane onto
   `ColumnsSplitView`, the house pattern (`spec/how-we-design.md`,
   "Volunteered work follows the house pattern"). That's a harness
   question before it's a build. Then the window can be one big viewer, with every section a
@@ -267,7 +267,7 @@ second:**
 6. **The library list is a floating window, a panel** (confirmed: see 3).
    - On the Mac, a *panel* is a window that floats above the app's other
      windows (the Info panel is one). An ordinary window can go behind.
-   - It opens from the **Library** item in the sidebar, which stays there.
+   - It opens from the **Library** item in the Library pane, which stays there.
    - Its size is free, above a minimum. Narrow, it's a list. Wider, the
      thumbnails grow until each is as wide as the window, a stacked list
      of images. That's the resizing the grid already does with its size
@@ -294,7 +294,7 @@ Today, making a collection and filling it goes like this:
    use Add to Collection from the Library, but there's no button.
 3. So you either hunt for the small Import button in the toolbar, or
    select the Library, pick files, and drag them onto the collection's
-   small row in the sidebar.
+   small row in the Library pane.
 
 With the library panel floating over the empty collection, the whole
 collection is the drop target. The audit's H1 and H2 fix the rest,
@@ -349,7 +349,7 @@ What's known before trying it:
    is possible without it.
 2. **The Slide Editor,** as the first new window. It's additive, and it's
    the home the collage maker needs.
-3. **The library panel,** the second: it opens from the sidebar and moves
+3. **The library panel,** the second: it opens from the Library pane and moves
    nothing out of the main window. It's also where Show in Library
    lands.
 4. **One detachable area,** probably the inspector, to prove the pattern:

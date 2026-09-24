@@ -229,16 +229,16 @@ his Mac then captures that arrangement as the level's preset:
   `defaults read com.jhg.showtools`, plus screenshots.
 - **This has been done once already.** `DefaultLayout.swift` holds
   Jason's arrangement, "set by hand and captured 2026-09-23": the window
-  size (1376 × 835), the sidebar (219), and Edit Show's browser (246) and
+  size (1376 × 835), the Library pane (219), and Edit Show's browser (246) and
   inspector (320). View ▸ Restore Default Layout (⌥⌘0) puts it back, and
   a fresh library opens with it. A level is the same thing, captured
   three times, with more in it: which areas are open, which mode, which
   controls.
-- *The sidebar:* `DefaultLayout.restore` doesn't put the sidebar's width
+- *The Library pane:* `DefaultLayout.restore` doesn't put the Library pane's width
   back, on the belief that doing so caused the layout-loop crash. That
   belief is stale. The crash's confirmed cause was SwiftUI's
-  `.inspector()`, and the sidebar was a suspect by coincidence (Jason,
-  2026-09-24). Its known bugs are display bugs. So setting the sidebar
+  `.inspector()`, and the Library pane was a suspect by coincidence (Jason,
+  2026-09-24). Its known bugs are display bugs. So setting the Library pane
   when a level is switched is untested, not ruled out: try it.
 - *Controls inside an area* (an inspector section, a menu item, a
   transport toggle) aren't settings today. For those, the capture is a

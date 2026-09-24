@@ -104,7 +104,7 @@ candidates, real testing picks one:
   - a slide, in either mode: the Slide Editor, or the inspector (G3);
   - a lane image or transition: its settings bar, or the Slide Editor;
   - a row's handle or title: the row opened up (`spec/windows.md`);
-  - the Library item in the sidebar: the library panel.
+  - the Library item in the Library pane: the library panel.
 - **⌥-click (Open):** takes the other meaning where a thing has two. For
   example, if double-clicking a slide opens the inspector, ⌥-click opens
   the Slide Editor.
@@ -116,7 +116,7 @@ and opens it (never closes it) in the timeline (G3).
 
 | Key | Means, everywhere | Where it differs | State |
 |---|---|---|---|
-| **Delete** | Remove the selection from *where it is*: a slide from its show, a file from its collection, a lane item from its row. Asks first where the plan says so | In the Library (not a collection), a file goes to the Trash, after asking | Built for slides, the grid and the browser. The sidebar is missing (D1) |
+| **Delete** | Remove the selection from *where it is*: a slide from its show, a file from its collection, a lane item from its row. Asks first where the plan says so | In the Library (not a collection), a file goes to the Trash, after asking | Built for slides, the grid and the browser. The Library pane is missing (D1) |
 | **⌘Delete** | Move to the Trash (delete from the library), without asking | In a collection it still asks, since it's more than leaving it | Built (settled, plan 2b) |
 | **Esc** | Step back one level: **close the Slide Editor** (Jason), a drawer or a popover; then clear the selection | In a text field, cancel the edit. In the player, leave full screen | Built partly. Little use for it yet (Jason, 2026-09-24): more cases will turn up with use, and go in §8 |
 | **Return** | Do the default: OK in a dialog, commit a text field | On a selected item: rename it (Finder) | Built in dialogs; rename on Return **Settled** (Jason, 2026-09-24; B6, D4) |
@@ -156,9 +156,9 @@ divider, and empty groups are skipped:
 | Audio clip | Detect Beats… ✓ · Show in Library, Show in Finder · Remove Audio Clip ✓ |
 | Marker | Show or Hide Line · Remove Marker (C3) |
 | Browser entry | Append (E) ✓, Insert at Playhead (W) ✓, Place in Images Row (Q) ✓ · Show in Finder ✓ · Remove from Collection ✓, Move to Trash… (today "Delete from Library…", C7) |
-| Sidebar show | Play ✓, Play Full Screen ✓ · Duplicate Show · Export Show…, Export Movie… · Rename… ✓ · Delete Show… ✓ |
-| Sidebar collection | New Show in… ✓ · Rename… ✓ · Delete Collection… ✓ |
-| Sidebar Library | Import…, New Collection, Open Library Panel |
+| Library pane: a show | Play ✓, Play Full Screen ✓ · Duplicate Show · Export Show…, Export Movie… · Rename… ✓ · Delete Show… ✓ |
+| Library pane: a collection | New Show in… ✓ · Rename… ✓ · Delete Collection… ✓ |
+| Library pane: the Library row | Import…, New Collection, Open Library Panel |
 | An empty row | Place Image Here… ✓ (images row), Add Audio… (audio row) |
 
 **One action, one name** everywhere: Move to Trash… (not "Delete from
@@ -170,8 +170,8 @@ Library; Get Info.
 | Drop onto | Does | State |
 |---|---|---|
 | The Library grid | Imports the files (from Finder or Photos) | Built |
-| A collection's grid, or its sidebar row | Imports if they're from outside, then adds them to the collection | Built |
-| A show's sidebar row | Appends pictures as slides (asks about any not in its collection) | Built; undoable since G1 |
+| A collection's grid, or its row in the Library pane | Imports if they're from outside, then adds them to the collection | Built |
+| A show's Library pane row | Appends pictures as slides (asks about any not in its collection) | Built; undoable since G1 |
 | The slide list | Inserts where it lands, like the timeline | **Settled** (Jason, 2026-09-24); today it appends (G2) |
 | The timeline's slides row | Inserts where it lands; audio goes into the audio row at that time | Built |
 | The images row | Places images at the drop time, end to end as room allows | Built |
@@ -263,7 +263,7 @@ universals first.
    Then the order.
 
 **The route, in the anatomy's order:**
-1. **Sidebar:** the Library row, a collection row, a show row, empty
+1. **Library pane:** the Library row, a collection row, a show row, empty
    space.
 2. **Library grid:** a tile, several selected tiles, a Group Similar
    group's header, empty space, the filter bar.
@@ -285,4 +285,4 @@ universals first.
    Slide Editor.
 
 **Bring to it:** §3's draft order and table, the audit's C1–C8, and the
-sidebar and grid menus that exist today (`MainView.swift`).
+Library pane and grid menus that exist today (`MainView.swift`).
