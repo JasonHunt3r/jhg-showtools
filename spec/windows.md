@@ -155,6 +155,14 @@ rebuilt:**
 - The translucent look can be kept with a visual-effect background, but
   that's hand work.
 
+**Leaning: leave it (Jason, 2026-09-24).** Writing the replacement is
+cheap for Claude, so losing the free parts costs little in code. The
+cost that remains is **checking**, not writing: layout bugs that only
+show when run (the inspector crash worked for days before it failed),
+the small native behaviours (focus, VoiceOver, the toolbar button,
+remembered widths), and the fact that only a Mac can run it. The
+harness below is what keeps that cost small.
+
 **Suggested approach:** a standalone harness first. It would have a
 window with a left list, a content area, and a full-width bottom pane on
 `ColumnsSplitView`, with edge handles. The harness answers "does it hold
