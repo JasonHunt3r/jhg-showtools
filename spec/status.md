@@ -221,7 +221,8 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
 
 1. **PaneKit: compile, test, run the harness, first thing.** Written by
    the cloud session overnight, **never compiled** (it can't run Swift).
-   Expect compile errors: fix them, run `swift test` (PaneKitTests), then
+   It's its own package, `PaneKit/`, so ShowTools' build is unaffected.
+   Expect compile errors: `cd PaneKit`, fix them, run `swift test`, then
    `swift run PaneHarness` and go through the harness's checks
    (`spec/panekit.md`, "The order", step 1). Jason feels it. Only then does
    anything in the app move onto it.

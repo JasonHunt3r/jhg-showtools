@@ -1,12 +1,12 @@
 # PaneKit — a reusable pane system for Mac apps
 
 **Status:** Building. **Written 2026-09-24 by the cloud session and never
-compiled** (it has no Swift toolchain): the library (`Sources/PaneKit`),
-its layout tests (`Tests/PaneKitTests`) and the test app
-(`tools/pane-harness`, `swift run PaneHarness`). **Left:** compile it on
-the Mac and fix what doesn't; run the tests and the harness's checks
-(listed at the top of `tools/pane-harness/Harness.swift`); Jason feels
-it. Then steps 2–4 below. Named PaneKit, and it lives in this repo for
+compiled** (it has no Swift toolchain). It's **its own package**,
+`PaneKit/` at the repo's top level, so an uncompiled library can't break
+ShowTools' build: `cd PaneKit && swift test` for its layout tests,
+`swift run PaneHarness` for the test app. **Left:** compile it on the Mac
+and fix what doesn't; run the tests and the harness's checks (listed at
+the top of `PaneKit/Harness/Harness.swift`); Jason feels it. Then steps 2–4 below. Named PaneKit, and it lives in this repo for
 now (settled, Jason).
 
 ## What it is
@@ -296,15 +296,16 @@ opening or closing (changes are instant for now).
 
 ## Where it lives
 
-- **At first:** its own SwiftPM library target in this repo
-  (`Sources/PaneKit`), depending on nothing in ShowTools, so the boundary
-  is real from day one. `spec/layout.md` gets it when it's built.
+- **Now:** its own Swift package inside this repo, `PaneKit/`, depending
+  on nothing in ShowTools, so the boundary is real from day one. ShowTools
+  will add it as a local package dependency when its main window moves
+  onto it (step 2).
 - **Later:** lifted into its own repo, and added to other apps as a
   package.
 
 ## The order
 
-1. **Harness:** a standalone app (in `tools/`, as the other probes are)
+1. **Harness:** a standalone app (`PaneKit/Harness`)
    with the ShowTools tree above and dummy content. Check:
    - dragging, closing to each edge, the handles, double-click;
    - popping a pane out as a panel and as a window, and putting it back

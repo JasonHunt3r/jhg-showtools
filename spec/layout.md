@@ -21,12 +21,12 @@ what, and the few structural rules that go with each. Rules live in
   It opens libraries with `Library(readingOnly:)` only. Its settings and
   the show each mode builds are in `Sources/BGToolsCore` (tested). How to
   launch and drive it is in the `showtools-testing` skill.
-- `Sources/PaneKit/`: our own pane system, **for any Mac app**, depending
-  on nothing in ShowTools (`spec/panekit.md`). Its tests are
-  `Tests/PaneKitTests`, and its test app is `tools/pane-harness`
-  (`swift run PaneHarness`). Not yet used by the app: the Xcode project
-  lists its source folders one by one, so PaneKit stays out of the app
-  until the main window is moved onto it on purpose.
+- `PaneKit/` (top level): our own pane system, **for any Mac app**, as
+  its own Swift package, depending on nothing in ShowTools
+  (`spec/panekit.md`). `cd PaneKit && swift test` runs its tests;
+  `swift run PaneHarness` runs its test app. Not yet used by the app:
+  it's outside the root package and the Xcode project, until the main
+  window is moved onto it on purpose.
 - `Sources/ShowToolsApp/`: the SwiftUI/AppKit app. `PlaybackEngine` owns a
   show's clock, media and drawing, and any number of `ShowCanvas` views
   show it (the Edit Show preview and its pop-out share one engine). A paused

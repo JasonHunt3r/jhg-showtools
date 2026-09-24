@@ -1,6 +1,6 @@
 // PaneKit's test app (spec/panekit.md, "The order", step 1).
 //
-//   swift run PaneHarness
+//   cd PaneKit && swift run PaneHarness
 //
 // A window laid out by PaneKit with coloured dummy panes, in three shapes
 // (the Layout menu): Finder's two panes, Mail's three columns, and
