@@ -90,7 +90,7 @@ struct BeatSheet: View {
                      + "This Mac is on macOS \(Self.systemVersion).")
                     .fixedSize(horizontal: false, vertical: true)
             } else if songs.isEmpty {
-                Text("There's no song under this stretch of the show.")
+                Text("There's no audio under this stretch of the show.")
             } else {
                 songList
                 Divider()

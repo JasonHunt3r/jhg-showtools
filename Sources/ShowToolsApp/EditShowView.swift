@@ -67,7 +67,7 @@ struct EditShowView: View {
                         mutate(ids.count == 1 ? "Remove Marker" : "Remove Markers") { $0.removeMarkers(ids) }
                         selectedMarkers = []
                     } else if let id = selectedSong {
-                        mutate("Remove Song") { $0.music.removeAll { $0.id == id } }
+                        mutate("Remove Audio Clip") { $0.music.removeAll { $0.id == id } }
                         selectedSong = nil
                     } else if let id = selectedOverlay {
                         mutate("Remove Image") { $0.overlays.removeAll { $0.id == id } }

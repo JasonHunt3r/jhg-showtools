@@ -285,7 +285,7 @@ struct LibraryGridView: View {
             case .stills: "Photos"
             case .animations: "Animations"
             case .videos: "Videos"
-            case .songs: "Songs"
+            case .songs: "Audio"
             }
         }
         func matches(_ k: MediaKind) -> Bool {

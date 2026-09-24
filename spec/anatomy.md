@@ -21,14 +21,15 @@ thing.
 | Name | What it is | Also called |
 |---|---|---|
 | **Library** | Every file ShowTools has taken in, in one folder on disk. One is open at a time. | master library (the default one) |
-| **File** | One picture, animation, video or song in the library. Has a name, a rating and tags, and **no slide settings**. | item, `MediaItem` |
+| **File** | One picture, animation, video or audio file in the library. Has a name, a rating and tags, and **no slide settings**. | item, `MediaItem` |
 | **Collection** | A named group of files. Every show belongs to one. | `MediaCollection`; Final Cut's Event |
-| **Show** | A slideshow: slides in order, plus lane images, songs and markers, and the show's defaults. | project |
+| **Show** | A slideshow: slides in order, plus lane images, audio clips and markers, and the show's defaults. | project |
 | **Slide** | One *use* of a file in a show, with its own settings. The same file can be several slides. | use, block (in the storyline) |
-| **Song** | An audio file placed in a show's music row. Never a slide. | audio clip, `AudioClip` |
+| **Audio clip** | An audio file placed in a show's audio row: music, a recording, any sound. Never a slide. | song (the old name), `AudioClip`, `show.music` |
+| **Sound** | A video slide's own sound, set in the inspector and on its block. Not an audio clip. | `settings.audio` |
 | **Lane image** | A picture laid over the show for a stretch of time, independent of the slides under it. | overlay, `OverlayClip` |
 | **Transition** | How one slide gives way to the next. Belongs to the slide it leads *into*. | transition in |
-| **Marker** | A point in the show's time: placed by hand (M), or detected from a song's beats. | detected marker |
+| **Marker** | A point in the show's time: placed by hand (M), or detected from an audio clip's beats. | detected marker |
 | **Range** | A stretch of time set with I and O, for looping and Listen. | in/out |
 | **Show defaults** | Length, transition, Pan and Zoom, fit, background and loop for every slide that doesn't set its own. | defaults |
 
@@ -101,7 +102,7 @@ Main window
                         ├─ Images row        ┐ the lane
                         ├─ Transitions row   ┘
                         ├─ Slides row        (the blocks)
-                        └─ Music row
+                        └─ Audio row
 ```
 
 **Around the main window:**
@@ -198,14 +199,14 @@ Main window
 
 Each row is one kind. A show has one of each, in its own order, which is
 saved with the show. The default order is images, transitions, slides,
-music.
+audio.
 
 | Row | Holds | Its own selection | Edits |
 |---|---|---|---|
 | **Images row** | Lane images, placed in time, with a level line for opacity and fades | one lane image | drag to move, trim the ends, drop files in, right-click the empty row for Place Image Here… |
 | **Transitions row** | A section at each cut, as wide as the transition | one transition | drag the body or ends for timing, + on hover at a cut to add one |
 | **Slides row** | A block per slide, as wide as it's long, magnetic (no gaps) | slides (shared with Edit Slides) | drag to reorder, trim or roll at cuts, a video's volume line |
-| **Music row** | Songs, with waveforms and a volume/fade line | one song | drag to move, trim, overlap to crossfade, Detect Beats… |
+| **Audio row** | Audio clips, with waveforms and a volume/fade line | one audio clip | drag to move, trim, overlap to crossfade, Detect Beats… |
 
 **What the row order does and doesn't do:** it changes **where rows sit
 on screen, and nothing else.** It does not change what's drawn on top of
@@ -240,7 +241,7 @@ never exported):
    Pasteboard        the grey round the picture when work zoom is below 1
 ```
 
-Songs have no layer. They're heard, not drawn. A video slide's own sound
+Audio clips have no layer. They're heard, not drawn. A video slide's own sound
 mixes with them.
 
 ## 5. What affects what
@@ -248,22 +249,22 @@ mixes with them.
 ### Selection in Edit Show
 
 Only one *kind* of thing is selected at a time: selecting slides, a lane
-image, a transition, a song or markers clears every other kind. Several
+image, a transition, an audio clip or markers clears every other kind. Several
 slides or several markers can be selected at once; lane images,
-transitions and songs are one at a time.
+transitions and audio clips are one at a time.
 
 | Selected | Its settings show in |
 |---|---|
 | slides (from the timeline, the browser, or the viewer's image) | the **inspector** |
 | a lane image | a **bar over the viewer** |
 | a transition | a **bar over the viewer**; selecting one also pauses and moves the playhead to it |
-| a song | *nowhere*: its level line and context menu only |
+| an audio clip | *nowhere*: its level line and context menu only |
 | markers | *nowhere* |
 
 **Delete** acts on the first of these it finds selected: markers, then
-the song, then the lane image, then the transition (leaving a cut), then
+the audio clip, then the lane image, then the transition (leaving a cut), then
 slides. **Esc** closes open drawers first. Otherwise it clears lane
-image, song and markers, but not slides or a transition.
+image, audio clip and markers, but not slides or a transition.
 
 ### Other links
 
@@ -277,8 +278,8 @@ image, song and markers, but not slides or a transition.
 - **Timeline zoom and scroll → frame strip:** the strip follows the
   timeline's zoom and scroll, so frames sit over their moments.
 - **Playhead ↔ everything:** the viewer, timeline, frame strip, transport
-  clock and pop-out share one engine and one clock. When songs play, the
-  music player *is* that clock.
+  clock and pop-out share one engine and one clock. When audio clips play,
+  the audio player (`MusicPlayer`) *is* that clock.
 - **Show defaults → every slide:** a slide that doesn't set a value
   inherits it. The slide list shows which is which by colour.
 - **Grid selection → Info panel:** the panel shows what's selected in the
@@ -313,7 +314,7 @@ These follow from the structure. Each is a candidate for
 
 - Show defaults can only be changed in Edit Slides (§3).
 - Transition and lane image settings sit over the viewer. Slide settings
-  sit in the inspector. Songs and markers have no settings panel at all.
+  sit in the inspector. Audio clips and markers have no settings panel at all.
 - The inspector's Effects timeline and a video slide's Sound are drawn for
   the *first* selected slide only. Everything else in the inspector
   applies to every selected slide.

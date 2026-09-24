@@ -450,7 +450,7 @@ struct SettingEditor: View {
             Toggle("Sound", isOn: Binding(get: { setting.sound }, set: { v in
                 var s = setting; s.sound = v; onChange(s)
             }))
-            .help("Plays the show's music and video sound. Only the main display's current Space is heard.")
+            .help("Plays the show's audio and its videos' sound. Only the main display's current Space is heard.")
         }
         .formStyle(.grouped)
         if let contents, let reader {

@@ -125,8 +125,8 @@ struct MusicRow: View {
             .contextMenu {
                 Button("Detect Beats…") { detectBeats(clip) }
                 Divider()
-                Button("Remove Song") {
-                    mutate("Remove Song") { $0.music.removeAll { $0.id == clip.id } }
+                Button("Remove Audio Clip") {
+                    mutate("Remove Audio Clip") { $0.music.removeAll { $0.id == clip.id } }
                     if selectedSong == clip.id { selectedSong = nil }
                 }
             }
@@ -188,7 +188,7 @@ struct MusicRow: View {
                 guard let e = edit else { return }
                 edit = nil
                 guard e.clip != e.original else { return }
-                mutate(e.part == .move ? "Move Song" : "Trim Song") { s in
+                mutate(e.part == .move ? "Move Audio Clip" : "Trim Audio Clip") { s in
                     guard let i = s.music.firstIndex(where: { $0.id == e.id }) else { return }
                     s.music[i] = e.clip
                 }
@@ -205,7 +205,7 @@ struct MusicRow: View {
             at += d
         }
         guard !clips.isEmpty else { return }
-        mutate(clips.count == 1 ? "Add Song" : "Add Songs") { $0.music += clips }
+        mutate(clips.count == 1 ? "Add Audio Clip" : "Add Audio Clips") { $0.music += clips }
     }
 }
 

@@ -433,7 +433,7 @@ struct StorylineView: View {
                 .offset(x: Self.inset + CGFloat(t * pps) - 7.5, y: Self.rulerHeight - 11)
                 .onTapGesture { clickMarker(m) }
                 .gesture(markerDragGesture(m.id))
-                .help((song == nil ? "Marker" : "Beat marker (moves with its song)")
+                .help((song == nil ? "Marker" : "Beat marker (moves with its audio clip)")
                       + " at \(formatClock(t)). Drag to move; Delete removes it; double-click for its line.")
         }
         // What the Rhythm tool would place on this show, faint, until it's applied.
@@ -1443,7 +1443,7 @@ extension TimelineRow.Kind {
         case .images: "Images"
         case .transitions: "Transitions"
         case .slides: "Slides"
-        case .music: "Music"
+        case .music: "Audio"
         }
     }
 
@@ -1452,7 +1452,7 @@ extension TimelineRow.Kind {
         case .images: "photo.on.rectangle"
         case .transitions: "arrow.triangle.swap"
         case .slides: "rectangle.stack"
-        case .music: "music.note"
+        case .music: "waveform"
         }
     }
 }

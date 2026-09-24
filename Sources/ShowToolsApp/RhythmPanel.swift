@@ -272,7 +272,7 @@ struct RhythmPanelContent: View {
                     Label(tool.listening ? "Stop" : "Listen", systemImage: tool.listening ? "stop.fill" : "play.fill")
                 }
                 .disabled(t.isEmpty && !tool.listening)
-                .help("Loop the range with a click on each note, over the music")
+                .help("Loop the range with a click on each note, over the audio")
                 Button("Apply") { tool.listening = false; apply(s, t) }
                     .keyboardShortcut(.defaultAction)
                     .disabled(t.isEmpty)
@@ -456,13 +456,13 @@ struct RhythmPanelContent: View {
                     } else {
                         Text("An even beat").foregroundStyle(.secondary)
                         Spacer()
-                        Button("Use the song's beats") { followSong = true }
+                        Button("Use the audio's beats") { followSong = true }
                     }
                 case .analysing, nil:
                     ProgressView().controlSize(.small)
                     Text("Finding the beats…").foregroundStyle(.secondary)
                 case .failed:
-                    Text("Couldn't read the song's beats: an even beat").foregroundStyle(.secondary)
+                    Text("Couldn't read the audio's beats: an even beat").foregroundStyle(.secondary)
                 }
             }
             .font(.callout)

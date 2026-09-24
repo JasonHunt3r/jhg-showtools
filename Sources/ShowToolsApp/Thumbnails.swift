@@ -141,7 +141,7 @@ struct KindBadge: View {
         case .video:
             badge(item.duration.map(formatDuration) ?? "Video", symbol: "video.fill")
         case .audio:
-            badge(item.duration.map(formatDuration) ?? "Song", symbol: "music.note")
+            badge(item.duration.map(formatDuration) ?? "Audio", symbol: "waveform")
         }
     }
 

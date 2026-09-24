@@ -192,7 +192,7 @@ struct SettingsView: View {
             Section("Export") {
                 Toggle("Strip metadata from exported files", isOn: $stripOnExport)
                 Text(stripOnExport
-                     ? "File ▸ Export Show… removes location, camera, dates and other details from the copies it makes. Songs keep their title, artist and album; only the buyer's details come off. The files in the library are never changed."
+                     ? "File ▸ Export Show… removes location, camera, dates and other details from the copies it makes. Audio files keep their title, artist and album; only the buyer's details come off. The files in the library are never changed."
                      : "Exported copies are exact copies of the library's files, with their location, camera and date still in them.")
                     .font(.callout)
                     .foregroundStyle(.secondary)

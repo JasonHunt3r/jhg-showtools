@@ -81,9 +81,15 @@ before moving code between targets or adding a file to one.
   scratch library — the `showtools-testing` skill has the rules. **Don't
   drive the app while Jason is using it.** Cross-app drops (Finder,
   Photos), Touch ID, pinch and look-and-feel still go on his list.
-- Songs are library items of kind `.audio` and are never slides or lane
+- Audio files (library items of kind `.audio`) are never slides or lane
   images: anything that adds items to a show filters with `model.pictures`
-  (or `model.songs` for the music row).
+  (or `model.songs` for the audio row).
+- **"Audio" is the user-facing name** for the audio row and what's in it
+  (an **audio clip**), settled 2026-09-24: a recording isn't a song. The
+  code keeps its older names (`MusicRow`, `show.music`, `model.songs`,
+  `selectedSong`), and **`TimelineRow.Kind.music` must keep its raw value
+  `"music"`**, which is saved in every show's rows (the enum trap below).
+  "Sound" means only a video slide's own sound.
 - The library item carries no slide settings. Settings belong to each use of
   it (`Slide`). The same file can appear many times with different settings.
 - Settings JSON decodes field by field. Don't replace that with synthesized
