@@ -66,11 +66,28 @@ Look for the same idea wearing two names, and for two ideas sharing one.
   still taught something: it's where the six pillars were found.
 - **One show, two views:** Edit Slides and Edit Show are two views of one
   show, each built for its own job (a list for order and settings, a
-  timeline for time). They needn't offer the same tools. But **where both
-  offer the same action, it gives the same result.** Undoing an added
-  slide worked in one and not the other; a drop inserted in one and
-  appended in the other. Different tools is design; the same tool acting
-  differently is a bug (`spec/hig-audit.md` §G).
+  timeline for time). They needn't offer the same tools. Where both offer
+  the same action, it should usually give the same result. Undoing an
+  added slide worked in one and not the other; a drop inserted in one and
+  appended in the other. Those were bugs. A deliberate difference, made
+  because it's clearer there, isn't (`spec/hig-audit.md` §G).
+
+## One language, departing from it knowingly
+
+Strive for one language: an action means the same thing wherever it's
+offered, and a convention from the Mac or from Final Cut is kept where
+people expect it. **Deviate where a different behaviour is more expected
+or more intuitive,** and don't apply the rule heavy-handedly: there will
+be exceptions. (Jason, 2026-09-24.)
+
+- **Who decides:** Jason, who uses the software, judges each departure.
+  Claude points out where a choice departs from the HIG or from
+  tradition, so each one is made knowingly.
+- **The example:** in Finder, Space is Quick Look. In ShowTools, Space is
+  play/pause pretty much always, because wanting to stop playback and
+  having to juggle windows first would be frustrating. Quick Look moves
+  to ⌘Y and double-click. It's a knowing departure, with the reason
+  written down.
 
 ## Names describe; they don't refer
 

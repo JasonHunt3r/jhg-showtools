@@ -75,6 +75,10 @@ Later.
 Parked: image stickiness, a guided first run (`spec/first-run-brief.md`),
 and Flush presets from 2a.
 
+**Next conversation: right-click menus,** area by area, with
+`spec/anatomy.md` as the guide. The plan is at the end of
+`spec/conventions.md`. Finish the other universals first.
+
 ## Still needs Jason's hands
 
 - **The Rhythm tool** (step 7): the panel's look (the space around the

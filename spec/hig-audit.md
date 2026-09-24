@@ -98,8 +98,11 @@ text fields and `List`s, and nowhere else.
   between tiles selects nothing (in Finder and Photos it draws a
   selection rectangle, and ⌘ or ⇧ adds to what's selected). The
   background tap only clears the selection (`MainView.swift:679`).
-- **B5 (Med) — Space doesn't Quick Look.** Finder, Photos and every file
-  browser use Space for Quick Look. `QLPreviewPanel` isn't used anywhere
+- **B5 (Med) — No Quick Look.** Finder, Photos and every file
+  browser use Space for Quick Look. **Settled (Jason, 2026-09-24): not
+  Space here.** In ShowTools, Space is play/pause pretty much always.
+  Quick Look is ⌘Y (Finder's other key for it) and double-clicking a
+  tile (`spec/conventions.md` §1–2). `QLPreviewPanel` isn't used anywhere
   in the app. It could step through the selection with ←/→ as Finder's
   does.
 - **B6 (Low) — Double-click and Return do nothing on a tile.** In Photos,
@@ -224,9 +227,11 @@ timeline, for time, layers and audio. They share one selection (`ShowView`
 holds it), and **they don't have to offer the same tools**. Edit Slides
 has no viewer and no rows, and shouldn't grow them.
 
-**The rule is narrower:** where both modes offer the same action on a
-slide, it gives the same result. A person who learned it in one mode
-shouldn't be surprised in the other.
+**The rule is narrower, and a leaning, not a law:** where both modes
+offer the same action on a slide, it should usually give the same
+result, so a person who learned it in one mode isn't surprised in the
+other. A mode may depart where a different behaviour is clearer there;
+Jason decides those (`spec/conventions.md`, ground rule 1).
 
 - **Should match** (the same action, in both):
   - selecting: click, ⌘-click, ⇧-click, ⌘A;
