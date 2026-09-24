@@ -1,9 +1,20 @@
 # Windows of their own — the edit suite inside the edit suite
 
-**Status:** Planned: a vision, not yet designed (Jason, 2026-09-24).
-Nothing is built. Six of Jason's seven answers are in (below). **Left:**
-what comes first, then a design with Jason; much of it is settled by
-trying it.
+**Status:** Planned: a vision, not yet designed. Six of Jason's seven
+answers are in (below). **Left:** what comes first, then a design with
+Jason; much of it is settled by trying it.
+
+**Superseded by PaneKit, 2026-09-24** (`spec/panekit.md`): this doc's own
+"suggested approach" below — a standalone harness proving `ColumnsSplitView`
+plus edge handles hold together before touching the app — is **done**,
+generalized rather than ShowTools-specific, and merged into the app
+(steps 1–3). Read `panekit.md` for what that harness became. Everywhere
+below that says `ColumnsSplitView`, `NavigationSplitView` or "the custom
+splits already work," read PaneKit: it's what those sections' outcome
+was. PaneKit already does the pane-moving this doc calls for — pop out,
+put back, remembered frames, the main window closing up — so what's left
+of this doc is **the show session** (below) and the two window kinds it
+unblocks, not the pane mechanics. That's `panekit.md`'s own step 4.
 
 Names follow `spec/anatomy.md`.
 
@@ -181,10 +192,10 @@ built-ins for panes at all.**
 edge handles and the pane ⇄ panel pop-out go into **PaneKit**, our own
 pane library, reusable in other Mac apps: `spec/panekit.md`.
 
-**Suggested approach:** a standalone harness first. It would have a
-window with a left list, a content area, and a full-width bottom pane on
-`ColumnsSplitView`, with edge handles. The harness answers "does it hold
-together" before the app is touched. The show session (below) doesn't
+**Suggested approach, done** (`spec/panekit.md`, steps 1–3): a standalone
+harness first, answering "does it hold together" before the app was
+touched — then the app's own main window and Edit Show's/Edit Slides'
+columns moved onto it. The show session (below) doesn't
 depend on this, so they can go in either order.
 
 ### The timeline pane's left edge: the drawers
