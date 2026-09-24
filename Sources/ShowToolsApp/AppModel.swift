@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import ShowToolsCore
 import ShowToolsPlayback
+import PaneKit
 
 enum SidebarItem: Hashable {
     case library
@@ -29,6 +30,15 @@ final class AppModel {
     private(set) var rhythmPatterns: [SavedRhythm] = []
 
     var sidebar: SidebarItem? = .library
+    /// The main window's layout (`spec/panekit.md`, step 2): the Library
+    /// pane beside the detail. One controller for the window's lifetime,
+    /// so both `MainView` and the View menu's commands share it. The
+    /// timeline pane joining this tree waits on the show session (step 4).
+    let mainPanes = PaneController(id: "main", root:
+        .split("main", .horizontal, sized: .first, size: DefaultLayout.sidebarWidth,
+               range: 180...360, title: "Library",
+               .pane("library", title: "Library", minSize: 180),
+               .pane("detail", title: "Detail", minSize: 240)))
     /// Developer hook only: a slide for the show view to select on appearing.
     var devSelection: Int64?
     /// The Info panel's targets: kept here, not in the grid's own state,

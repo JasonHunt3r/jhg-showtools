@@ -76,20 +76,12 @@ enum DefaultLayout {
                 }
                 window.setFrame(frame, display: true, animate: false)
             },
-            // STALE REASONING (2026-09-24): the next lines were written
-            // before the layout-loop crash's confirmed cause was found —
-            // SwiftUI's .inspector() (spec/history/2026-09-23-crash-hunt-
-            // session3.md) — and the sidebar was only a suspect by
-            // coincidence. Restoring it is worth trying again.
-            // The sidebar is deliberately NOT restored here. It is
-            // SwiftUI's own NavigationSplitView, and setting its divider
-            // from outside is what raised AppKit's layout-loop exception
-            // — measured 2026-09-23, and staging the changes a run-loop
-            // turn apart didn't help, so it is the poking and not the
-            // timing. It no longer needs rescuing anyway: the sidebar is
-            // capped at 360 (MainView), so the worst it can do now is be
-            // too wide, which one drag undoes. Only the two things this
-            // app owns outright are put back.
+            // The sidebar is restored separately: `NavigationSplitView` is
+            // gone (`spec/panekit.md`, step 2, 2026-09-24), and PaneKit's
+            // `restoreDefaults()` — called alongside `DefaultLayout.restore()`
+            // in ShowToolsApp's Restore Default Layout command — resets it
+            // in its own single transaction, with none of the layout-loop
+            // risk this class was written to work around.
             {
                 guard let content = window.contentView else { return }
                 for case let columns as ColumnsSplitView in splitViews(in: content) {

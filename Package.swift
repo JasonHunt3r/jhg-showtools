@@ -11,6 +11,9 @@ let package = Package(
         .executable(name: "ShowToolsApp", targets: ["ShowToolsApp"]),
         .executable(name: "stcli", targets: ["stcli"]),
     ],
+    dependencies: [
+        .package(name: "PaneKit", path: "PaneKit"),
+    ],
     targets: [
         .target(name: "ShowToolsCore", linkerSettings: [.linkedLibrary("sqlite3")]),
         .target(name: "ShowToolsPlayback", dependencies: ["ShowToolsCore"]),
@@ -18,7 +21,8 @@ let package = Package(
         // Info.plist is generated into the sources folder by XcodeGen (the app
         // bundle is built by Xcode; see project.yml), so SwiftPM must be told
         // it isn't a resource.
-        .executableTarget(name: "ShowToolsApp", dependencies: ["ShowToolsCore", "ShowToolsPlayback"],
+        .executableTarget(name: "ShowToolsApp",
+                          dependencies: ["ShowToolsCore", "ShowToolsPlayback", "PaneKit"],
                           exclude: ["Info.plist"]),
         .executableTarget(name: "stcli", dependencies: ["ShowToolsCore"]),
         .testTarget(name: "ShowToolsCoreTests", dependencies: ["ShowToolsCore"]),

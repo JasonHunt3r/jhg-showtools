@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import ShowToolsCore
 import ShowToolsPlayback
+import PaneKit
 
 /// Types a drop onto the app can carry: files from Finder, file promises
 /// (or data) from Photos.
@@ -30,152 +31,9 @@ struct MainView: View {
     @State private var newGroupName = ""
 
     var body: some View {
-        @Bindable var model = model
-        NavigationSplitView {
-            List(selection: $model.sidebar) {
-                // An alternate library shows its own name here.
-                Label(model.isOnMaster ? "Library" : model.libraryName,
-                      systemImage: model.libraryIsPrivate || model.locked != nil
-                          ? "lock.rectangle.stack" : "photo.on.rectangle.angled")
-                    .badge(model.items.count)
-                    .tag(SidebarItem.library)
-                    .contextMenu {
-                        Button("Import…") { runImportPanel(model) }
-                        Button("New Collection…") { startCreatingCollection() }
-                        // Not built (spec/windows.md, "the library panel");
-                        // settled 2026-09-24 to go in greyed out until it is.
-                        Button("Open Library Panel") {}.disabled(true)
-                        Divider()
-                        Button("Show in Finder") {
-                            if let root = model.library?.root {
-                                NSWorkspace.shared.activateFileViewerSelecting([root])
-                            }
-                        }
-                    }
-
-                // Library → Collection → Show, as Final Cut's Library → Event → Project.
-                // A collection's groups and its shows sit side by side, as
-                // siblings (Jason, 2026-09-24, "Groups inside collections").
-                Section("Collections") {
-                    ForEach(model.collections) { c in
-                        DisclosureGroup(isExpanded: foldBinding(c.id, in: $folded)) {
-                            collectionChildren(c)
-                        } label: {
-                            collectionRow(c)
-                        }
-                    }
-                    // Shows in no collection shouldn't exist after the
-                    // upgrade, but if one does, it still has a place.
-                    ForEach(orphanShows) { show in showRow(show) }
-                }
-            }
-            // The max is the point: without one, a double-click on the
-            // divider took the sidebar to 1355pt in a 1374pt window and
-            // pushed everything else off the right edge (2026-09-23).
-            // A sidebar of names never needs more than this.
-            .navigationSplitViewColumnWidth(min: 180, ideal: DefaultLayout.sidebarWidth, max: 360)
-            // Delete asks first (D1); ⌘Delete skips the question, as the
-            // grid's does (spec/conventions.md §Delete/⌘Delete). This
-            // `onDeleteCommand` fires when the List genuinely has the
-            // keyboard; the SingleKeys fallback for when it doesn't is
-            // attached below the whole NavigationSplitView, not here — a
-            // `.background(SingleKeys)` directly on this List (a real
-            // NSTableView, not the grid's plain ScrollView) hit AppKit's
-            // layout-loop guard and crashed on the very first check
-            // (2026-09-24, `~/Library/Logs/DiagnosticReports/`, a run of
-            // `NavigationPaneModifier`/`CellHostingView` layout frames).
-            .onDeleteCommand {
-                switch model.sidebar {
-                case .show(let id): if let s = model.show(id) { confirmDelete = s }
-                case .collection(let id): if let c = model.collection(id) { confirmDeleteCollection = c }
-                case .group(let id): if let g = model.group(id) { deleteGroupAsking(g) }
-                default: break
-                }
-            }
-            .safeAreaInset(edge: .bottom) {
-                HStack {
-                    Menu {
-                        Button("New Collection…") { startCreatingCollection() }
-                        Button("New Show") { model.newShow() }
-                            .disabled(model.collections.isEmpty)
-                    } label: {
-                        Label("New", systemImage: "plus")
-                    }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
-                    .help("New collection, or a new show in the selected collection")
-                    Spacer()
-                }
-                .padding(8)
-            }
-        } detail: {
-            // A fresh detail for each library. Ids restart at 1 in every
-            // library, so views kept across a switch (grid tiles, their
-            // thumbnails, the selection) would show the old library's files
-            // under the new one's names.
-            ZStack {
-                switch model.sidebar {
-                case .show(let id) where model.show(id) != nil:
-                    ShowView(showID: id)
-                case .collection(let id) where model.collection(id) != nil:
-                    LibraryGridView(collectionID: id)
-                case .group(let id) where model.group(id) != nil:
-                    LibraryGridView(collectionID: model.group(id)?.collectionID, groupID: id)
-                default:
-                    LibraryGridView()
-                }
-            }
-            .id(model.libraryGeneration)
-        }
-        // Another library's undo steps mean nothing here (see libraryGeneration).
-        .onChange(of: model.libraryGeneration) { undoManager?.removeAllActions() }
-        .focusedSceneValue(\.requestNewCollection, startCreatingCollection)
-        // The sidebar's Delete/⌘Delete fallback (D1), for when its List
-        // doesn't have the keyboard (see the comment on `onDeleteCommand`
-        // above). Attached to the whole split view, not the List itself.
-        .background(SingleKeys { event in
-            guard event.keyCode == 51 || event.keyCode == 117 else { return false }
-            if !(NSApp.keyWindow?.firstResponder is NSTableView), event.plainModifiers == [] {
-                switch model.sidebar {
-                case .show(let id): guard let s = model.show(id) else { return false }; confirmDelete = s
-                case .collection(let id): guard let c = model.collection(id) else { return false }; confirmDeleteCollection = c
-                case .group(let id): guard let g = model.group(id) else { return false }; deleteGroupAsking(g)
-                default: return false
-                }
-                return true
-            }
-            guard event.plainModifiers == [.command] else { return false }
-            switch model.sidebar {
-            case .show(let id):
-                guard let s = model.show(id) else { return false }
-                model.deleteShow(s.id, undo: undoManager)
-            case .collection(let id):
-                guard let c = model.collection(id) else { return false }
-                model.deleteCollection(c.id, undo: undoManager)
-            default:
-                return false
-            }
-            return true
-        }.opacity(0).allowsHitTesting(false))
-        .overlay(alignment: .bottom) {
-            VStack(spacing: 0) {
-                ExportBanner()
-                MovieExportBanner()
-                ImportBanner()
-            }
-        }
-        .overlay {
-            if let locked = model.locked {
-                LockedLibraryView(name: locked.name)
-            }
-        }
-        .overlay {
-            if let err = model.loadError {
-                ContentUnavailableView("Library problem", systemImage: "exclamationmark.triangle",
-                                       description: Text(err))
-                    .background(.background)
-            }
-        }
+        // Split from the alerts/dialogs below: one expression this size is
+        // over the type checker's budget (measured, 2026-09-24).
+        layout
         .confirmationDialog("Delete “\(confirmDeleteCollection?.name ?? "")”?",
                             isPresented: Binding(get: { confirmDeleteCollection != nil },
                                                  set: { if !$0 { confirmDeleteCollection = nil } }),
@@ -233,6 +91,165 @@ struct MainView: View {
         } message: { r in
             Text(relinkMessage(r))
         }
+    }
+
+    /// PaneKit replaces NavigationSplitView (spec/panekit.md, step 2): the
+    /// Library pane beside the detail. Content hosted across the AppKit
+    /// boundary doesn't inherit the SwiftUI environment, so each pane gets
+    /// what it needs passed in explicitly.
+    private var layout: some View {
+        // Each pane's undoManager comes from the window's own responder
+        // chain (SwiftUI resolves it that way, not through the
+        // environment), so only what's actually environment state — the
+        // model — needs passing in.
+        PaneLayoutView(controller: model.mainPanes, content: [
+            "library": AnyView(libraryList.environment(model)),
+            "detail": AnyView(detailView.environment(model)),
+        ])
+        // Another library's undo steps mean nothing here (see libraryGeneration).
+        .onChange(of: model.libraryGeneration) { undoManager?.removeAllActions() }
+        .focusedSceneValue(\.requestNewCollection, startCreatingCollection)
+        // The sidebar's Delete/⌘Delete fallback (D1), for when its List
+        // doesn't have the keyboard (see the comment on `onDeleteCommand`
+        // above). Attached to the whole layout, not the List itself.
+        .background(SingleKeys { event in
+            guard event.keyCode == 51 || event.keyCode == 117 else { return false }
+            if !(NSApp.keyWindow?.firstResponder is NSTableView), event.plainModifiers == [] {
+                switch model.sidebar {
+                case .show(let id): guard let s = model.show(id) else { return false }; confirmDelete = s
+                case .collection(let id): guard let c = model.collection(id) else { return false }; confirmDeleteCollection = c
+                case .group(let id): guard let g = model.group(id) else { return false }; deleteGroupAsking(g)
+                default: return false
+                }
+                return true
+            }
+            guard event.plainModifiers == [.command] else { return false }
+            switch model.sidebar {
+            case .show(let id):
+                guard let s = model.show(id) else { return false }
+                model.deleteShow(s.id, undo: undoManager)
+            case .collection(let id):
+                guard let c = model.collection(id) else { return false }
+                model.deleteCollection(c.id, undo: undoManager)
+            default:
+                return false
+            }
+            return true
+        }.opacity(0).allowsHitTesting(false))
+        .overlay(alignment: .bottom) {
+            VStack(spacing: 0) {
+                ExportBanner()
+                MovieExportBanner()
+                ImportBanner()
+            }
+        }
+        .overlay {
+            if let locked = model.locked {
+                LockedLibraryView(name: locked.name)
+            }
+        }
+        .overlay {
+            if let err = model.loadError {
+                ContentUnavailableView("Library problem", systemImage: "exclamationmark.triangle",
+                                       description: Text(err))
+                    .background(.background)
+            }
+        }
+    }
+
+    /// The Library pane's content: PaneKit's "library" pane.
+    private var libraryList: some View {
+        List(selection: Binding(get: { model.sidebar }, set: { model.sidebar = $0 })) {
+            // An alternate library shows its own name here.
+            Label(model.isOnMaster ? "Library" : model.libraryName,
+                  systemImage: model.libraryIsPrivate || model.locked != nil
+                      ? "lock.rectangle.stack" : "photo.on.rectangle.angled")
+                .badge(model.items.count)
+                .tag(SidebarItem.library)
+                .contextMenu {
+                    Button("Import…") { runImportPanel(model) }
+                    Button("New Collection…") { startCreatingCollection() }
+                    // Not built (spec/windows.md, "the library panel");
+                    // settled 2026-09-24 to go in greyed out until it is.
+                    Button("Open Library Panel") {}.disabled(true)
+                    Divider()
+                    Button("Show in Finder") {
+                        if let root = model.library?.root {
+                            NSWorkspace.shared.activateFileViewerSelecting([root])
+                        }
+                    }
+                }
+
+            // Library → Collection → Show, as Final Cut's Library → Event → Project.
+            // A collection's groups and its shows sit side by side, as
+            // siblings (Jason, 2026-09-24, "Groups inside collections").
+            Section("Collections") {
+                ForEach(model.collections) { c in
+                    DisclosureGroup(isExpanded: foldBinding(c.id, in: $folded)) {
+                        collectionChildren(c)
+                    } label: {
+                        collectionRow(c)
+                    }
+                }
+                // Shows in no collection shouldn't exist after the
+                // upgrade, but if one does, it still has a place.
+                ForEach(orphanShows) { show in showRow(show) }
+            }
+        }
+        // Delete asks first (D1); ⌘Delete skips the question, as the
+        // grid's does (spec/conventions.md §Delete/⌘Delete). This
+        // `onDeleteCommand` fires when the List genuinely has the
+        // keyboard; the SingleKeys fallback for when it doesn't is
+        // attached to the whole PaneLayoutView, not here — a
+        // `.background(SingleKeys)` directly on this List (a real
+        // NSTableView, not the grid's plain ScrollView) hit AppKit's
+        // layout-loop guard and crashed on the very first check
+        // (2026-09-24, `~/Library/Logs/DiagnosticReports/`, a run of
+        // `NavigationPaneModifier`/`CellHostingView` layout frames).
+        .onDeleteCommand {
+            switch model.sidebar {
+            case .show(let id): if let s = model.show(id) { confirmDelete = s }
+            case .collection(let id): if let c = model.collection(id) { confirmDeleteCollection = c }
+            case .group(let id): if let g = model.group(id) { deleteGroupAsking(g) }
+            default: break
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Menu {
+                    Button("New Collection…") { startCreatingCollection() }
+                    Button("New Show") { model.newShow() }
+                        .disabled(model.collections.isEmpty)
+                } label: {
+                    Label("New", systemImage: "plus")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("New collection, or a new show in the selected collection")
+                Spacer()
+            }
+            .padding(8)
+        }
+    }
+
+    /// The detail pane's content: PaneKit's "detail" pane. A fresh detail
+    /// for each library. Ids restart at 1 in every library, so views kept
+    /// across a switch (grid tiles, their thumbnails, the selection) would
+    /// show the old library's files under the new one's names.
+    private var detailView: some View {
+        ZStack {
+            switch model.sidebar {
+            case .show(let id) where model.show(id) != nil:
+                ShowView(showID: id)
+            case .collection(let id) where model.collection(id) != nil:
+                LibraryGridView(collectionID: id)
+            case .group(let id) where model.group(id) != nil:
+                LibraryGridView(collectionID: model.group(id)?.collectionID, groupID: id)
+            default:
+                LibraryGridView()
+            }
+        }
+        .id(model.libraryGeneration)
     }
 
     private func relinkMessage(_ r: RelinkSummary) -> String {

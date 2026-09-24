@@ -128,6 +128,9 @@ struct AppCommands: Commands {
         // both really global AppStorage already (one window's change is
         // every window's), so they need no focused value.
         CommandGroup(before: .toolbar) {
+            Toggle("Show Library", isOn: Binding(get: { model.mainPanes.isOpen("main") },
+                                                 set: { model.mainPanes.setOpen("main", $0) }))
+                .keyboardShortcut("l", modifiers: [.command, .option])
             Toggle("Show Frame Strip", isOn: $frameStripShown)
                 .keyboardShortcut("f", modifiers: [.command, .option])
             Toggle("Show Inspector", isOn: $inspectorShown)
@@ -158,8 +161,11 @@ struct AppCommands: Commands {
             Toggle("Snapping  (N)", isOn: $snapping)
                 .disabled(editShowCommands == nil)
             Divider()
-            Button("Restore Default Layout") { DefaultLayout.restore() }
-                .keyboardShortcut("0", modifiers: [.command, .option])
+            Button("Restore Default Layout") {
+                model.mainPanes.restoreDefaults()
+                DefaultLayout.restore()
+            }
+            .keyboardShortcut("0", modifiers: [.command, .option])
             Divider()
         }
 

@@ -21,6 +21,8 @@ options:
 packages:
   ShowTools:
     path: .
+  PaneKit:
+    path: PaneKit
 settings:
   base:
     CODE_SIGN_IDENTITY: "-"
@@ -48,6 +50,8 @@ targets:
         product: ShowToolsCore
       - package: ShowTools
         product: ShowToolsPlayback
+      - package: PaneKit
+        product: PaneKit
       - target: BGToolsControls
         embed: true
       - target: BGTools

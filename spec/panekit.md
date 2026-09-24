@@ -1,10 +1,14 @@
 # PaneKit — a reusable pane system for Mac apps
 
-**Status:** Building. **Step 1 done 2026-09-24** — compiled and tested
-clean on the Mac (`swift build`, `swift test`, 14 tests, no fixes
-needed), and the harness's hands-on checks (listed at the top of
-`PaneKit/Harness/Harness.swift`) all passed, Jason's own hands. **Left:**
-steps 2–4 below. Named PaneKit, and it lives in this repo for now
+**Status:** Building. **Steps 1 and 2 done 2026-09-24.** Step 1: compiled
+and tested clean on the Mac (`swift build`, `swift test`, 14 tests, no
+fixes needed), and the harness's hands-on checks (listed at the top of
+`PaneKit/Harness/Harness.swift`) all passed, Jason's own hands. Step 2:
+ShowTools' main window is on PaneKit — `NavigationSplitView` is gone; the
+Library pane and the detail are a real PaneKit split, added as a local
+package dependency (`Package.swift` and `project.yml`). The timeline
+pane joining this tree still waits on the show session (step 4). **Left:**
+steps 3–4 below. Named PaneKit, and it lives in this repo for now
 (settled, Jason).
 
 ## What it is
@@ -313,8 +317,23 @@ opening or closing (changes are instant for now).
    - no layout-loop exception under rapid changes.
 
    It's run on the Mac by the Claude Code there, and felt by Jason.
-2. **ShowTools' main window** on PaneKit: the Library pane and the
-   full-width timeline pane. `NavigationSplitView` goes.
+2. ~~**ShowTools' main window** on PaneKit: the Library pane and the
+   full-width timeline pane. `NavigationSplitView` goes.~~ — the
+   Library-pane-and-detail half is **done 2026-09-24**
+   (`MainView.layout`, a two-pane split: `.pane("library", …)` and
+   `.pane("detail", …)`, `AppModel.mainPanes`). The full-width timeline
+   pane isn't in this tree yet — it needs the show session (state moved
+   out of the views, step 4's own prerequisite), so it stays inside Edit
+   Show's own `VSplitView` for now, untouched, until step 3 or step 4
+   gets to it. Checked, real clicks: divider drag resizes the split;
+   drag-to-edge leaves the handle and reopening restores the dragged
+   size; ⌘Z through the pane undoes a delete (the AppKit-boundary
+   undo-manager question — resolved via the window's own responder
+   chain, not the SwiftUI environment, so no explicit passing needed);
+   View ▸ Restore Default Layout puts the pane back to its default width
+   in one transaction; View ▸ Show Library toggles it. `xcodebuild` for
+   the ShowTools scheme, `./make-app.sh debug` and `swift test` (305
+   tests) all clean.
 3. **Edit Show's and Edit Slides' columns** on PaneKit: `ColumnsSplitView`
    and `VSplitView` go.
 4. **ShowTools' panes popping out** (`spec/windows.md`): the library
