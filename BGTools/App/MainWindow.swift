@@ -103,9 +103,9 @@ private struct Sidebar: View {
                 }
                 Section {
                     HStack {
-                        Label("All same", systemImage: "rectangle.on.rectangle")
+                        Label("Synchronize", systemImage: "rectangle.on.rectangle")
                         Spacer()
-                        Toggle("All same", isOn: Binding(get: { desktop.settings.allSame }, set: { on in
+                        Toggle("Synchronize", isOn: Binding(get: { desktop.settings.allSame }, set: { on in
                             desktop.update {
                                 $0.allSame = on
                                 if on, $0.allSameSetting == nil { $0.allSameSetting = $0.newScreens }
@@ -210,7 +210,7 @@ private struct ScreenDetail: View {
                 }
                 Preview(player: desktop.player(for: info.id), aspect: info.displayFrame.width / max(info.displayFrame.height, 1))
                 if desktop.settings.allSame {
-                    Note("All same is on, so this screen plays All same's choice. Its own setting is kept for when All same is off.")
+                    Note("Synchronize is on, so this screen plays Synchronize's choice. Its own setting is kept for when Synchronize is off.")
                 }
                 if let setting = own {
                     SettingEditor(setting: setting) { new in desktop.update { $0.screens[info.id] = new } }
@@ -240,7 +240,7 @@ private struct AllSameDetail: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("All same").font(.title2.bold())
+                Text("Synchronize").font(.title2.bold())
                 Note(desktop.settings.allSame
                      ? "On: this plays on every monitor and Space, in sync."
                      : "Off. When it's on, this plays on every monitor and Space, in sync, and each screen's own setting waits.")
@@ -373,7 +373,7 @@ private struct Controls: View {
 
 // MARK: Setting editor
 
-/// A setting that may not exist yet (All same, New screens).
+/// A setting that may not exist yet (Synchronize, New screens).
 private struct OptionalSettingEditor: View {
     @Environment(DesktopController.self) private var desktop
     let setting: ScreenSetting?

@@ -3,7 +3,7 @@ import BGToolsCore
 import ShowToolsCore
 import ShowToolsPlayback
 
-/// Plays one screen's setting (or All same's, on every screen at once):
+/// Plays one screen's setting (or Synchronize's, on every screen at once):
 /// builds its show, follows library edits, and picks again at the end of
 /// each pass for the random modes. It's the engine's `ShowSource`.
 @MainActor

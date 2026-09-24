@@ -53,8 +53,10 @@ public struct DesktopSettings: Codable, Hashable, Sendable {
     /// Desktop Show on/off (the Control Center switch).
     public var on = true
     public var screens: [String: ScreenSetting] = [:]
-    /// One choice for every monitor and Space, in sync. The screens' own
-    /// settings are kept while it's on.
+    /// "Synchronize": one choice for every monitor and Space, in sync. The
+    /// screens' own settings are kept while it's on. The stored key keeps
+    /// its old name, `allSame` (called that until 2026-09-24) — renaming it
+    /// would drop every saved setting on the next save unless migrated.
     public var allSame = false
     public var allSameSetting: ScreenSetting?
     /// Plays on any monitor or Space not seen before.
@@ -90,7 +92,7 @@ public struct DesktopSettings: Codable, Hashable, Sendable {
         "\(display)/\(space.isEmpty ? "desktop1" : space)"
     }
 
-    /// What a screen plays now: All same's choice while it's on, else its
+    /// What a screen plays now: Synchronize's choice while it's on, else its
     /// own, else the "new screens" default. Nil plays nothing.
     public func setting(for screenID: String) -> ScreenSetting? {
         if allSame { return allSameSetting ?? newScreens }

@@ -4,9 +4,9 @@
 (private unlock with Touch ID, the panel closing on a click elsewhere,
 Space-switch pausing, none re-done against the nested BGTools); the Pan
 and Zoom cost; telling BGTools when a library moves; and **Jason's
-first-test list** (2026-09-24, below): a Quit you can find, All same →
-Synchronize, naming screens, a map view, and the window opening on your
-screen.
+first-test list** (2026-09-24, below): a Quit you can find and All same →
+Synchronize (both **done 2026-09-24**), naming screens, a map view, and
+the window opening on your screen.
 
 Phase 5 of ShowTools (renamed 2026-09-22; it was "Live desktop"). This file
 holds BGTools' decisions and measurements; `spec/plan.md` points here. It
@@ -214,18 +214,23 @@ New with BGTools:
 From `spec/history/2026-09-24-work-order.md`. *Decided* is Jason's;
 *Proposal* is Claude's, for him to settle.
 
-1. **A Quit you can find.** Quit exists, but only as the last item in the
-   settings window's ⋯ toolbar menu (`MainWindow.swift`), and Jason
-   didn't find it. Add it to the **floating panel**, worded so it says
-   what it does: **"Quit BGTools (stops desktop shows)"**. Make **⌘Q** work
-   while the settings window is open, since BGTools is a regular app then
-   (`BGToolsApp.swift` switches the activation policy).
-2. **All same → Synchronize** (*decided*): the switch, its row, its help
-   text, the note shown on a screen while it's on, and the panel. The
-   settings file keeps its key, `allSame`: `DesktopSettings` decodes field
-   by field by its `CodingKeys`, so renaming the key would drop every
-   saved setting on the next save unless it's migrated. The user-facing
-   words change; the stored key doesn't.
+1. ~~**A Quit you can find.**~~ — done 2026-09-24. The panel gained
+   **"Quit BGTools (stops desktop shows)"** at its bottom, below Open
+   BGTools…. `BGToolsApp.main` now sets a minimal `NSApp.mainMenu` (an App
+   menu holding only Quit, ⌘Q) at launch, so ⌘Q works whenever BGTools has
+   a menu bar to be typed into — the settings window, or the panel, since
+   both are regular-app moments. Checked: `xcodebuild` for the `BGTools`
+   scheme builds clean; a scratch launch (`BGTOOLS_SETTINGS`,
+   `BGTOOLS_OPEN_PANEL=1`) shows the panel with the new button, screenshot
+   confirmed the wording.
+2. ~~**All same → Synchronize**~~ — done 2026-09-24: the switch, its row,
+   its help text, the note shown on a screen while it's on, and the
+   panel, everywhere the words were user-facing. The settings file kept
+   its key, `allSame`/`allSameSetting`: `DesktopSettings` decodes field by
+   field by its `CodingKeys`, so renaming the key would drop every saved
+   setting on the next save unless it's migrated. The user-facing words
+   changed; the stored key didn't, noted in a comment on the field.
+   `swift test` (305 tests) clean.
 3. **Naming screens** (*decided*): each monitor gets a name of its own,
    like **Work Monitor**, shown with a small tag of macOS's model name
    (PA279CRV), so the physical screen is always identifiable. Unnamed

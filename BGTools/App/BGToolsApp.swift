@@ -18,7 +18,21 @@ final class BGToolsApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let delegate = BGToolsApp()
         app.delegate = delegate
         app.setActivationPolicy(.accessory)
+        app.mainMenu = Self.makeMainMenu()
         app.run()
+    }
+
+    /// Just enough of a menu bar for ⌘Q to work while the settings window is
+    /// open (a regular app then, so it needs one). Never shown as an
+    /// accessory app, since there's no menu bar to show it in.
+    private static func makeMainMenu() -> NSMenu {
+        let main = NSMenu()
+        let appMenuItem = NSMenuItem()
+        main.addItem(appMenuItem)
+        let appMenu = NSMenu()
+        appMenuItem.submenu = appMenu
+        appMenu.addItem(withTitle: "Quit BGTools", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        return main
     }
 
     func applicationDidFinishLaunching(_ note: Notification) {

@@ -31,7 +31,7 @@ struct ScreenInfo: Identifiable, Hashable {
 
 /// One window per monitor and Space at desktop level: above the wallpaper,
 /// below Finder's icons, clicks passing through (measured). It shows a
-/// player's engine; under All same, many windows show the same one.
+/// player's engine; under Synchronize, many windows show the same one.
 @MainActor
 final class DesktopWindow {
     /// The desktop's frame rate: half the app's, half the power.
@@ -90,7 +90,7 @@ final class DesktopController {
     private(set) var settings: DesktopSettings
     @ObservationIgnored private var settingsModified: Date?
     @ObservationIgnored private var readers: [String: LibraryReader] = [:]
-    /// By screen id, or "all" under All same.
+    /// By screen id, or "all" under Synchronize.
     private(set) var players: [String: Player] = [:]
     /// Every monitor and Space there is now, for the window.
     private(set) var screens: [ScreenInfo] = []
@@ -384,7 +384,7 @@ final class DesktopController {
         guard let s = settings.setting(for: screenID) else { return "Wallpaper" }
         if isLocked(s) { return "Private · locked" }
         let what = Self.describe(s.mode, in: readers[s.library]?.contents)
-        let source = settings.allSame ? "All same" : settings.screens[screenID] == nil ? "New screens" : nil
+        let source = settings.allSame ? "Synchronize" : settings.screens[screenID] == nil ? "New screens" : nil
         return [what, s.stillsOnly ? "stills" : nil, source].compactMap { $0 }.joined(separator: " · ")
     }
 
@@ -400,7 +400,7 @@ final class DesktopController {
         }
     }
 
-    /// The player a screen shows (All same's under All same).
+    /// The player a screen shows (Synchronize's under Synchronize).
     func player(for screenID: String) -> Player? { players[settings.allSame ? "all" : screenID] }
 
     func reader(for path: String) -> LibraryReader? {

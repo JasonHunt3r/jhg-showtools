@@ -57,7 +57,7 @@ final class PanelController {
                                  })
                 .environment(desktop)
             // The controller sizes the panel to its content, and again when
-            // the content grows (All same on, a Space added).
+            // the content grows (Synchronize on, a Space added).
             let host = NSHostingController(rootView: root)
             host.sizingOptions = [.preferredContentSize]
             p.contentViewController = host
@@ -125,7 +125,7 @@ private struct PanelView: View {
                     .labelsHidden().toggleStyle(.switch).controlSize(.small)
                     .help("Turns the desktop show on or off on every screen")
             }
-            Toggle("All same", isOn: Binding(get: { desktop.settings.allSame }, set: { on in
+            Toggle("Synchronize", isOn: Binding(get: { desktop.settings.allSame }, set: { on in
                 desktop.update {
                     $0.allSame = on
                     if on, $0.allSameSetting == nil { $0.allSameSetting = $0.newScreens }
@@ -134,7 +134,7 @@ private struct PanelView: View {
             .help("One choice on every monitor and Space, in sync")
 
             if desktop.settings.allSame {
-                PanelRow(title: "All same", subtitle: summary(desktop.settings.allSameSetting),
+                PanelRow(title: "Synchronize", subtitle: summary(desktop.settings.allSameSetting),
                          highlighted: true, player: desktop.players["all"],
                          setting: desktop.settings.allSameSetting,
                          change: { new in desktop.update { $0.allSameSetting = new } },
@@ -175,6 +175,8 @@ private struct PanelView: View {
             .buttonStyle(.plain)
             Divider()
             Button("Open BGTools…") { openWindow(nil) }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Quit BGTools (stops desktop shows)") { NSApp.terminate(nil) }
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(14)

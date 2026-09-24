@@ -122,7 +122,7 @@ final class DesktopSettingsTests: XCTestCase {
         s.allSameSetting = b
         XCTAssertEqual(s.setting(for: "x"), b)
         s.allSame = false
-        XCTAssertEqual(s.setting(for: "x"), a, "a screen's own setting is kept under All same")
+        XCTAssertEqual(s.setting(for: "x"), a, "a screen's own setting is kept under Synchronize")
     }
 
     func testScreenIDsNameTheFirstDesktop() {
