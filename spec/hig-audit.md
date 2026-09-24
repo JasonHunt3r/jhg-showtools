@@ -263,6 +263,20 @@ same in either. It mostly doesn't:
   from the top. The selection would have to reach the menu as a focused
   value, as `activeShowID` does.
 
+- **G6 (Med) — Show defaults can only be changed in Edit Slides.** The
+  defaults bar (`ShowView.swift:144`) is Edit Slides' alone, so in Edit
+  Show there's no way to reach the default length, transition, fit or
+  background without switching mode. Found while writing
+  `spec/anatomy.md`. *Decision for Jason:* where they go in Edit Show.
+  The options are the inspector with nothing selected (it shows "No
+  slide selected" today) or a popover from the transport.
+- **G7 (Low) — The timeline's row order looks like layer order, and
+  isn't.** Dragging the images row under the slides row moves it on
+  screen only. Lane images are still drawn over the slides
+  (`spec/anatomy.md` §4). Either say so where the rows are reordered, or
+  decide that row order *is* layer order before a show can have two rows
+  of one kind.
+
 ## Fix batches (proposed order)
 
 Each batch is one commit and can be written in a cloud session, **unbuilt**:
@@ -307,3 +321,5 @@ ordered from least to most risk.
   file from outside the show's collection does.
 - **G4:** what Space does in Edit Slides: play from the selected slide, or
   nothing.
+- **G6:** where show defaults go in Edit Show.
+- **G7:** whether the timeline's row order should become layer order.
