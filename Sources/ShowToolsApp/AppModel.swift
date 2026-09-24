@@ -39,6 +39,14 @@ final class AppModel {
                range: 180...360, title: "Library",
                .pane("library", title: "Library", minSize: 180),
                .pane("detail", title: "Detail", minSize: 240)))
+    /// Edit Show's and Edit Slides' columns (`spec/panekit.md`, step 3): one
+    /// controller each, shared across every show (`ColumnsSplitView`'s own
+    /// saved widths were shared the same way), so switching shows doesn't
+    /// churn the layout.
+    let editShowColumns = PaneController(id: "EditShowColumns", root:
+        EditColumnsLayout.editShowTree(storylineMin: StorylineView.fullHeight + 56,
+                                       storylineDefault: StorylineView.fullHeight + 56 + 10))
+    let editSlidesColumns = PaneController(id: "EditSlidesColumns", root: EditColumnsLayout.twoColumns)
     /// Developer hook only: a slide for the show view to select on appearing.
     var devSelection: Int64?
     /// The Info panel's targets: kept here, not in the grid's own state,

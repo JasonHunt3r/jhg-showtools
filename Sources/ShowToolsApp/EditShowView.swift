@@ -1,4 +1,5 @@
 import SwiftUI
+import PaneKit
 import ShowToolsCore
 import ShowToolsPlayback
 
@@ -28,24 +29,23 @@ struct EditShowView: View {
         // the placeholder's onDisappear would shut down the engine it made way for.
         ZStack {
             if let engine, engine.showID == show.id {
-                // The columns sit on top; the transport and storyline run the
-                // full width underneath them.
-                VSplitView {
-                    ShowColumns(
-                        inspectorShown: $inspectorShown, model: model,
-                        preview: PreviewStage(engine: engine, title: show.name,
-                                              selection: $selection, selectedTransition: $selectedTransition,
-                                              selectedOverlay: $selectedOverlay, mutate: mutate,
-                                              show: show, timeline: timeline, pps: pps,
-                                              storylineOffset: storylineOffset),
-                        list: CollectionBrowser(show: show, timeline: timeline, engine: engine,
-                                                mutate: mutate, inspectorShown: $inspectorShown,
-                                                selection: $selection, selectedOverlay: $selectedOverlay),
-                        inspector: SlideInspector(show: show, timeline: timeline, selection: selection,
-                                                  mutate: mutate, close: { inspectorShown = false },
-                                                  engine: engine))
-                        .frame(minHeight: 220)
-                    VStack(spacing: 0) {
+                // The columns on top, the transport and storyline running the
+                // full width underneath: PaneKit's job now, in place of
+                // VSplitView + ShowColumns (spec/panekit.md, step 3).
+                PaneLayoutView(controller: model.editShowColumns, content: [
+                    "preview": AnyView(PreviewStage(engine: engine, title: show.name,
+                                                    selection: $selection, selectedTransition: $selectedTransition,
+                                                    selectedOverlay: $selectedOverlay, mutate: mutate,
+                                                    show: show, timeline: timeline, pps: pps,
+                                                    storylineOffset: storylineOffset).environment(model)),
+                    "list": AnyView(CollectionBrowser(show: show, timeline: timeline, engine: engine,
+                                                      mutate: mutate, inspectorShown: $inspectorShown,
+                                                      selection: $selection, selectedOverlay: $selectedOverlay)
+                        .environment(model)),
+                    "inspector": AnyView(SlideInspector(show: show, timeline: timeline, selection: selection,
+                                                        mutate: mutate, close: { inspectorShown = false },
+                                                        engine: engine).environment(model)),
+                    "storyline": AnyView(VStack(spacing: 0) {
                         TransportRow(engine: engine, show: show, pps: $pps, fit: fitStoryline)
                         Divider()
                         StorylineView(show: show, timeline: timeline, engine: engine,
@@ -54,10 +54,12 @@ struct EditShowView: View {
                                       selectedMarkers: $selectedMarkers,
                                       pps: $pps, scrollOffset: $storylineOffset, mutate: mutate,
                                       openInspector: { inspectorShown = true })
-                    }
-                    // Tall enough for every row, and the transport (56).
-                    .frame(minHeight: StorylineView.fullHeight + 56,
-                           idealHeight: StorylineView.fullHeight + 56 + 10)
+                    }.environment(model)),
+                ])
+                .onAppear { model.editShowColumns.setOpen("listInspector", inspectorShown) }
+                .onChange(of: inspectorShown) { _, shown in model.editShowColumns.setOpen("listInspector", shown) }
+                .onChange(of: model.editShowColumns.isOpen("listInspector")) { _, shown in
+                    if shown != inspectorShown { inspectorShown = shown }
                 }
                 .onDeleteCommand {
                     // What's selected in the lane goes first: an image is

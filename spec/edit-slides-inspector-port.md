@@ -8,6 +8,13 @@ toggles against a copy of the real library, zero new exceptions. **Left:**
 nothing from this plan — see "What this doesn't cover" below for the two
 unrelated issues found alongside it.
 
+**Superseded 2026-09-24** (`spec/panekit.md`, step 3): `ColumnsSplitView`
+is gone, replaced by PaneKit. `TwoColumns` still exists (`ShowColumns.swift`,
+now backed by `EditColumnsLayout.twoColumns`) and Edit Slides' inspector
+still works the way this doc describes — the mechanism under it changed,
+the decision it records didn't. Read this for *why* the port off
+`.inspector()` happened; read `panekit.md` for what runs it now.
+
 ## Why
 
 The layout-loop crash in "Known issues" (`spec/status.md`) is caused by

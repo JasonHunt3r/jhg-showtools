@@ -19,9 +19,6 @@ enum DefaultLayout {
     /// that jumps across the screen when you ask for its columns back.
     static let windowSize = NSSize(width: 1376, height: 835)
     static let sidebarWidth: CGFloat = 219
-    /// Edit Show's own columns (`ColumnsSplitView`).
-    static let listWidth: CGFloat = 246
-    static let inspectorWidth: CGFloat = 320
 
     /// Puts the live views back, rather than writing preferences and
     /// waiting for a relaunch: the point is to rescue a window that is
@@ -76,19 +73,12 @@ enum DefaultLayout {
                 }
                 window.setFrame(frame, display: true, animate: false)
             },
-            // The sidebar is restored separately: `NavigationSplitView` is
-            // gone (`spec/panekit.md`, step 2, 2026-09-24), and PaneKit's
-            // `restoreDefaults()` — called alongside `DefaultLayout.restore()`
-            // in ShowToolsApp's Restore Default Layout command — resets it
-            // in its own single transaction, with none of the layout-loop
-            // risk this class was written to work around.
-            {
-                guard let content = window.contentView else { return }
-                for case let columns as ColumnsSplitView in splitViews(in: content) {
-                    columns.setWidths(list: listWidth, inspector: inspectorWidth)
-                }
-            },
         ]
+        // Every pane tree (the main window's, Edit Show's, Edit Slides')
+        // restores itself in its own single transaction, called alongside
+        // this from ShowToolsApp's Restore Default Layout command
+        // (`spec/panekit.md`, steps 2–3, 2026-09-24) — none of the
+        // layout-loop risk this class was written to work around.
     }
 
     /// Keeps a window on screen without changing its size.
@@ -97,13 +87,5 @@ enum DefaultLayout {
         f.origin.x = min(max(f.origin.x, visible.minX), max(visible.maxX - f.width, visible.minX))
         f.origin.y = min(max(f.origin.y, visible.minY), max(visible.maxY - f.height, visible.minY))
         return f
-    }
-
-    /// Every split view under `view`, outermost first.
-    private static func splitViews(in view: NSView) -> [NSSplitView] {
-        var found: [NSSplitView] = []
-        if let split = view as? NSSplitView { found.append(split) }
-        for sub in view.subviews { found += splitViews(in: sub) }
-        return found
     }
 }

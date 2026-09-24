@@ -1,150 +1,78 @@
 import SwiftUI
-import AppKit
+import PaneKit
 
-/// Edit Show's three columns — preview, order list, inspector — in a
-/// `ColumnsSplitView`, which lays them out by hand. See that type for why.
-struct ShowColumns<Preview: View, List: View, Inspector: View>: NSViewRepresentable {
-    @Binding var inspectorShown: Bool
-    let model: AppModel
-    let preview: Preview
-    let list: List
-    let inspector: Inspector
+/// What `ColumnsSplitView` measured and enforced by hand, now PaneKit's job
+/// (`spec/panekit.md`, step 3). Edit Show's three columns (preview, list,
+/// inspector) are two nested PaneKit splits, not one three-way primitive:
+/// the outer's main is the preview, so a window resize goes there; the
+/// inner's main is the list, so dragging the preview|list divider changes
+/// only those two, not the inspector. **Divider isolation over exactly
+/// matching `ColumnsSplitView`'s old narrow-window squeeze order**
+/// (settled, Jason, 2026-09-24): that order had the inspector give way
+/// before the list, which this can't reproduce without breaking the
+/// preview|list divider into also moving the inspector. In a window too
+/// narrow for all three at their floors, list now gives way before the
+/// inspector instead — the reverse of before, and only reachable well
+/// below the app's own minimum window size. The list column also loses
+/// its old upper bound (420): it's the "main" side of its own split now,
+/// which PaneKit doesn't cap, only floors.
+enum EditColumnsLayout {
+    static let mainMin: CGFloat = 420
+    static let listMin: CGFloat = 180
+    static let inspectorRange: ClosedRange<CGFloat> = 320...440
+    static let inspectorDefault: CGFloat = 320
+    /// The list+inspector region's own range and default, chosen so a
+    /// fresh install shows about what `ColumnsSplitView` did (list ~230,
+    /// inspector ~320).
+    static let sideRange: ClosedRange<CGFloat> = 501...861
+    static let sideDefault: CGFloat = 551
 
-    @MainActor final class Coordinator {
-        var inspectorShown: Binding<Bool>
-        var hosts: [ColumnHost] = []
-        init(_ b: Binding<Bool>) { inspectorShown = b }
+    /// Edit Show's three columns, plus the storyline below them
+    /// (`EditShowView`'s own tree: the outer split is vertical, in place
+    /// of the old `VSplitView`).
+    static func editShowTree(storylineMin: CGFloat, storylineDefault: CGFloat) -> PaneNode {
+        .split("editShow", .vertical, sized: .second, size: storylineDefault,
+               range: storylineMin...(storylineDefault + 400), collapsible: false,
+               threeColumns,
+               .pane("storyline", minSize: storylineMin))
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator($inspectorShown) }
-
-    func makeNSView(context: Context) -> ColumnsSplitView {
-        let hosts = [wrap(preview), wrap(list), wrap(inspector)].map { view -> ColumnHost in
-            let h = ColumnHost(rootView: view)
-            h.sizingOptions = []   // the split view decides sizes, not the content
-            // A column's content can be wider than the column (the inspector
-            // was 316 in 260, measured 2026-09-21): clipped, it can't hang
-            // over its neighbour and take its clicks and scrolling.
-            h.clipsToBounds = true
-            return h
-        }
-        context.coordinator.hosts = hosts
-        let split = ColumnsSplitView(main: hosts[0], list: hosts[1], inspector: hosts[2],
-                                     defaultsKey: "EditShowColumns")
-        // Each column leaves the split view the half of the grab strip
-        // that falls on its side. Only the edges with a divider: the
-        // outer two are the window's, and clicks there are the content's.
-        let m = (split.grabWidth - 1) / 2
-        hosts[0].dividerMargin = (0, m)
-        hosts[1].dividerMargin = (m, m)
-        hosts[2].dividerMargin = (m, 0)
-        split.setInspectorShown(inspectorShown)
-        // Dragging the inspector shut (or open) keeps the toolbar button and
-        // double-click in step.
-        let coordinator = context.coordinator
-        split.onInspectorShownChange = { shown in
-            Task { @MainActor in
-                if coordinator.inspectorShown.wrappedValue != shown { coordinator.inspectorShown.wrappedValue = shown }
-            }
-        }
-        return split
+    static var threeColumns: PaneNode {
+        .split("columns", .horizontal, sized: .second, size: sideDefault, range: sideRange, collapsible: false,
+               .pane("preview", minSize: mainMin),
+               .split("listInspector", .horizontal, sized: .second, size: inspectorDefault, range: inspectorRange,
+                      .pane("list", minSize: listMin),
+                      .pane("inspector", minSize: inspectorRange.lowerBound)))
     }
 
-    func updateNSView(_ split: ColumnsSplitView, context: Context) {
-        context.coordinator.inspectorShown = $inspectorShown
-        let hosts = context.coordinator.hosts
-        hosts[0].rootView = wrap(preview)
-        hosts[1].rootView = wrap(list)
-        hosts[2].rootView = wrap(inspector)
-        if split.isInspectorShown != inspectorShown {
-            NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.2
-                ctx.allowsImplicitAnimation = true
-                split.setInspectorShown(inspectorShown)
-            }
-        }
+    /// Edit Slides' two columns: no list, so it's one split, not nested.
+    static var twoColumns: PaneNode {
+        .split("columns", .horizontal, sized: .second, size: inspectorDefault, range: inspectorRange,
+               .pane("main", minSize: mainMin),
+               .pane("inspector", minSize: inspectorRange.lowerBound))
     }
-
-    /// Views hosted here don't inherit the SwiftUI environment, so the model
-    /// is handed back in.
-    private func wrap<V: View>(_ v: V) -> AnyView { AnyView(v.environment(model)) }
 }
 
-/// Edit Slides' two columns — the slide list and its inspector — on the
-/// same hand-rolled `ColumnsSplitView` mechanism as `ShowColumns`, just
-/// without its middle list column. See `ColumnsSplitView` for why.
-struct TwoColumns<Main: View, Inspector: View>: NSViewRepresentable {
+/// Edit Slides' two columns — the slide list and its inspector — on
+/// PaneKit. Bridges the inspector's open/closed state both ways with
+/// `inspectorShown`, which the toolbar button and the View menu's own
+/// toggle also read and set.
+struct TwoColumns<Main: View, Inspector: View>: View {
     @Binding var inspectorShown: Bool
     let model: AppModel
+    let panes: PaneController
     let main: Main
     let inspector: Inspector
 
-    @MainActor final class Coordinator {
-        var inspectorShown: Binding<Bool>
-        var hosts: [ColumnHost] = []
-        init(_ b: Binding<Bool>) { inspectorShown = b }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator($inspectorShown) }
-
-    func makeNSView(context: Context) -> ColumnsSplitView {
-        let hosts = [wrap(main), wrap(inspector)].map { view -> ColumnHost in
-            let h = ColumnHost(rootView: view)
-            h.sizingOptions = []
-            h.clipsToBounds = true
-            return h
+    var body: some View {
+        PaneLayoutView(controller: panes, content: [
+            "main": AnyView(main.environment(model)),
+            "inspector": AnyView(inspector.environment(model)),
+        ])
+        .onAppear { panes.setOpen("columns", inspectorShown) }
+        .onChange(of: inspectorShown) { _, shown in panes.setOpen("columns", shown) }
+        .onChange(of: panes.isOpen("columns")) { _, shown in
+            if shown != inspectorShown { inspectorShown = shown }
         }
-        context.coordinator.hosts = hosts
-        let split = ColumnsSplitView(main: hosts[0], inspector: hosts[1],
-                                     defaultsKey: "EditSlidesColumns")
-        let m = (split.grabWidth - 1) / 2
-        hosts[0].dividerMargin = (0, m)
-        hosts[1].dividerMargin = (m, 0)
-        split.setInspectorShown(inspectorShown)
-        let coordinator = context.coordinator
-        split.onInspectorShownChange = { shown in
-            Task { @MainActor in
-                if coordinator.inspectorShown.wrappedValue != shown { coordinator.inspectorShown.wrappedValue = shown }
-            }
-        }
-        return split
-    }
-
-    func updateNSView(_ split: ColumnsSplitView, context: Context) {
-        context.coordinator.inspectorShown = $inspectorShown
-        let hosts = context.coordinator.hosts
-        hosts[0].rootView = wrap(main)
-        hosts[1].rootView = wrap(inspector)
-        if split.isInspectorShown != inspectorShown {
-            NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.2
-                ctx.allowsImplicitAnimation = true
-                split.setInspectorShown(inspectorShown)
-            }
-        }
-    }
-
-    private func wrap<V: View>(_ v: V) -> AnyView { AnyView(v.environment(model)) }
-}
-
-/// A column's hosting view that takes the mouse only inside its own frame.
-/// SwiftUI hit-tests a hosting view's whole content, clipped or not, so a
-/// column whose content was wider than it (the inspector, 2026-09-21) caught
-/// the clicks and scrolling meant for the column beside it.
-final class ColumnHost: NSHostingView<AnyView> {
-    /// Points along each edge left to the split view, where a divider is.
-    /// The grab strip straddles the divider, so half of it lies over this
-    /// column; without this the column's own content takes that half, and
-    /// the divider can only be caught from the other side — which is how
-    /// it felt to Jason, who also noticed the controls that appear on
-    /// hover taking it as he came across (2026-09-23).
-    var dividerMargin: (left: CGFloat, right: CGFloat) = (0, 0)
-
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        // `point` is in the superview's coordinates, as `frame` is.
-        guard frame.contains(point) else { return nil }
-        let x = point.x - frame.minX
-        if x < dividerMargin.left || x > frame.width - dividerMargin.right { return nil }
-        return super.hitTest(point)
     }
 }

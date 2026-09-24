@@ -1,15 +1,14 @@
 # PaneKit — a reusable pane system for Mac apps
 
-**Status:** Building. **Steps 1 and 2 done 2026-09-24.** Step 1: compiled
-and tested clean on the Mac (`swift build`, `swift test`, 14 tests, no
-fixes needed), and the harness's hands-on checks (listed at the top of
-`PaneKit/Harness/Harness.swift`) all passed, Jason's own hands. Step 2:
-ShowTools' main window is on PaneKit — `NavigationSplitView` is gone; the
-Library pane and the detail are a real PaneKit split, added as a local
-package dependency (`Package.swift` and `project.yml`). The timeline
-pane joining this tree still waits on the show session (step 4). **Left:**
-steps 3–4 below. Named PaneKit, and it lives in this repo for now
-(settled, Jason).
+**Status:** Building. **Steps 1–3 done 2026-09-24.** Step 1: compiled and
+tested clean on the Mac, and the harness's hands-on checks all passed,
+Jason's own hands. Step 2: ShowTools' main window is on PaneKit —
+`NavigationSplitView` is gone; the Library pane and the detail are a real
+PaneKit split. Step 3: Edit Show's and Edit Slides' columns are on
+PaneKit too — `ColumnsSplitView` and `VSplitView` are both gone. **Left:**
+step 4 (panes popping out — the show session). PaneKit is a local package
+dependency now (`Package.swift` and `project.yml`), named PaneKit, and
+lives in this repo for now (settled, Jason).
 
 ## What it is
 
@@ -334,8 +333,42 @@ opening or closing (changes are instant for now).
    in one transaction; View ▸ Show Library toggles it. `xcodebuild` for
    the ShowTools scheme, `./make-app.sh debug` and `swift test` (305
    tests) all clean.
-3. **Edit Show's and Edit Slides' columns** on PaneKit: `ColumnsSplitView`
-   and `VSplitView` go.
+3. ~~**Edit Show's and Edit Slides' columns** on PaneKit: `ColumnsSplitView`
+   and `VSplitView` go.~~ — **done 2026-09-24**
+   (`ShowColumns.swift` → `EditColumnsLayout`, `AppModel.editShowColumns`
+   and `.editSlidesColumns`). Both files (`ColumnsSplitView.swift`, the
+   old `ShowColumns`/`TwoColumns`) are gone.
+
+   Edit Show's three columns (preview, list, inspector) aren't PaneKit's
+   binary primitive done once — they're two nested splits, and the
+   nesting forces a choice PaneKit's own docs don't make for you
+   (**settled, Jason, 2026-09-24: divider isolation**, over exactly
+   matching `ColumnsSplitView`'s old narrow-window squeeze order):
+   - **What's preserved exactly:** dragging the preview↔list divider
+     touches only those two, never the inspector; dragging the
+     list↔inspector divider touches only those two, never the preview;
+     a window resize goes to preview; sizes remembered only from a real
+     drag; Restore Default Layout resets both trees in one transaction
+     each. All checked with real clicks and a real demo show
+     (`tools/make-demo-show.sh`), not just the type-checker.
+   - **What changed, on purpose:** in a window too narrow for all three
+     columns at their floors, list now gives way before the inspector
+     (the reverse of before) — reachable only well below the app's own
+     minimum window size. The list column lost its old upper bound
+     (420): it's the "main" side of its own split now, which PaneKit
+     only floors, doesn't cap. **Closing the inspector now grows the
+     list, not the preview** — a direct, visible consequence of the same
+     nesting choice (list is the inner split's "main" side, so it
+     absorbs whatever the inspector frees), confirmed by a real
+     double-click collapse in the demo show.
+   - **The vertical split** (columns row above the storyline, in place
+     of `VSplitView`) has one known, minor mismatch: `Pane.minSize` is
+     one number for both axes, so the preview's width-floor (420) also
+     becomes the columns-row's height-floor for this split, versus the
+     original 220. In practice this lands under the app's own minimum
+     window height (700) with room to spare (measured: ~691 total), so
+     it isn't reachable in the app's normal range, but it's the same
+     kind of cross-axis leak, noted here rather than silently accepted.
 4. **ShowTools' panes popping out** (`spec/windows.md`): the library
    panel, the inspector panel, the Timeline window. PaneKit already does
    the moving by then; this step is the show session, so the panes have

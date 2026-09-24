@@ -31,12 +31,12 @@ struct ShowView: View {
         Group {
             switch mode {
             case .slides:
-                // Laid out by hand on `ColumnsSplitView` (`TwoColumns`), the
-                // same proven mechanism `EditShowView` uses — not SwiftUI's
+                // On PaneKit now (spec/panekit.md, step 3), the same
+                // mechanism EditShowView's columns use — not SwiftUI's
                 // `.inspector()`, which is the confirmed cause of the
                 // layout-loop crash. See spec/edit-slides-inspector-port.md.
                 TwoColumns(
-                    inspectorShown: $inspectorShown, model: model,
+                    inspectorShown: $inspectorShown, model: model, panes: model.editSlidesColumns,
                     main: EditSlidesView(show: show, timeline: timeline, selection: $selection, mutate: mutate,
                                          toggleInspector: { inspectorShown.toggle() }),
                     inspector: SlideInspector(show: show, timeline: timeline, selection: selection,

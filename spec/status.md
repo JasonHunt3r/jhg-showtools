@@ -263,10 +263,11 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
 10. **BGTools batch:** names (W5) → the map view (W9) → the window opening
     on your screen, with ⌥-double-click (W4).
 
-Then: the rest of PaneKit (`spec/panekit.md`, steps 3–4 — the app's main
-window itself moved onto step 2 already, 2026-09-24, ahead of this list,
-to de-risk it early), the show session (`spec/windows.md`), and the New
-Show panel (`spec/simple-things-fast.md`).
+Then: the last of PaneKit (`spec/panekit.md`, step 4 — steps 2 and 3, the
+app's main window and Edit Show's/Edit Slides' columns, both moved ahead
+of this list already, 2026-09-24, to de-risk them early), the show
+session (`spec/windows.md`), and the New Show panel
+(`spec/simple-things-fast.md`).
 
 ### Also next
 
