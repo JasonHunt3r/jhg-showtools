@@ -7,6 +7,7 @@ A macOS slideshow composer and player for Jason's own Mac.
 | File | | What it is |
 |---|---|---|
 | `spec/status.md` | **current** | **Read first each session.** The state of play in the present tense: what's built, what's next, what needs his hands, known issues. Rewritten each session, not appended to. |
+| `spec/how-we-design.md` | current | Why things are the way they are: the six pillars of a slideshow, perceptual efficiency, and each principle with the story that taught it. The kernel of a design manual. |
 | `spec/plan.md` | current | Every decision, phase by phase, with its reasoning. Read before designing anything. |
 | `spec/bgtools.md` | current | Phase 5, BGTools: the desktop companion app that lives inside ShowTools. |
 | `spec/video-export.md` | current | Video export: the writer, the traps, the codecs. |
