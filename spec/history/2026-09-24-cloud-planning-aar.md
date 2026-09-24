@@ -110,3 +110,100 @@ harness. Then the right-click conversation, area by area.
 - While a Mac session works on the same branch, the cloud session keeps
   to docs, both sessions pull before starting, and each pushes before
   the other needs its work.
+
+---
+
+# Part two: after the first merge (later the same night)
+
+About 50 more commits, from `ad1c70a` to `9fade89`. Jason reset his
+tokens, so the Mac session worked through the queue at the same time;
+the cloud session kept to docs, except PaneKit, and merged its work into
+`main` at each natural break.
+
+## What happened
+
+1. **The right-click conversation, all eight stops**
+   (`spec/conventions.md` §3, "Progress"): the Library pane, the Library
+   grid, Edit Slides, the viewer, the browser, the inspector, the
+   timeline pane (in two halves), and the windows around the main one.
+   Rules that came out of it:
+   - **Show in Finder is for a library's location only**; files get Show
+     in Library.
+   - **Quick settings as submenus** (Length ▸, Transition ▸, Pan and
+     Zoom ▸).
+   - **Copy Settings and Paste Settings as ⌥ alternates.**
+   - **Select ▸** for what's under the pointer, keeping ⌥-click free.
+   - **Export ▸** as one submenu wherever export appears.
+   - **The player has no Close**: it's the star of the show.
+2. **New decisions along the way:**
+   - **Groups inside collections** ("a book cart"), decided in full and
+     then built by the Mac the same night (`spec/plan.md`);
+   - **Group Similar → Find Similar Images**, with Keep as Group;
+   - **Replace Image…**, on right-click and by dropping onto a slide;
+   - **audio rows stack**, for crossfading music and sound over it. The
+     mix already sums, live and in export;
+   - **a show from one picture**, which the model already allows.
+3. **The Library pane** (the sidebar renamed: "sidebar" named a position,
+   not a thing).
+4. **Leaving the built-in split views** for our own: first as a leaning,
+   then as **PaneKit** (`spec/panekit.md`). Its form grew out of Jason's
+   points in turn:
+   - Finder's shape, two panes and one divider, nested;
+   - reusable in any Mac app;
+   - pop-out built in;
+   - layout transactions instead of staging.
+5. **Jason's first-test work order** (`2026-09-24-work-order.md`, written
+   with App Claude): folded into the plan, `spec/bgtools.md` and the
+   queue. Its nine proposals were settled one by one. Two outcomes worth
+   remembering:
+   - the playhead stays **out of ⌘Z**, with its own Go Back (⌘[), so
+     A/B-ing isn't a fight with undo;
+   - Fill Range **always fits exactly**, and shows feedback instead of
+     greying choices out.
+6. **The queue reordered** (`spec/status.md`, "The order from here"):
+   PaneKit first, then things that share code, grouped so each area is
+   opened once.
+7. **PaneKit's first cut, written overnight, uncompiled.** It's a library,
+   14 layout tests and a test app with three shapes (Finder, Mail,
+   ShowTools). It moved into **its own package**, `PaneKit/`, so code
+   that had never compiled couldn't break ShowTools' build.
+
+## What went well
+
+- **The anatomy made the right-click conversation fast.** Eight stops,
+  mostly one-word answers, because every area had a name to ask about.
+- **Checking the code before claiming kept paying.** An audio clip has no
+  row, so stacking is a new field. The mix already sums. The app isn't
+  sandboxed, so Photos needs no paid account. `DefaultLayout` had already
+  captured a layout by hand. BGTools already had the six pillars.
+- **Two sessions on one repo worked:** a clean merge each time but one,
+  and that conflict (both editing the queue) kept both sides.
+- **Isolating uncompiled code** in its own package.
+
+## What didn't
+
+- **Context was lost twice.** A commit drawing the maps, made against
+  Jason's "hold off", appeared with no memory of it. Later, five answers
+  arrived for questions no longer in view. Both were handled by saying so
+  and asking, rather than guessing. The maps were kept once Jason saw
+  them.
+- **The work order's claim that the viewer and ruler menus weren't
+  settled** was out of date by the time it arrived. Every pointer was
+  checked against `main` before use, as it asked.
+- **A question that wasn't one:** asking whether the library panel and the
+  Slide Editor should "inherit" menus read as a test. It was a poor
+  question.
+- **The Mac session left the timeline's arrow keys unwired "waiting on a
+  decision"** that had already been made. Decisions need to be where
+  the builder looks: the conventions *and* the queue.
+
+## Lessons for the ops manual (added)
+
+- **Say when context is missing.** Answer from what's on disk and in git,
+  and ask for what isn't. Never map answers onto guessed questions.
+- **A decision the builder can't find isn't made.** Put it in the spec,
+  and in the queue item that uses it.
+- **Keep untested code where it can't break tested code:** its own
+  package, or at least its own target, until it compiles.
+- **Merge often** when two sessions share a repo, and read the other
+  session's changes before merging.
