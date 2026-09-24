@@ -384,15 +384,25 @@ Today they disagree on several of the "should match" items:
     way in, and a button in a 30-point row would be clutter.
   - *Not empty at all but unused* (a disclosure closed, a drawer with
     nothing in it yet): nothing to say.
-  The empty collection's message says how to fill it, with no button
-  (`MainView.swift`, `LibraryGridView.body`). The empty show says "No
-  slides yet", with no button (`ShowView.swift`, `EditSlidesView`). Only
-  the empty *library* has an Import… button. *Fix direction:* front and
-  centre in each empty state:
-  - an empty collection: **Import…** (into this collection) and **Add
-    from Library…**. The second opens the library panel once it exists,
-    and until then a picker like Place Image Here…'s.
-  - an empty show: **Add from Collection…** and **Import…**.
+  **The second tier's buttons built 2026-09-24:**
+  - an empty collection: **Import…** (into this collection, already
+    correct since the panel starts on the collection the sidebar's in)
+    and **Add from Library…** — a new `MultiItemPicker` sheet (same shape
+    as `LibraryPicker`, "Place Image Here…", but multi-select with an Add
+    button), showing every library file not already in the collection.
+    Replaces the library panel this was meant to open once one exists.
+  - an empty show (Edit Slides only — Edit Show's storyline wasn't in
+    scope): **Add from Collection…**, the same `MultiItemPicker` scoped
+    to the show's own collection's pictures, and **Import…**, a new
+    `runImportIntoShowPanel` that imports then appends straight to the
+    show (the existing `runImportPanel` imports into a *collection*, a
+    different target).
+  Checked with real clicks and keystrokes (one button click needed a
+  retry to land — the same synthetic-click flakiness noted elsewhere,
+  not a bug; `Return` on the picker's default-action Add button worked
+  every time): an empty collection picks up two files from the library,
+  an empty show picks up one from its collection, both without leaving
+  the window.
 
   **Two tiers of wording (Jason, 2026-09-24),** the same shape as the
   guided first run (`spec/first-run-brief.md`):
