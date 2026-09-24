@@ -11,8 +11,9 @@ Repo: `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 ## Where it stands
 
-**Everything planned is built.** Phases 1–5, Phase 3b, Phase 4 and video
-export. **279 tests** (267 core + 12 BGTools). **Library schema 12.**
+**Everything planned is built**, including Groups inside collections
+(below). Phases 1–5, Phase 3b, Phase 4 and video export. **305 tests**
+(293 core + 12 BGTools). **Library schema 13.**
 
 | Phase | State |
 |---|---|
@@ -22,18 +23,23 @@ export. **279 tests** (267 core + 12 BGTools). **Library schema 12.**
 | 2b Library manager | Built |
 | 2c The lane: transitions row + images row | Built |
 | 3 Music + timeline | All 7 steps built. Left: settle image stickiness |
-| 3b Find Similar | Built: Delete by context, Group/Show Similar, Keep One |
+| 3b Find Similar | Built: Delete by context, Find/Show Similar, Keep One, Keep as Group |
+| Groups inside collections | Built 2026-09-24, Core through UI (`spec/plan.md`) |
 | 4 Setlist export / import | Built, 4a–4d |
 | E Video export | Built, E1–E5. Own spec `spec/video-export.md`. Left: a listen |
 | 5 BGTools | Built, B1–B7. Own spec `spec/bgtools.md`. Left: Jason's hands-on pass; the Pan and Zoom cost; telling BGTools when a library moves |
 
 Every schema upgrade is additive and tested by opening a library of the
 version before (7 rows, 8 music, 9 markers, 10 editing state, 11 rhythm
-patterns, 12 their note length). Before an upgrade the database is copied
+patterns, 12 their note length, 13 groups). Before an upgrade the database is copied
 to `Library.sqlite.v<N>.bak`. Video export needed no schema change: a video
 slide's level line is slide settings, which are JSON.
 
-`~/Applications/ShowTools.app` is built and installed from HEAD.
+`~/Applications/ShowTools.app` is **one commit behind HEAD** (built
+2026-09-23; the Groups work above isn't installed there yet).
+`build/ShowTools.app` is current. BGTools' desktop extension is running
+from the installed copy, so reinstalling wasn't done without asking —
+say when to swap it in.
 
 **The real library was set aside 2026-09-24** (Jason's own call, mid this
 session): `~/Pictures/ShowTools Library.noindex` is now
@@ -96,15 +102,53 @@ preferences-domain rules).
      rows (C6, and the tile menu) needn't wait: build them in full.
      Items whose feature isn't built yet (Play without a show, Play on
      Desktop) go in greyed out, per Jason. The other menus still wait.
-5. **Groups inside collections: build right away (Jason, 2026-09-24).**
-   `spec/plan.md`, "Groups inside collections": decided in full, with a
-   proposed migration 13. Load `showtools-gotchas` first (migrations,
-   and the older-version test trap).
-6. **Batch 4: selection logic in Core, with tests.** ⇧-click replaces
-   the previous range; arrow-key steps given a column count (B3, E1,
-   B2, E2 in the audit; the settled rules are in `spec/conventions.md`
-   §1–2).
-7. **The PaneKit harness** (`spec/panekit.md`, "The order", step 1): a
+5. ~~**Groups inside collections**~~ — done 2026-09-24, Core through UI,
+   including nesting and cross-collection dragging added after the fact
+   on Jason's ask. 291 tests (was 279 before this item). Full story in
+   `spec/plan.md`, "Groups inside collections". Real dragging (group
+   onto group, onto its own collection, onto another) still wants
+   Jason's hands — built and reasoned about, not clicked.
+6. ~~**Batch 4: selection logic in Core, with tests**~~ — done 2026-09-24.
+   `GridSelection` (`Sources/ShowToolsCore/GridSelection.swift`): pure
+   functions over the caller's own `selected`/`anchor`/`base`/`cursor` —
+   `click`, `commandClick`, `shiftClick` (fixes B3 and E1: a ⇧-click
+   selects the range from the anchor, *replacing* the previous ⇧-range,
+   not adding to it), and `step` (the arrow-key index arithmetic for
+   B2/E2 — ± the column count for ↑/↓ in a grid, ±1 for a plain list;
+   not wired into either view yet, since B2 waits for the grid's keyboard
+   batch and E2 waits on Jason's ↑/↓-vs-←/→ decision). 14 new tests,
+   including B3's and E1's exact worked examples from the audit. Wired
+   into the Library grid's and the storyline's `click(_:)`, replacing
+   each one's own buggy `.formUnion` logic (only ever added) and, in the
+   storyline, an anchor that was wrongly derived from "the first selected
+   slide" each time rather than kept as its own state.
+   `swift test` (305, was 291) and `./make-app.sh` clean; smoke-launched
+   again, no crash. *Check* (per the plan): the tests pass; a real
+   ⇧-click in the grid and the storyline still wants Jason's hands.
+7. ~~**Batch 5: Menus**~~ (A2, F1–F4, G5) — done 2026-09-24. Edit ▸
+   Duplicate (⌘D) for slides in both modes (A2; not a lane image — no
+   such action exists yet, left for the right-click conversation). The
+   Show menu gained Play/Pause, Add Marker, Set Range In/Out (bare keys,
+   named in the title), Clear Range (⌥X) and Loop Playback (⌘L, a real
+   checkmarked `Toggle` now, not a hidden button) — all through one new
+   `editShowCommands` focused value that's absent (so they disable
+   themselves) outside Edit Show. The View menu gained Zoom In/Out
+   (⌘=/⌘−, `storylineZoom` turned out to be one global `@AppStorage` key
+   already, not per-window, so no focused value was needed), Zoom to Fit
+   (⇧Z), Snapping, Show Inspector (⌥⌘I, moved off the toolbar button,
+   which had the same shortcut twice) and Edit Slides/Edit Show (⌘1/⌘2,
+   also plain `@AppStorage`). Get Info (⌘I) now answers for a show's
+   slide selection too, not just the Library grid (F4). Show ▸ Play
+   starts at the selected slide, matching the toolbar (G5) — free once
+   A2/F4's selection focused value existed. Help ▸ Keyboard Shortcuts
+   replaces SwiftUI's "help isn't available" default (F3), listing the
+   bare-key commands that have nowhere else to show themselves.
+   `swift test` (305) and `./make-app.sh` clean; smoke-launched, no
+   crash. *Check* (per the plan): each item enabled at the right times,
+   typing in Search still types, Show ▸ Play starts at the selection —
+   all reasoned through, not clicked; wants Jason's hands, especially
+   the new Keyboard Shortcuts window and the moved ⌥⌘I/⌘1/⌘2 shortcuts.
+8. **The PaneKit harness** (`spec/panekit.md`, "The order", step 1): a
    standalone app in `tools/` with dummy content, checked on the Mac and
    felt by Jason.
 
@@ -164,6 +208,24 @@ and Flush presets from 2a.
 - **Context menus C1–C3** (Remove Image/Transition/Marker): build and
   test clean, but not confirmed by a real click — the storyline canvas
   resisted synthetic clicking this session.
+- **Groups in the Library pane** (built 2026-09-24): drag-to-add from the
+  grid and from Finder, nested folding, New Group naming, the delete
+  notice's wording, the browser's group filter, and Keep as Group. Also
+  new: **dragging a group onto another to nest it, onto its own
+  collection to un-nest it, and onto a different collection**, with the
+  "images will be added" notice and its suppression checkbox. All of it
+  only smoke-tested (launch, no crash), not clicked by a person.
+- **⇧-click in the Library grid and the storyline** (batch 4, built
+  2026-09-24): `GridSelection`'s logic is unit-tested against the audit's
+  own worked examples, but a real ⇧-click, ⇧-click, ⇧-click hasn't been
+  tried by hand in either place.
+- **The menus batch 5 built 2026-09-24**: the Show and View menu items,
+  Get Info from a slide selection, Show ▸ Play starting at the
+  selection, and Help ▸ Keyboard Shortcuts — all reasoned through and
+  compiled clean, but a menu can only really be checked by opening it.
+  Worth a particular look: the toolbar's Inspector button and ⌘1/⌘2 lost
+  or gained their shortcuts moving to the View menu, so it's worth
+  confirming nothing doubled up or went silent.
 - **The Rhythm tool** (step 7): the panel's look (the space around the
   form, the notation's size: a staff space is 5.5 pt), Listen by ear on
   real music, Space stopping Listen, and whether 145 BPM is right for
@@ -274,7 +336,7 @@ resets every app's login items, so they are left alone.
 ## Quick start
 
 ```sh
-swift test                                  # 267 core + 12 BGTools tests
+swift test                                  # 293 core + 12 BGTools tests
 ./make-app.sh                               # → build/ShowTools.app
 tools/make-test-library.sh <scratch>/STTest # scratch library + generated media
 open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools.app

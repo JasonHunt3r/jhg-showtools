@@ -14,6 +14,9 @@ struct MainView: View {
     @State private var confirmDeleteCollection: MediaCollection?
     /// Collections folded shut in the sidebar (open by default).
     @State private var folded: Set<Int64> = []
+    /// Groups folded shut (their own id space, so a collection and a group
+    /// that happen to share a number don't fold together).
+    @State private var foldedGroups: Set<Int64> = []
     /// Renaming: what, and the name being typed.
     @State private var renaming: SidebarItem?
     @State private var draftName = ""
@@ -21,6 +24,10 @@ struct MainView: View {
     /// called "Untitled" unless someone clicked OK on that name.
     @State private var creatingCollection = false
     @State private var newCollectionName = ""
+    /// New Group, the same way: the collection (and parent group, if any)
+    /// it's made in, and the name being typed.
+    @State private var creatingGroup: (collectionID: Int64, parentID: Int64?)?
+    @State private var newGroupName = ""
 
     var body: some View {
         @Bindable var model = model
@@ -34,24 +41,19 @@ struct MainView: View {
                     .tag(SidebarItem.library)
 
                 // Library → Collection → Show, as Final Cut's Library → Event → Project.
+                // A collection's groups and its shows sit side by side, as
+                // siblings (Jason, 2026-09-24, "Groups inside collections").
                 Section("Collections") {
                     ForEach(model.collections) { c in
-                        DisclosureGroup(isExpanded: Binding(get: { !folded.contains(c.id) },
-                                                            set: { open in
-                                                                if open { folded.remove(c.id) } else { folded.insert(c.id) }
-                                                            })) {
-                            ForEach(model.shows.filter { $0.collectionID == c.id }) { show in
-                                showRow(show)
-                            }
+                        DisclosureGroup(isExpanded: foldBinding(c.id, in: $folded)) {
+                            collectionChildren(c)
                         } label: {
                             collectionRow(c)
                         }
                     }
                     // Shows in no collection shouldn't exist after the
                     // upgrade, but if one does, it still has a place.
-                    ForEach(model.shows.filter { s in !model.collections.contains { $0.id == s.collectionID } }) { show in
-                        showRow(show)
-                    }
+                    ForEach(orphanShows) { show in showRow(show) }
                 }
             }
             // The max is the point: without one, a double-click on the
@@ -73,6 +75,7 @@ struct MainView: View {
                 switch model.sidebar {
                 case .show(let id): if let s = model.show(id) { confirmDelete = s }
                 case .collection(let id): if let c = model.collection(id) { confirmDeleteCollection = c }
+                case .group(let id): if let g = model.group(id) { deleteGroupAsking(g) }
                 default: break
                 }
             }
@@ -103,6 +106,8 @@ struct MainView: View {
                     ShowView(showID: id)
                 case .collection(let id) where model.collection(id) != nil:
                     LibraryGridView(collectionID: id)
+                case .group(let id) where model.group(id) != nil:
+                    LibraryGridView(collectionID: model.group(id)?.collectionID, groupID: id)
                 default:
                     LibraryGridView()
                 }
@@ -121,6 +126,7 @@ struct MainView: View {
                 switch model.sidebar {
                 case .show(let id): guard let s = model.show(id) else { return false }; confirmDelete = s
                 case .collection(let id): guard let c = model.collection(id) else { return false }; confirmDeleteCollection = c
+                case .group(let id): guard let g = model.group(id) else { return false }; deleteGroupAsking(g)
                 default: return false
                 }
                 return true
@@ -173,6 +179,7 @@ struct MainView: View {
                 let name = draftName.trimmingCharacters(in: .whitespaces)
                 switch renaming {
                 case .collection(let id): model.renameCollection(id, to: name, undo: undoManager)
+                case .group(let id): model.renameGroup(id, to: name, undo: undoManager)
                 case .show(let id): model.renameShow(id, to: name, undo: undoManager)
                 default: break
                 }
@@ -186,6 +193,15 @@ struct MainView: View {
                 let name = newCollectionName.trimmingCharacters(in: .whitespaces)
                 guard !name.isEmpty else { return }
                 model.newCollection(named: name)
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .alert("New Group", isPresented: Binding(get: { creatingGroup != nil }, set: { if !$0 { creatingGroup = nil } })) {
+            TextField("Name", text: $newGroupName)
+            Button("Create") {
+                let name = newGroupName.trimmingCharacters(in: .whitespaces)
+                guard !name.isEmpty, let target = creatingGroup else { return }
+                model.newGroup(named: name, collectionID: target.collectionID, parentID: target.parentID)
             }
             Button("Cancel", role: .cancel) {}
         }
@@ -219,8 +235,11 @@ struct MainView: View {
 
 extension MainView {
     private var renamingTitle: String {
-        if case .collection = renaming { return "Rename Collection" }
-        return "Rename Show"
+        switch renaming {
+        case .collection: "Rename Collection"
+        case .group: "Rename Group"
+        default: "Rename Show"
+        }
     }
 
     private func startRenaming(_ item: SidebarItem, current: String) {
@@ -233,25 +252,130 @@ extension MainView {
         creatingCollection = true
     }
 
+    private func startCreatingGroup(collectionID: Int64, parentID: Int64? = nil) {
+        let taken = model.groups.filter { $0.collectionID == collectionID && $0.parentID == parentID }.map(\.name)
+        newGroupName = model.nextName("Untitled Group", taken: taken)
+        creatingGroup = (collectionID, parentID)
+    }
+
+    /// Every group nested inside `id`, direct or not.
+    private func subgroupCount(of id: Int64) -> Int {
+        let children = model.groups.filter { $0.parentID == id }
+        return children.count + children.reduce(0) { $0 + subgroupCount(of: $1.id) }
+    }
+
+    private func deleteGroupAsking(_ g: MediaGroup) {
+        guard GroupDeleteNotice.confirm(name: g.name, subgroupCount: subgroupCount(of: g.id)) else { return }
+        model.deleteGroup(g.id, undo: undoManager)
+    }
+
+    /// A disclosure's open/closed state, kept in a `Set` of folded ids
+    /// (open by default) — its own function so the closures don't get
+    /// re-type-checked as part of a bigger SwiftUI expression each time.
+    private func foldBinding(_ id: Int64, in folded: Binding<Set<Int64>>) -> Binding<Bool> {
+        Binding(get: { !folded.wrappedValue.contains(id) },
+                set: { open in
+                    if open { folded.wrappedValue.remove(id) } else { folded.wrappedValue.insert(id) }
+                })
+    }
+
+    private var orphanShows: [Show] {
+        let collectionIDs = Set(model.collections.map(\.id))
+        return model.shows.filter { !collectionIDs.contains($0.collectionID ?? -1) }
+    }
+
+    /// A collection's groups and its shows, side by side, as siblings.
+    private func collectionChildren(_ c: MediaCollection) -> some View {
+        Group {
+            ForEach(model.topGroups(inCollection: c.id)) { g in groupRow(g) }
+            ForEach(model.shows.filter { $0.collectionID == c.id }) { show in showRow(show) }
+        }
+    }
+
     func collectionRow(_ c: MediaCollection) -> some View {
         Label(c.name, systemImage: "rectangle.stack")
             .badge(c.itemIDs.count)
             .tag(SidebarItem.collection(c.id))
             .contextMenu {
                 Button("New Show in “\(c.name)”") { model.newShow(in: c.id) }
+                Button("New Group in “\(c.name)”…") { startCreatingGroup(collectionID: c.id) }
                 Divider()
                 Button("Rename…") { startRenaming(.collection(c.id), current: c.name) }
                 Button("Delete Collection…") { confirmDeleteCollection = c }
             }
             // Dropping files on a collection puts them in it (imported first
-            // if they come from Finder or Photos): no question, that's the ask.
-            .onDrop(of: ItemDrag.accepted, isTargeted: nil) { providers in
+            // if they come from Finder or Photos): no question, that's the
+            // ask. Dropping a group here can't move it (a group's
+            // collection never changes) — its own collection, un-nest it to
+            // the top; a different one, add its files there, after asking.
+            .onDrop(of: ItemDrag.accepted + [GroupDrag.type], isTargeted: nil) { providers in
                 Task {
+                    if let gid = await GroupDrag.id(from: providers) { dropGroup(gid, onCollection: c); return }
                     let ids = await model.itemIDs(from: providers)
                     model.addToCollection(ids, c.id)
                 }
                 return true
             }
+    }
+
+    /// A group dropped on a collection row (see `collectionRow`'s `onDrop`).
+    private func dropGroup(_ groupID: Int64, onCollection c: MediaCollection) {
+        guard let g = model.group(groupID) else { return }
+        if g.collectionID == c.id {
+            model.moveGroup(g.id, toParent: nil, undo: undoManager)
+        } else if GroupToCollectionNotice.confirm(groupName: g.name, count: g.itemIDs.count, collection: c.name) {
+            model.addToCollection(g.itemIDs, c.id)
+        }
+    }
+
+    /// A group's own row, and — recursively — the groups nested inside it
+    /// (groups hold groups, like folders; plan, "Groups inside collections").
+    /// Its right-click menu is minimal on purpose: the full set is "to
+    /// settle with groups" (`spec/conventions.md` §3).
+    /// `AnyView`, not `some View`: a recursive function can't otherwise
+    /// define its own opaque return type in terms of itself.
+    func groupRow(_ g: MediaGroup) -> AnyView {
+        let children = model.groups.filter { $0.parentID == g.id }
+        let label = Label(g.name, systemImage: "folder")
+            .badge(g.itemIDs.count)
+            .tag(SidebarItem.group(g.id))
+            .contextMenu {
+                Button("New Group in “\(g.name)”…") { startCreatingGroup(collectionID: g.collectionID, parentID: g.id) }
+                Divider()
+                Button("Rename…") { startRenaming(.group(g.id), current: g.name) }
+                Button("Delete Group…") { deleteGroupAsking(g) }
+            }
+            // Draggable, so it can be dropped on another group to nest it
+            // (plan, "groups hold groups, like folders") or on a collection
+            // (see `collectionRow`).
+            .onDrag { GroupDrag.provider(g.id) }
+            // A file dropped here joins the group (the Library enforces the
+            // membership rule — a group's files must be in its collection,
+            // so anything not already there is silently left out). Another
+            // group dropped here nests it — refused (silently; the drop is
+            // still accepted visually) if that would make a group its own
+            // descendant, or cross collections.
+            .onDrop(of: ItemDrag.accepted + [GroupDrag.type], isTargeted: nil) { providers in
+                Task {
+                    if let dragged = await GroupDrag.id(from: providers) {
+                        guard dragged != g.id else { return }
+                        model.moveGroup(dragged, toParent: g.id, undo: undoManager)
+                        return
+                    }
+                    let ids = await model.itemIDs(from: providers)
+                    model.addToGroup(ids, g.id)
+                }
+                return true
+            }
+        if children.isEmpty {
+            return AnyView(label)
+        } else {
+            return AnyView(DisclosureGroup(isExpanded: foldBinding(g.id, in: $foldedGroups)) {
+                ForEach(children) { child in groupRow(child) }
+            } label: {
+                label
+            })
+        }
     }
 
     func showRow(_ show: Show) -> some View {
@@ -276,6 +400,56 @@ extension MainView {
                 }
                 return true
             }
+    }
+}
+
+/// New Group's naming alert, its own `ViewModifier` so its closures aren't
+/// type-checked as part of `LibraryGridView`'s already-large body.
+private struct GroupCreationAlert: ViewModifier {
+    @Binding var creatingGroup: (ids: [Int64], collectionID: Int64)?
+    @Binding var name: String
+    let model: AppModel
+
+    func body(content: Content) -> some View {
+        content.alert("New Group", isPresented: Binding(get: { creatingGroup != nil },
+                                                          set: { if !$0 { creatingGroup = nil } })) {
+            TextField("Name", text: $name)
+            Button("Create") {
+                let trimmed = name.trimmingCharacters(in: .whitespaces)
+                guard !trimmed.isEmpty, let target = creatingGroup else { return }
+                model.newGroup(named: trimmed, collectionID: target.collectionID, itemIDs: target.ids)
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+}
+
+/// Keep as Group with no collection open (plan, decided): explains that a
+/// group lives in a collection, offers to make one, then hands off to the
+/// group-naming step. Its own `ViewModifier`, same reason as the one above.
+private struct GroupedCollectionAlert: ViewModifier {
+    @Binding var creatingGroupedCollection: [Int64]?
+    @Binding var name: String
+    let model: AppModel
+    let startGroup: (_ ids: [Int64], _ collectionID: Int64) -> Void
+
+    func body(content: Content) -> some View {
+        content.alert("A Group Needs a Collection",
+                       isPresented: Binding(get: { creatingGroupedCollection != nil },
+                                            set: { if !$0 { creatingGroupedCollection = nil } })) {
+            TextField("Name", text: $name)
+            Button("Create") {
+                let trimmed = name.trimmingCharacters(in: .whitespaces)
+                guard !trimmed.isEmpty, let ids = creatingGroupedCollection else { return }
+                if let cid = model.newCollection(named: trimmed, itemIDs: ids, select: false) {
+                    startGroup(ids, cid)
+                }
+                creatingGroupedCollection = nil
+            }
+            Button("Cancel", role: .cancel) { creatingGroupedCollection = nil }
+        } message: {
+            Text("A group lives inside a collection, so this makes one to hold it first. The pictures stay in the library either way.")
+        }
     }
 }
 
@@ -323,6 +497,8 @@ struct ImportBanner: View {
 struct LibraryGridView: View {
     /// Nil shows the whole library.
     var collectionID: Int64? = nil
+    /// Set to filter to one group's files, inside `collectionID`.
+    var groupID: Int64? = nil
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
     @State private var selection: Set<Int64> = []
@@ -342,6 +518,13 @@ struct LibraryGridView: View {
     /// starts with, and the name being typed.
     @State private var creatingCollection: [Int64]?
     @State private var newCollectionName = ""
+    /// New Group from the grid's selection, the same way.
+    @State private var creatingGroup: (ids: [Int64], collectionID: Int64)?
+    @State private var newGroupName = ""
+    /// Keep as Group with no collection open (plan): the items waiting on
+    /// a collection to be made for them, and the name being typed.
+    @State private var creatingGroupedCollection: [Int64]?
+    @State private var newGroupedCollectionName = ""
     /// "Add from Library…" on an empty collection (audit H2).
     @State private var addingFromLibrary = false
 
@@ -379,9 +562,16 @@ struct LibraryGridView: View {
         }
     }
     @State private var anchor: Int64?
+    /// The selection at the moment `anchor` was last set by a plain or
+    /// ⌘-click, and where a ⇧-click or step last landed — both feed
+    /// `GridSelection`'s pure functions (batch 4, B3).
+    @State private var selectionBase: Set<Int64> = []
+    @State private var cursor: Int64?
     @State private var dropTargeted = false
     // Find Similar (plan, Phase 3b).
-    /// Group Similar: the grid shows look-alikes together, in groups.
+    /// Find Similar Images (was "Group Similar"; renamed 2026-09-24 so
+    /// "group" means only a `MediaGroup`): the grid shows look-alikes
+    /// together, in clusters.
     @State private var grouping = false
     /// Show Similar: this picture, then the ones like it, closest first.
     @State private var similarTo: Int64?
@@ -399,17 +589,29 @@ struct LibraryGridView: View {
     @AppStorage("gridTileSize") private var tileSize: Double = 150
 
     private var collection: MediaCollection? { collectionID.flatMap(model.collection) }
+    private var group: MediaGroup? { groupID.flatMap(model.group) }
+    /// `collectionID`/`groupID` together, as one `onChange` identity — two
+    /// separate `onChange`s tipped this view's body over the type-checker's
+    /// budget (measured).
+    private var navScope: String { "\(collectionID ?? -1)/\(groupID ?? -1)" }
+    private var navigationName: String {
+        if let g = group { return g.name }
+        if let c = collection { return c.name }
+        return "Library"
+    }
 
-    /// Everything in view before the bar's search and filters: the library,
-    /// or the collection in the order its files were added.
+    /// Everything in view before the bar's search and filters: a group's
+    /// files, or the collection's, or the library's, each in the order its
+    /// files were added.
     private var all: [MediaItem] {
+        if let g = group { return g.itemIDs.compactMap { model.itemsByID[$0] } }
         guard let c = collection else { return model.items }
         return c.itemIDs.compactMap { model.itemsByID[$0] }
     }
 
     private var similarActive: Bool { grouping || similarTo != nil }
 
-    /// The groups Group Similar shows, in the grid's order.
+    /// The clusters Find Similar Images shows, in the grid's order.
     private var similarGroups: [[MediaItem]] {
         guard grouping, let index else { return [] }
         let byID = Dictionary(filtered.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
@@ -513,7 +715,7 @@ struct LibraryGridView: View {
             }
             .buttonStyle(.borderless)
             .foregroundStyle(grouping ? Color.accentColor : .primary)
-            .help("Group Similar: look-alike pictures together")
+            .help("Find Similar Images: look-alike pictures together")
             if similarActive { similarControls }
 
             Spacer()
@@ -548,7 +750,15 @@ struct LibraryGridView: View {
 
     var body: some View {
         Group {
-            if let c = collection, visible.isEmpty, !similarActive {
+            if let g = group, visible.isEmpty, !similarActive {
+                ContentUnavailableView {
+                    Label("“\(g.name)” is empty", systemImage: "folder")
+                } description: {
+                    Text("Drag photos here from the collection's grid, or from Finder or Photos (they'll join the collection too).")
+                } actions: {
+                    Button("Import…") { runImportPanel(model) }
+                }
+            } else if let c = collection, visible.isEmpty, !similarActive {
                 ContentUnavailableView {
                     Label("“\(c.name)” is empty", systemImage: "rectangle.stack")
                 } description: {
@@ -575,10 +785,11 @@ struct LibraryGridView: View {
             }
         }
         .onDrop(of: droppableTypes, isTargeted: $dropTargeted) { providers in
-            let cid = collectionID
+            let cid = collectionID, gid = groupID
             Task {
                 let ids = await model.importProviders(providers)
                 if let cid { model.addToCollection(ids, cid) }
+                if let gid { model.addToGroup(ids, gid) }
             }
             return true
         }
@@ -587,9 +798,9 @@ struct LibraryGridView: View {
                 RoundedRectangle(cornerRadius: 8).strokeBorder(Color.accentColor, lineWidth: 3).padding(4)
             }
         }
-        .navigationTitle(collection?.name ?? "Library")
+        .navigationTitle(navigationName)
         .navigationSubtitle(selection.isEmpty ? "\(visible.count) items" : "\(selection.count) selected")
-        .onChange(of: collectionID) { selection = []; anchor = nil; similarTo = nil }
+        .onChange(of: navScope) { selection = []; anchor = nil; selectionBase = []; cursor = nil; similarTo = nil }
         // Fingerprints for what's in view, worked out once each.
         .task(id: similarActive ? comparable.map(\.id) : []) {
             guard similarActive else { return }
@@ -632,12 +843,14 @@ struct LibraryGridView: View {
             if event.keyCode == 0, event.plainModifiers == [.command] {
                 guard !visible.isEmpty else { return false }
                 selection = Set(visible.map(\.id))
+                selectionBase = selection
                 return true
             }
             guard event.keyCode == 51 || event.keyCode == 117, !selection.isEmpty else { return false }
             switch event.plainModifiers {
             case []:
-                if let cid = collectionID { removeFromCollection(orderedSelection, cid) }
+                if let gid = groupID { removeFromGroup(orderedSelection, gid) }
+                else if let cid = collectionID { removeFromCollection(orderedSelection, cid) }
                 else { requestDelete(orderedSelection, confirm: true) }
             case [.command]:
                 requestDelete(orderedSelection, confirm: collectionID != nil)
@@ -683,6 +896,10 @@ struct LibraryGridView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
+        .modifier(GroupCreationAlert(creatingGroup: $creatingGroup, name: $newGroupName, model: model))
+        .modifier(GroupedCollectionAlert(creatingGroupedCollection: $creatingGroupedCollection,
+                                         name: $newGroupedCollectionName, model: model,
+                                         startGroup: startCreatingGroup(with:collectionID:)))
         .focusedSceneValue(\.librarySelectionCount, selection.count)
         .focusedSceneValue(\.requestLibraryRename, {
             guard !orderedSelection.isEmpty else { return }
@@ -724,6 +941,12 @@ struct LibraryGridView: View {
         selection.subtract(ids)
     }
 
+    private func removeFromGroup(_ ids: [Int64], _ gid: Int64) {
+        guard !ids.isEmpty else { return }
+        model.removeFromGroup(ids, gid, undo: undoManager)
+        selection.subtract(ids)
+    }
+
     /// Delete asks first; ⌘Delete (above) skips straight to it.
     private func requestDelete(_ ids: [Int64], confirm: Bool) {
         guard !ids.isEmpty else { return }
@@ -759,6 +982,24 @@ struct LibraryGridView: View {
                                               + (collectionID == nil ? "go to the Trash" : "leave this collection"))
                                         .accessibilityLabel("Keep One of group \(n + 1)")
                                 }
+                                // The Find Similar Images set header's menu
+                                // (settled, spec/conventions.md §3): Select
+                                // Group · Keep One…, Keep as Group · New Show
+                                // from Group…, Add Group to Collection.
+                                .contextMenu {
+                                    Button("Select Group") { selection = Set(group.map(\.id)) }
+                                    Divider()
+                                    Button("Keep One…") { keepGroup = KeepGroup(items: group) }
+                                    Button("Keep as Group") { keepAsGroup(group) }
+                                    Divider()
+                                    Button("New Show from Group…") { model.newShow(itemIDs: group.map(\.id), in: collectionID) }
+                                    Menu("Add Group to Collection") {
+                                        ForEach(model.collections) { c in
+                                            Button(c.name) { model.addToCollection(group.map(\.id), c.id) }
+                                                .disabled(c.id == collectionID)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -783,7 +1024,9 @@ struct LibraryGridView: View {
         .focusEffectDisabled()
         // Edit ▸ Delete, when the grid has the keyboard.
         .onDeleteCommand {
-            if let cid = collectionID {
+            if let gid = groupID {
+                removeFromGroup(orderedSelection, gid)
+            } else if let cid = collectionID {
                 removeFromCollection(orderedSelection, cid)
             } else {
                 requestDelete(orderedSelection, confirm: true)
@@ -835,9 +1078,14 @@ struct LibraryGridView: View {
                 startCreatingCollection(with: ids)
             }
             addToCollectionMenu(ids: ids)
+            addToGroupMenu(ids: ids)
             if let cid = collectionID {
                 Button("Remove from Collection") { removeFromCollection(ids, cid) }
                 .help("Take them out of this collection. They stay in the library and in any show that uses them.")
+            }
+            if let gid = groupID {
+                Button("Remove from Group") { removeFromGroup(ids, gid) }
+                    .help("Take them out of this group. They stay in the collection.")
             }
             Divider()
             Button("Show in Finder") {
@@ -875,25 +1123,66 @@ struct LibraryGridView: View {
         }
     }
 
+    /// Only offered inside a collection — a group's files must be in its
+    /// collection (plan), so there's nowhere else to put them.
+    @ViewBuilder private func addToGroupMenu(ids: [Int64]) -> some View {
+        if let cid = collectionID {
+            Menu("Add to Group") {
+                Button("New Group…") { startCreatingGroup(with: ids, collectionID: cid) }
+                let inCollection = model.groups(inCollection: cid)
+                if !inCollection.isEmpty { Divider() }
+                ForEach(inCollection) { g in
+                    Button(g.name) { model.addToGroup(ids, g.id) }
+                        .disabled(g.id == groupID)
+                }
+            }
+        }
+    }
+
+    private func startCreatingGroup(with ids: [Int64], collectionID: Int64) {
+        let taken = model.groups(inCollection: collectionID).map(\.name)
+        newGroupName = model.nextName("Untitled Group", taken: taken)
+        creatingGroup = (ids, collectionID)
+    }
+
+    /// Find Similar Images' Keep as Group (plan, decided): in a collection,
+    /// goes straight to naming the group. In the Library view — no
+    /// collection open — a group needs one first, so a dialog offers to
+    /// make one (suggested name "Grouped Collection"), then the usual
+    /// group-naming step follows.
+    private func keepAsGroup(_ items: [MediaItem]) {
+        let ids = items.map(\.id)
+        if let cid = collectionID {
+            startCreatingGroup(with: ids, collectionID: cid)
+        } else {
+            newGroupedCollectionName = model.nextName("Grouped Collection", taken: model.collections.map(\.name))
+            creatingGroupedCollection = ids
+        }
+    }
+
     /// Selection in grid order, so a new show follows the grid.
     private var orderedSelection: [Int64] {
         visible.map(\.id).filter(selection.contains)
     }
 
-    /// Finder-style clicking: plain replaces, ⌘ toggles, ⇧ extends a range.
+    /// Finder-style clicking: plain replaces, ⌘ toggles, ⇧ selects the
+    /// range from the anchor, replacing the previous ⇧-range rather than
+    /// adding to it (batch 4, B3; `GridSelection`, unit-tested there).
     private func click(_ id: Int64) {
         let mods = NSEvent.modifierFlags
+        let items = visible.map(\.id)
+        let r: GridSelection.Result<Int64>
         if mods.contains(.command) {
-            if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
-            anchor = id
-        } else if mods.contains(.shift), let a = anchor,
-                  let i = visible.firstIndex(where: { $0.id == a }),
-                  let j = visible.firstIndex(where: { $0.id == id }) {
-            selection.formUnion(visible[min(i, j)...max(i, j)].map(\.id))
+            r = GridSelection.commandClick(id, selected: selection)
+        } else if mods.contains(.shift) {
+            r = GridSelection.shiftClick(id, anchor: anchor, base: selectionBase, in: items)
         } else {
-            selection = [id]
-            anchor = id
+            r = GridSelection.click(id)
         }
+        selection = r.selected
+        anchor = r.anchor
+        selectionBase = r.base
+        cursor = r.cursor
         focused = true
     }
 }

@@ -49,7 +49,7 @@ itself. Names follow `spec/anatomy.md`.
 |---|---|---|---|
 | **Click** | Select this, and only this. Takes the keyboard to that area | — | Built (grid, timeline, lists) |
 | **⌘-click** | Add to or remove from the selection | — | Built in the grid, lists and the slides row. **Settled for lane images and audio clips too** (Jason, 2026-09-24; E4): today they select one at a time |
-| **⇧-click** | Select the range from the anchor (the last plain click or ⌘-click) to here, *replacing* the previous ⇧-range | — | **Settled** (Jason, 2026-09-24). Today the grid and the timeline only ever add to it (B3, E1). Lists already do it right |
+| **⇧-click** | Select the range from the anchor (the last plain click or ⌘-click) to here, *replacing* the previous ⇧-range | — | **Built 2026-09-24** (batch 4) in the grid and the storyline, through `GridSelection` (unit-tested); Lists already did it right |
 | **Click on empty space** | Deselect all | — | Built in the grid |
 | **Drag on empty space** | Rubber-band selection; ⌘ or ⇧ adds | The timeline: a drag on the ruler scrubs instead | **Settled** (Jason, 2026-09-24; B4) |
 | **Double-click** | **Go into it:** open the thing one level deeper | See "Double-click" below | **Settled** as the meaning (Jason, 2026-09-24); some targets are still to be tried |

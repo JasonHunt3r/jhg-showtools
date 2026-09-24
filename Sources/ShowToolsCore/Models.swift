@@ -406,6 +406,10 @@ public struct ShowEditorState: Codable, Hashable, Sendable {
     public var rangeLines = true
     public var rangeInLine = true
     public var rangeOutLine = true
+    /// The browser's group filter (plan, "Groups inside collections"): view
+    /// state, not part of the show itself, so it rides along with the rest
+    /// of the editor state rather than its own schema column.
+    public var browserGroupID: Int64?
 
     public init() {}
 
@@ -423,6 +427,7 @@ public struct ShowEditorState: Codable, Hashable, Sendable {
         rangeLines = get(.rangeLines, true)
         rangeInLine = get(.rangeInLine, true)
         rangeOutLine = get(.rangeOutLine, true)
+        browserGroupID = (try? c.decodeIfPresent(Int64.self, forKey: .browserGroupID)) ?? nil
     }
 }
 
@@ -489,6 +494,28 @@ public struct MediaCollection: Identifiable, Hashable, Sendable {
 
     public init(id: Int64, name: String, itemIDs: [Int64] = []) {
         self.id = id
+        self.name = name
+        self.itemIDs = itemIDs
+    }
+}
+
+/// A sub-folder of a collection's files — a book cart, more temporary than
+/// a collection (plan, "Groups inside collections", Jason 2026-09-24).
+/// Deleting a group leaves its files in the collection. A group's files
+/// must be in its collection; a file can be in several groups. Groups
+/// nest, like folders (`parentID` nil at the top).
+public struct MediaGroup: Identifiable, Hashable, Sendable {
+    public var id: Int64
+    public var collectionID: Int64
+    public var parentID: Int64?
+    public var name: String
+    /// In the order they were added.
+    public var itemIDs: [Int64]
+
+    public init(id: Int64, collectionID: Int64, parentID: Int64? = nil, name: String, itemIDs: [Int64] = []) {
+        self.id = id
+        self.collectionID = collectionID
+        self.parentID = parentID
         self.name = name
         self.itemIDs = itemIDs
     }

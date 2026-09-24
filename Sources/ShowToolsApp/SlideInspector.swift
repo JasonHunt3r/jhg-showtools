@@ -718,6 +718,33 @@ enum SlideRemovalNotice {
     }
 }
 
+/// The notice before a group is deleted (plan, "Groups inside collections",
+/// Jason 2026-09-24): its sub-groups go with it, as in Finder, but the
+/// files always stay in the collection. Same suppression convention as
+/// `SlideRemovalNotice`.
+@MainActor
+enum GroupDeleteNotice {
+    static let suppressKey = "suppressGroupDeleteNotice"
+
+    /// True to go ahead.
+    static func confirm(name: String, subgroupCount: Int) -> Bool {
+        if UserDefaults.standard.bool(forKey: suppressKey) { return true }
+        let alert = NSAlert()
+        alert.messageText = "Delete “\(name)”?"
+        alert.informativeText = (subgroupCount > 0
+            ? "This also deletes \(subgroupCount) group\(subgroupCount == 1 ? "" : "s") inside it. "
+            : "") + "The files stay in the collection. You can undo this."
+        alert.addButton(withTitle: "Delete Group")
+        alert.addButton(withTitle: "Cancel")
+        alert.showsSuppressionButton = true
+        let ok = alert.runModal() == .alertFirstButtonReturn
+        if ok, alert.suppressionButton?.state == .on {
+            UserDefaults.standard.set(true, forKey: suppressKey)
+        }
+        return ok
+    }
+}
+
 // MARK: - Focus: which show the menu commands act on
 
 struct ActiveShowKey: FocusedValueKey { typealias Value = Int64 }
@@ -756,5 +783,54 @@ extension FocusedValues {
     var requestNewCollection: (() -> Void)? {
         get { self[NewCollectionKey.self] }
         set { self[NewCollectionKey.self] = newValue }
+    }
+}
+
+// MARK: - Focus: the open show's slide selection, for Edit ▸ Duplicate (A2),
+// Get Info (F4) and Show ▸ Play starting at the selection (G5). Published by
+// `ShowView`, which holds `selection` for both modes alike.
+
+struct ActiveSlideSelectionKey: FocusedValueKey { typealias Value = Set<Int64> }
+struct DuplicateSlidesKey: FocusedValueKey { typealias Value = () -> Void }
+struct SlideGetInfoKey: FocusedValueKey { typealias Value = () -> Void }
+
+extension FocusedValues {
+    var activeSlideSelection: Set<Int64>? {
+        get { self[ActiveSlideSelectionKey.self] }
+        set { self[ActiveSlideSelectionKey.self] = newValue }
+    }
+    var requestDuplicateSlides: (() -> Void)? {
+        get { self[DuplicateSlidesKey.self] }
+        set { self[DuplicateSlidesKey.self] = newValue }
+    }
+    var requestSlideGetInfo: (() -> Void)? {
+        get { self[SlideGetInfoKey.self] }
+        set { self[SlideGetInfoKey.self] = newValue }
+    }
+}
+
+// MARK: - Focus: Edit Show's transport and timeline commands (F1), for the
+// Show and View menus — bundled in one value, since they're all published
+// together from `EditShowView` and only make sense there (timeline-only;
+// absent, so their menu items disable themselves, in Edit Slides — see
+// spec/hig-audit.md, "G. Edit Slides vs Edit Show").
+
+struct EditShowCommandsValue {
+    var togglePlay: () -> Void
+    var addMarker: () -> Void
+    var setRangeIn: () -> Void
+    var setRangeOut: () -> Void
+    var clearRange: () -> Void
+    var toggleLoop: () -> Void
+    var loopOn: Bool
+    var zoomToFit: () -> Void
+}
+
+struct EditShowCommandsKey: FocusedValueKey { typealias Value = EditShowCommandsValue }
+
+extension FocusedValues {
+    var editShowCommands: EditShowCommandsValue? {
+        get { self[EditShowCommandsKey.self] }
+        set { self[EditShowCommandsKey.self] = newValue }
     }
 }

@@ -157,30 +157,25 @@ struct EditShowView: View {
         pps = min(max(Double(visibleWidth - StorylineView.inset * 2 - 40) / timeline.duration, 2), 400)
     }
 
-    /// Keyboard shortcuts: Final Cut's J/K/L, space, ⇧Z and zoom, and its
-    /// M (marker), I and O (range), ⌥X (clear the range), N (snapping) and
-    /// ⌘L (loop playback).
-    ///
-    /// The single keys aren't `.keyboardShortcut`s: those become window key
-    /// equivalents, which AppKit offers before the focused text field, so
-    /// typing "j" or a space into Search would shuttle or play instead
-    /// (audit M4). `SingleKeys` lets them through to any text being edited.
+    /// Keyboard shortcuts: Final Cut's J/K/L, space, and its M (marker), I
+    /// and O (range), N (snapping) — bare keys, so `SingleKeys` handles
+    /// them (never `.keyboardShortcut`, which would become a window key
+    /// equivalent AppKit offers before the focused text field, stealing
+    /// "j" or a space out of Search — audit M4). ⌘L (loop), ⌘=/⌘− (zoom),
+    /// ⌥X (clear range) and ⇧Z (fit) all need a modifier, so they're safe
+    /// as real menu shortcuts instead (F1, batch 5) — `editShowCommands`,
+    /// below, publishes the actions the Show and View menus call.
     private func shortcuts(_ engine: PlaybackEngine) -> some View {
         ZStack {
-            Button("") { pps = min(pps * 1.5, 400) }.keyboardShortcut("=", modifiers: .command)
-            Button("") { pps = max(pps / 1.5, 2) }.keyboardShortcut("-", modifiers: .command)
-            Button("") { engine.updateEditor { $0.loopPlayback.toggle() } }.keyboardShortcut("l", modifiers: .command)
             SingleKeys { event in
                 switch (event.keyCode, event.charactersIgnoringModifiers?.lowercased(), event.plainModifiers) {
                 case (49, _, []): engine.togglePlay()                  // space
                 case (_, "j", []): engine.shuttle(-1)
                 case (_, "k", []): engine.shuttle(0)
                 case (_, "l", []): engine.shuttle(1)
-                case (_, "z", [.shift]): fitStoryline()
                 case (_, "m", []): addMarker(engine)
                 case (_, "i", []): engine.setRangeIn()
                 case (_, "o", []): engine.setRangeOut()
-                case (_, "x", [.option]): engine.clearRange()
                 case (_, "n", []): snapping.toggle()
                 default: return false
                 }
@@ -193,6 +188,15 @@ struct EditShowView: View {
             Color.clear.onAppear { visibleWidth = g.size.width }
                 .onChange(of: g.size.width) { _, w in visibleWidth = w }
         })
+        .focusedSceneValue(\.editShowCommands, EditShowCommandsValue(
+            togglePlay: { engine.togglePlay() },
+            addMarker: { addMarker(engine) },
+            setRangeIn: { engine.setRangeIn() },
+            setRangeOut: { engine.setRangeOut() },
+            clearRange: { engine.clearRange() },
+            toggleLoop: { engine.updateEditor { $0.loopPlayback.toggle() } },
+            loopOn: show.editor.loopPlayback,
+            zoomToFit: fitStoryline))
     }
 }
 

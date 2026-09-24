@@ -857,7 +857,7 @@ underneath stays where it is. Related to the guided first run below, but
 not the same thing: that teaches the app as it is, this changes what you
 meet first. **To be designed with Jason.**
 
-### Groups inside collections (Jason, 2026-09-24) — Planned, to build right away
+### Groups inside collections (Jason, 2026-09-24) — Built 2026-09-24, Core through UI
 
 A collection gets **groups**: sub-folders of its files, so a big
 collection can be organised without splitting it into several
@@ -928,6 +928,118 @@ the code):
   Collection** suggested as its name. After that, the usual naming step
   for the group follows. (In a collection, the group simply goes in the
   collection being viewed.)
+
+**Built 2026-09-24 (Core):** migration 13 (`groups`, `group_items`),
+`MediaGroup`, and on `Library`: `allGroups`, `createGroup`, `renameGroup`,
+`deleteGroup`, `addItems(_:toGroup:)` (enforces the membership rule at the
+SQL level — a file not in the group's collection is silently left out),
+`removeItems(_:fromGroup:)` / `restoreItems(_:toGroup:)` for undo,
+`snapshotGroupSubtree`/`restoreGroupSubtree` for deleting a group (its
+whole nested subtree, root first) and undoing that. `removeItems(_:fromCollection:)`
+now also takes a file out of that collection's groups in the same
+transaction and returns both (`CollectionRemoval`), so undo puts both
+back (`restoreItems(_:toCollection:)` and the new
+`restoreGroupMemberships`) — this changed its return type, so
+`AppModel.removeFromCollection` and the tests were updated to match.
+`CollectionSnapshot`/`restoreCollection` now carry a collection's groups
+too, so deleting and undeleting a collection takes them with it. 267 + 12
+core tests → **288** (7 new group tests + 2 from the return-type change's
+knock-on).
+
+**Built 2026-09-24 (Library pane UI):** a collection's groups and its
+shows, side by side as siblings, each `DisclosureGroup` open by default;
+nested groups disclose recursively (`groupRow` returns `AnyView` — a
+recursive function can't define its own opaque `some View` in terms of
+itself). New Group from a collection's or a group's context menu, or
+from the grid's selection (`Add to Group ▸`, alongside `Add to
+Collection ▸`); named before it's made, like New Collection (H1).
+Rename…, and Delete Group… through `GroupDeleteNotice`
+(`SlideInspector.swift`) — an `NSAlert` with the subgroup count, "the
+files stay in the collection," and the suppression checkbox Jason asked
+for, same convention as `SlideRemovalNotice`. A group's row accepts a
+drop (adds to the group; the Library enforces the membership rule).
+Selecting a group in the pane filters `LibraryGridView` to its files
+(`groupID`, alongside `collectionID`); Delete there takes files out of
+the group without asking (as Remove from Collection); ⌘Delete still
+moves the files themselves to the Trash. **A group's own right-click
+menu is deliberately minimal** (New Group in…, Rename…, Delete Group…)
+— the fuller one is still "to settle with groups"
+(`spec/conventions.md` §3), so nothing beyond what's unambiguous was
+added.
+
+*A SwiftUI type-checker trap, hit repeatedly while building this:* once
+`MainView`'s body passed a certain size, the compiler failed with "unable
+to type-check this expression in reasonable time" — not on the new code
+itself, but on whichever nearby line pushed the whole chained-modifier
+expression over its budget, meaning the fix (extracting a sub-expression
+into its own function, computed property, or `ViewModifier`) had to be
+applied five times, each time moving the error to a new line, before the
+file compiled again. `GroupCreationAlert` is a `ViewModifier` for exactly
+this reason — its own closures type-check separately from the rest of
+`LibraryGridView`'s body. Worth remembering before adding much more to
+either view's body: extract early rather than inline.
+
+**Built 2026-09-24 (the browser filter and Find Similar Images):** the
+Edit Show browser's title gets a group filter drop-down ("All Files" or
+one of the collection's groups; hidden when the collection has none),
+restricting both the "In this show" and "Not in this show" sections to
+the group's members. The choice lives in `ShowEditorState.
+browserGroupID` — new field, additive decode like every other field in
+that struct — ignored if it names a group from a different collection
+than the show now has (its own collection changed since it was set,
+rather than crashing or showing the wrong group). Set through
+`engine.updateEditor`, so — like the range, loop and line toggles it
+sits beside — it's saved but never an undo step.
+
+The name clash is fully resolved: "Group Similar" is "**Find Similar
+Images**" everywhere user-facing (the toolbar button's tooltip; doc
+comments updated so "group" means only a `MediaGroup` in this file).
+Its set header carries the settled context menu in full — Select Group,
+Keep One… (already built), **Keep as Group**, New Show from Group…, Add
+Group to Collection — added alongside the existing inline Keep One…
+button rather than replacing it. Keep as Group goes straight to naming
+the group when a collection is open; with none open (the Library view)
+a new `GroupedCollectionAlert` walks through Jason's decided flow —
+explain, offer "Grouped Collection" as a name, create it, then the
+ordinary New Group naming step. Both new alerts are their own
+`ViewModifier`s (`GroupCreationAlert`, `GroupedCollectionAlert`) for the
+type-checker reason above.
+
+**Groups inside collections is now fully built**, Core through UI, matching
+everything Jason decided 2026-09-24.
+
+**Built 2026-09-24 (nesting by drag, and dragging into another
+collection):** `Library.moveGroup(id:toParent:)` — nests a group inside
+another, or (nil) back to the top; both stay in the same collection (a
+group's `collection_id` never changes). Refuses, by throwing, a move
+that would make a group its own descendant (walks up from the wanted
+parent checking for the group itself) or that crosses collections.
+`AppModel.moveGroup` wraps it with undo, like `renameGroup`; the UI
+catches the thrown refusal and does nothing rather than surface it —
+the drop shouldn't have been offered in the first place if it wasn't
+going to work, so there's nothing to tell the user beyond the drop
+simply not doing anything.
+
+A group's row is now draggable (`GroupDrag`, `CollectionAdd.swift`, the
+same pattern as `ItemDrag` but carrying one group id) and accepts drops
+of both kinds: a file joins the group as before, another group nests
+inside it. Dropped on a collection row instead: its own collection,
+the drop un-nests it to the top (Finder's "drag a folder out to the
+window" move, no confirmation — nothing crosses collections); a
+different collection, **the group can't move there, so this adds the
+group's own files to that collection instead**, after asking
+(`GroupToCollectionNotice`, `CollectionAdd.swift`, the same
+suppression convention as `CollectionAddNotice` and
+`GroupDeleteNotice` — exactly Jason's ask, 2026-09-24: "if the latter,
+dialog with a don't-show-again option saying the images in this group
+will be added to the destination collection").
+
+Three new Core tests (nest and un-nest; refuses a cycle at every depth;
+refuses a different collection) — 279 core, 291 total (was 288).
+`swift test` and `./make-app.sh` clean; smoke-launched again, no crash.
+Real dragging (a group onto a group, onto its own collection, onto
+another) still wants Jason's hands — this was built and reasoned about,
+not clicked.
 
 ### Later
 - ~~Video export~~ — **BUILT 2026-09-22**, E1–E5, through the hook above

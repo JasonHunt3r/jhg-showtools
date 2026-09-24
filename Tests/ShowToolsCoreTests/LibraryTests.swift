@@ -249,7 +249,7 @@ extension LibraryTests {
         }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("DROP TABLE rhythm_patterns; ALTER TABLE shows DROP COLUMN editor; ALTER TABLE shows DROP COLUMN markers; ALTER TABLE shows DROP COLUMN music; ALTER TABLE shows DROP COLUMN rows; PRAGMA user_version = 6;")
+            try db.exec("DROP TABLE group_items; DROP TABLE groups; DROP TABLE rhythm_patterns; ALTER TABLE shows DROP COLUMN editor; ALTER TABLE shows DROP COLUMN markers; ALTER TABLE shows DROP COLUMN music; ALTER TABLE shows DROP COLUMN rows; PRAGMA user_version = 6;")
         }
         let lib = try Library(root: root)
         var show = try XCTUnwrap(lib.allShows().first)
@@ -265,7 +265,7 @@ extension LibraryTests {
         do { _ = try Library(root: root) }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("DROP TABLE rhythm_patterns; PRAGMA user_version = 10;")
+            try db.exec("DROP TABLE group_items; DROP TABLE groups; DROP TABLE rhythm_patterns; PRAGMA user_version = 10;")
         }
         let lib = try Library(root: root)
         XCTAssertEqual(try lib.allRhythmPatterns(), [])
@@ -280,7 +280,7 @@ extension LibraryTests {
         }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("ALTER TABLE rhythm_patterns DROP COLUMN beats_per_quarter; PRAGMA user_version = 11;")
+            try db.exec("DROP TABLE group_items; DROP TABLE groups; ALTER TABLE rhythm_patterns DROP COLUMN beats_per_quarter; PRAGMA user_version = 11;")
         }
         let lib = try Library(root: root)
         XCTAssertEqual(try lib.allRhythmPatterns().map(\.pattern.text), ["h q q"])
@@ -649,7 +649,7 @@ extension LibraryTests {
         for id in ids { try lib.addItems([id], toCollection: c.id); usleep(2000) }
         let removed = try lib.removeItems([ids[0], ids[2]], fromCollection: c.id)
         XCTAssertEqual(try lib.allCollections().first { $0.id == c.id }?.itemIDs, [ids[1]])
-        try lib.restoreItems(removed, toCollection: c.id)
+        try lib.restoreItems(removed.items, toCollection: c.id)
         XCTAssertEqual(try lib.allCollections().first { $0.id == c.id }?.itemIDs, ids, "back in the order they were added")
     }
 
@@ -705,5 +705,184 @@ extension LibraryTests {
         try lib.restoreShow(snap)
         let back = try XCTUnwrap(lib.allShows().first)
         XCTAssertEqual(back.slides.map(\.itemID), [a], "b's slide is left out; its file is gone")
+    }
+}
+
+// MARK: - Groups inside collections (schema 13)
+
+extension LibraryTests {
+    func testAVersionTwelveLibraryGetsNoGroups() throws {
+        let root = dir.appendingPathComponent("Twelve.noindex")
+        do { _ = try Library(root: root) }
+        do {
+            let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
+            try db.exec("DROP TABLE group_items; DROP TABLE groups; PRAGMA user_version = 12;")
+        }
+        let lib = try Library(root: root)
+        XCTAssertEqual(try lib.allGroups(), [])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("Library.sqlite.v12.bak").path))
+        let c = try lib.allCollections()[0]
+        let g = try lib.createGroup(name: "Favourites", collectionID: c.id)
+        XCTAssertEqual(try lib.allGroups().map(\.name), ["Favourites"])
+        XCTAssertEqual(g.collectionID, c.id)
+    }
+
+    /// A group's files must be in its collection (plan): a file not in the
+    /// group's collection is silently left out. Groups nest, like folders.
+    func testGroupsHoldFilesFromTheirCollectionAndNest() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let a = try insertItem(lib, "a"), b = try insertItem(lib, "b"), outside = try insertItem(lib, "o")
+        let c = try lib.createCollection(name: "Wedding")
+        try lib.addItems([a, b], toCollection: c.id)
+
+        let cart = try lib.createGroup(name: "Book Cart", collectionID: c.id)
+        try lib.addItems([a, b, outside], toGroup: cart.id)
+        var g = try XCTUnwrap(lib.allGroups().first { $0.id == cart.id })
+        XCTAssertEqual(g.itemIDs, [a, b], "outside was never in the collection, so it's left out of the group too")
+
+        let inner = try lib.createGroup(name: "Best Shots", collectionID: c.id, parentID: cart.id)
+        XCTAssertEqual(try lib.allGroups().first { $0.id == inner.id }?.parentID, cart.id)
+
+        try lib.renameGroup(id: cart.id, to: "Book Cart 2026")
+        g = try XCTUnwrap(lib.allGroups().first { $0.id == cart.id })
+        XCTAssertEqual(g.name, "Book Cart 2026")
+    }
+
+    /// Dragging a group onto another nests it there; dragging it out again
+    /// (a nil parent) un-nests it to the top.
+    func testMovingAGroupNestsItAndCanUnnestIt() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let c = try lib.createCollection(name: "C")
+        let a = try lib.createGroup(name: "A", collectionID: c.id)
+        let b = try lib.createGroup(name: "B", collectionID: c.id)
+        XCTAssertNil(try lib.allGroups().first { $0.id == b.id }?.parentID)
+
+        try lib.moveGroup(id: b.id, toParent: a.id)
+        XCTAssertEqual(try lib.allGroups().first { $0.id == b.id }?.parentID, a.id)
+
+        try lib.moveGroup(id: b.id, toParent: nil)
+        XCTAssertNil(try lib.allGroups().first { $0.id == b.id }?.parentID, "back to the top")
+    }
+
+    /// A group can't be nested inside itself, or inside one of its own
+    /// descendants — that would make its own subtree unreachable.
+    func testMovingAGroupRefusesACycle() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let c = try lib.createCollection(name: "C")
+        let top = try lib.createGroup(name: "Top", collectionID: c.id)
+        let child = try lib.createGroup(name: "Child", collectionID: c.id, parentID: top.id)
+        let grandchild = try lib.createGroup(name: "Grandchild", collectionID: c.id, parentID: child.id)
+
+        XCTAssertThrowsError(try lib.moveGroup(id: top.id, toParent: top.id), "itself")
+        XCTAssertThrowsError(try lib.moveGroup(id: top.id, toParent: child.id), "its own child")
+        XCTAssertThrowsError(try lib.moveGroup(id: top.id, toParent: grandchild.id), "its own grandchild")
+        // Untouched by the refused moves.
+        XCTAssertNil(try lib.allGroups().first { $0.id == top.id }?.parentID)
+    }
+
+    /// A group only nests inside one in the same collection — its own
+    /// `collection_id` never changes.
+    func testMovingAGroupRefusesADifferentCollection() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let c1 = try lib.createCollection(name: "One"), c2 = try lib.createCollection(name: "Two")
+        let a = try lib.createGroup(name: "A", collectionID: c1.id)
+        let b = try lib.createGroup(name: "B", collectionID: c2.id)
+        XCTAssertThrowsError(try lib.moveGroup(id: a.id, toParent: b.id))
+        XCTAssertEqual(try lib.allGroups().first { $0.id == a.id }?.collectionID, c1.id, "unmoved")
+    }
+
+    func testRemovingFromAGroupCanBePutBackInOrder() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let ids = try (1...3).map { i -> Int64 in try insertItem(lib, "\(i)") }
+        let c = try lib.createCollection(name: "C")
+        try lib.addItems(ids, toCollection: c.id)
+        let g = try lib.createGroup(name: "G", collectionID: c.id)
+        for id in ids { try lib.addItems([id], toGroup: g.id); usleep(2000) }
+
+        let removed = try lib.removeItems([ids[0], ids[2]], fromGroup: g.id)
+        XCTAssertEqual(try lib.allGroups().first { $0.id == g.id }?.itemIDs, [ids[1]])
+        try lib.restoreItems(removed, toGroup: g.id)
+        XCTAssertEqual(try lib.allGroups().first { $0.id == g.id }?.itemIDs, ids, "back in the order they were added")
+        // The files were never out of the collection.
+        XCTAssertEqual(try lib.allCollections().first { $0.id == c.id }?.itemIDs, ids)
+    }
+
+    /// Taking a file out of a collection takes it out of that collection's
+    /// groups too, in the same transaction — and undoing the removal puts
+    /// both back.
+    func testTakingAFileOutOfACollectionTakesItOutOfItsGroupsToo() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let a = try insertItem(lib, "a"), b = try insertItem(lib, "b")
+        let c = try lib.createCollection(name: "C")
+        try lib.addItems([a, b], toCollection: c.id)
+        let g = try lib.createGroup(name: "G", collectionID: c.id)
+        try lib.addItems([a, b], toGroup: g.id)
+
+        let removal = try lib.removeItems([a], fromCollection: c.id)
+        XCTAssertEqual(removal.groupMemberships.map(\.itemID), [a])
+        XCTAssertEqual(try lib.allGroups().first { $0.id == g.id }?.itemIDs, [b], "a left the group along with the collection")
+
+        try lib.restoreItems(removal.items, toCollection: c.id)
+        try lib.restoreGroupMemberships(removal.groupMemberships)
+        XCTAssertEqual(try lib.allGroups().first { $0.id == g.id }?.itemIDs, [a, b], "back in both")
+    }
+
+    /// Deleting a group that holds groups takes its sub-groups with it, as
+    /// in Finder; the files stay in the collection.
+    func testDeletingAGroupTakesItsSubgroupsButLeavesFiles() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let a = try insertItem(lib, "a")
+        let c = try lib.createCollection(name: "C")
+        try lib.addItems([a], toCollection: c.id)
+        let top = try lib.createGroup(name: "Top", collectionID: c.id)
+        let child = try lib.createGroup(name: "Child", collectionID: c.id, parentID: top.id)
+        let grandchild = try lib.createGroup(name: "Grandchild", collectionID: c.id, parentID: child.id)
+        try lib.addItems([a], toGroup: grandchild.id)
+
+        try lib.deleteGroup(id: top.id)
+        XCTAssertEqual(try lib.allGroups(), [], "the whole subtree is gone")
+        XCTAssertEqual(try lib.allCollections().first { $0.id == c.id }?.itemIDs, [a], "the file stayed in the collection")
+    }
+
+    /// Undoing that deletion: the whole subtree comes back with its ids and
+    /// its files, root first.
+    func testADeletedGroupSubtreeComesBackWithIdsAndFiles() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let a = try insertItem(lib, "a")
+        let c = try lib.createCollection(name: "C")
+        try lib.addItems([a], toCollection: c.id)
+        let top = try lib.createGroup(name: "Top", collectionID: c.id)
+        let child = try lib.createGroup(name: "Child", collectionID: c.id, parentID: top.id)
+        try lib.addItems([a], toGroup: child.id)
+
+        let snap = try lib.snapshotGroupSubtree(id: top.id)
+        XCTAssertEqual(snap.map(\.id), [top.id, child.id], "root first")
+        try lib.deleteGroup(id: top.id)
+        try lib.restoreGroupSubtree(snap)
+
+        let groups = try lib.allGroups()
+        XCTAssertEqual(Set(groups.map(\.id)), [top.id, child.id])
+        XCTAssertEqual(groups.first { $0.id == child.id }?.parentID, top.id)
+        XCTAssertEqual(groups.first { $0.id == child.id }?.itemIDs, [a])
+    }
+
+    /// Deleting a collection takes its groups with it, and undoing that
+    /// brings them back too, alongside its files and shows.
+    func testADeletedCollectionComesBackWithItsGroups() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let a = try insertItem(lib, "a")
+        let c = try lib.createCollection(name: "Trip")
+        try lib.addItems([a], toCollection: c.id)
+        let g = try lib.createGroup(name: "Best Of", collectionID: c.id)
+        try lib.addItems([a], toGroup: g.id)
+
+        let snap = try XCTUnwrap(lib.snapshotCollection(id: c.id))
+        try lib.deleteCollection(id: c.id)
+        XCTAssertEqual(try lib.allGroups(), [], "its groups went with it")
+
+        try lib.restoreCollection(snap)
+        let back = try XCTUnwrap(lib.allGroups().first { $0.id == g.id })
+        XCTAssertEqual(back.name, "Best Of")
+        XCTAssertEqual(back.itemIDs, [a])
     }
 }

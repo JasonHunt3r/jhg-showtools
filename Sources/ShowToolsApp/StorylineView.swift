@@ -15,6 +15,15 @@ struct StorylineView: View {
     let timeline: ShowTimeline
     let engine: PlaybackEngine
     @Binding var selection: Set<Int64>
+    /// The anchor for ⇧-click (batch 4, E1): the last plain or ⌘-click,
+    /// not derived from `selection` itself (the old bug used the first
+    /// selected slide instead, which isn't the same thing once ⌘-click has
+    /// moved the anchor elsewhere). `selectionBase` is `selection` at the
+    /// moment the anchor was last set, for `GridSelection`'s ⇧-click to
+    /// union with — local to the storyline, not shared with Edit Slides,
+    /// which is a plain `List` and doesn't need it.
+    @State private var anchor: Int64?
+    @State private var selectionBase: Set<Int64> = []
     /// The transition selected in the lane, by the slide it leads into.
     @Binding var selectedTransition: Int64?
     /// The image selected in the lane's images row.
@@ -649,19 +658,27 @@ struct StorylineView: View {
             }
     }
 
-    /// Finder-style: plain click selects one, ⌘ toggles, ⇧ extends. The
-    /// preview jumps to the slide and pauses, as a thumbnail click does in
-    /// the livery gallery.
+    /// Finder-style: plain click selects one and anchors here, ⌘ toggles
+    /// and moves the anchor too, ⇧ selects the range from the anchor,
+    /// replacing the previous ⇧-range rather than adding to it (batch 4,
+    /// E1; `GridSelection`, unit-tested there — the old anchor, "the first
+    /// selected slide", wasn't the same thing once a ⌘-click had moved it
+    /// elsewhere). The preview jumps to the slide and pauses, as a
+    /// thumbnail click does in the livery gallery.
     private func click(_ id: Int64) {
         let mods = NSEvent.modifierFlags
+        let items = timeline.slides.map(\.slide.id)
+        let r: GridSelection.Result<Int64>
         if mods.contains(.command) {
-            if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
-        } else if mods.contains(.shift), let anchor = timeline.slides.firstIndex(where: { selection.contains($0.slide.id) }),
-                  let j = timeline.slides.firstIndex(where: { $0.slide.id == id }) {
-            selection.formUnion(timeline.slides[min(anchor, j)...max(anchor, j)].map(\.slide.id))
+            r = GridSelection.commandClick(id, selected: selection)
+        } else if mods.contains(.shift) {
+            r = GridSelection.shiftClick(id, anchor: anchor, base: selectionBase, in: items)
         } else {
-            selection = [id]
+            r = GridSelection.click(id)
         }
+        selection = r.selected
+        anchor = r.anchor
+        selectionBase = r.base
         selectedTransition = nil
         selectedOverlay = nil
         focused = true

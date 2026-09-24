@@ -24,6 +24,14 @@ struct ShowToolsApp: App {
             SettingsView()
                 .environment(model)
         }
+
+        // Help ▸ Keyboard Shortcuts (F3): SwiftUI's default Help menu item
+        // says help isn't available, which is worse than nothing.
+        Window("Keyboard Shortcuts", id: "shortcuts") {
+            KeyboardShortcutsView()
+        }
+        .defaultSize(width: 480, height: 560)
+        .windowResizability(.contentSize)
     }
 }
 
@@ -34,7 +42,19 @@ struct AppCommands: Commands {
     @FocusedValue(\.requestLibraryRename) private var requestLibraryRename
     @FocusedValue(\.requestLibraryGetInfo) private var requestLibraryGetInfo
     @FocusedValue(\.requestNewCollection) private var requestNewCollection
+    // Batch 5 (A2, F1–F4, G5): the open show's slide selection and its
+    // Duplicate/Get Info, and Edit Show's transport and timeline commands —
+    // absent whenever no show, or no Edit Show, has the window.
+    @FocusedValue(\.activeSlideSelection) private var activeSlideSelection
+    @FocusedValue(\.requestDuplicateSlides) private var requestDuplicateSlides
+    @FocusedValue(\.requestSlideGetInfo) private var requestSlideGetInfo
+    @FocusedValue(\.editShowCommands) private var editShowCommands
     @AppStorage("frameStripShown") private var frameStripShown = true
+    @AppStorage("inspectorShown") private var inspectorShown = true
+    @AppStorage("editMode") private var mode: EditMode = .slides
+    @AppStorage("snapping") private var snapping = true
+    @AppStorage("storylineZoom") private var pps: Double = 24
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -58,10 +78,16 @@ struct AppCommands: Commands {
                 .keyboardShortcut("e", modifiers: [.command, .shift, .option])
                 .disabled(exportShowID == nil || model.movieExportStatus?.finished == false)
             Divider()
-            // The Library grid publishes these while it has a selection (2b).
-            Button("Get Info") { requestLibraryGetInfo?() }
-                .keyboardShortcut("i")
-                .disabled((librarySelectionCount ?? 0) == 0)
+            // The Library grid publishes these while it has a selection
+            // (2b); a show's slide selection publishes Get Info too (F4) —
+            // whichever's in view answers, since only one is ever focused
+            // at once.
+            Button("Get Info") {
+                if let requestSlideGetInfo, !(activeSlideSelection ?? []).isEmpty { requestSlideGetInfo() }
+                else { requestLibraryGetInfo?() }
+            }
+            .keyboardShortcut("i")
+            .disabled((librarySelectionCount ?? 0) == 0 && (activeSlideSelection ?? []).isEmpty)
             Button("Rename…") { requestLibraryRename?() }
                 .disabled((librarySelectionCount ?? 0) == 0)
             Divider()
@@ -87,9 +113,49 @@ struct AppCommands: Commands {
                 .disabled(model.isOnMaster)
         }
 
+        // A2: Duplicate, for the slides selected in whichever mode has the
+        // window (not lane images yet — no Duplicate action exists for one).
+        CommandGroup(after: .pasteboard) {
+            Divider()
+            Button("Duplicate") { requestDuplicateSlides?() }
+                .keyboardShortcut("d")
+                .disabled((activeSlideSelection ?? []).isEmpty)
+        }
+
+        // F2: the inspector toggle and the Edit Slides/Edit Show switch,
+        // both really global AppStorage already (one window's change is
+        // every window's), so they need no focused value.
         CommandGroup(before: .toolbar) {
             Toggle("Show Frame Strip", isOn: $frameStripShown)
                 .keyboardShortcut("f", modifiers: [.command, .option])
+            Toggle("Show Inspector", isOn: $inspectorShown)
+                .keyboardShortcut("i", modifiers: [.command, .option])
+                .disabled(activeShowID == nil)
+            Divider()
+            Button("Edit Slides") { mode = .slides }
+                .keyboardShortcut("1")
+                .disabled(activeShowID == nil)
+            Button("Edit Show") { mode = .show }
+                .keyboardShortcut("2")
+                .disabled(activeShowID == nil)
+            Divider()
+            // F1: Edit Show's zoom and snapping — `pps` and `snapping` are
+            // both plain AppStorage (one storyline's zoom is every
+            // storyline's), so, like the toggles above, these need no
+            // focused value; `editShowCommands` gates them to Edit Show,
+            // where they mean something.
+            Button("Zoom In") { pps = min(pps * 1.5, 400) }
+                .keyboardShortcut("=", modifiers: .command)
+                .disabled(editShowCommands == nil)
+            Button("Zoom Out") { pps = max(pps / 1.5, 2) }
+                .keyboardShortcut("-", modifiers: .command)
+                .disabled(editShowCommands == nil)
+            Button("Zoom to Fit") { editShowCommands?.zoomToFit() }
+                .keyboardShortcut("z", modifiers: .shift)
+                .disabled(editShowCommands == nil)
+            Toggle("Snapping  (N)", isOn: $snapping)
+                .disabled(editShowCommands == nil)
+            Divider()
             Button("Restore Default Layout") { DefaultLayout.restore() }
                 .keyboardShortcut("0", modifiers: [.command, .option])
             Divider()
@@ -105,6 +171,8 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Show") {
+            // G5: starts at the selected slide, like the toolbar's own
+            // Play and Play Full Screen already do.
             Button("Play") { play(fullScreen: false) }
                 .keyboardShortcut("p", modifiers: [.command, .option, .shift])
                 .disabled(activeShow == nil)
@@ -112,9 +180,41 @@ struct AppCommands: Commands {
                 .keyboardShortcut("p", modifiers: [.command, .option])
                 .disabled(activeShow == nil)
             Divider()
+            // F1: Edit Show's transport and range, published as
+            // `editShowCommands` — absent (so these disable themselves) in
+            // Edit Slides, which has no viewer or timeline to act on.
+            // Play/Pause, Add Marker, Set Range In/Out are bare keys
+            // (Space, M, I, O) — never `.keyboardShortcut`, which would
+            // steal them from a focused text field (audit M4); the key is
+            // named in the title instead, as the browser's E/W/Q already
+            // are (C8).
+            Button("Play/Pause  (Space)") { editShowCommands?.togglePlay() }
+                .disabled(editShowCommands == nil)
+            Button("Add Marker  (M)") { editShowCommands?.addMarker() }
+                .disabled(editShowCommands == nil)
+            Button("Set Range In  (I)") { editShowCommands?.setRangeIn() }
+                .disabled(editShowCommands == nil)
+            Button("Set Range Out  (O)") { editShowCommands?.setRangeOut() }
+                .disabled(editShowCommands == nil)
+            Button("Clear Range") { editShowCommands?.clearRange() }
+                .keyboardShortcut("x", modifiers: .option)
+                .disabled(editShowCommands == nil)
+            Toggle("Loop Playback", isOn: Binding(
+                get: { editShowCommands?.loopOn ?? false },
+                set: { _ in editShowCommands?.toggleLoop() }))
+                .keyboardShortcut("l", modifiers: .command)
+                .disabled(editShowCommands == nil)
+            Divider()
             Button("Rhythm…") { openRhythm() }
                 .keyboardShortcut("r")
                 .disabled(activeShowID.flatMap { model.show($0) } == nil)
+        }
+
+        // F3: replaces SwiftUI's default item, which just says help isn't
+        // available, with the single-key commands that have nowhere else
+        // to show themselves.
+        CommandGroup(replacing: .help) {
+            Button("Keyboard Shortcuts") { openWindow(id: "shortcuts") }
         }
     }
 
@@ -134,8 +234,13 @@ struct AppCommands: Commands {
         RhythmTool.shared.open(showID: id, model: model, undoManager: NSApp.mainWindow?.undoManager)
     }
 
+    /// G5: starts at the selected slide, matching the toolbar's own Play
+    /// and Play Full Screen (`ShowView.firstSelectedIndex`) — before this
+    /// fix the two ⌥⇧⌘P/⌥⌘P shortcuts always started from the top.
     @MainActor private func play(fullScreen: Bool) {
-        if let show = activeShow { Player.open(show: show, model: model, fullScreen: fullScreen) }
+        guard let show = activeShow else { return }
+        let startAt = show.slides.firstIndex { (activeSlideSelection ?? []).contains($0.id) }
+        Player.open(show: show, model: model, fullScreen: fullScreen, startAt: startAt)
     }
 }
 
