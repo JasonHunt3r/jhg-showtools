@@ -74,7 +74,7 @@ preferences-domain rules).
    ⌘Delete in the Library pane (D1), undo for Delete Show (D2) and Rename
    Collection (D3). Found and fixed a real crash along the way — see
    Known issues below.
-4. **Batch 2, mostly done 2026-09-24:**
+4. **Batch 2 — done 2026-09-24:**
    - ~~naming first, nothing made until OK (H1)~~ — New Collection done
      everywhere it's made; New Show deliberately left for the settings
      panel (`spec/simple-things-fast.md`), not a throwaway dialog now.
@@ -84,9 +84,12 @@ preferences-domain rules).
      collection gets Import…/Add from Library…, an empty show (Edit
      Slides) gets Add from Collection…/Import…, both through a new
      `MultiItemPicker` sheet.
-   - Still open: context menus (C1–C7, the table in `spec/conventions.md`
-     §3; that table is a draft until the right-click conversation, so
-     build only the items marked ✓ plus C1–C3's obvious ones).
+   - ~~context menus, the obvious parts (C1–C3)~~ — done: Remove Image, Remove
+     Transition and Remove Marker, each the exact `mutate` call its
+     Delete-key handler already used. **Not confirmed by a real
+     click** — the storyline's canvas didn't give axtool usable
+     coordinates; wants Jason's own right-click. The fuller menus (C4–C7)
+     wait for the right-click conversation, as planned.
 5. **Batch 4: selection logic in Core, with tests.** ⇧-click replaces
    the previous range; arrow-key steps given a column count (B3, E1,
    B2, E2 in the audit; the settled rules are in `spec/conventions.md`
@@ -148,6 +151,9 @@ and Flush presets from 2a.
 - **Audit G1 and the audio-naming pass** (`7c1613a`, `dcf47c2`): both
   build and the app launches, but the hands-on checks weren't done this
   session — see the work queue above.
+- **Context menus C1–C3** (Remove Image/Transition/Marker): build and
+  test clean, but not confirmed by a real click — the storyline canvas
+  resisted synthetic clicking this session.
 - **The Rhythm tool** (step 7): the panel's look (the space around the
   form, the notation's size: a staff space is 5.5 pt), Listen by ear on
   real music, Space stopping Listen, and whether 145 BPM is right for
