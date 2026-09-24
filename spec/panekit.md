@@ -144,10 +144,31 @@ found. Only the confirmed ones are rules.
 - *"One change per run-loop turn"* when several panes move at once. It
   came from Restore Default Layout raising the exception on 2026-09-23,
   before `.inspector()` was found. That was probably the same crash, so
-  it proves nothing about pane moves. Try the simple way first.
+  it proves nothing about pane moves. PaneKit replaces it with layout
+  transactions (below).
 - *"No SwiftUI measuring containers in a pane."* `ViewThatFits` was
   cleared outright (showtools-gotchas: "nothing should be read into its
   removal"). Only `.inspector()` is confirmed.
+
+### Layout transactions: every change at once (Jason, 2026-09-24)
+
+Restore Default Layout staged its changes a run-loop turn apart because
+it was poking three layout systems that don't talk to each other: the
+window's frame, SwiftUI's split view, and `ColumnsSplitView`. Each change
+set off another system's own layout. With PaneKit owning every pane,
+there's one system:
+
+1. **Set everything in the model:** every pane's size, open or closed,
+   in or popped out.
+2. **Lay out once**, in one pass, the way `ColumnsSplitView.arrange()`
+   places every column from its stored widths.
+3. **Broadcast once** that the layout changed, for anything that
+   follows it (the toolbar buttons, the menu items, a saved preset).
+
+A preset, a level switch, Restore Defaults, or a pane popping out is one
+transaction. No half-moved state is ever drawn, and no system sets off
+another. If the window's own size changes too, that goes first, then
+the one pass.
 
 ### What we lose by not using `.inspector()`
 
@@ -166,6 +187,16 @@ Only what it did for us, which PaneKit defines itself:
 
 Nothing it offered is out of reach. Edit Slides' and Edit Show's
 inspectors already work without it.
+
+**The public parts it's assembled from, which PaneKit uses directly**
+(`.inspector()` itself is sealed, so it can't be taken apart; these
+are the same parts Apple builds from):
+- the translucent sidebar material: `NSVisualEffectView`;
+- the show/hide animation: `NSAnimationContext` (`ColumnsSplitView`
+  already uses it);
+- the toolbar toggle: a toolbar button bound to the pane's state;
+- focus moving between panes: AppKit's key-view loop;
+- VoiceOver: AppKit's accessibility roles for a split and its panes.
 
 ## A sketch of how an app would use it
 
