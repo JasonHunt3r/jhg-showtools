@@ -387,6 +387,25 @@ Today they disagree on several of the "should match" items:
   (`Ingest.swift:128`). It should say "audio file", the name settled
   2026-09-24.
 
+## I. Panes lost past the window's edge (Jason, 2026-09-24)
+
+- **I1 (Med) — A pane dragged to the edge can vanish with nothing to grab
+  back.** Jason dragged the sidebar's divider (the library and
+  collections, on the left) to the window's edge, and the sidebar went
+  past it and couldn't be recovered. It happened on the right side too,
+  at one point. The sidebar is SwiftUI's `NavigationSplitView`, which
+  collapses below its 180-point minimum and leaves no handle. *(Check:*
+  whether a toolbar or View-menu sidebar toggle brings it back. The app
+  doesn't add `SidebarCommands`, so the View menu may have no Show
+  Sidebar item.) The inspector is the one pane that collapses by design, and
+  its way back is an invisible strip (`ColumnsSplitView.revealByDragging`).
+  Status's known issue, "pulling the inspector's divider far to the left
+  breaks the layout", may be related.
+  *Fix direction:* edge handles, visible on every edge a pane can close
+  against (`spec/windows.md`, "Panes that close to an edge"). Until
+  they're built, a pane shouldn't be able to go past the edge without
+  one; View ▸ Restore Default Layout (⌥⌘0) is the way back today.
+
 ## Fix batches (proposed order)
 
 Each batch is one commit and can be written in a cloud session, **unbuilt**:

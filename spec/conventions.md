@@ -52,15 +52,16 @@ itself. Names follow `spec/anatomy.md`.
 | **⇧-click** | Select the range from the anchor (the last plain click or ⌘-click) to here, *replacing* the previous ⇧-range | — | **Settled** (Jason, 2026-09-24). Today the grid and the timeline only ever add to it (B3, E1). Lists already do it right |
 | **Click on empty space** | Deselect all | — | Built in the grid |
 | **Drag on empty space** | Rubber-band selection; ⌘ or ⇧ adds | The timeline: a drag on the ruler scrubs instead | **Settled** (Jason, 2026-09-24; B4) |
-| **Double-click** | **Go into it:** open the thing one level deeper | See "Double-click and ⌥-click" below | **Settled** as the meaning (Jason, 2026-09-24); some targets are still to be tried |
+| **Double-click** | **Go into it:** open the thing one level deeper | See "Double-click" below | **Settled** as the meaning (Jason, 2026-09-24); some targets are still to be tried |
 | **⌥-click** | Jason's leading idea: **select the thing behind** in an overlap, such as the slide under a transition or a lane image | ⌥-click on a row handle already opens or closes every drawer. ⌥-drag copies (§1 note) | **Open**. See "How ⌥ is used elsewhere" below |
 | **Right-click** | The commands for what's under the pointer, or for the selection if it's part of it (§3) | — | Built in some places; missing on lane images, transitions, markers (C1–C3) |
 | **Hover** | A tooltip saying what it is, and its shortcut | — | Built for most controls |
 | **Drag an item** | Move it: within an area it reorders; onto another area it adds or places there (§4) | A selected item drags the whole selection | Built |
 | **Pinch** | Zoom the thing under the pointer (the timeline's scale, the viewer's work zoom) | — | Built |
 | **Two-finger swipe** | Scroll, even over a window that's behind | The covered Timeline window's padding (`spec/windows.md`) | Built by macOS; the padding is Planned |
-
-### Double-click and ⌥-click
+| **Double-click an edge handle** | Open or close its pane (Jason, 2026-09-24) | — | Settled; handles are Planned (`spec/windows.md`) |
+| **Drag an edge handle** | Open the pane to a width, or resize it | — | Settled; Planned |
+| **⌘⌥-click a timeline row** | Open that row's drawer | ⌥-click on a row *handle* opens or closes every drawer | Settled (Jason, 2026-09-24); not built |
 
 ### How ⌥ is used elsewhere (for deciding ⌥-click)
 

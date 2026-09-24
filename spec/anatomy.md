@@ -57,7 +57,8 @@ thing.
 | **Row** | One horizontal band of the timeline. There are four kinds (below). | track, lane (loosely) |
 | **Lane** | The transitions row and the images row together (Phase 2c's name) | |
 | **Row handle** | The grip at a row's left: drag to reorder rows, click for its drawer | |
-| **Drawer** | A panel that slides out over a row. Empty today. | |
+| **Drawer** | A row's settings, along the timeline pane's left side. It slides out over its row. Empty today. Planned: icon buttons at its left edge, and a left handle that sets how much of the drawers shows (`spec/windows.md`) | prefs drawer |
+| **Edge handle** | *Planned.* The thin, visible grip a pane leaves on the window's edge when it's closed: drag to open or resize, double-click to open or close (`spec/windows.md`) | handle bar |
 
 "Layers" is used only for how the picture is built up (§4), never for
 rows. That keeps "row" for the timeline's bands, and "layer" for what's

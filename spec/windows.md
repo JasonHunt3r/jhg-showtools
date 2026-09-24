@@ -76,6 +76,71 @@ thing that could be a tool window of its own, the Timeline window. The
 transport goes with it, since zoom, snapping and the range belong with
 the rows wherever they are.
 
+## Panes that close to an edge, inside one window (Jason, 2026-09-24)
+
+The same flexibility, before any pane leaves the window: every pane can
+close against the window's edge, and come back from it.
+
+**The fail state it came from:**
+- Jason dragged the **sidebar's** divider (the library and collections,
+  on the left) to the window's edge. The sidebar disappeared past the
+  edge, and there was nothing left to grab.
+- It wasn't the only pane he lost that way. The right side went too, at
+  one point. Whether that can still happen isn't known.
+- *From the code:* the sidebar is SwiftUI's own `NavigationSplitView`,
+  which collapses when dragged past its minimum (180 points) and puts
+  nothing on the edge to pull it back. Edit Show's inspector, on the
+  right, is the other pane that collapses. It leaves an invisible strip
+  at the right edge that reveals it when dragged
+  (`ColumnsSplitView.revealByDragging`), so there's no way to know it's
+  there either.
+
+**The idea: the bug becomes a feature.**
+- **Closing to an edge is allowed, on purpose.** When a pane closes, an
+  **edge handle** stays on that window edge: thin, but always visible and
+  clickable. It's the same kind of grip as the bar over the frame strip
+  (12 points, with a capsule), which replaced a system line that was too
+  fiddly to grab.
+- **Where things close to:** the sidebar to the left edge; the timeline
+  pane to the bottom edge; the browser (the collection's files) and the
+  inspector to the right edge.
+- *The sidebar is the hard one:* it's SwiftUI's own split view, which
+  offers no edge handle. Adding one means either an overlay that asks
+  SwiftUI to show the sidebar again, or taking the sidebar onto
+  `ColumnsSplitView`, the house pattern (`spec/how-we-design.md`,
+  "Volunteered work follows the house pattern"). That's a harness
+  question before it's a build. Then the window can be one big viewer, with every section a
+  handle away.
+- **Gestures** (`spec/conventions.md`):
+  - drag a handle to open the pane to a width, or to resize it;
+  - **double-click a handle to open or close its pane**;
+  - a modified click reopens a closed pane too.
+- **With the panels** (the rest of this file), that makes a single-window
+  layout and a many-window layout, from the same panes.
+
+### The timeline pane's left edge: the drawers
+
+The timeline pane is always edge to edge. Along its left side are the
+rows' **drawers**: each row's settings, the rows' prefs.
+
+- **A left handle sets where the timeline rows start.** Sliding it right
+  exposes more of the drawers; sliding it left gives the rows more room.
+- **The drawers are designed for any width.** Each has **icon-style
+  buttons at its left-most edge**, so even a narrow strip of drawer is
+  usable.
+- **Opening a drawer fully** lays it over its row while it's in use. When
+  you're done, it goes back to where it was.
+- **⌘⌥-click on a row** opens that row's drawer (conventions).
+
+**Two ways to build the left edge. Try the first, and fall back to the
+second:**
+1. **Try first: the row handles that exist.** Each row already has its
+   own handle at its left end (`StorylineView.rowHandles`: drag to move
+   the row, click for its drawer, ⌥-click for all of them). They may be
+   all that's needed, with no new divider.
+2. **If that doesn't work out:** one full-height divider for the whole
+   pane (where the rows start), plus each row's own handle.
+
 ## What already exists to build on
 
 - **Floating panels that share the main window's undo:** the Info panel
@@ -99,8 +164,8 @@ the rows wherever they are.
 - **The show's editing state lives inside views.** The slide selection is
   `@State` in `ShowView`. The lane, song and marker selections, the
   engine and the zoom are `@State` in `EditShowView`, which also creates
-  the engine on appear and shuts it down on disappear. A browser or edit
-  zone in another window can't reach any of that.
+  the engine on appear and shuts it down on disappear. A browser or timeline
+  pane in another window can't reach any of that.
   **The prerequisite for all of this:** move it into one shared object
   per open show (a "show session": selection, engine, zoom), owned by the
   model rather than by a view. The screen wouldn't change, and it would
