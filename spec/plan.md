@@ -952,6 +952,26 @@ the code):
     modified click (⌥-click, say), in the viewer or the Slide Editor
     (`spec/windows.md`), rather than dragging a small frame in the
     inspector.
+- **Audio rows stack** (decided, Jason, 2026-09-24): a show can have
+  more than one audio row, for music under a voice, or sound effects over
+  a song. Added from the timeline (Add Audio Row, on the audio row's
+  right-click).
+  *From the code:*
+  - The rows model already expects it. `TimelineRow.normalized` keeps one
+    row per kind "for now", noting that "that rule relaxes when a show
+    can have more than one row of a kind".
+  - An `AudioClip` doesn't say which row it's on, since there's been only
+    one. Stacking adds a row reference to each clip. It's a new field in
+    the show's JSON, decoded on its own (CLAUDE.md), where no reference
+    means the first audio row, so every saved show still reads. No
+    library migration.
+  - Within a row, overlapping clips crossfade, as now. Across rows, they
+    mix.
+  - *To settle:* each row's own volume and mute, how Detect Beats and the
+    Rhythm tool choose a row, and whether several *images* rows follow
+    the same way (the plan mentions "a second images row").
+  - *Naming:* Jason said "audio track". The app's word is **row**
+    (`spec/anatomy.md`), so the menu item says **Add Audio Row**.
 - **Replace a slide's image** (Jason, 2026-09-24): a tool to change which
   picture a slide (or lane image) uses, keeping everything else about it.
   *From the code:* a slide is its id, its file (`itemID`) and its

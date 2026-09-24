@@ -164,8 +164,12 @@ divider, and empty groups are skipped:
 | Timeline: a cut with no transition | **Settled 2026-09-24.** Add Transition ▸ (the styles), Add Show Default Transition (what the "+" on hover does) |
 | Transition | **Settled 2026-09-24.** Style ▸, Duration ▸ (0.5 s, 1 s, 2 s, Custom…), Use Show Default, Apply to All Cuts · Remove Transition ✓ (leaves a cut) |
 | Lane image | **Settled 2026-09-24.** Duplicate, Replace Image… · Fade ▸ (In, Out, Both, None) · Show in Library · Remove Image ✓ |
-| Audio clip | Detect Beats… ✓ · Show in Library · Remove Audio Clip ✓ |
-| Marker | Show or Hide Line · Remove Marker (C3) |
+| Audio clip | **Settled 2026-09-24.** Detect Beats… ✓, Set Range to Clip · Fade ▸ (In, Out, Both, None) · Show in Library · Remove Audio Clip ✓ |
+| Timeline: empty audio-row space | **Settled 2026-09-24.** Add Audio… (at the pointer), **Add Audio Row** (Jason: "add audio track"; audio rows stack, `spec/plan.md`) |
+| Timeline: a marker | **Settled 2026-09-24.** Show / Hide Line · Remove Marker ✓; on a beat marker, Remove All Beat Markers (for its audio clip) |
+| Timeline: empty ruler space | **Settled 2026-09-24.** Add Marker Here, Set Range In Here, Set Range Out Here, Clear Range (M, I, O and ⌥X at the pointer) |
+| Timeline: a row handle | **Settled 2026-09-24.** Open Drawer, Move Row Up, Move Row Down, the row's own tool (Rhythm… on the slides row, Detect Beats… on an audio row) |
+| Timeline: the transport | **Settled 2026-09-24.** Loop Playback on/off |
 | Browser entry | **Settled 2026-09-24.** Append to Show (E) ✓, Insert at Playhead (W) ✓, Place in Images Row at Playhead (Q) ✓; for an audio file, **Place at Playhead** · for a *use* (an entry under "In this show"): Select in Timeline, Play from Here · Show in Library · Remove from Show (that use only), Remove from Collection ✓, **Move to Trash…** (was "Delete from Library…", C7). The letters show as shortcuts at the menu's right edge, if that can be done without E, W and Q taking typing from Search; otherwise they stay in the titles (C8) |
 | Inspector: a section header | **Settled 2026-09-24.** Reset Section to Show Default · Copy Section Settings, Paste Section Settings |
 | Inspector: the header bar (the slide's name and length) | **Settled 2026-09-24.** Play from Here · Replace Image… · Show in Library |
@@ -174,7 +178,7 @@ divider, and empty groups are skipped:
 | Library pane: a show | **Settled 2026-09-24.** Play ✓, Play Full Screen ✓, Play on Desktop · Duplicate Show · Export ▸ (Show…, Movie…) · Rename… ✓ · Delete Show… ✓ |
 | Library pane: a collection | **Settled 2026-09-24.** Play (greyed out until playing without a show is built) · New Show in… ✓ · Rename… ✓ · Delete Collection… ✓ |
 | Library pane: the Library row | **Settled 2026-09-24.** Import…, New Collection, Open Library Panel · Show in Finder (the library's folder) |
-| An empty row | Place Image Here… ✓ (images row), Add Audio… (audio row) |
+| An empty row | Place Image Here… ✓ (images row); for an audio row, see the timeline rows above |
 
 **Show in Finder is for a library's location only** (Jason, 2026-09-24).
 It's on the Library row, and in Settings, which is useful when there
@@ -388,8 +392,21 @@ universals first.
     Cuts, then Remove Transition.
   - **A lane image:** Duplicate, Replace Image…, Fade ▸, Show in Library,
     then Remove Image. The empty images row keeps Place Image Here….
-  - **Second half, next:** audio clips and the empty audio row, the ruler
-    (markers, the range), row handles, the transport.
+- **7. The timeline pane, second half: done 2026-09-24** (Jason: yes to
+  each, with two additions).
+  - **An audio clip:** Detect Beats…, Set Range to Clip, Fade ▸, Show in
+    Library, then Remove Audio Clip.
+  - **Empty audio-row space:** Add Audio… at the pointer, **and Add Audio
+    Row**: Jason has decided audio rows stack (`spec/plan.md`).
+  - **A marker:** Show / Hide Line, Remove Marker; on a beat marker,
+    Remove All Beat Markers.
+  - **Empty ruler space:** Add Marker Here, Set Range In / Out Here,
+    Clear Range.
+  - **A row handle:** Open Drawer, Move Row Up / Down, the row's tool.
+  - **The transport:** Loop Playback on/off (Jason's choice).
+- **8. Windows around the main one:** next (the player, the pop-out
+  viewer, the Info panel, the Rhythm tool; later the library panel and
+  the Slide Editor).
 
 **The route, in the anatomy's order:**
 1. **Library pane:** the Library row, a collection row, a show row, empty
