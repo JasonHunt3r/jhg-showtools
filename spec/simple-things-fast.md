@@ -166,6 +166,29 @@ a selection), their order, how long each shows, how one gives way to the
 next, whether they move (Pan and Zoom), and what plays under them. Six
 things. Everything else in the app refines one of them.
 
+**BGTools has the same six** (`Sources/BGToolsCore/DesktopSettings.swift`),
+arrived at independently, which is good evidence they're the right six:
+
+| Essential | BGTools today |
+|---|---|
+| The pictures | a pool: a show, a collection, a random show, or all files (`PlayMode`); **Stills only** narrows it |
+| Their order | a show in order, or shuffled; the random modes reshuffle each pass |
+| How long each shows | the desktop defaults' length (`randomDefaults`) |
+| How one gives way to the next | the desktop defaults' transition |
+| Whether they move | the desktop defaults' Pan and Zoom (off by default: it costs CPU) |
+| What plays under them | **the weak one.** A **Sound** switch lets a *show's* own audio play. The random modes have no audio of their own |
+
+Two things BGTools adds that are its own, and not essentials of a
+slideshow: *where* it plays (each monitor and Space, or All same) and
+*when* it pauses (sleep, lock, Low Power, a full-screen app). And one
+difference in shape: BGTools' length, transition and movement are one
+set shared by every random mode, where Quick Show keeps them per preset.
+
+So **Quick Show and BGTools are nearly the same idea**, one in a window
+and one on the desktop. That's why Send to BGTools is mostly a hand-over.
+The gaps are audio, and settings per Quick Show rather than one shared
+set.
+
 ### 3. Levels
 
 Three levels of the same app, from Jason: **Basic**, **Advanced**, and
@@ -190,6 +213,18 @@ his Mac then captures that arrangement as the level's preset:
   `inspectorShown`, `frameStripShown`, the columns' widths, and the rest
   in `spec/anatomy.md` §5). They can be read with
   `defaults read com.jhg.showtools`, plus screenshots.
+- **This has been done once already.** `DefaultLayout.swift` holds
+  Jason's arrangement, "set by hand and captured 2026-09-23": the window
+  size (1376 × 835), the sidebar (219), and Edit Show's browser (246) and
+  inspector (320). View ▸ Restore Default Layout (⌥⌘0) puts it back, and
+  a fresh library opens with it. A level is the same thing, captured
+  three times, with more in it: which areas are open, which mode, which
+  controls.
+- *One known limit:* the sidebar's width can't be set from outside while
+  the app runs. Poking SwiftUI's split view raised the layout-loop
+  exception (measured 2026-09-23, noted in `DefaultLayout.restore`). So
+  a level can set it at launch, or leave it alone, but switching level
+  mid-session can't move it until that's solved.
 - *Controls inside an area* (an inspector section, a menu item, a
   transport toggle) aren't settings today. For those, the capture is a
   written list per level, made from what Jason hides or leaves unused, and
