@@ -72,11 +72,12 @@ Older docs and the code (`SidebarItem`, `model.sidebar`) keep the old
 word. "Sidebar" is still right for Apple's own things: the Mac's
 translucent sidebar look, and the Show Sidebar menu item.
 
-**A map to print (planned, on hold until the terms are settled).** PNGs of each view with every area labelled
-by its name here: a map to point at when saying where something should
-be or how it should work. Schematic versions can be drawn from this file
-(the container has a browser engine that can render them). Labelled
-screenshots of the real app need Jason's Mac.
+**Maps to print: `spec/maps/`** (schematic, drawn 2026-09-24 from this
+file and the code, not from screenshots): `1-library-grid.png`,
+`2-edit-slides.png`, `3-edit-show.png`. Each area is labelled with its
+name here. They're drawn in `maps.html`; after a change to the names,
+edit it and run `NODE_PATH=$(npm root -g) node spec/maps/render.js`
+(Playwright). Labelled screenshots of the real app still need Jason's Mac.
 
 **Areas and editors** (`spec/windows.md`, planned): an *area* is one of
 the places above that could move into a window of its own and back. An

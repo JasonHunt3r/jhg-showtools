@@ -1,0 +1,197 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box}
+body{margin:0;background:#e9e9ee;font:14px -apple-system,"Helvetica Neue",Arial,sans-serif;color:#1d1d1f}
+.map{width:1600px;height:1000px;padding:28px 32px;position:relative;background:#f4f4f7}
+h1{margin:0 0 4px;font-size:26px}
+.sub{color:#666;margin-bottom:16px;font-size:14px}
+.win{position:absolute;left:32px;right:32px;top:92px;bottom:28px;border:1px solid #b9b9c2;border-radius:12px;background:#fff;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+.bar{height:44px;border-bottom:1px solid #d5d5dc;background:#f0f0f3;display:flex;align-items:center;padding-left:14px;gap:8px}
+.dot{width:12px;height:12px;border-radius:50%}
+.area{position:absolute;border:2px solid;border-radius:8px;padding:8px 10px}
+.n{font-weight:700;font-size:16px}
+.d{font-size:12px;color:#555;margin-top:2px}
+.a{font-size:11px;color:#888;font-style:italic}
+.pill{display:inline-block;background:#1d1d1f;color:#fff;font-size:11px;font-weight:600;border-radius:9px;padding:2px 7px;margin-left:6px;vertical-align:middle}
+.lp{background:#eef3ff;border-color:#6d8fe0}
+.gr{background:#f1fbf1;border-color:#5aa85a}
+.fb{background:#dff3df;border-color:#5aa85a}
+.ins{background:#fff5e8;border-color:#e0a04a}
+.vw{background:#f6efff;border-color:#9b6fd6}
+.br{background:#eaf8fb;border-color:#3fa3b8}
+.tl{background:#fdf0f0;border-color:#d06a6a}
+.tb{background:#f0f0f3;border-color:#999}
+.row{position:absolute;left:10px;right:10px;border-radius:6px;padding:4px 8px;font-size:13px}
+.item{border:1px solid #c8d4f0;background:#fff}
+.sel{background:#6d8fe0;color:#fff;border-color:#6d8fe0}
+.tile{position:absolute;width:118px;height:88px;border-radius:6px;background:#cfe3cf;border:1px solid #9cc49c}
+.tile.s{outline:3px solid #2f6de0}
+.lbl{position:absolute;font-size:12px;font-weight:700;background:#fff;border:1.5px solid #333;border-radius:6px;padding:2px 7px;white-space:nowrap}
+.blk{position:absolute;top:4px;bottom:4px;border-radius:4px;font-size:11px;padding:3px 5px;color:#fff;overflow:hidden}
+</style></head><body>
+
+<!-- ============ MAP 1: LIBRARY GRID ============ -->
+<div class="map" id="m1">
+<h1>ShowTools map 1 — the main window, Library grid</h1>
+<div class="sub">When the Library or a collection is selected. Names from <b>spec/anatomy.md</b>; <i>grey italics</i> = other names for the same thing.</div>
+<div class="win">
+ <div class="bar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+  <span style="margin-left:300px" class="n">Toolbar</span><span class="d">&nbsp;— changes with the detail: grid tools here, show tools when a show is selected</span></div>
+ <div class="area lp" style="left:8px;top:52px;width:300px;bottom:8px">
+  <div class="n">Library pane</div><div class="d">“the Library” for short · chooses what the detail shows</div><div class="a">sidebar (old name), source list</div>
+  <div class="row item sel" style="top:84px">▣ Library <span style="float:right">4,012</span></div>
+  <div class="lbl" style="left:190px;top:112px">Library row</div>
+  <div class="row" style="top:146px;color:#777;font-size:11px;font-weight:700">COLLECTIONS</div>
+  <div class="row item" style="top:170px">▾ ▤ Italy 2025 <span style="float:right">312</span></div>
+  <div class="lbl" style="left:180px;top:198px">Collection row</div>
+  <div class="row item" style="top:226px;left:34px">▶︎ Trucks to the Future <span style="float:right">48</span></div>
+  <div class="row item" style="top:258px;left:34px">▶︎ Rome, short <span style="float:right">20</span></div>
+  <div class="lbl" style="left:176px;top:288px">Show row (a show)</div>
+  <div class="row item" style="top:322px">▸ ▤ Family <span style="float:right">1,204</span></div>
+  <div class="row item" style="top:354px">▸ ▤ Test images <span style="float:right">4,000</span></div>
+  <div class="d" style="position:absolute;left:12px;right:12px;top:392px;font-size:11px">Badges count files (collections) or slides (shows). ▾ opens and closes a collection.</div>
+  <div style="position:absolute;left:10px;right:10px;top:440px;bottom:10px;border:2px dashed #9fb4e8;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#6d8fe0;font-weight:700">Empty space</div>
+ </div>
+ <div class="area gr" style="left:318px;top:52px;right:8px;bottom:8px">
+  <div class="n">Detail → Library grid</div><div class="d">the files of the Library or one collection · its own selection, not shared with any show</div><div class="a">the grid</div>
+  <div class="area fb" style="left:10px;right:10px;top:70px;height:64px">
+   <div class="n">Filter bar</div><div class="d">Search · Filter (kind: pictures / video / Audio) · Sort · Similar (Group Similar, Show Similar)</div>
+  </div>
+  <div id="tiles" style="position:absolute;left:10px;right:10px;top:150px;bottom:10px"></div>
+ </div>
+</div></div>
+
+<!-- ============ MAP 2: EDIT SLIDES ============ -->
+<div class="map" id="m2">
+<h1>ShowTools map 2 — a show in Edit Slides</h1>
+<div class="sub">The show as a list. Same slide selection, inspector and undo as Edit Show. Has no picture: Play opens the player.</div>
+<div class="win">
+ <div class="bar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+  <span style="margin-left:300px" class="n">Toolbar</span><span class="d">&nbsp;— show tools: Edit Slides | Edit Show switch, Play, inspector toggle (⌥⌘I)</span></div>
+ <div class="area lp" style="left:8px;top:52px;width:220px;bottom:8px"><div class="n">Library pane</div><div class="d">the show is selected here</div>
+  <div class="row item" style="top:70px">▣ Library</div><div class="row item" style="top:102px">▾ ▤ Italy 2025</div><div class="row item sel" style="top:134px;left:30px">▶︎ Trucks to the Future</div></div>
+ <div class="area" style="left:238px;top:52px;right:448px;bottom:8px;border-color:#888;background:#fafafa">
+  <div class="n">Main column</div>
+  <div class="area fb" style="left:10px;right:10px;top:40px;height:92px">
+   <div class="n">Defaults bar</div><div class="d">the show’s name, and its <b>show defaults</b>: Length · Transition · Pan and Zoom · Fit · Background · Loop</div>
+   <div class="d" style="color:#b33">The only place show defaults can be changed today.</div>
+  </div>
+  <div class="area gr" style="left:10px;right:10px;top:146px;bottom:10px;background:#fff">
+   <div class="n">Slide list</div><div class="d">one numbered row per slide · <span style="color:#2f6de0">accent = set on this slide</span>, grey = inherited from the defaults · drag to reorder · double-click toggles the inspector</div><div class="a">order list (old)</div>
+   <div id="slist" style="position:absolute;left:10px;right:10px;top:78px;bottom:10px"></div>
+  </div>
+ </div>
+ <div class="area ins" style="right:8px;top:52px;width:430px;bottom:8px">
+  <div class="n">Inspector</div><div class="d">the selected slides’ settings · one toggle for both modes</div>
+  <div id="insp1" style="position:absolute;left:10px;right:10px;top:70px"></div>
+ </div>
+</div></div>
+
+<!-- ============ MAP 3: EDIT SHOW ============ -->
+<div class="map" id="m3" style="height:1180px">
+<h1>ShowTools map 3 — a show in Edit Show</h1>
+<div class="sub">The show against time. Columns on top (Viewer · Browser · Inspector), the Timeline pane below. One clock for the viewer, timeline, frame strip and transport.</div>
+<div class="win">
+ <div class="bar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+  <span style="margin-left:300px" class="n">Toolbar</span><span class="d">&nbsp;— show tools</span></div>
+ <div class="area lp" style="left:8px;top:52px;width:170px;bottom:8px"><div class="n">Library pane</div><div class="d">(can be hidden)</div>
+  <div class="row item sel" style="top:70px;left:8px;right:8px;font-size:11px">▶︎ Trucks to the Future</div></div>
+
+ <!-- columns -->
+ <div class="area vw" style="left:188px;top:52px;width:640px;height:560px">
+  <div class="n">Viewer</div><div class="a">preview, work area, stage</div>
+  <div style="position:absolute;left:10px;right:10px;top:52px;height:370px;background:#cfcfd6;border-radius:6px">
+   <div class="lbl" style="left:8px;top:8px;background:#e8e8ec">Pasteboard <span style="font-weight:400">— grey round the picture when work zoom &lt; 1</span></div>
+   <div style="position:absolute;left:70px;right:70px;top:44px;bottom:30px;background:#35364a;border-radius:3px;color:#fff;padding:10px">
+     <div class="n" style="color:#fff">Picture</div><div class="d" style="color:#ddd">drawn live at the playhead; its layers, bottom to top:<br>show background · slide background · slide · incoming slide · lane image</div>
+     <div style="position:absolute;left:120px;top:110px;width:230px;height:130px;border:2px solid #7fb3ff;background:rgba(127,179,255,.15)">
+      <span style="position:absolute;left:-5px;top:-5px;width:9px;height:9px;background:#fff;border:1px solid #333"></span><span style="position:absolute;right:-5px;top:-5px;width:9px;height:9px;background:#fff;border:1px solid #333"></span><span style="position:absolute;left:-5px;bottom:-5px;width:9px;height:9px;background:#fff;border:1px solid #333"></span><span style="position:absolute;right:-5px;bottom:-5px;width:9px;height:9px;background:#fff;border:1px solid #333"></span>
+      <div style="font-size:11px;padding:6px;color:#cfe2ff">Handles — Transform or Rotation, on the selected slide’s image</div></div>
+     <div style="position:absolute;left:10px;right:10px;bottom:10px;height:34px;background:rgba(255,255,255,.9);color:#222;border-radius:6px;font-size:12px;padding:3px 8px"><b>Bar</b> — a selected transition’s or lane image’s settings, over the picture</div>
+   </div>
+   <div class="lbl" style="right:8px;bottom:4px;background:#e8e8ec">Corner controls <span style="font-weight:400">— work zoom · onion skin · pop-out · play</span></div>
+  </div>
+  <div class="area" style="left:10px;right:10px;top:432px;bottom:10px;border-color:#9b6fd6;background:#fff">
+   <div class="n">Frame strip</div><div class="d">rendered frames of the finished show, lined up with the timeline’s zoom and scroll</div>
+   <div id="fstrip" style="display:flex;gap:4px;margin-top:6px"></div>
+  </div>
+ </div>
+ <div class="area br" style="left:838px;top:52px;width:300px;height:560px">
+  <div class="n">Browser</div><div class="d">the show’s collection · picking a use selects it in the show · E append, W insert, Q place in images row</div><div class="a">Collection Browser</div>
+  <div class="row" style="top:96px;color:#3fa3b8;font-weight:700;font-size:11px">IN THIS SHOW (uses) <span class="pill">section header</span></div>
+  <div id="br1" style="position:absolute;left:10px;right:10px;top:124px"></div>
+  <div class="row" style="top:330px;color:#3fa3b8;font-weight:700;font-size:11px">NOT IN THE SHOW</div>
+  <div id="br2" style="position:absolute;left:10px;right:10px;top:358px"></div>
+ </div>
+ <div class="area ins" style="left:1148px;top:52px;right:8px;height:560px">
+  <div class="n">Inspector</div><div class="d">same as Edit Slides’, plus live preview in the viewer</div>
+  <div id="insp2" style="position:absolute;left:10px;right:10px;top:64px"></div>
+ </div>
+
+ <!-- timeline pane -->
+ <div class="area tl" style="left:188px;top:622px;right:8px;bottom:8px;padding:0">
+  <div style="padding:8px 10px"><span class="n">Timeline pane</span> <span class="d">— “the timeline” for short · transport + ruler + rows</span> <span class="a">edit zone, storyline (StorylineView)</span></div>
+  <div class="area" style="left:10px;right:10px;top:40px;height:40px;border-color:#d06a6a;background:#fff;padding:6px 10px;font-size:12px">
+   <b style="font-size:14px">Transport</b> &nbsp; ⏮ ▶︎ ⏭ &nbsp; <b>00:01:23.12</b> clock &nbsp;·&nbsp; shuttle rate &nbsp;·&nbsp; toggles: Snapping (N) · Range · Range lines · Marker lines · Loop (⌘L) &nbsp;·&nbsp; zoom − + fit (⇧Z)
+  </div>
+  <div id="tl" style="position:absolute;left:10px;right:10px;top:90px;bottom:10px;background:#fff;border:1px solid #e3b5b5;border-radius:6px;overflow:hidden"></div>
+ </div>
+</div></div>
+
+<script>
+// tiles
+const T=document.getElementById('tiles');
+for(let r=0;r<5;r++)for(let c=0;c<9;c++){const d=document.createElement('div');d.className='tile'+((r==1&&(c==2||c==3))?' s':'');d.style.left=(c*132)+'px';d.style.top=(r*102)+'px';T.appendChild(d)}
+T.insertAdjacentHTML('beforeend','<div class="lbl" style="left:0;top:520px">Tiles — one per file · click / ⌘-click / ⇧-click select · with Group Similar they fall into groups, each with a header</div><div class="lbl" style="left:270px;top:108px;border-color:#2f6de0;color:#2f6de0">selected tiles</div>');
+// slide list
+const S=document.getElementById('slist');
+['IMG_2041.jpg','IMG_2042.jpg','truck_night.heic','IMG_2050.jpg','dust.mov','IMG_2061.jpg','IMG_2077.jpg','sunset.jpg','IMG_2090.jpg','IMG_2101.jpg','IMG_2110.jpg'].forEach((n,i)=>{
+ S.insertAdjacentHTML('beforeend',`<div class="row item ${i==2?'sel':''}" style="left:0;right:0;top:${i*44}px;height:38px;display:flex;gap:18px;align-items:center"><b style="width:24px">${i+1}</b><span style="width:60px;height:28px;background:#cfe3cf;border-radius:3px"></span><span style="width:170px">${n}</span><span style="${i%3==0&&i!=2?'color:#2f6de0':'color:#999'}">${i%3==0?'8.0 s':'5.0 s'}</span><span style="${i==4?'color:#2f6de0':'color:#999'}">${i==4?'Wipe':'Dissolve'} 1.0 s</span><span style="color:#999">Pan and Zoom: Off</span></div>`)});
+S.insertAdjacentHTML('beforeend','<div class="lbl" style="right:8px;top:96px">a slide row (selected)</div>');
+// inspectors
+const secs=[['bar','title bar — file name (or “3 slides”) · close'],['card','preview · File · Size · Rating'],['h','Transform'],['f','Position · Zoom · Rotation · Fit · Background'],['f','Length'],['h','Sound'],['f','a video slide’s own sound'],['h','Effects'],['f','effects timeline — when each effect runs'],['f','Transition'],['f','Pan and Zoom'],['f','Rotation (over time)']];
+for(const id of ['insp1','insp2']){const I=document.getElementById(id);const sp=id=='insp1'?14:6;let firstH=true;secs.forEach(([k,t])=>{
+ if(k=='bar')I.insertAdjacentHTML('beforeend',`<div style="background:#f3e3c8;border-radius:5px;padding:5px 8px;font-size:12px;margin-bottom:${sp}px"><b>${t}</b></div>`);
+ else if(k=='card')I.insertAdjacentHTML('beforeend',`<div style="background:#fff;border:1px solid #ecd6b3;border-radius:6px;padding:6px 8px;font-size:12px;margin-bottom:${sp}px"><div style="height:${id=='insp1'?90:50}px;background:#cfe3cf;border-radius:3px;margin-bottom:4px"></div>${t}</div>`);
+ else if(k=='h'){I.insertAdjacentHTML('beforeend',`<div style="background:#e9dcc6;padding:4px 8px;font-size:12px;font-weight:700;color:#6b5a3e;margin:${sp}px 0 4px">${t}${firstH?' <span class="pill">section header (pinned)</span>':''}</div>`);firstH=false}
+ else I.insertAdjacentHTML('beforeend',`<div style="background:#fff;border:1px solid #ecd6b3;border-radius:6px;padding:${id=='insp1'?8:4}px 8px;font-size:12px;margin-bottom:4px">${t}</div>`)})}
+// frame strip
+const F=document.getElementById('fstrip');for(let i=0;i<9;i++)F.insertAdjacentHTML('beforeend',`<div style="flex:1;height:62px;background:${['#4a4c66','#5d6b8a','#7a6a55','#46605a','#6a4f5f'][i%5]};border-radius:3px"></div>`);
+// browser
+const B1=document.getElementById('br1'),B2=document.getElementById('br2');
+for(let i=0;i<6;i++)B1.insertAdjacentHTML('beforeend',`<div style="display:inline-block;width:78px;height:56px;margin:0 6px 6px 0;background:#bfe4ec;border-radius:4px;${i==2?'outline:3px solid #2f6de0':''}"></div>`);
+for(let i=0;i<6;i++)B2.insertAdjacentHTML('beforeend',`<div style="display:inline-block;width:78px;height:56px;margin:0 6px 6px 0;background:#e3eef1;border:1px dashed #9cc;border-radius:4px"></div>`);
+B1.insertAdjacentHTML('beforeend','<div style="font-size:11px;color:#555">a use (a slide or lane image)</div>');B2.insertAdjacentHTML('beforeend','<div style="font-size:11px;color:#555">a file not in the show</div>');
+// timeline
+const L=document.getElementById('tl');const H=150; // handle column
+let h='';
+h+=`<div style="position:absolute;left:0;top:0;right:0;height:42px;background:#f7eaea;border-bottom:1px solid #e3b5b5"></div>`;
+for(let i=0;i<24;i++)h+=`<div style="position:absolute;left:${H+i*52}px;top:26px;height:16px;border-left:1px solid #c99;font-size:9px;color:#955;padding-left:2px">${i*5}s</div>`;
+h+=`<div style="position:absolute;left:8px;top:6px"><b>Ruler</b><div class="d" style="font-size:11px">time · range · markers · playhead</div></div>`;
+h+=`<div style="position:absolute;left:${H+300}px;width:260px;top:4px;height:14px;background:rgba(208,106,106,.3);border-radius:3px;font-size:10px;padding-left:4px">Range (I … O)</div>`;
+[H+210,H+640,H+900].forEach(x=>h+=`<div style="position:absolute;left:${x-6}px;top:4px;width:12px;height:14px;background:#e0a04a;clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%)"></div>`);
+h+=`<div style="position:absolute;left:${H+900+14}px;top:4px;font-size:10px;font-weight:700;color:#a66a10">Markers (M, or from beats)</div>`;
+const rows=[['Images row','lane images',58,'#9b6fd6'],['Transitions row','a section at each cut',40,'#e0a04a'],['Slides row','the storyline: blocks',70,'#3f7fd6'],['Audio row','audio clips',64,'#3fa37a']];
+let y=46;const tops=[];
+rows.forEach(([n,d,hh,c])=>{tops.push([y,hh]);
+ h+=`<div style="position:absolute;left:0;width:${H}px;top:${y}px;height:${hh}px;background:#f5f5f7;border-right:1px solid #ccc;border-bottom:1px solid #eee;padding:6px 8px 0 26px"><span style="position:absolute;left:6px;top:${hh/2-9}px;color:#999;font-size:13px;letter-spacing:-3px">⋮⋮</span><b style="font-size:13px">${n}</b><div class="d" style="font-size:10px">${d}</div></div>`;
+ h+=`<div style="position:absolute;left:${H}px;right:0;top:${y}px;height:${hh}px;border-bottom:1px solid #eee"></div>`;y+=hh+4});
+// images row clips
+[[H+80,220,'lane image'],[H+560,180,'lane image'],[H+880,200,'lane image']].forEach(([x,w,t])=>h+=`<div class="blk" style="left:${x}px;width:${w}px;top:${tops[0][0]+8}px;height:${tops[0][1]-16}px;background:#9b6fd6">${t}<svg style="position:absolute;left:0;top:18px" width="${w}" height="20"><polyline points="0,18 30,4 ${w-30},4 ${w},18" fill="none" stroke="#fff" stroke-width="1.5"/></svg></div>`);
+// slides
+let x=H;const ws=[160,120,180,110,150,130,170,140,160,120];const cuts=[];
+ws.forEach((w,i)=>{h+=`<div class="blk" style="left:${x+1}px;width:${w-2}px;top:${tops[2][0]+6}px;height:${tops[2][1]-12}px;background:${i==2?'#2f6de0':'#6d9ae0'};${i==2?'outline:3px solid #0a3d9e':''}">${i+1} · block</div>`;x+=w;cuts.push(x)});
+// transitions
+cuts.slice(0,-1).forEach((cx,i)=>{if(i%3!=1)h+=`<div class="blk" style="left:${cx-24}px;width:48px;top:${tops[1][0]+6}px;height:${tops[1][1]-12}px;background:#e0a04a;font-size:9px">${i%3==0?'Dissolve':'Wipe'}</div>`});
+// audio
+[[H,760,'audio clip — Track 1.m4a'],[H+700,560,'Track 2.m4a (overlap = crossfade)']].forEach(([ax,w,t],k)=>{let wave='';for(let i=0;i<w;i+=4){const a=6+Math.abs(Math.sin(i*.07+k)*Math.cos(i*.013))*18;wave+=`<rect x="${i}" y="${30-a}" width="2" height="${a*2-8}" fill="rgba(255,255,255,.55)"/>`}
+ h+=`<div class="blk" style="left:${ax}px;width:${w}px;top:${tops[3][0]+6}px;height:${tops[3][1]-12}px;background:rgba(63,163,122,${k?0.8:0.95})"><svg style="position:absolute;left:0;top:0" width="${w}" height="52">${wave}</svg><span style="position:relative">${t}</span></div>`});
+// playhead
+h+=`<div style="position:absolute;left:${H+470}px;top:0;bottom:0;width:2px;background:#e33"></div><div style="position:absolute;left:${H+463}px;top:24px;width:16px;height:12px;background:#e33;clip-path:polygon(0 0,100% 0,50% 100%)"></div>`;
+// drawer
+h+=`<div style="position:absolute;left:${H}px;top:${tops[1][0]}px;width:190px;height:${tops[1][1]}px;background:rgba(255,255,255,.93);border:2px dashed #d06a6a;border-left:none;padding:6px;font-size:11px"><b>Drawer</b> — a row’s settings, slides out over its row (empty today)</div>`;
+// brackets
+h+=`<div style="position:absolute;right:6px;top:${tops[0][0]+2}px;height:${tops[1][0]+tops[1][1]-tops[0][0]-4}px;width:120px;border-right:3px solid #333;text-align:right;padding-right:8px;padding-top:30px;font-weight:700;font-size:13px;background:rgba(255,255,255,.85)">the Lane<div class="d" style="font-size:10px">images + transitions</div></div>`;
+h+=`<div class="lbl" style="left:${H+900}px;top:${tops[2][0]+tops[2][1]-2}px">= the Storyline (the slides row alone)</div>`;
+h+=`<div class="lbl" style="left:4px;top:${y+6}px">Row handle ⋮⋮ — drag to reorder rows, click for its drawer · the row order is only where rows sit, never what’s drawn on top</div>`;
+L.innerHTML=h;
+</script></body></html>
