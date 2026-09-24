@@ -182,11 +182,15 @@ the cloud session kept to docs, except PaneKit, and merged its work into
 
 ## What didn't
 
-- **Context was lost twice.** A commit drawing the maps, made against
-  Jason's "hold off", appeared with no memory of it. Later, five answers
-  arrived for questions no longer in view. Both were handled by saying so
-  and asking, rather than guessing. The maps were kept once Jason saw
-  them.
+- **Context was lost twice**, and the cause was outside the session: a
+  brief power outage at Jason's house reset his routers and dropped the
+  connection (Jason: "it wasn't your failing"). What was lost was the
+  conversation in between: a commit drawing the maps, made against
+  Jason's "hold off", appeared with no memory of it, and later five
+  answers arrived for questions no longer in view. Both were handled by
+  saying so and asking, rather than guessing. The maps were kept once
+  Jason saw them. The work itself survived, because every step had been
+  committed and pushed as it was done.
 - **The work order's claim that the viewer and ruler menus weren't
   settled** was out of date by the time it arrived. Every pointer was
   checked against `main` before use, as it asked.
@@ -201,6 +205,9 @@ the cloud session kept to docs, except PaneKit, and merged its work into
 
 - **Say when context is missing.** Answer from what's on disk and in git,
   and ask for what isn't. Never map answers onto guessed questions.
+- **Commit and push at each step** (CLAUDE.md's rule) is also the
+  insurance against a dropped connection: when the conversation went,
+  the work didn't.
 - **A decision the builder can't find isn't made.** Put it in the spec,
   and in the queue item that uses it.
 - **Keep untested code where it can't break tested code:** its own
