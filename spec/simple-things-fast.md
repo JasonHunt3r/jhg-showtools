@@ -111,6 +111,47 @@ only in memory. The engine reads shows through `ShowSource`
 (`spec/layout.md`), and BGTools already builds shows it never saves
 (its random modes, `Sources/BGToolsCore`). So there's a precedent.
 
+### One settings panel, three uses (Jason, 2026-09-24)
+
+**The problem it came from, making the first real show:**
+1. Jason selected pictures in a collection and chose New Show from them.
+2. The show was made at once, with no dialog, using the app's fixed
+   defaults: 5-second slides, a dissolve, Pan and Zoom off, fit
+   (`ShowDefaults`, `AppModel.newShow`).
+3. He then had to work out how to take every slide from 5 to 3.5 seconds,
+   and was stuck with the dissolve.
+
+*From the code:* the fix did exist, but nothing pointed to it. The Length
+and Transition in Edit Slides' defaults bar change every slide that
+doesn't set its own. That's a candidate for a first-encounter tip, and
+for G6 in the audit (Edit Show can't reach the defaults at all).
+
+**The answer: one panel, used three ways.** The same fields as Quick
+Show, with only what fits each case:
+
+| Field | Quick Show (play) | New Show… | Make Show from Quick Show |
+|---|---|---|---|
+| Name | — | yes (audit H1: nothing Untitled unless OK'd) | yes |
+| Pool | Library, a collection, or a show | the selection, or a collection | what the Quick Show played |
+| Images only (a show as the pool) | yes | — | — |
+| Order: in order or random | yes | yes (random shuffles once, as it's made) | as played |
+| Length, transition and its duration | yes | yes: they become the show's defaults | as played |
+| Pan and Zoom | yes | yes | as played |
+| Audio: a file or a playlist, Loop | yes | yes: goes into the audio row | as played |
+| Rhythm | yes | later, in the show | as played |
+| Presets | yes | yes, the same presets | — |
+| Main button | **Play** (and Send to BGTools) | **Make Show** | **Make Show** |
+
+- **Make Show from Quick Show** (Jason: "a very sweet idea") turns a
+  Quick Show you like into a real show you can edit. The player offers
+  it, and so does the Quick Show dialog, from its last settings.
+- **New Show…** no longer skips straight to a show. From the File menu,
+  a collection or a grid selection, it opens the panel. Return accepts
+  the pre-filled settings, so it stays one keystroke when the defaults
+  are fine.
+- **The presets are shared** between Quick Show and New Show, so "3.5
+  seconds, a quick cut" is set up once.
+
 ### 3. Levels
 
 Three levels of the same app, from Jason: **Basic**, **Advanced**, and
@@ -180,12 +221,13 @@ Answered 2026-09-24:
 - the nudge: Show Me / I've Got This;
 - a show as the pool: as built, or Images only;
 - keeping a Quick Show: it remembers, plus presets;
-- audio: a file or a playlist, with Loop.
+- audio: a file or a playlist, with Loop;
+- Save as Show: yes, as **Make Show from Quick Show**, through the same
+  panel as New Show.
 
 Still open:
 1. **The levels' contents.** Is the split in the table right?
 2. **The level picker:** the top bar, the welcome with a menu path, or
    both?
-3. **Save as Show…** from a Quick Show: still wanted, now that the dialog
-   remembers and has presets? It would turn a good Quick Show into a
-   show that can be edited.
+3. **The shared panel:** is the field table right for each case, and is
+   it one panel that changes by case, or two that look alike?

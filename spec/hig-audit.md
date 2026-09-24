@@ -300,6 +300,12 @@ same in either. It mostly doesn't:
   with a suggested name, selected, so Return accepts it. Once inline
   rename (D4) exists, the naming can happen in the sidebar row itself,
   under the same rule: Esc removes the new row.
+  - **New Show asks for more than a name (Jason):** made from a
+    selection, it used fixed defaults with no dialog, so the lengths and
+    the dissolve had to be fixed afterwards. Its naming step is the
+    shared settings panel in `spec/simple-things-fast.md` (name, length,
+    transition, Pan and Zoom, audio, presets). New Collection needs only
+    the name.
   - *Exception to settle with the first run:* a new library starts with
     one collection made for you (`spec/first-run-brief.md`, "My First
     Collection" with a Rename button). That one is made by the app, not
