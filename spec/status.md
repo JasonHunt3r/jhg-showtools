@@ -97,7 +97,8 @@ and Flush presets from 2a.
   stay at its time on the clock, or move with the slide it starts over
   when slides are trimmed or reordered? For now it stays on the clock.
 - **Windows of their own** (`spec/windows.md`): which areas detach, the
-  Slide Editor, and seven questions. Its prerequisite is moving a show's
+  Slide Editor, the library panel and Show in Library. Jason answered six
+  of seven questions 2026-09-24; what comes first is still open. Its prerequisite is moving a show's
   editing state out of the views, which the audit's menu work wants too.
 - **A simple way in.** The editor is detailed on purpose, which makes a
   plain slideshow harder than it should be (Jason, 2026-09-22). Raised,

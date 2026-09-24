@@ -868,7 +868,7 @@ meet first. **To be designed with Jason.**
   rules of organisation and the lingo (library, collection, show, slide,
   song…) stated first, since they never have been
 - **Windows of their own** (Jason, 2026-09-24): areas of the main
-  window (sidebar, library, browser, inspector, edit zone) that can move
+  window (sidebar, library, browser, inspector, timeline pane) that can move
   into windows of their own, and editors opened on one thing: a row, or a
   slide in the **Slide Editor**, which is where the collage maker below
   would live. A vision, not designed: `spec/windows.md`

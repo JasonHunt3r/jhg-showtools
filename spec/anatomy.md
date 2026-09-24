@@ -50,9 +50,9 @@ thing.
 | **Viewer** | Edit Show's top-left column: the picture, and the frame strip under it | preview, work area, stage |
 | **Frame strip** | Under the viewer: rendered frames of the finished show | |
 | **Browser** | Edit Show's middle column: the show's collection, uses first | Collection Browser |
-| **Edit zone** | The bottom of Edit Show: the unit that holds the rows, meaning the transport, ruler and rows together. The thing that could become a window of its own (`spec/windows.md`) | |
-| **Transport** | Top of the edit zone: play, clock, toggles, zoom | transport row |
-| **Timeline** | The ruler over the rows, inside the edit zone | storyline |
+| **Timeline pane** | The bottom of Edit Show: the unit that holds the rows, meaning the transport, ruler and rows together. "The timeline" for short. Detached, it would be the **Timeline window** (`spec/windows.md`) | edit zone (Jason's first word), storyline (`StorylineView` draws it) |
+| **Transport** | Top of the timeline pane: play, clock, toggles, zoom | transport row |
+| **Storyline** | The slides row alone, as in Final Cut's primary storyline | |
 | **Ruler** | Top of the timeline: time, the range, markers, the playhead | |
 | **Row** | One horizontal band of the timeline. There are four kinds (below). | track, lane (loosely) |
 | **Lane** | The transitions row and the images row together (Phase 2c's name) | |
@@ -94,7 +94,7 @@ Main window
             │   │   └─ Frame strip
             │   ├─ Browser
             │   └─ Inspector
-            └─ Edit zone
+            └─ Timeline pane
                 ├─ Transport
                 └─ Timeline
                     ├─ Ruler     (time, range, markers, playhead)

@@ -1,8 +1,9 @@
 # Windows of their own — the edit suite inside the edit suite
 
 **Status:** Planned: a vision, not yet designed (Jason, 2026-09-24).
-Nothing is built. **Left:** everything. The open questions come first,
-then a design with Jason.
+Nothing is built. Six of Jason's seven answers are in (below). **Left:**
+what comes first, then a design with Jason; much of it is settled by
+trying it.
 
 Names follow `spec/anatomy.md`.
 
@@ -15,7 +16,7 @@ main window when they do:
 - the collections list, popped out and dragged next to where files are
   being dropped from;
 - the library as a list window, for the same reason;
-- the edit zone as a tool window of its own;
+- the timeline pane as a tool window of its own;
 - a single row opened in a window, larger, to edit it more easily;
 - a slide opened by double-click in a large editor in front of
   everything, to work on that slide alone.
@@ -38,10 +39,10 @@ menu**, and it can be put back.
 |---|---|
 | **Sidebar** (collections and shows) | Next to Finder or Photos, as a drop target |
 | **Library** as a list | The same, and as a source to drag from while Edit Show fills the main window |
-| **Browser** | Its files beside the edit zone on a second screen |
+| **Browser** | Its files beside the timeline pane on a second screen |
 | **Inspector** | Settings where they're wanted, and the columns get its width back |
 | **Viewer** | Already done: the pop-out viewer (`Player.popOut`) shares the viewer's playback |
-| **Edit zone** | The rows full width, on their own screen |
+| **Timeline pane** | The rows full width, on their own screen: the **Timeline window** |
 
 ### 2. Editors for one thing
 
@@ -50,7 +51,7 @@ in the View or Window menu, because each one is about a particular slide
 or row, not a place in the app. There can be several, and they close
 when done.
 
-- **A row, opened up:** one row (say the music row, or the images row) in
+- **A row, opened up:** one row (say the audio row, or the images row) in
   a window, taller and with more room, for detailed work.
 - **The Slide Editor** (working name; Jason's first word for it was
   "deep edit window"):
@@ -66,13 +67,14 @@ when done.
   - Its relation to the inspector: the inspector is the quick version,
     always there. The Slide Editor is the deep one, opened on purpose.
 
-## The edit zone
+## The timeline pane
 
-**The edit zone** is the unit that holds the rows: the transport, the
-ruler and the rows under it. That's the thing that could be a tool window
-of its own. (`spec/anatomy.md` had called ruler plus rows "the timeline";
-the edit zone is that plus its transport, since zoom, snapping and the
-range belong with the rows wherever they go.)
+**The timeline pane** (Jason first called it the edit zone) is the unit
+that holds the rows: the transport, the ruler and the rows under it.
+Final Cut, Premiere and Resolve all call this the timeline. It's the
+thing that could be a tool window of its own, the Timeline window. The
+transport goes with it, since zoom, snapping and the range belong with
+the rows wherever they are.
 
 ## What already exists to build on
 
@@ -87,9 +89,9 @@ range belong with the rows wherever they go.)
   shows an engine the main window owns. Closing it leaves playback
   running.
 - **Following the show on screen:** the Rhythm tool follows whichever show
-  is selected, which is how a detached browser or edit zone would behave.
+  is selected, which is how a detached browser or timeline pane would behave.
 - **In-app drags between windows:** `ItemDrag` carries library ids, so a
-  drag from a detached library or collection list into the edit zone
+  drag from a detached library or collection list into the timeline pane
   works as it does now within one window.
 
 ## What stands in the way (from the code, before any design)
@@ -106,7 +108,7 @@ range belong with the rows wherever they go.)
   since menus need the same state.
 - **Keys are per window.** `SingleKeys` (J/K/L, Space, I/O…) is a monitor
   on one window, and menus read focused values from the key window. A
-  detached edit zone needs its own, so Space still plays when it's the
+  detached timeline pane needs its own, so Space still plays when it's the
   key window.
 - **The columns assume their members.** `ColumnsSplitView` already hides
   the inspector. Taking the browser or the viewer out as well means it
@@ -117,26 +119,50 @@ range belong with the rows wherever they go.)
   inspector APIs, until a harness says otherwise (CLAUDE.md: check AppKit
   layout in a harness first).
 
-## Open questions (for Jason)
+## Jason's answers (2026-09-24)
 
-1. Which comes first? The Slide Editor adds something new without moving
-   anything. The detachable areas change what the main window is.
-2. Does a detached area follow the show on screen (as the Rhythm tool
-   does), or stay with the show it was opened from? Could two shows be
-   open at once?
-3. Floating panel (always over the main window) or ordinary window (can
-   go behind it)? It may differ by area: an inspector wants to float, an
-   edit zone on a second screen doesn't.
-4. Does the app remember which areas are detached, and where, between
-   launches?
-5. When an area leaves, does the main window close up the space, or keep
-   a slot to put it back?
-6. The Library as a list: a second view of the same grid (with a
-   list/grid switch), or a separate small window?
-7. **Double-click on a slide:** today it toggles the inspector (Edit
-   Slides) or opens it (Edit Show). The audit's G3 asks which. If
-   double-click opens the Slide Editor instead, G3 is settled a
-   different way.
+1. **What comes first:** not sure yet. Still open.
+2. **Following the show depends on the window's job.**
+   - Windows tied to playback follow the show's state: the timeline pane,
+     the transport, the viewer. They show what's playing and where.
+   - Windows that are a *source* don't follow playback. The library
+     window doesn't jump to whatever image is on screen.
+   - The two are joined on request instead: a context-menu item, **Show
+     in Library**, on a slide, lane image or audio clip. It opens the
+     library window and selects that file.
+3. **Floating or ordinary also depends on the job.**
+   - The **Slide Editor** is bold and in front, like a big popover: you
+     work in it, and when you're done it goes away.
+   - The **inspector** behaves like an ordinary window, and keeps its
+     place over time.
+   - Each area finds its behaviour by trial and error. It can be thought
+     through here, but not settled.
+4. **Launch restores everything:** which windows are open or detached,
+   where they are, their sizes and states. The possible exception is the
+   playhead.
+5. **The main window closes up.** When an area leaves, its neighbours take
+   the space. With the inspector out, the viewer widens and the browser
+   slides over. With the browser out as well, the viewer takes that space
+   too.
+6. **The library list is a floating window, a panel.**
+   - On the Mac, a *panel* is a window that floats above the app's other
+     windows (the Info panel is one). An ordinary window can go behind.
+   - It opens from the **Library** item in the sidebar, which stays there.
+   - Its size is free, above a minimum. Narrow, it's a list. Wider, the
+     thumbnails grow until each is as wide as the window, a stacked list
+     of images. That's the resizing the grid already does with its size
+     slider, driven by the window's width. So it's probably the grid
+     itself, not a second view.
+7. **Double-click: not decided, and to be settled by real testing.**
+   - Jason's original idea: double-clicking a collection opens its
+     disclosure if it's closed.
+   - The app has grown since, so double-click may be better as one
+     unified meaning across every element.
+   - ⌥-click is the likely partner. Either double-click opens the
+     disclosure and ⌥-click opens the Slide Editor, or the other way
+     round.
+   - Worth knowing when this is tried: ⌥-click on a row handle already
+     opens or closes every drawer at once.
 
 ## A possible order (not a plan)
 
@@ -145,8 +171,10 @@ range belong with the rows wherever they go.)
    is possible without it.
 2. **The Slide Editor,** as the first new window. It's additive, and it's
    the home the collage maker needs.
-3. **One detachable area,** probably the inspector or the browser, to
-   prove the pattern (undo, keys, the columns closing up). Then the
-   others.
-4. **The edit zone, detached,** last: it carries the most keys and
+3. **The library panel,** the second: it opens from the sidebar and moves
+   nothing out of the main window. It's also where Show in Library
+   lands.
+4. **One detachable area,** probably the inspector, to prove the pattern:
+   undo, keys, and the main window closing up. Then the others.
+5. **The timeline pane, detached,** last: it carries the most keys and
    playback.
