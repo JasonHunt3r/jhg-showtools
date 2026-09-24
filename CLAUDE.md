@@ -15,6 +15,7 @@ A macOS slideshow composer and player for Jason's own Mac.
 | `spec/xcode-port.md` | current | Why one Xcode project builds both bundles, and how. |
 | `spec/edit-slides-inspector-port.md` | current | The fix for the layout-loop crash: ported Edit Slides' inspector off SwiftUI's `.inspector()`. |
 | `spec/simple-things-fast.md` | current | Planned: making simple things fast — the first run, playing without building a show, and Basic / Advanced / "Bring it on!" levels. |
+| `spec/panekit.md` | current | Planned: our own reusable pane system (two panes and one divider, nested), with edge handles and pane ⇄ panel pop-out built in. Replaces the built-in split views; meant to be reused in other Mac apps. |
 | `spec/windows.md` | current | Planned: areas of the main window in windows of their own, and editors for one thing (the Slide Editor, a row opened up). A vision with open questions, not a build plan. |
 | `spec/conventions.md` | current | What each gesture, key, right-click, drop and Edit-menu item means everywhere: Built / Settled / Proposed / Open, plus a log of conventions found by use. Fixes build toward it. |
 | `spec/hig-audit.md` | current | Expected Mac behaviour that was never built: the Edit menu, context menus, keyboard selection, Edit Slides vs Edit Show. Findings and fix batches. |

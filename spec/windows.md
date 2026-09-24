@@ -177,6 +177,10 @@ built-ins for panes at all.**
   built-ins become the reference for what to recreate (focus, the
   toggle, the look, remembered sizes), not parts of the app.
 
+**Built as a reusable library (Jason, 2026-09-24):** the pane system,
+edge handles and the pane ⇄ panel pop-out go into **PaneKit**, our own
+pane library, reusable in other Mac apps: `spec/panekit.md`.
+
 **Suggested approach:** a standalone harness first. It would have a
 window with a left list, a content area, and a full-width bottom pane on
 `ColumnsSplitView`, with edge handles. The harness answers "does it hold
