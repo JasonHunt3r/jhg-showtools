@@ -125,7 +125,30 @@ preferences-domain rules).
    `swift test` (305, was 291) and `./make-app.sh` clean; smoke-launched
    again, no crash. *Check* (per the plan): the tests pass; a real
    ⇧-click in the grid and the storyline still wants Jason's hands.
-7. **The PaneKit harness** (`spec/panekit.md`, "The order", step 1): a
+7. ~~**Batch 5: Menus**~~ (A2, F1–F4, G5) — done 2026-09-24. Edit ▸
+   Duplicate (⌘D) for slides in both modes (A2; not a lane image — no
+   such action exists yet, left for the right-click conversation). The
+   Show menu gained Play/Pause, Add Marker, Set Range In/Out (bare keys,
+   named in the title), Clear Range (⌥X) and Loop Playback (⌘L, a real
+   checkmarked `Toggle` now, not a hidden button) — all through one new
+   `editShowCommands` focused value that's absent (so they disable
+   themselves) outside Edit Show. The View menu gained Zoom In/Out
+   (⌘=/⌘−, `storylineZoom` turned out to be one global `@AppStorage` key
+   already, not per-window, so no focused value was needed), Zoom to Fit
+   (⇧Z), Snapping, Show Inspector (⌥⌘I, moved off the toolbar button,
+   which had the same shortcut twice) and Edit Slides/Edit Show (⌘1/⌘2,
+   also plain `@AppStorage`). Get Info (⌘I) now answers for a show's
+   slide selection too, not just the Library grid (F4). Show ▸ Play
+   starts at the selected slide, matching the toolbar (G5) — free once
+   A2/F4's selection focused value existed. Help ▸ Keyboard Shortcuts
+   replaces SwiftUI's "help isn't available" default (F3), listing the
+   bare-key commands that have nowhere else to show themselves.
+   `swift test` (305) and `./make-app.sh` clean; smoke-launched, no
+   crash. *Check* (per the plan): each item enabled at the right times,
+   typing in Search still types, Show ▸ Play starts at the selection —
+   all reasoned through, not clicked; wants Jason's hands, especially
+   the new Keyboard Shortcuts window and the moved ⌥⌘I/⌘1/⌘2 shortcuts.
+8. **The PaneKit harness** (`spec/panekit.md`, "The order", step 1): a
    standalone app in `tools/` with dummy content, checked on the Mac and
    felt by Jason.
 
@@ -196,6 +219,13 @@ and Flush presets from 2a.
   2026-09-24): `GridSelection`'s logic is unit-tested against the audit's
   own worked examples, but a real ⇧-click, ⇧-click, ⇧-click hasn't been
   tried by hand in either place.
+- **The menus batch 5 built 2026-09-24**: the Show and View menu items,
+  Get Info from a slide selection, Show ▸ Play starting at the
+  selection, and Help ▸ Keyboard Shortcuts — all reasoned through and
+  compiled clean, but a menu can only really be checked by opening it.
+  Worth a particular look: the toolbar's Inspector button and ⌘1/⌘2 lost
+  or gained their shortcuts moving to the View menu, so it's worth
+  confirming nothing doubled up or went silent.
 - **The Rhythm tool** (step 7): the panel's look (the space around the
   form, the notation's size: a staff space is 5.5 pt), Listen by ear on
   real music, Space stopping Listen, and whether 145 BPM is right for

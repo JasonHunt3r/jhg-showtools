@@ -69,12 +69,16 @@ struct ShowView: View {
                 }
                 .help("Play full screen (⌥⌘P)")
                 .disabled(show.slides.isEmpty)
+                // The shortcut lives on the View menu's own Toggle now
+                // (F2, batch 5), not here too — one menu item, one shortcut.
                 Button { inspectorShown.toggle() } label: { Label("Inspector", systemImage: "sidebar.right") }
-                    .keyboardShortcut("i", modifiers: [.command, .option])
                     .help("Show or hide the inspector (⌥⌘I) — or double-click a slide")
             }
         }
         .focusedSceneValue(\.activeShowID, showID)
+        .focusedSceneValue(\.activeSlideSelection, selection)
+        .focusedSceneValue(\.requestDuplicateSlides, { SlideActions.duplicate(selection, mutate: mutate) })
+        .focusedSceneValue(\.requestSlideGetInfo, requestSlideGetInfo)
         .onChange(of: showID) { selection = [] }
         .onAppear {
             if let id = model.devSelection { selection = [id]; model.devSelection = nil }
@@ -83,6 +87,15 @@ struct ShowView: View {
 
     private var firstSelectedIndex: Int? {
         show.slides.firstIndex { selection.contains($0.id) }
+    }
+
+    /// Get Info (⌘I, F4) on the selected slides: their files, as the
+    /// Library grid's own Get Info already shows.
+    private func requestSlideGetInfo() {
+        let itemIDs = show.slides.filter { selection.contains($0.id) }.map(\.itemID)
+        guard !itemIDs.isEmpty else { return }
+        model.infoPanelSelection = itemIDs
+        InfoPanel.show(model: model, undoManager: undoManager)
     }
 }
 

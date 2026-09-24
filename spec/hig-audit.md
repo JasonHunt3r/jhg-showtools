@@ -58,11 +58,18 @@ text fields and `List`s, and nowhere else.
   fix direction (a focused scene value + Edit-menu item) turned out to be
   the more invasive path; `SingleKeys` alone was cheaper and matches how
   Delete already handles this exact grid-focus problem.
-- **A2 (Med) — No Duplicate (⌘D).** Slides can be duplicated only from a
-  context menu (`ShowView.swift:164`, `StorylineView.swift:621`). Finder
-  and Final Cut both put Duplicate on ⌘D in the menu bar.
-  *Fix direction:* Edit ▸ Duplicate (⌘D), through a focused value, for
-  slides in both modes and for a selected lane image.
+- **A2 (Med) — No Duplicate (⌘D).** **Fixed 2026-09-24 (batch 5), for
+  slides.** Edit ▸ Duplicate (⌘D) calls `SlideActions.duplicate` through
+  a new focused value (`requestDuplicateSlides`, `activeSlideSelection`)
+  published by `ShowView`, so it works the same in both modes. **Not
+  done: a selected lane image** — no Duplicate action exists for one
+  anywhere in the app yet (not even in its context menu), so this would
+  be new logic, not just a new way to call an old one; left for the
+  right-click conversation, which is where a lane image's other missing
+  actions (Show in Finder, Show in Library) live too. ~~Slides can be
+  duplicated only from a context menu (`ShowView.swift:164`,
+  `StorylineView.swift:621`). Finder and Final Cut both put Duplicate on
+  ⌘D in the menu bar.~~
 - **A3 (Low, but a larger job) — No Cut, Copy or Paste of slides or files.**
   Expected:
   - ⌘C then ⌘V copies slides, with their settings, within a show or into
@@ -250,30 +257,47 @@ Browser. Elsewhere they're thin, or missing altogether:
 
 ## F. The menu bar
 
-- **F1 (Med) — Edit Show's commands are in no menu.** ⌘= and ⌘− (zoom),
-  ⌘L (loop), J/K/L, Space, I/O, ⌥X, M, N, ⇧Z and the browser's E/W/Q are
-  hidden buttons or key monitors (`EditShowView.swift:170`). HIG: every
-  command lives in a menu, where it can be found, searched (Help ▸
-  Search) and shown with its shortcut. Proposed:
-  - The Show menu: Play/Pause (Space), Add Marker (M), Set Range In (I),
-    Set Range Out (O), Clear Range (⌥X), Loop Playback (⌘L).
-  - The View menu: Zoom In, Zoom Out, Zoom to Fit (⇧Z), Snapping (N).
-
-  The single-key ones stay handled by `SingleKeys` (audit M4: a bare-key
-  `.keyboardShortcut` eats typing). The menu item carries the same action
-  and shows the key. *(check)* that a menu item can display a bare key
-  without claiming it, or show it in the title instead.
-- **F2 (Low) — The inspector toggle (⌥⌘I) is only a toolbar button**
-  (`ShowView.swift:73`). HIG: panel toggles belong in the View menu, as
-  "Show Frame Strip" already is. The same goes for switching Edit Slides
-  and Edit Show, which has no menu item or shortcut (⌘1/⌘2 is common).
-- **F3 (Low) — The Help menu is SwiftUI's default**, whose item says help
-  isn't available. Either remove it, or make it Help ▸ Keyboard
-  Shortcuts: a panel listing the single-key commands, which are otherwise
-  undiscoverable.
-- **F4 (Low) — Get Info (⌘I) works only in the Library grid.** In Edit
-  Slides and Edit Show, ⌘I with a slide selected could open its inspector,
-  or show Get Info for its file.
+- **F1 (Med) — Edit Show's commands are in no menu.** **Fixed
+  2026-09-24 (batch 5), following the proposal below exactly.** The Show
+  menu: Play/Pause, Add Marker, Set Range In, Set Range Out (bare keys,
+  named in the title, e.g. "Add Marker  (M)" — never `.keyboardShortcut`,
+  per the *(check)* below), Clear Range (⌥X) and Loop Playback (⌘L, a
+  `Toggle` showing the checkmark, both real shortcuts now — the *(check)*
+  confirmed a menu item can carry the same modifier-bearing shortcut a
+  hidden `Button("")` used to). The View menu: Zoom In/Out (⌘=/⌘−, now
+  plain `@AppStorage` reads — `storylineZoom` is one global default, not
+  per-window, so no focused value was even needed), Zoom to Fit (⇧Z, a
+  focused value — needs the storyline's own geometry) and Snapping
+  (a `Toggle`, `N` named in the title). All published by a single
+  `editShowCommands` focused value (`EditShowView`'s `shortcuts()`),
+  absent — so every one of these disables itself — whenever Edit Slides,
+  not Edit Show, has the window. The hidden ⌘=/⌘−/⌘L buttons are gone
+  from `EditShowView`; the bare-key ones stay on `SingleKeys`, unchanged.
+  ~~⌘= and ⌘− (zoom), ⌘L (loop), J/K/L, Space, I/O, ⌥X, M, N, ⇧Z and the
+  browser's E/W/Q are hidden buttons or key monitors
+  (`EditShowView.swift:170`).~~
+- **F2 (Low) — The inspector toggle (⌥⌘I) is only a toolbar button.**
+  **Fixed 2026-09-24 (batch 5).** Both `inspectorShown` and `editMode`
+  are single global `@AppStorage` keys already (one window's inspector
+  or mode is every window's), so View ▸ Show Inspector (⌥⌘I, a `Toggle`)
+  and View ▸ Edit Slides/Edit Show (⌘1/⌘2) needed no focused value at
+  all — just reading the same keys `ShowView` already does. The toolbar's
+  own Inspector button lost its `.keyboardShortcut` (kept only on the
+  menu's `Toggle` now, so there's one shortcut, not two registered for
+  the same keys).
+- **F3 (Low) — The Help menu is SwiftUI's default.** **Fixed 2026-09-24
+  (batch 5), the "make it Keyboard Shortcuts" option.**
+  `CommandGroup(replacing: .help)` opens a new `KeyboardShortcutsView`
+  window listing the bare-key commands (playback, the timeline, the
+  browser, selecting) that have nowhere else to show themselves —
+  everything with a real modifier already shows its shortcut in its own
+  menu, so it isn't repeated there.
+- **F4 (Low) — Get Info (⌘I) works only in the Library grid.** **Fixed
+  2026-09-24 (batch 5), for a slide's file.** The File menu's one
+  Get Info button now checks the show's slide selection
+  (`activeSlideSelection`/`requestSlideGetInfo`, `ShowView`) before
+  falling back to the Library grid's own — opening the same `InfoPanel`
+  either way, on the selected slides' files.
 
 ## G. Edit Slides vs Edit Show
 
@@ -350,12 +374,14 @@ Today they disagree on several of the "should match" items:
   slide (in a window) would match Edit Show's key. Otherwise it's simply
   one more thing that behaves differently between the modes.
 - **G5 (Med) — Show ▸ Play doesn't start where the toolbar's Play does.**
-  The toolbar's Play and Play Full Screen start at the first selected slide
-  (`ShowView.swift:62`). Their help text names ⌥⇧⌘P and ⌥⌘P, but those
-  menu items call `Player.open` with no `startAt`
-  (`ShowToolsApp.swift`, `play(fullScreen:)`), so the same shortcut starts
-  from the top. The selection would have to reach the menu as a focused
-  value, as `activeShowID` does.
+  **Fixed 2026-09-24 (batch 5).** `play(fullScreen:)` now works out
+  `startAt` the same way `ShowView.firstSelectedIndex` does, from the
+  new `activeSlideSelection` focused value — the same one A2/F4 needed,
+  so this came for free once it existed. ~~The toolbar's Play and Play
+  Full Screen start at the first selected slide (`ShowView.swift:62`).
+  Their help text names ⌥⇧⌘P and ⌥⌘P, but those menu items call
+  `Player.open` with no `startAt` (`ShowToolsApp.swift`,
+  `play(fullScreen:)`), so the same shortcut starts from the top.~~
 
 - **G6 (Med) — Show defaults can only be changed in Edit Slides.** The
   defaults bar (`ShowView.swift:144`) is Edit Slides' alone, so in Edit
@@ -492,9 +518,10 @@ ordered from least to most risk.
    The tests are written here and pass or fail on the Mac, which makes
    this the most checkable batch. *Check:* the tests, then ⇧-click in the
    grid and the storyline.
-5. **Menus** (A2, F1–F4, G5). *Check:* each item is enabled at the right
-   times, typing in Search still types, and Show ▸ Play starts at the
-   selected slide.
+5. ~~**Menus**~~ (A2, F1–F4, G5) — done 2026-09-24. *Check:* each item is
+   enabled at the right times, typing in Search still types, and
+   Show ▸ Play starts at the selected slide. Full story at each of
+   A2/F1–F4/G5's own entries above.
 6. **The Edit Slides list's drop position** (G2). *Check:* drop between
    two slides, and they land there.
 7. **The grid's keyboard** (B1, B2, A1, B5, B6). The riskiest batch: it
