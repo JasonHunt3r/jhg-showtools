@@ -152,6 +152,66 @@ preferences-domain rules).
    standalone app in `tools/` with dummy content, checked on the Mac and
    felt by Jason.
 
+9. **Jason's first-test work order** (`showtools_work_order_2026-09-24.md`,
+   folded into `spec/plan.md` "The range and the ruler", the Preview line,
+   and `spec/bgtools.md` "Jason's first-test list"). One commit per item,
+   least risky first. Items marked **⏸** wait for Jason's answer to a
+   proposal (listed after); build the rest.
+   1. **BGTools: All same → Synchronize.** User-facing words only; the
+      stored key stays `allSame`. *Check:* the panel and the settings
+      window say Synchronize, and a setting that was on before is still on
+      after relaunch.
+   2. **BGTools: a Quit you can find.** "Quit BGTools (stops desktop
+      shows)" on the panel; ⌘Q with the settings window open. *Check:*
+      both quit, and the desktop shows stop.
+   3. **⏸ P1. The slide progress line fills left to right,** with a setting
+      to hide it and Slide Progress on/off in the viewer's right-click.
+      *Check:* the line grows through each slide; the setting and the menu
+      item hide and show it; it still dims when paused.
+   4. **⏸ P5. BGTools: the settings window opens on your screen**, with that
+      screen's current Space selected. *Check:* with two monitors, open it
+      from the panel on each; it lands there, selected.
+   5. **⏸ P4. BGTools: naming screens,** with the model-name tag. *Check:* name
+      a monitor; the name shows in the window, the panel and the logs, with
+      the tag; it survives unplugging and plugging back in.
+   6. **⏸ P2. The range: undoable, draggable ends, a lock.** *Check:* drag an
+      end, ⌘Z puts it back; locked, a drag does nothing but I, O and ⌥X
+      still work; undoing an ordinary edit still works as before.
+   7. **⏸ P3. The range button:** ⌥⌘-click (the view), ⇧⌥⌘-click (the whole
+      show), the Show menu items and the button's right-click; locked
+      beeps. *Check:* each sets the range as described; a locked range
+      refuses with a beep.
+   8. **⏸ P6. Undo a playhead jump,** with the view. *Check:* click far along
+      the ruler, ⌘Z returns the playhead, scroll and zoom; several jumps in
+      a row undo as one; undoing a real edit afterwards isn't blocked by
+      playhead steps. Load `showtools-gotchas` first (undo).
+   9. **⏸ P7. BGTools: the map view** beside the stack. *Check:* the monitors
+      sit as on the desk, each with its Spaces; the choice between views
+      is remembered.
+   10. **⏸ P8, P9. Fill Range with Images…** *Check:* fill a 10-second range
+       with 5 pictures, Even, both Replace and Displace, and compare with
+       the rules in the plan; one ⌘Z undoes the whole fill; greyed-out
+       rhythms say why.
+
+   **Waiting on Jason (Claude's proposals):**
+   - **P1** Does the progress line's hide setting apply to the whole app
+     (proposed), or save with each show?
+   - **P2** One lock for the whole range, set from either end's or the
+     button's right-click, shown on both ends (proposed)?
+   - **P3** With no range set, does a plain click on the range button make
+     one from the view (proposed), or do nothing?
+   - **P4** Can Spaces be named too, as "Work Monitor · Mixing" (proposed,
+     optional)?
+   - **P5** If the BGTools window is already open, does it stay put and
+     only change the selection (proposed), or move to the calling screen?
+   - **P6** The playhead-undo rules (ruler jumps only, consecutive jumps
+     collapse; `spec/plan.md`), or a separate Go Back command?
+   - **P7** Map | List as a segmented control, remembered (proposed)?
+   - **P8** A run shorter than the range extends its last slide to the out
+     point, and the dialog previews the result before OK (proposed)?
+   - **P9** In Displace, is the first slide's trimmed-off tail dropped?
+     (App Claude's reading, to confirm.)
+
 Then: the right-click conversation (the plan at the end of
 `spec/conventions.md`), the show session (`spec/windows.md`), and the
 New Show panel (`spec/simple-things-fast.md`).
