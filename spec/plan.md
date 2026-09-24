@@ -867,6 +867,11 @@ meet first. **To be designed with Jason.**
   first time, empty places say something plain, as they do now. Needs the
   rules of organisation and the lingo (library, collection, show, slide,
   song…) stated first, since they never have been
+- **Windows of their own** (Jason, 2026-09-24): areas of the main
+  window (sidebar, library, browser, inspector, edit zone) that can move
+  into windows of their own, and editors opened on one thing: a row, or a
+  slide in the **Slide Editor**, which is where the collage maker below
+  would live. A vision, not designed: `spec/windows.md`
 - **A collage maker** (Jason, 2026-09-21b), parked here to think through
   rather than build straight away. Two ideas so far, which may turn out to
   be the same feature seen two ways:

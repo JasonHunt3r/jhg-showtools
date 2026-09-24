@@ -49,20 +49,23 @@ thing.
 | **Viewer** | Edit Show's top-left column: the picture, and the frame strip under it | preview, work area, stage |
 | **Frame strip** | Under the viewer: rendered frames of the finished show | |
 | **Browser** | Edit Show's middle column: the show's collection, uses first | Collection Browser |
-| **Transport** | The bar across Edit Show between the columns and the timeline: play, clock, toggles, zoom | transport row |
-| **Timeline** | The bottom of Edit Show: the ruler over the rows | storyline |
+| **Edit zone** | The bottom of Edit Show: the unit that holds the rows, meaning the transport, ruler and rows together. The thing that could become a window of its own (`spec/windows.md`) | |
+| **Transport** | Top of the edit zone: play, clock, toggles, zoom | transport row |
+| **Timeline** | The ruler over the rows, inside the edit zone | storyline |
 | **Ruler** | Top of the timeline: time, the range, markers, the playhead | |
 | **Row** | One horizontal band of the timeline. There are four kinds (below). | track, lane (loosely) |
 | **Lane** | The transitions row and the images row together (Phase 2c's name) | |
 | **Row handle** | The grip at a row's left: drag to reorder rows, click for its drawer | |
 | **Drawer** | A panel that slides out over a row. Empty today. | |
 
-**Needs a decision:** "edit zone" isn't a name in the code yet. If it
-means the **timeline** (ruler and rows), this guide's name is the one to
-keep. If it means everything in Edit Show below the toolbar, it needs a
-name of its own. "Layers" is used only for how the picture is built up
-(§4), never for rows. That keeps "row" for the timeline's bands, and
-"layer" for what's drawn on top of what.
+"Layers" is used only for how the picture is built up (§4), never for
+rows. That keeps "row" for the timeline's bands, and "layer" for what's
+drawn on top of what.
+
+**Areas and editors** (`spec/windows.md`, planned): an *area* is one of
+the places above that could move into a window of its own and back. An
+*editor* is a window opened on one thing, such as a row or a slide (the
+Slide Editor).
 
 ## 2. The nesting
 
@@ -90,14 +93,15 @@ Main window
             │   │   └─ Frame strip
             │   ├─ Browser
             │   └─ Inspector
-            ├─ Transport
-            └─ Timeline
-                ├─ Ruler         (time, range, markers, playhead)
-                └─ Rows          (the show's own order; default below)
-                    ├─ Images row        ┐ the lane
-                    ├─ Transitions row   ┘
-                    ├─ Slides row        (the blocks)
-                    └─ Music row
+            └─ Edit zone
+                ├─ Transport
+                └─ Timeline
+                    ├─ Ruler     (time, range, markers, playhead)
+                    └─ Rows      (the show's own order; default below)
+                        ├─ Images row        ┐ the lane
+                        ├─ Transitions row   ┘
+                        ├─ Slides row        (the blocks)
+                        └─ Music row
 ```
 
 **Around the main window:**
