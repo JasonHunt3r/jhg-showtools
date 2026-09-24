@@ -142,32 +142,41 @@ divider, and empty groups are skipped:
    Duplicate.
 3. **Change it:** its own settings (a transition's style, Detect Beats…,
    Show or Hide Line).
-4. **Find it:** Show in Library, Show in Finder, Get Info.
+4. **Find it:** Show in Library, Get Info. (Show in Finder only for a
+   library's own location; see the rule below the table.)
 5. **Remove it:** Remove from…, then Move to Trash… (destructive, last).
 
 **Each target's core items** (Proposed; ✓ = there today):
 
 | Target | Items |
 |---|---|
-| Library tile | **Settled 2026-09-24.** Play (the selection, or one picture; greyed out until playing without a show is built), Quick Look (⌘Y), Show Similar ✓ · New Show from *N* Items… ✓ (opens the New Show panel), Add to Show ✓ · New Collection from ✓, Add to Collection ✓ · Copy · Show in Finder ✓, Rename… ✓, Get Info ✓ · Remove from Collection ✓, Move to Trash… ✓ |
+| Library tile | **Settled 2026-09-24.** Play (the selection, or one picture; greyed out until playing without a show is built), Quick Look (⌘Y), Show Similar ✓ · New Show from *N* Items… ✓ (opens the New Show panel), Add to Show ✓ · New Collection from ✓, Add to Collection ✓ · Copy · Rename… ✓, Get Info ✓ · Remove from Collection ✓, Move to Trash… ✓ |
 | Find Similar Images set header (was Group Similar) | **Settled 2026-09-24.** Select Group, Keep One… ✓, **Keep as Group** · New Show from Group…, Add Group to Collection ▸ |
 | Library pane: a group | *To settle with groups* (`spec/plan.md`, "Groups inside collections"). Drop files onto it; it lists beside the collection's shows |
 | Empty grid space | **Settled 2026-09-24.** Import…, Select All, New Collection |
-| Slide (list or timeline) | **Settled for Edit Slides, 2026-09-24.** Play from Here ✓, Play Full Screen (from the slide) · Duplicate ✓, Copy, Paste (**with ⌥ held: Copy Settings, Paste Settings**) · Show in Library, Open Inspector · Remove from Show ✓. No Show in Finder. Quick settings: to settle |
+| Slide (list or timeline) | **Settled for Edit Slides, 2026-09-24.** Play from Here ✓, Play Full Screen (from the slide) · Duplicate ✓, Copy, Paste (**with ⌥ held: Copy Settings, Paste Settings**) · Show in Library, Open Inspector · Remove from Show ✓. No Show in Finder. **Quick settings as submenus** (settled): Length ▸, Transition ▸, Pan and Zoom ▸, each applying to every selected slide as one undo step |
 | Edit Slides: empty list space | **Settled 2026-09-24, to try.** Add from Collection…, Import…, Paste, Select All (today it shows the slide menu with nothing to act on) |
 | Edit Slides: the defaults bar | **Settled 2026-09-24, to try by hand.** Use Defaults for All Slides (clears each slide's own values), Save as Preset… (the New Show presets), Reset to App Defaults |
-| Lane image | Duplicate · Show in Library, Show in Finder · Remove Image (C1) |
+| Lane image | Duplicate · Show in Library · Remove Image (C1) |
 | Transition | its style (submenu), Use Show Default · Remove Transition (leaves a cut) (C2) |
-| Audio clip | Detect Beats… ✓ · Show in Library, Show in Finder · Remove Audio Clip ✓ |
+| Audio clip | Detect Beats… ✓ · Show in Library · Remove Audio Clip ✓ |
 | Marker | Show or Hide Line · Remove Marker (C3) |
-| Browser entry | Append (E) ✓, Insert at Playhead (W) ✓, Place in Images Row (Q) ✓ · Show in Finder ✓ · Remove from Collection ✓, Move to Trash… (today "Delete from Library…", C7) |
+| Browser entry | Append (E) ✓, Insert at Playhead (W) ✓, Place in Images Row (Q) ✓ · Show in Library · Remove from Collection ✓, Move to Trash… (today "Delete from Library…", C7) |
 | Library pane: a show | **Settled 2026-09-24.** Play ✓, Play Full Screen ✓, Play on Desktop · Duplicate Show · Export ▸ (Show…, Movie…) · Rename… ✓ · Delete Show… ✓ |
 | Library pane: a collection | **Settled 2026-09-24.** Play (greyed out until playing without a show is built) · New Show in… ✓ · Rename… ✓ · Delete Collection… ✓ |
 | Library pane: the Library row | **Settled 2026-09-24.** Import…, New Collection, Open Library Panel · Show in Finder (the library's folder) |
 | An empty row | Place Image Here… ✓ (images row), Add Audio… (audio row) |
 
+**Show in Finder is for a library's location only** (Jason, 2026-09-24).
+It's on the Library row, and in Settings, which is useful when there
+are several libraries. **Files never get it:** the library holds its own
+copies, and where the originals went is unknown, so revealing a file
+shows nothing useful. So it's off the tiles, slides, lane images, audio
+clips and the browser, which have **Show in Library** instead. (Jason
+said so for tiles and slides; the rest follow the same reasoning.)
+
 **One action, one name** everywhere: Move to Trash… (not "Delete from
-Library…"); Remove from Show / Collection; Show in Finder; Show in
+Library…"); Remove from Show / Collection; Show in
 Library; Get Info.
 
 ## 4. Drops
@@ -303,7 +312,7 @@ universals first.
     `spec/simple-things-fast.md`.
 - **Groups inside collections** (Jason, 2026-09-24): raised here, to be
   built right away: `spec/plan.md`, "Groups".
-- **3. Edit Slides: done 2026-09-24, except quick settings.** Jason's answers:
+- **3. Edit Slides: done 2026-09-24.** Jason's answers:
   - **Play:** Play from Here, and **Play Full Screen** (from the selected
     slide).
   - **Copy and Paste** of slides on the menu; **Copy Settings and Paste
@@ -321,8 +330,11 @@ universals first.
   - **The defaults bar:** Use Defaults for All Slides, Save as Preset…,
     Reset to App Defaults. Sounds good; to be tried by hand.
   - **Anything missing:** nothing yet.
-  - **Quick settings in the menu:** needs a clearer proposal (asked
-    again).
+  - **Quick settings as submenus** ("that'll be nice"): Length ▸ (3 s,
+    3.5 s, 5 s, 8 s, Show Default, Custom…), Transition ▸ (the styles, Show
+    Default), Pan and Zoom ▸ (Off, Auto, Show Default). Each applies to
+    every selected slide in one undo step. Custom… opens the inspector on
+    that setting.
 - **4. Edit Show, the viewer:** next.
 
 **The route, in the anatomy's order:**
