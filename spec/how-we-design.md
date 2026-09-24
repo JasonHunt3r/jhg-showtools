@@ -64,10 +64,13 @@ Look for the same idea wearing two names, and for two ideas sharing one.
   Show… looked tidy. But one plays at once and the other makes something
   to edit, and too much differed, so they're two panels. The overlap
   still taught something: it's where the six pillars were found.
-- **One thing, two ways in, two behaviours:** the same slide behaved
-  differently in Edit Slides and Edit Show. The two modes are two views of
-  one show, so a slide should behave the same in both
-  (`spec/hig-audit.md` §G).
+- **One show, two views:** Edit Slides and Edit Show are two views of one
+  show, each built for its own job (a list for order and settings, a
+  timeline for time). They needn't offer the same tools. But **where both
+  offer the same action, it gives the same result.** Undoing an added
+  slide worked in one and not the other; a drop inserted in one and
+  appended in the other. Different tools is design; the same tool acting
+  differently is a bug (`spec/hig-audit.md` §G).
 
 ## Names describe; they don't refer
 
@@ -96,11 +99,20 @@ A name says what a thing does, in words a newcomer already has.
   (found 2026-09-24, audit G1). The fix also took away the default that
   let it happen, so the next caller can't leave it out.
 
-## Every empty place offers a way forward
+## An empty place says why it's empty
 
-An empty collection or show says what it's for, and has the button that
-fills it. The first time, it welcomes and teaches. After that, a short
-reminder with the same button. (Audit H2; `spec/first-run-brief.md`.)
+The way forward depends on *why* it's empty:
+- **A container you're meant to fill** (the library, a collection, a
+  show): it says what it's for, and has the button that fills it. The
+  first time, it welcomes and teaches; after that, it's a short reminder
+  with the same button. The story: a new collection gave no hint of how
+  to fill it, short of hunting for a small Import button or dragging onto
+  a small sidebar row.
+- **Hidden by a search or filter:** say so, and offer to clear it.
+- **Waiting for a selection** (the inspector): say what to select.
+- **A row waiting for a drop:** a quiet hint, no button.
+
+(Audit H2; `spec/first-run-brief.md`.)
 
 ## Behaviour follows the job
 
@@ -116,6 +128,34 @@ Timeline window). (`spec/windows.md`.)
 A file carries no slide settings. Each slide, one *use* of a file, has
 its own. The same photo can be three slides, three ways. (Settled
 2026-09-20, `spec/plan.md`.)
+
+## Two kinds of expected behaviour
+
+- **The obvious ones:** what every Mac app does. ⌘A selects all, Delete
+  deletes, right-click offers what's under the pointer, arrow keys move
+  the selection, Space opens Quick Look. They can be listed ahead of
+  time, and are: `spec/hig-audit.md`.
+- **The contextual ones:** what *this* app should do, which only shows up
+  when it's used for real. Nothing lists them in advance. Jason finds
+  them by making shows: New Show should ask for the length before making
+  twenty 5-second slides; a new collection should say how to fill it.
+  They're recorded as they're found, with the story, here and in the
+  audit.
+
+## The person using it sees what the logs don't
+
+The layout-loop crash (2026-09-23) took three sessions, including an
+all-night one. Claude kept building confident theories from exception
+logs and timestamps, and kept forcing the square peg. Each time, the way
+forward came from Jason's own account of what he'd done and seen: his
+memory of the sessions contradicted a log-based timeline, and his
+questions pushed the digging somewhere new.
+(`spec/history/2026-09-23-crash-hunt-session3.md` names the failures.)
+
+**The lesson:** when the person who uses the app every day says
+something doesn't match their experience, that's better evidence than a
+reading of the logs. Ask what they remember before building another
+theory. *(Jason's own words for the eureka moment belong here.)*
 
 ## Know before you build
 

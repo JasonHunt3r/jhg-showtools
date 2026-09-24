@@ -216,9 +216,32 @@ Browser. Elsewhere they're thin, or missing altogether:
 
 ## G. Edit Slides vs Edit Show
 
-The two modes show the same slides with the same selection (`ShowView`
-holds one `selection` for both), so a user expects a slide to behave the
-same in either. It mostly doesn't:
+The two modes are two views of one show, built for different jobs:
+Edit Slides is a list, for order and per-slide settings; Edit Show is a
+timeline, for time, layers and audio. They share one selection (`ShowView`
+holds it), and **they don't have to offer the same tools**. Edit Slides
+has no viewer and no rows, and shouldn't grow them.
+
+**The rule is narrower:** where both modes offer the same action on a
+slide, it gives the same result. A person who learned it in one mode
+shouldn't be surprised in the other.
+
+- **Should match** (the same action, in both):
+  - selecting: click, ⌘-click, ⇧-click, ⌘A;
+  - undo: every change is one step, in both;
+  - what double-click on a slide does, once that's decided;
+  - the slide's core context-menu items (Duplicate, Remove, Play from
+    Here, Show in Finder, Show in Library);
+  - Delete;
+  - a drop: both have positions, so both insert where the drop lands.
+- **May differ** (it follows the mode's job):
+  - playback keys: Space and J/K/L play in the viewer, and Edit Slides
+    has none;
+  - timeline-only actions: trims, rolls, the lane, markers;
+  - what the list shows per slide (length, transition, Pan and Zoom as
+    text), where the timeline shows them as shapes.
+
+Today they disagree on several of the "should match" items:
 
 | | Edit Slides (list) | Edit Show (storyline) |
 |---|---|---|
@@ -311,6 +334,18 @@ same in either. It mostly doesn't:
     Collection" with a Rename button). That one is made by the app, not
     by a click.
 - **H2 (Med) — An empty collection or show has no way in on its face.**
+  *Scope:* this is about empty **containers you're meant to fill** (the
+  library, a collection, a show). Other empty places are different and
+  don't all want a button:
+  - *Empty because of a search or filter:* say so, and offer to clear the
+    filter, not Import. The files exist; they're just hidden.
+  - *Empty because nothing is selected* (the inspector, the Info panel):
+    say what to select. The selection is the way forward, so no button.
+  - *An empty row in the timeline* (images, audio): a hint to drop
+    something there, as the images row has now. Dragging is the natural
+    way in, and a button in a 30-point row would be clutter.
+  - *Not empty at all but unused* (a disclosure closed, a drawer with
+    nothing in it yet): nothing to say.
   The empty collection's message says how to fill it, with no button
   (`MainView.swift`, `LibraryGridView.body`). The empty show says "No
   slides yet", with no button (`ShowView.swift`, `EditSlidesView`). Only
