@@ -172,7 +172,9 @@ Browser. Elsewhere they're thin, or missing altogether:
   gets Play on Desktop, Duplicate Show and an Export ▸ submenu (which
   the File menu uses too); a collection gets Play, greyed out until
   playing without a show is built. Duplicate Show and Play on Desktop
-  need new code; the rest are menu items.
+  need new code; the rest are menu items. **Built 2026-09-24**, except
+  Play on Desktop (greyed out, still needs the BGTools handoff) and the
+  collection's Play (not added yet).
 - **C7 (Low) — One action, two names.** Deleting a file from the library
   is "Move to Trash…" in the grid (`MainView.swift:751`) and "Delete from
   Library…" in the Collection Browser. Pick one: "Move to Trash…" says

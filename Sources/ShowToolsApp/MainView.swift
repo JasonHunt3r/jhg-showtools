@@ -39,6 +39,19 @@ struct MainView: View {
                           ? "lock.rectangle.stack" : "photo.on.rectangle.angled")
                     .badge(model.items.count)
                     .tag(SidebarItem.library)
+                    .contextMenu {
+                        Button("Import…") { runImportPanel(model) }
+                        Button("New Collection…") { startCreatingCollection() }
+                        // Not built (spec/windows.md, "the library panel");
+                        // settled 2026-09-24 to go in greyed out until it is.
+                        Button("Open Library Panel") {}.disabled(true)
+                        Divider()
+                        Button("Show in Finder") {
+                            if let root = model.library?.root {
+                                NSWorkspace.shared.activateFileViewerSelecting([root])
+                            }
+                        }
+                    }
 
                 // Library → Collection → Show, as Final Cut's Library → Event → Project.
                 // A collection's groups and its shows sit side by side, as
@@ -387,6 +400,18 @@ extension MainView {
                     .disabled(show.slides.isEmpty)
                 Button("Play Full Screen") { Player.open(show: show, model: model, fullScreen: true) }
                     .disabled(show.slides.isEmpty)
+                // Hands the show to BGTools (spec/bgtools.md); not built —
+                // settled 2026-09-24 to go in greyed out until it is.
+                Button("Play on Desktop") {}.disabled(true)
+                Divider()
+                Button("Duplicate Show") { model.duplicateShow(show.id, undo: undoManager) }
+                Divider()
+                Menu("Export") {
+                    Button("Show…") { runExportPanel(model, showID: show.id) }
+                        .disabled(show.slides.isEmpty || model.exportStatus?.finished == false)
+                    Button("Movie…") { runMovieExportPanel(model, showID: show.id) }
+                        .disabled(show.slides.isEmpty || model.movieExportStatus?.finished == false)
+                }
                 Divider()
                 Button("Rename…") { startRenaming(.show(show.id), current: show.name) }
                 Button("Delete Show…") { confirmDelete = show }
@@ -1088,10 +1113,9 @@ struct LibraryGridView: View {
                     .help("Take them out of this group. They stay in the collection.")
             }
             Divider()
-            Button("Show in Finder") {
-                let urls = ids.compactMap { model.itemsByID[$0] }.compactMap(model.url(for:))
-                NSWorkspace.shared.activateFileViewerSelecting(urls)
-            }
+            // No Show in Finder here (settled, spec/conventions.md §3): the
+            // library holds its own copies, and where the originals went is
+            // unknown, so revealing a file would show nothing useful.
             Button("Rename…") { renameIDs = ids }
             Button("Get Info") { model.infoPanelSelection = ids; InfoPanel.show(model: model, undoManager: undoManager) }
             Divider()

@@ -71,12 +71,14 @@ struct AppCommands: Commands {
             Button("Import Show…") { runImportShowPanel(model) }
                 .disabled(model.library == nil)
             // The show in the window, or the one selected in the sidebar (plan, Phase 4).
-            Button("Export Show…") { if let id = exportShowID { runExportPanel(model, showID: id) } }
-                .keyboardShortcut("e", modifiers: [.command, .shift])
-                .disabled(exportShowID == nil || model.exportStatus?.finished == false)
-            Button("Export Movie…") { if let id = exportShowID { runMovieExportPanel(model, showID: id) } }
-                .keyboardShortcut("e", modifiers: [.command, .shift, .option])
-                .disabled(exportShowID == nil || model.movieExportStatus?.finished == false)
+            Menu("Export") {
+                Button("Show…") { if let id = exportShowID { runExportPanel(model, showID: id) } }
+                    .keyboardShortcut("e", modifiers: [.command, .shift])
+                    .disabled(exportShowID == nil || model.exportStatus?.finished == false)
+                Button("Movie…") { if let id = exportShowID { runMovieExportPanel(model, showID: id) } }
+                    .keyboardShortcut("e", modifiers: [.command, .shift, .option])
+                    .disabled(exportShowID == nil || model.movieExportStatus?.finished == false)
+            }
             Divider()
             // The Library grid publishes these while it has a selection
             // (2b); a show's slide selection publishes Get Info too (F4) —

@@ -302,16 +302,24 @@ universals first.
 **Progress:**
 - **1. The Library pane: done 2026-09-24.** Jason's answers:
   - **The Library row** gets **Show in Finder**, which reveals the
-    library's folder ("would be nice").
+    library's folder ("would be nice"). **Built 2026-09-24**, along
+    with Import… and New Collection… (it had no menu at all); Open
+    Library Panel is on it too, greyed out (the library panel itself
+    isn't built, `spec/windows.md`).
   - **Playing a collection without making a show** goes on the
     collection's menu now, **greyed out until it's built**
-    (`spec/simple-things-fast.md`, Quick Show).
+    (`spec/simple-things-fast.md`, Quick Show). Not yet added to the
+    menu.
   - **Duplicate Show and Play on Desktop:** both wanted. They're the two
     items here that need new code, not just a menu item. Play on Desktop
-    hands the show to BGTools (`spec/bgtools.md`).
+    hands the show to BGTools (`spec/bgtools.md`). **Duplicate Show
+    built 2026-09-24** (`AppModel.duplicateShow`, undoable); **Play on
+    Desktop still needs the BGTools handoff**, so it's on the menu
+    greyed out for now.
   - **Export:** in the show's menu **and** in File ▸ Export, as one
     **Export ▸** submenu (Show…, Movie…) wherever export appears. The
-    File menu's two Export items become that submenu too.
+    File menu's two Export items become that submenu too. **Built
+    2026-09-24**, both places.
   - **Anything reached for and not found:** nothing yet; there hasn't
     been enough use. It goes in §8 when it happens.
 - **2. The Library grid: done 2026-09-24.** Jason's answers:

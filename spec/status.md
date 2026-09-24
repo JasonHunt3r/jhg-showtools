@@ -230,10 +230,21 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
    done 2026-09-24, `spec/bgtools.md` items 1–2. Left for Jason's hands:
    a real ⌘Q while the settings window is open, and the panel's Quit
    button.
-3. **The Library pane's and grid's menus** (right-click stops 1–2,
-   `spec/conventions.md` §3): Show in Finder off the tiles; Duplicate
-   Show, the Export ▸ submenu, Show in Finder on the Library row; items
-   whose feature isn't built yet go in greyed out.
+3. ~~**The Library pane's and grid's menus**~~ (right-click stops 1–2,
+   `spec/conventions.md` §3) — done 2026-09-24: Show in Finder is off the
+   tile menu; a show's menu gained Duplicate Show (real: copies its
+   slides, rows, music, markers and editor state) and an Export ▸
+   submenu (Show…, Movie…, also replacing the File menu's two flat
+   items) with Play on Desktop above it, greyed out (hands the show to
+   BGTools; not built); the Library row, which had no menu at all, got
+   one: Import…, New Collection…, Open Library Panel (greyed out; not
+   built), Show in Finder. `xcodebuild` for the ShowTools scheme and
+   `./make-app.sh debug` both build clean; `swift test` (305 tests)
+   passes. **Left for Jason's hands:** every one of these menus — a
+   synthetic right-click didn't open a context menu reliably in this
+   session (a known limitation, see `showtools-testing`/AAR history), so
+   only the File menu's Export submenu was confirmed by axtool, not the
+   context menus themselves.
 4. **The viewer's menus + the progress line** (stop 4 + W3).
 5. **Edit Slides', the browser's and the inspector's menus** (stops 3, 5,
    6): quick-settings submenus, Copy/Paste with the ⌥ Copy/Paste Settings

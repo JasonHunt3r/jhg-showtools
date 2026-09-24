@@ -902,6 +902,40 @@ final class AppModel {
         }
     }
 
+    /// A copy of a show — its slides, rows, music, markers and editor
+    /// state, none of it the same object as the original's — named "<name>
+    /// copy" (numbered if that's taken too), in the same collection, right
+    /// after it (work order, 2026-09-24).
+    func duplicateShow(_ id: Int64, undo: UndoManager? = nil) {
+        guard let lib = library, let show = shows.first(where: { $0.id == id }) else { return }
+        do {
+            let name = nextName("\(show.name) copy", taken: shows.map(\.name))
+            var copy = try lib.createShow(name: name, collectionID: show.collectionID)
+            copy.slides = show.slides.map { var s = $0; s.id = 0; return s }
+            copy.defaults = show.defaults
+            copy.overlays = show.overlays
+            copy.rows = show.rows
+            copy.music = show.music
+            copy.markers = show.markers
+            copy.editor = show.editor
+            copy = try lib.saveShow(copy)
+            shows.append(copy)
+            collections = try lib.allCollections()
+            sidebar = .show(copy.id)
+            guard let undo else { return }
+            let generation = libraryGeneration
+            undo.registerUndo(withTarget: self) { model in
+                MainActor.assumeIsolated {
+                    guard model.libraryGeneration == generation else { return }
+                    model.deleteShow(copy.id, undo: undo)
+                }
+            }
+            undo.setActionName("Duplicate Show")
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
     func deleteShow(_ id: Int64, undo: UndoManager? = nil) {
         guard let lib = library else { return }
         do {
