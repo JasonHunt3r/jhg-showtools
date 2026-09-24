@@ -131,9 +131,12 @@ and Flush presets from 2a.
   dragging from the right edge to x=300. `revealByDragging` is the obvious
   suspect — it clamps the width it sets, but nothing re-checks the columns
   as a whole. Needs reproducing before anything is changed.
-- **⌥⌘0 (Restore Default Layout) can raise the layout-loop exception**,
-  and killed the app once. Each part alone raised nothing; only all three
-  together did, and then stopped.
+- **⌥⌘0 (Restore Default Layout) raised the layout-loop exception once**,
+  and killed the app, on 2026-09-23: *before* the cause was confirmed as
+  SwiftUI's `.inspector()` and fixed. Not seen since the fix; probably that
+  same crash. The sidebar was a suspect only by coincidence (Jason). Its
+  known bugs are display bugs. `DefaultLayout` still skips the sidebar on
+  that stale reasoning, which is worth retrying.
 - **A song lying wholly inside another** plays over it without crossfading
   (only a partial overlap crossfades). Level tops out at 100%.
 - **The last slide cuts to the background** when something runs past the

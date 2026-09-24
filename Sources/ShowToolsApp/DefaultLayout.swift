@@ -71,6 +71,11 @@ enum DefaultLayout {
                 }
                 window.setFrame(frame, display: true, animate: false)
             },
+            // STALE REASONING (2026-09-24): the next lines were written
+            // before the layout-loop crash's confirmed cause was found —
+            // SwiftUI's .inspector() (spec/history/2026-09-23-crash-hunt-
+            // session3.md) — and the sidebar was only a suspect by
+            // coincidence. Restoring it is worth trying again.
             // The sidebar is deliberately NOT restored here. It is
             // SwiftUI's own NavigationSplitView, and setting its divider
             // from outside is what raised AppKit's layout-loop exception

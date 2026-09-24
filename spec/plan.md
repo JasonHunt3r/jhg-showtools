@@ -813,6 +813,17 @@ window and panel, its two Control Center tiles, pausing (sleep, lock, Low
 Power, hidden Spaces) and private libraries behind Touch ID, and
 installation from ShowTools. See `spec/bgtools.md` for what's left.
 
+### Design posture: the six essentials (Jason, 2026-09-24)
+
+A slideshow is six things: **the pictures, their order, how long each
+shows, how one gives way to the next, whether they move, and what plays
+under them.** Jason designed the app around them before they were
+counted, and they turn up in Quick Show, New Show and BGTools alike.
+**Perceptual efficiency:** wherever someone starts, the six come first and
+nothing gets ahead of them; everything else refines one of them and waits
+until asked for. New panels and levels are checked against the six.
+Detail: `spec/simple-things-fast.md`.
+
 ### Pan and Zoom, and simple things fast (Jason, 2026-09-22; renamed 2026-09-24)
 
 **"Ken Burns" was renamed "Pan and Zoom"** everywhere it was shown. The old

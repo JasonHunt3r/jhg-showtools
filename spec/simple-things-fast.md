@@ -19,6 +19,19 @@ show made two things plain:
 - **With every window open, it's a lot to take in.** Every area shows at
   once, whatever the job in hand.
 
+## Design posture: the six essentials (Jason, 2026-09-24)
+
+A slideshow is six things: **the pictures, their order, how long each
+shows, how one gives way to the next, whether they move, and what plays
+under them.** Everything else in the app refines one of them.
+
+**Perceptual efficiency** is the posture that follows. Wherever someone
+starts (Quick Show, New Show…, BGTools, Basic), the six come first, in
+that order, and nothing else is in the way. The refinements (transforms,
+the lane, effects, rhythm, markers) are there when asked for, never in
+front. A new panel or level is checked against the six: which of them
+does it serve, and does it put anything ahead of them?
+
 ## The principle (Jason, 2026-09-24)
 
 The app should work intuitively, in its own plain vocabulary, so most
@@ -166,8 +179,9 @@ a selection), their order, how long each shows, how one gives way to the
 next, whether they move (Pan and Zoom), and what plays under them. Six
 things. Everything else in the app refines one of them.
 
-**BGTools has the same six** (`Sources/BGToolsCore/DesktopSettings.swift`),
-arrived at independently, which is good evidence they're the right six:
+**BGTools has the same six** (`Sources/BGToolsCore/DesktopSettings.swift`).
+Jason designed it that way before they were counted. Seeing the same six
+turn up in three places (Quick Show, New Show, BGTools) confirms them:
 
 | Essential | BGTools today |
 |---|---|
@@ -220,11 +234,12 @@ his Mac then captures that arrangement as the level's preset:
   a fresh library opens with it. A level is the same thing, captured
   three times, with more in it: which areas are open, which mode, which
   controls.
-- *One known limit:* the sidebar's width can't be set from outside while
-  the app runs. Poking SwiftUI's split view raised the layout-loop
-  exception (measured 2026-09-23, noted in `DefaultLayout.restore`). So
-  a level can set it at launch, or leave it alone, but switching level
-  mid-session can't move it until that's solved.
+- *The sidebar:* `DefaultLayout.restore` doesn't put the sidebar's width
+  back, on the belief that doing so caused the layout-loop crash. That
+  belief is stale. The crash's confirmed cause was SwiftUI's
+  `.inspector()`, and the sidebar was a suspect by coincidence (Jason,
+  2026-09-24). Its known bugs are display bugs. So setting the sidebar
+  when a level is switched is untested, not ruled out: try it.
 - *Controls inside an area* (an inspector section, a menu item, a
   transport toggle) aren't settings today. For those, the capture is a
   written list per level, made from what Jason hides or leaves unused, and
