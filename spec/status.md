@@ -49,6 +49,13 @@ slide's level line is slide settings, which are JSON.
    script, so ingest-by-drag, building a show by hand and editing it are
    untested by a person.
 3. **Telling BGTools when a library moves** (B7 left it open).
+4. **Expected Mac behaviour** — `spec/hig-audit.md` (audited from code
+   2026-09-24, nothing fixed yet). Missing conventions: ⌘A, ⌘D, arrow keys
+   and Quick Look in the grid; context menus on lane images, transitions
+   and markers; Edit Show's commands in no menu; Edit Slides and Edit
+   Show disagreeing. One real bug: **adding slides by a drop onto Edit
+   Slides, a sidebar show or Add to Show can't be undone** (G1). Eight fix
+   batches, least risky first; three decisions for Jason.
 
 **Ken Burns → "Pan and Zoom" — done 2026-09-23** (`8db7ffc`, `a0be113`),
 in the UI, the code, the slide-settings JSON keys (`panAndZoom`,
