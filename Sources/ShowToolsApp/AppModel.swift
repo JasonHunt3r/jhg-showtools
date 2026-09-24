@@ -663,6 +663,32 @@ final class AppModel {
         undo.setActionName("Rename Group")
     }
 
+    /// Nests a group inside another, or (nil) back to the top — groups hold
+    /// groups, like folders. Both stay in the same collection. Silently
+    /// does nothing if the move is refused (a cycle, or a different
+    /// collection): the UI should already have ruled those out before
+    /// offering the drop, so this is a last-resort guard, not feedback.
+    func moveGroup(_ id: Int64, toParent newParentID: Int64?, undo: UndoManager? = nil) {
+        guard let lib = library, let g = group(id) else { return }
+        let before = g.parentID
+        guard before != newParentID else { return }
+        do {
+            try lib.moveGroup(id: id, toParent: newParentID)
+            groups = try lib.allGroups()
+        } catch {
+            return
+        }
+        guard let undo else { return }
+        let generation = libraryGeneration
+        undo.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated {
+                guard model.libraryGeneration == generation else { return }
+                model.moveGroup(id, toParent: before, undo: undo)
+            }
+        }
+        undo.setActionName("Move Group")
+    }
+
     /// Its sub-groups go with it, as in Finder; the files stay in the
     /// collection.
     func deleteGroup(_ id: Int64, undo: UndoManager? = nil) {

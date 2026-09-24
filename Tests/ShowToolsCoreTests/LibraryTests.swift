@@ -748,6 +748,49 @@ extension LibraryTests {
         XCTAssertEqual(g.name, "Book Cart 2026")
     }
 
+    /// Dragging a group onto another nests it there; dragging it out again
+    /// (a nil parent) un-nests it to the top.
+    func testMovingAGroupNestsItAndCanUnnestIt() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let c = try lib.createCollection(name: "C")
+        let a = try lib.createGroup(name: "A", collectionID: c.id)
+        let b = try lib.createGroup(name: "B", collectionID: c.id)
+        XCTAssertNil(try lib.allGroups().first { $0.id == b.id }?.parentID)
+
+        try lib.moveGroup(id: b.id, toParent: a.id)
+        XCTAssertEqual(try lib.allGroups().first { $0.id == b.id }?.parentID, a.id)
+
+        try lib.moveGroup(id: b.id, toParent: nil)
+        XCTAssertNil(try lib.allGroups().first { $0.id == b.id }?.parentID, "back to the top")
+    }
+
+    /// A group can't be nested inside itself, or inside one of its own
+    /// descendants — that would make its own subtree unreachable.
+    func testMovingAGroupRefusesACycle() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let c = try lib.createCollection(name: "C")
+        let top = try lib.createGroup(name: "Top", collectionID: c.id)
+        let child = try lib.createGroup(name: "Child", collectionID: c.id, parentID: top.id)
+        let grandchild = try lib.createGroup(name: "Grandchild", collectionID: c.id, parentID: child.id)
+
+        XCTAssertThrowsError(try lib.moveGroup(id: top.id, toParent: top.id), "itself")
+        XCTAssertThrowsError(try lib.moveGroup(id: top.id, toParent: child.id), "its own child")
+        XCTAssertThrowsError(try lib.moveGroup(id: top.id, toParent: grandchild.id), "its own grandchild")
+        // Untouched by the refused moves.
+        XCTAssertNil(try lib.allGroups().first { $0.id == top.id }?.parentID)
+    }
+
+    /// A group only nests inside one in the same collection — its own
+    /// `collection_id` never changes.
+    func testMovingAGroupRefusesADifferentCollection() throws {
+        let lib = try Library(root: dir.appendingPathComponent("Lib"))
+        let c1 = try lib.createCollection(name: "One"), c2 = try lib.createCollection(name: "Two")
+        let a = try lib.createGroup(name: "A", collectionID: c1.id)
+        let b = try lib.createGroup(name: "B", collectionID: c2.id)
+        XCTAssertThrowsError(try lib.moveGroup(id: a.id, toParent: b.id))
+        XCTAssertEqual(try lib.allGroups().first { $0.id == a.id }?.collectionID, c1.id, "unmoved")
+    }
+
     func testRemovingFromAGroupCanBePutBackInOrder() throws {
         let lib = try Library(root: dir.appendingPathComponent("Lib"))
         let ids = try (1...3).map { i -> Int64 in try insertItem(lib, "\(i)") }

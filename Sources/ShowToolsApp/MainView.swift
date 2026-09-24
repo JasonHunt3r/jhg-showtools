@@ -304,14 +304,28 @@ extension MainView {
                 Button("Delete Collection…") { confirmDeleteCollection = c }
             }
             // Dropping files on a collection puts them in it (imported first
-            // if they come from Finder or Photos): no question, that's the ask.
-            .onDrop(of: ItemDrag.accepted, isTargeted: nil) { providers in
+            // if they come from Finder or Photos): no question, that's the
+            // ask. Dropping a group here can't move it (a group's
+            // collection never changes) — its own collection, un-nest it to
+            // the top; a different one, add its files there, after asking.
+            .onDrop(of: ItemDrag.accepted + [GroupDrag.type], isTargeted: nil) { providers in
                 Task {
+                    if let gid = await GroupDrag.id(from: providers) { dropGroup(gid, onCollection: c); return }
                     let ids = await model.itemIDs(from: providers)
                     model.addToCollection(ids, c.id)
                 }
                 return true
             }
+    }
+
+    /// A group dropped on a collection row (see `collectionRow`'s `onDrop`).
+    private func dropGroup(_ groupID: Int64, onCollection c: MediaCollection) {
+        guard let g = model.group(groupID) else { return }
+        if g.collectionID == c.id {
+            model.moveGroup(g.id, toParent: nil, undo: undoManager)
+        } else if GroupToCollectionNotice.confirm(groupName: g.name, count: g.itemIDs.count, collection: c.name) {
+            model.addToCollection(g.itemIDs, c.id)
+        }
     }
 
     /// A group's own row, and — recursively — the groups nested inside it
@@ -331,10 +345,23 @@ extension MainView {
                 Button("Rename…") { startRenaming(.group(g.id), current: g.name) }
                 Button("Delete Group…") { deleteGroupAsking(g) }
             }
-            // A group's files must be in its collection (plan): the Library
-            // silently leaves out anything not already there.
-            .onDrop(of: ItemDrag.accepted, isTargeted: nil) { providers in
+            // Draggable, so it can be dropped on another group to nest it
+            // (plan, "groups hold groups, like folders") or on a collection
+            // (see `collectionRow`).
+            .onDrag { GroupDrag.provider(g.id) }
+            // A file dropped here joins the group (the Library enforces the
+            // membership rule — a group's files must be in its collection,
+            // so anything not already there is silently left out). Another
+            // group dropped here nests it — refused (silently; the drop is
+            // still accepted visually) if that would make a group its own
+            // descendant, or cross collections.
+            .onDrop(of: ItemDrag.accepted + [GroupDrag.type], isTargeted: nil) { providers in
                 Task {
+                    if let dragged = await GroupDrag.id(from: providers) {
+                        guard dragged != g.id else { return }
+                        model.moveGroup(dragged, toParent: g.id, undo: undoManager)
+                        return
+                    }
                     let ids = await model.itemIDs(from: providers)
                     model.addToGroup(ids, g.id)
                 }

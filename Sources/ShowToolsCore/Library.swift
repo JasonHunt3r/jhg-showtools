@@ -629,6 +629,40 @@ public final class Library {
         try db.prepare("UPDATE groups SET name = ? WHERE id = ?").bind(.text(name), .int(id)).run()
     }
 
+    /// Nests a group inside another (or, `newParentID` nil, back to the top)
+    /// — groups hold groups, like folders (plan). Both stay in the same
+    /// collection; a group's `collection_id` never changes. Refuses a move
+    /// that would make a group its own descendant, walking up from
+    /// `newParentID` to check.
+    public func moveGroup(id: Int64, toParent newParentID: Int64?) throws {
+        guard let newParentID else {
+            try db.prepare("UPDATE groups SET parent_id = NULL WHERE id = ?").bind(.int(id)).run()
+            return
+        }
+        guard newParentID != id else {
+            throw DatabaseError(description: "A group can't be nested inside itself.")
+        }
+        let own = try db.prepare("SELECT collection_id FROM groups WHERE id = ?").bind(.int(id))
+        guard try own.step() else { throw DatabaseError(description: "No such group.") }
+        let ownCollection = own.int(0)
+        let target = try db.prepare("SELECT collection_id FROM groups WHERE id = ?").bind(.int(newParentID))
+        guard try target.step() else { throw DatabaseError(description: "No such group.") }
+        guard target.int(0) == ownCollection else {
+            throw DatabaseError(description: "A group can only be nested inside one in the same collection.")
+        }
+        var cursor: Int64? = newParentID
+        let parentOf = try db.prepare("SELECT parent_id FROM groups WHERE id = ?")
+        while let c = cursor {
+            guard c != id else {
+                throw DatabaseError(description: "A group can't be nested inside its own descendant.")
+            }
+            parentOf.bind(.int(c))
+            guard try parentOf.step() else { break }
+            cursor = parentOf.isNull(0) ? nil : parentOf.int(0)
+        }
+        try db.prepare("UPDATE groups SET parent_id = ? WHERE id = ?").bind(.int(newParentID), .int(id)).run()
+    }
+
     /// Its sub-groups go with it, as in Finder; the files stay in the
     /// collection. Use `snapshotGroupSubtree` first if the caller wants undo.
     public func deleteGroup(id: Int64) throws {

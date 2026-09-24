@@ -12,8 +12,8 @@ Repo: `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 ## Where it stands
 
 **Everything planned is built**, including Groups inside collections
-(below). Phases 1–5, Phase 3b, Phase 4 and video export. **288 tests**
-(276 core + 12 BGTools). **Library schema 13.**
+(below). Phases 1–5, Phase 3b, Phase 4 and video export. **291 tests**
+(279 core + 12 BGTools). **Library schema 13.**
 
 | Phase | State |
 |---|---|
@@ -130,14 +130,30 @@ preferences-domain rules).
    New Show from Group…, Add Group to Collection — and Keep as Group
    with no collection open walks through making one first ("Grouped
    Collection"), per the plan.
-   Ran `swift test` (288, 0 failures — one existing test extended to
-   round-trip `browserGroupID`) and `./make-app.sh` clean, then
-   smoke-launched the built app against a scratch library twice (no
-   crash, no `runningTestLaunches` note left behind on quit) — a real
-   hands-on check of drag-to-group, nested folding, the browser dropdown
-   and the delete notice's wording still wants Jason's own hands.
-   **Everything in the plan's decided scope is now built.** Full detail
-   in `spec/plan.md`, "Groups inside collections".
+   **Nesting by drag, and dragging a group into another collection,
+   built 2026-09-24 (Jason's ask, after the fact):** `Library.
+   moveGroup(id:toParent:)` nests a group inside another, or back to the
+   top, refusing a cycle (a group nested inside its own descendant) or a
+   move across collections — both stay in the same collection, since a
+   group's `collection_id` never changes. A group's row is now draggable
+   (`GroupDrag`) and accepts a drop of another group (nests it) besides
+   files (adds them). Dropped on its own collection's row, it un-nests to
+   the top, no question; dropped on a **different** collection — since
+   the group itself can't move there — **its files are added to that
+   collection instead**, after a notice with a "don't show again"
+   checkbox (`GroupToCollectionNotice`, same convention as
+   `CollectionAddNotice`).
+   Ran `swift test` (291, 0 failures — 3 new `moveGroup` tests: nest and
+   un-nest, refuses a cycle at every depth, refuses a different
+   collection; one existing test extended to round-trip
+   `browserGroupID`) and `./make-app.sh` clean, then smoke-launched the
+   built app against a scratch library three times (no crash, no
+   `runningTestLaunches` note left behind on quit).
+   **Everything in the plan's decided scope is now built.** Real
+   dragging — a group onto a group, onto its own collection, onto
+   another — still wants Jason's own hands: this was built and reasoned
+   about, not clicked. Full detail in `spec/plan.md`, "Groups inside
+   collections".
 6. **Batch 4: selection logic in Core, with tests.** ⇧-click replaces
    the previous range; arrow-key steps given a column count (B3, E1,
    B2, E2 in the audit; the settled rules are in `spec/conventions.md`
@@ -203,9 +219,12 @@ and Flush presets from 2a.
   test clean, but not confirmed by a real click — the storyline canvas
   resisted synthetic clicking this session.
 - **Groups in the Library pane** (built 2026-09-24): drag-to-add from the
-  grid and from Finder, nested folding, New Group naming, and the delete
-  notice's wording — only smoke-tested (launch, no crash), not clicked by
-  a person.
+  grid and from Finder, nested folding, New Group naming, the delete
+  notice's wording, the browser's group filter, and Keep as Group. Also
+  new: **dragging a group onto another to nest it, onto its own
+  collection to un-nest it, and onto a different collection**, with the
+  "images will be added" notice and its suppression checkbox. All of it
+  only smoke-tested (launch, no crash), not clicked by a person.
 - **The Rhythm tool** (step 7): the panel's look (the space around the
   form, the notation's size: a staff space is 5.5 pt), Listen by ear on
   real music, Space stopping Listen, and whether 145 BPM is right for

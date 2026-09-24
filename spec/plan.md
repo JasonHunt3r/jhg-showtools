@@ -1008,6 +1008,39 @@ type-checker reason above.
 **Groups inside collections is now fully built**, Core through UI, matching
 everything Jason decided 2026-09-24.
 
+**Built 2026-09-24 (nesting by drag, and dragging into another
+collection):** `Library.moveGroup(id:toParent:)` — nests a group inside
+another, or (nil) back to the top; both stay in the same collection (a
+group's `collection_id` never changes). Refuses, by throwing, a move
+that would make a group its own descendant (walks up from the wanted
+parent checking for the group itself) or that crosses collections.
+`AppModel.moveGroup` wraps it with undo, like `renameGroup`; the UI
+catches the thrown refusal and does nothing rather than surface it —
+the drop shouldn't have been offered in the first place if it wasn't
+going to work, so there's nothing to tell the user beyond the drop
+simply not doing anything.
+
+A group's row is now draggable (`GroupDrag`, `CollectionAdd.swift`, the
+same pattern as `ItemDrag` but carrying one group id) and accepts drops
+of both kinds: a file joins the group as before, another group nests
+inside it. Dropped on a collection row instead: its own collection,
+the drop un-nests it to the top (Finder's "drag a folder out to the
+window" move, no confirmation — nothing crosses collections); a
+different collection, **the group can't move there, so this adds the
+group's own files to that collection instead**, after asking
+(`GroupToCollectionNotice`, `CollectionAdd.swift`, the same
+suppression convention as `CollectionAddNotice` and
+`GroupDeleteNotice` — exactly Jason's ask, 2026-09-24: "if the latter,
+dialog with a don't-show-again option saying the images in this group
+will be added to the destination collection").
+
+Three new Core tests (nest and un-nest; refuses a cycle at every depth;
+refuses a different collection) — 279 core, 291 total (was 288).
+`swift test` and `./make-app.sh` clean; smoke-launched again, no crash.
+Real dragging (a group onto a group, onto its own collection, onto
+another) still wants Jason's hands — this was built and reasoned about,
+not clicked.
+
 ### Later
 - ~~Video export~~ — **BUILT 2026-09-22**, E1–E5, through the hook above
   exactly as promised: a new menu item, not a rewrite. Own spec
