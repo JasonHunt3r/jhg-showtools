@@ -435,6 +435,15 @@ struct StorylineView: View {
                 .gesture(markerDragGesture(m.id))
                 .help((song == nil ? "Marker" : "Beat marker (moves with its audio clip)")
                       + " at \(formatClock(t)). Drag to move; Delete removes it; double-click for its line.")
+                // Just the obvious one for now (audit C3); Show/Hide Line
+                // waits for the right-click conversation (spec/conventions.md §3).
+                .contextMenu {
+                    Button("Remove Marker") {
+                        selectedMarkers = [m.id]
+                        mutate("Remove Marker") { $0.removeMarkers([m.id]) }
+                        selectedMarkers = []
+                    }
+                }
         }
         // What the Rhythm tool would place on this show, faint, until it's applied.
         if RhythmTool.shared.showID == show.id {
@@ -993,6 +1002,19 @@ struct StorylineView: View {
         .help("\(r.transitionIn.style.title) · \(formatSeconds(duration))"
               + (own ? "" : " (show default)") + ". Drag an edge to change when it starts or ends; drag the middle to slide it.")
         .offset(x: left, y: laneTop + 2)
+        // Just the obvious one for now (audit C2); the fuller menu (its
+        // style as a submenu, Use Show Default) waits for the right-click
+        // conversation (spec/conventions.md §3).
+        .contextMenu {
+            Button("Remove Transition") {
+                selectTransition(id, at: joinTime)
+                mutate("Remove Transition") { s in
+                    guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
+                    s.slides[i].settings.transition = ShowToolsCore.Transition(style: .cut, duration: 0)
+                }
+                selectedTransition = nil
+            }
+        }
     }
 
     private func transitionEdgeZone(_ r: ResolvedSlide, part: TransitionEdit.Part) -> some View {

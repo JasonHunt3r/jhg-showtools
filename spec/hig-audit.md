@@ -33,7 +33,7 @@ only stack-like thing the grid has.
 | Edit menu | Undo/Redo (window undo manager); Delete, where `onDeleteCommand` is wired | Select All outside Lists, Duplicate, Cut/Copy/Paste of slides or files |
 | Library grid | Click, ⌘-click, ⇧-click; Delete / ⌘Delete; ⌘A; a full context menu | Arrow keys, ⇧-arrows, rubber-band selection, Space (Quick Look), Return, double-click |
 | Edit Slides list | Everything a `List` gives: arrows, ⇧-arrows, ⌘A, Delete, drag to reorder | Duplicate on ⌘D, a fuller context menu |
-| Storyline | Click, ⌘-click, ⇧-click; J/K/L, Space, I/O, M, N, ⇧Z | Arrow keys between slides, ⌘A, Escape for slides; context menus on lane images, transitions, markers |
+| Storyline | Click, ⌘-click, ⇧-click; J/K/L, Space, I/O, M, N, ⇧Z; Remove on a lane image/transition/marker's context menu | Arrow keys between slides, ⌘A, Escape for slides; the fuller context menus (Duplicate, style submenus, Show/Hide Line) |
 | Library pane | Right-click Rename…, Delete…; the Delete key and ⌘Delete; undo for Delete Show and Rename Collection | Return or click-to-rename |
 | Menu bar | File, View, Show | Edit Show's commands (all hidden), the inspector toggle, a real Help menu |
 
@@ -127,16 +127,27 @@ HIG: a context menu holds the most-used commands for the thing under the
 pointer. The app has good ones in the Library grid and the Collection
 Browser. Elsewhere they're thin, or missing altogether:
 
-- **C1 (Med) — Lane images have no context menu.** Right-clicking a clip in
-  the images row reaches the *row's* menu, which offers only Place Image
-  Here… (`ImagesRow.swift:76`). Expected: Remove Image, Duplicate, Show in
-  Finder, Open Inspector.
-- **C2 (Med) — Transitions have no context menu.** A transition in the
-  transitions row can be clicked and dragged, but not right-clicked
-  (`StorylineView.swift:988`). Expected: its style as a submenu, Remove
-  Transition (leaves a cut, as Delete does), Use Show Default.
-- **C3 (Low) — Markers have no context menu.** Expected: Remove Marker,
-  Show or Hide Line.
+- **C1 (Med) — Lane images have no context menu.** **The obvious part
+  fixed 2026-09-24:** right-clicking a clip itself (not just the row) now
+  offers Remove Image, the same `mutate("Remove Image")` Delete already
+  uses. Still missing: Duplicate, Show in Finder, Open Inspector — the
+  fuller menu waits for the right-click conversation.
+- **C2 (Med) — Transitions have no context menu.** **The obvious part
+  fixed 2026-09-24:** right-clicking a transition now offers Remove
+  Transition (sets it to `.cut`, the same as Delete). Still missing: its
+  style as a submenu, Use Show Default.
+- **C3 (Low) — Markers have no context menu.** **The obvious part fixed
+  2026-09-24:** right-clicking a marker now offers Remove Marker, the
+  same `removeMarkers` Delete already calls. Still missing: Show or Hide
+  Line.
+  **C1–C3 all reuse the exact mutate call their Delete-key handler
+  already uses** (`EditShowView.swift`), so the new code has no new
+  logic to get wrong. Not confirmed by a real click, though: the
+  storyline's transitions and markers are drawn on a custom canvas whose
+  accessibility coordinates didn't line up with real screen points for
+  axtool (`StorylineView.swift` reported a transition at x≈2232 in a
+  1372-wide window) — `swift build`/`swift test` are clean, but these
+  three specifically want Jason's own right-click.
 - **C4 (Low) — A storyline slide's menu is Duplicate and Remove only**
   (`StorylineView.swift:619`). The same slide's menu in Edit Slides also
   has Play from Here (`ShowView.swift:167`). Expected in both: Play from
@@ -390,15 +401,25 @@ Today they disagree on several of the "should match" items:
     way in, and a button in a 30-point row would be clutter.
   - *Not empty at all but unused* (a disclosure closed, a drawer with
     nothing in it yet): nothing to say.
-  The empty collection's message says how to fill it, with no button
-  (`MainView.swift`, `LibraryGridView.body`). The empty show says "No
-  slides yet", with no button (`ShowView.swift`, `EditSlidesView`). Only
-  the empty *library* has an Import… button. *Fix direction:* front and
-  centre in each empty state:
-  - an empty collection: **Import…** (into this collection) and **Add
-    from Library…**. The second opens the library panel once it exists,
-    and until then a picker like Place Image Here…'s.
-  - an empty show: **Add from Collection…** and **Import…**.
+  **The second tier's buttons built 2026-09-24:**
+  - an empty collection: **Import…** (into this collection, already
+    correct since the panel starts on the collection the sidebar's in)
+    and **Add from Library…** — a new `MultiItemPicker` sheet (same shape
+    as `LibraryPicker`, "Place Image Here…", but multi-select with an Add
+    button), showing every library file not already in the collection.
+    Replaces the library panel this was meant to open once one exists.
+  - an empty show (Edit Slides only — Edit Show's storyline wasn't in
+    scope): **Add from Collection…**, the same `MultiItemPicker` scoped
+    to the show's own collection's pictures, and **Import…**, a new
+    `runImportIntoShowPanel` that imports then appends straight to the
+    show (the existing `runImportPanel` imports into a *collection*, a
+    different target).
+  Checked with real clicks and keystrokes (one button click needed a
+  retry to land — the same synthetic-click flakiness noted elsewhere,
+  not a bug; `Return` on the picker's default-action Add button worked
+  every time): an empty collection picks up two files from the library,
+  an empty show picks up one from its collection, both without leaving
+  the window.
 
   **Two tiers of wording (Jason, 2026-09-24),** the same shape as the
   guided first run (`spec/first-run-brief.md`):

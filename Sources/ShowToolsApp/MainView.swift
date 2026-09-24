@@ -342,6 +342,8 @@ struct LibraryGridView: View {
     /// starts with, and the name being typed.
     @State private var creatingCollection: [Int64]?
     @State private var newCollectionName = ""
+    /// "Add from Library…" on an empty collection (audit H2).
+    @State private var addingFromLibrary = false
 
     enum KindFilter: String, CaseIterable {
         case all, stills, animations, videos, songs
@@ -551,6 +553,10 @@ struct LibraryGridView: View {
                     Label("“\(c.name)” is empty", systemImage: "rectangle.stack")
                 } description: {
                     Text("Drag photos here from Finder or Photos, or select files in the Library and choose Add to Collection.")
+                } actions: {
+                    Button("Import…") { runImportPanel(model) }
+                    Button("Add from Library…") { addingFromLibrary = true }
+                        .disabled(model.items.isEmpty)
                 }
             } else if model.items.isEmpty {
                 ContentUnavailableView {
@@ -660,6 +666,12 @@ struct LibraryGridView: View {
         .sheet(item: Binding(get: { renameIDs.map(IdentifiedIDs.init) },
                              set: { renameIDs = $0?.ids })) { wrapped in
             BatchRenameSheet(itemIDs: wrapped.ids, undoManager: undoManager)
+        }
+        .sheet(isPresented: $addingFromLibrary) {
+            let inCollection = Set(collection?.itemIDs ?? [])
+            MultiItemPicker(title: "Add from Library", items: model.items.filter { !inCollection.contains($0.id) }) { ids in
+                if let cid = collectionID { model.addToCollection(Array(ids), cid) }
+            }
         }
         .alert("New Collection", isPresented: Binding(get: { creatingCollection != nil },
                                                        set: { if !$0 { creatingCollection = nil } })) {
@@ -958,5 +970,26 @@ func runImportPanel(_ model: AppModel, intoCollection: Bool = true) {
         case Target.newCollection: model.newCollection(itemIDs: ids)
         default: model.addToCollection(ids, Int64(target))
         }
+    }
+}
+
+/// Import files straight into a show (an empty Edit Slides list's
+/// "Import…", audit H2): imported the same way as File ▸ Import…, then
+/// appended as slides.
+@MainActor
+func runImportIntoShowPanel(_ model: AppModel, showID: Int64, undo: UndoManager?) {
+    let panel = NSOpenPanel()
+    panel.allowsMultipleSelection = true
+    panel.canChooseDirectories = true
+    panel.canChooseFiles = true
+    panel.allowedContentTypes = [.image, .movie, .audio, .folder]
+    panel.prompt = "Import"
+    panel.message = "Files are copied into the ShowTools library and added to this show. Folders are searched for images, videos or audio."
+    guard panel.runModal() == .OK else { return }
+    let urls = panel.urls
+    Task {
+        let ids = await model.importFiles(urls)
+        guard !ids.isEmpty else { return }
+        model.append(ids, to: showID, undo: undo)
     }
 }

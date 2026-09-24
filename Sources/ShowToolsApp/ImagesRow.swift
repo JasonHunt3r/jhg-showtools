@@ -183,6 +183,16 @@ struct ImagesRow: View {
         .onHover { if $0 { NSCursor.openHand.set() } else { NSCursor.arrow.set() } }
         .help("\(o.item.fileName) · \(formatSeconds(length))")
         .offset(x: inset + CGFloat(start * pps), y: 2)
+        // Just the obvious one for now (audit C1); the fuller menu
+        // (Duplicate, Show in Finder, Open Inspector) waits for the
+        // right-click conversation (spec/conventions.md §3).
+        .contextMenu {
+            Button("Remove Image") {
+                select(id)
+                mutate("Remove Image") { $0.overlays.removeAll { $0.id == id } }
+                selectedOverlay = nil
+            }
+        }
     }
 
 

@@ -139,6 +139,8 @@ struct EditSlidesView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
     @State private var dropTargeted = false
+    /// "Add from Collection…" on an empty show (audit H2).
+    @State private var addingFromCollection = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -172,8 +174,20 @@ struct EditSlidesView: View {
         } primaryAction: { _ in toggleInspector() }
         .overlay {
             if show.slides.isEmpty {
-                ContentUnavailableView("No slides yet", systemImage: "rectangle.stack",
-                    description: Text("Select items in the Library and choose Add to Show, or drag files here."))
+                ContentUnavailableView {
+                    Label("No slides yet", systemImage: "rectangle.stack")
+                } description: {
+                    Text("Select items in the Library and choose Add to Show, or drag files here.")
+                } actions: {
+                    Button("Add from Collection…") { addingFromCollection = true }
+                        .disabled(collectionItems.isEmpty)
+                    Button("Import…") { runImportIntoShowPanel(model, showID: show.id, undo: undoManager) }
+                }
+            }
+        }
+        .sheet(isPresented: $addingFromCollection) {
+            MultiItemPicker(title: "Add from Collection", items: collectionItems) { ids in
+                model.append(Array(ids), to: show.id, undo: undoManager)
             }
         }
         .onDrop(of: ItemDrag.accepted, isTargeted: $dropTargeted) { providers in
@@ -188,6 +202,12 @@ struct EditSlidesView: View {
                 RoundedRectangle(cornerRadius: 8).strokeBorder(Color.accentColor, lineWidth: 3).padding(4)
             }
         }
+    }
+
+    /// The show's own collection's pictures — songs can't be slides.
+    private var collectionItems: [MediaItem] {
+        guard let cid = show.collectionID, let ids = model.collection(cid)?.itemIDs else { return [] }
+        return ids.compactMap { model.itemsByID[$0] }.filter { $0.kind.isPicture }
     }
 }
 
