@@ -67,6 +67,31 @@ field starts filled in, so Return alone plays:
     are shared by every random mode, so a Quick Show sent with its own
     length or transition needs somewhere of its own to keep them.
 
+**Playing a show, or only its pictures (Jason).** With a show as the
+pool, the dialog plays it one of two ways:
+- **The show as built:** its own lengths, transitions, lane and audio.
+  The dialog's picture settings are greyed out, since the show decides.
+- **Images only:** a checkbox. The dialog's settings are active, and they
+  draw only the show's *pictures*, not its composition. It's the same as
+  picking a collection, with the show's pictures as the pool.
+
+**It remembers (Jason).** The dialog opens on its last settings, so
+Return plays the same thing again. **Presets** hold favourite settings,
+with an **Add Preset** button to save the current ones under a name.
+
+**Audio (Jason):** a single audio file or a playlist, with a **Loop**
+checkbox. A playlist is new to the app: several audio files played one
+after another.
+
+**The Rhythm tool is available here too (Jason).** In a show, it places
+slides on the beat (`RhythmPanel`). In Quick Show it would time the
+slide changes to the chosen audio's beats, using a saved rhythm pattern
+(patterns are already saved by name in the library,
+`AppModel.saveRhythmPattern`). *From the code:* the tool is built around
+one show (`RhythmTool.open(showID:)`) and writes slide lengths into it.
+A Quick Show isn't a saved show, so the tool would work on the
+in-memory one. It's the same seam as playing without building.
+
 **Other ways in**, which the dialog complements:
 
 - **Play the Library, a collection, or a selection in the grid.** It
@@ -121,13 +146,20 @@ edit.
 ## The first run's nudge into a show
 
 **Jason's answer: offer to make it.** After the first import into the
-first collection, a dialog adds a little more of the tutorial and asks:
-- **Make one for me:** it walks through a couple of steps, making the
-  show and showing how it was done; or
-- **I'll figure it out:** they're on their own, with tooltips and the
-  empty-state reminders to go by.
+first collection, a dialog adds a little more of the tutorial and asks.
+Its wording (Jason, draft):
 
-The earlier proposal fits under "make one for me":
+> Now you've got all the parts needed to start building your own show!
+> Ready for the next step?
+>
+> **[Show Me]**  **[I've Got This]**
+
+- **Show Me** walks through a couple of steps, making the show and
+  showing how it was done.
+- **I've Got This** leaves them to it, with tooltips and the empty-state
+  reminders to go by.
+
+The earlier proposal fits under Show Me:
 
 - **Once My First Collection has files,** its view shows a bar: "Ready
   to make your first show?" with **New Show from “Name”…**. It asks for
@@ -141,18 +173,19 @@ The earlier proposal fits under "make one for me":
 
 ## Open questions (for Jason)
 
-Answered 2026-09-24: what a level does (it hides, never limits), where
-it's chosen (options above), what Play does with no show (Quick Show),
-and the nudge (offer to make one). Still open:
+Answered 2026-09-24:
+- what a level does: it hides, never limits;
+- where the level is chosen: the options above;
+- what Play does with no show: Quick Show;
+- the nudge: Show Me / I've Got This;
+- a show as the pool: as built, or Images only;
+- keeping a Quick Show: it remembers, plus presets;
+- audio: a file or a playlist, with Loop.
 
+Still open:
 1. **The levels' contents.** Is the split in the table right?
 2. **The level picker:** the top bar, the welcome with a menu path, or
    both?
-3. **Quick Show's pool** when it's a show: does it play the show as built
-   (its own settings), or only its pictures with the dialog's settings?
-4. **Keeping a Quick Show:** does Save as Show… belong in the player, or
-   does the dialog remember its last settings, so that pressing Return
-   plays the same thing again?
-5. **Audio in Quick Show:** one audio file, or a playlist as well? A
-   playlist is new to the app: several audio clips in a row, shuffled or
-   not.
+3. **Save as Show…** from a Quick Show: still wanted, now that the dialog
+   remembers and has presets? It would turn a good Quick Show into a
+   show that can be edited.
