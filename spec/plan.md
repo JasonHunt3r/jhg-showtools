@@ -883,7 +883,12 @@ meet first. **To be designed with Jason.**
 - **A strobe effect** (Jason, 2026-09-21): a slide flashing on and off
   against the background colour. Came out of the rhythm-pattern talk
 - Photos-library browsing inside the app. Deferred until the app has taken
-  shape; the permission question gets worked out then. Drag-and-drop from
+  shape; the permission question gets worked out then. **Checked
+  2026-09-24:** no paid developer membership is needed. ShowTools isn't
+  sandboxed, so it needs a usage line in Info.plist and the user's
+  permission. The catch is that an ad-hoc signature may make macOS ask
+  again after each rebuild, which a free Apple ID's Personal Team signing
+  would avoid (`spec/conventions.md` §5). Drag-and-drop from
   Photos works from Phase 1 regardless
 - **A guided first run** (Jason, 2026-09-22), to be fleshed out with App
   Claude; brief in `spec/first-run-brief.md`. Not a separate tutorial:

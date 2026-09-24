@@ -48,7 +48,7 @@ itself. Names follow `spec/anatomy.md`.
 | Gesture | Means, everywhere | Where it differs | State |
 |---|---|---|---|
 | **Click** | Select this, and only this. Takes the keyboard to that area | — | Built (grid, timeline, lists) |
-| **⌘-click** | Add to or remove from the selection | Lane images, transitions and audio clips select one at a time (E4) | Built, where multiple selection exists |
+| **⌘-click** | Add to or remove from the selection | — | Built in the grid, lists and the slides row. **Settled for lane images and audio clips too** (Jason, 2026-09-24; E4): today they select one at a time |
 | **⇧-click** | Select the range from the anchor (the last plain click or ⌘-click) to here, *replacing* the previous ⇧-range | — | **Settled** (Jason, 2026-09-24). Today the grid and the timeline only ever add to it (B3, E1). Lists already do it right |
 | **Click on empty space** | Deselect all | — | Built in the grid |
 | **Drag on empty space** | Rubber-band selection; ⌘ or ⇧ adds | The timeline: a drag on the ruler scrubs instead | **Settled** (Jason, 2026-09-24; B4) |
@@ -83,8 +83,13 @@ What's well established on the Mac and in creative apps:
   be a knowing departure.** A right-click "Select" submenu of what's
   under the pointer could do the same job without taking ⌥.
 
-*Not checked here:* exactly what ⌥-click does on a clip in Final Cut's
-timeline. Worth trying there before deciding.
+**Final Cut's ⌥-click (checked 2026-09-24):** in Final Cut, a plain click
+on a clip only moves the *skimmer*, and **⌥-click moves the playhead** to
+that frame (and selects the clip if skimming is off). ⌥⌘-click moves a
+connected clip's connection point. In ShowTools a plain click on a block
+already moves the playhead to it, so Final Cut's ⌥-click meaning is
+already the plain click here, and **⌥-click is free for something
+else**, such as selecting what's behind.
 
 ### Double-click
 
@@ -191,10 +196,21 @@ wanted (settled 2026-09-24); the rest is Proposed.
 **Copying tiles to Finder or Mail is small:** the files' URLs go on the
 pasteboard, and Finder pastes copies. Photos is different: **native
 access to the Photos library** (browsing it inside ShowTools, plan,
-Later) is the larger job. Jason believes it needs a paid developer
-membership. That's worth checking before it's ruled out, since Photos'
-framework asks mainly for the user's permission, but it hasn't been
-checked here.
+Later) is the larger job, but **it doesn't need the paid developer
+membership** (checked 2026-09-24). ShowTools is signed ad hoc, with no
+team, no hardened runtime and **no sandbox** (`project.yml`; only the
+Control Center tiles are sandboxed). For an app like that, Photos'
+framework needs only a usage line in Info.plist
+(`NSPhotoLibraryUsageDescription`) and the user's permission. The
+photos-library entitlement matters only to a sandboxed or hardened app,
+and it isn't one of the restricted entitlements that need a paid
+account. The $99 membership is for distributing (notarizing, the App
+Store), not for this.
+- *The practical catch:* macOS ties the permission to the app's
+  signature, and an ad-hoc signature changes with every build, so macOS
+  may ask again after each rebuild, as it can for Accessibility. Signing
+  with a free Apple ID ("Personal Team" in Xcode) gives a stable
+  identity, and costs nothing. Worth confirming on the Mac.
 
 ## 6. Dialogs and naming
 

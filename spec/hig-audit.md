@@ -188,9 +188,10 @@ Browser. Elsewhere they're thin, or missing altogether:
   Also Home/End, and ⌘A (A1).
 - **E3 (Low) — Escape doesn't clear a slide or transition selection.** It
   clears lane images, songs and markers only (`StorylineView.swift:349`).
-- **E4 (Low) — Lane images and songs select one at a time.** ⌘-click and
-  ⇧-click don't add, so several can't be deleted or moved together. Only
-  worth it if moving several at once is wanted.
+- **E4 (Low) — Lane images and audio clips select one at a time.** ⌘-click
+  and ⇧-click don't add, so several can't be deleted or moved together.
+  **Settled: wanted** (Jason, 2026-09-24): ⌘-click adds to and removes
+  from the selection there too.
 
 ## F. The menu bar
 
