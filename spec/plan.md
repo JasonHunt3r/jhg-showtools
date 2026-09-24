@@ -967,9 +967,25 @@ the code):
     library migration.
   - Within a row, overlapping clips crossfade, as now. Across rows, they
     mix.
-  - *To settle:* each row's own volume and mute, how Detect Beats and the
-    Rhythm tool choose a row, and whether several *images* rows follow
-    the same way (the plan mentions "a second images row").
+  - **What it's for (Jason):** mostly crossfading music, and laying sound
+    clips on top of background music. Not stacking several songs.
+  - **The mix already sums** (checked 2026-09-24). Live, `MusicPlayer`
+    gives every clip its own player node, all feeding one mixer, so any
+    number of clips play together. Export mixes offline
+    (`MovieSoundTrack`) the same way. It's the audio engine that mixes;
+    the database only stores where each clip sits.
+  - *One thing to watch:* two clips at full level can add up past full
+    scale and distort. A limiter on the final mix is the usual guard. A
+    video slide's sound was decided to "just mix, no ducking"
+    (`spec/video-audio.md`); ducking music under a voice could be an
+    option later.
+  - *Row controls:* each clip already has its level line. A row's own
+    volume and mute may find their place in the rows' drawers once
+    they're rearranged (`spec/windows.md`, the timeline pane's left edge).
+    Not thought out yet (Jason).
+  - *To settle:* how Detect Beats and the Rhythm tool choose a row, and
+    whether several *images* rows follow the same way (the plan mentions
+    "a second images row").
   - *Naming:* Jason said "audio track". The app's word is **row**
     (`spec/anatomy.md`), so the menu item says **Add Audio Row**.
 - **Replace a slide's image** (Jason, 2026-09-24): a tool to change which

@@ -169,6 +169,8 @@ divider, and empty groups are skipped:
 | Timeline: a marker | **Settled 2026-09-24.** Show / Hide Line · Remove Marker ✓; on a beat marker, Remove All Beat Markers (for its audio clip) |
 | Timeline: empty ruler space | **Settled 2026-09-24.** Add Marker Here, Set Range In Here, Set Range Out Here, Clear Range (M, I, O and ⌥X at the pointer) |
 | Timeline: a row handle | **Settled 2026-09-24.** Open Drawer, Move Row Up, Move Row Down, the row's own tool (Rhythm… on the slides row, Detect Beats… on an audio row) |
+| The player | **Settled 2026-09-24.** Play/Pause, Previous Slide, Next Slide, Go to Slide…, Loop, Enter/Exit Full Screen. No Close |
+| The Info panel | **Settled 2026-09-24.** Show in Library |
 | Timeline: the transport | **Settled 2026-09-24.** Loop Playback on/off |
 | Browser entry | **Settled 2026-09-24.** Append to Show (E) ✓, Insert at Playhead (W) ✓, Place in Images Row at Playhead (Q) ✓; for an audio file, **Place at Playhead** · for a *use* (an entry under "In this show"): Select in Timeline, Play from Here · Show in Library · Remove from Show (that use only), Remove from Collection ✓, **Move to Trash…** (was "Delete from Library…", C7). The letters show as shortcuts at the menu's right edge, if that can be done without E, W and Q taking typing from Search; otherwise they stay in the titles (C8) |
 | Inspector: a section header | **Settled 2026-09-24.** Reset Section to Show Default · Copy Section Settings, Paste Section Settings |
@@ -404,9 +406,19 @@ universals first.
     Clear Range.
   - **A row handle:** Open Drawer, Move Row Up / Down, the row's tool.
   - **The transport:** Loop Playback on/off (Jason's choice).
-- **8. Windows around the main one:** next (the player, the pop-out
-  viewer, the Info panel, the Rhythm tool; later the library panel and
-  the Slide Editor).
+- **8. Windows around the main one: done 2026-09-24.**
+  - **The player:** Play/Pause, Previous / Next Slide, Go to Slide…,
+    Loop, Enter/Exit Full Screen. **No Close:** the player is the star of
+    the show; everything else closes for it (Jason).
+  - **The pop-out viewer:** explained, awaiting Jason's answer.
+  - **The Info panel:** Show in Library. More ideas will come from using
+    it.
+  - **The Rhythm tool:** no menu yet; learn by using it.
+  - **The library panel and the Slide Editor:** no inheriting. The
+    library panel shows the grid's own tiles, so it has the tile menu
+    anyway. The Slide Editor gets its own menus when it's designed.
+- **The right-click conversation is complete,** except the pop-out viewer.
+  What's reached for and missing goes in §8 as it's found.
 
 **The route, in the anatomy's order:**
 1. **Library pane:** the Library row, a collection row, a show row, empty
