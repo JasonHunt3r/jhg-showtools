@@ -1,13 +1,12 @@
 # PaneKit — a reusable pane system for Mac apps
 
-**Status:** Building. **Written 2026-09-24 by the cloud session and never
-compiled** (it has no Swift toolchain). It's **its own package**,
-`PaneKit/` at the repo's top level, so an uncompiled library can't break
-ShowTools' build: `cd PaneKit && swift test` for its layout tests,
-`swift run PaneHarness` for the test app. **Left:** compile it on the Mac
-and fix what doesn't; run the tests and the harness's checks (listed at
-the top of `PaneKit/Harness/Harness.swift`); Jason feels it. Then steps 2–4 below. Named PaneKit, and it lives in this repo for
-now (settled, Jason).
+**Status:** Building. **Compiled clean on the Mac 2026-09-24** — no fixes
+needed; `swift build` and `swift test` (14 tests) both passed on the
+cloud session's code as written. `swift run PaneHarness` launches and
+runs without crashing. **Left:** the harness's hands-on checks (listed at
+the top of `PaneKit/Harness/Harness.swift`) — Jason feels it. Then steps
+2–4 below. Named PaneKit, and it lives in this repo for now (settled,
+Jason).
 
 ## What it is
 
