@@ -152,7 +152,7 @@ preferences-domain rules).
    standalone app in `tools/` with dummy content, checked on the Mac and
    felt by Jason.
 
-9. **Jason's first-test work order** (`showtools_work_order_2026-09-24.md`,
+9. **Jason's first-test work order** (`spec/history/2026-09-24-work-order.md`,
    folded into `spec/plan.md` "The range and the ruler", the Preview line,
    and `spec/bgtools.md` "Jason's first-test list"). One commit per item,
    least risky first. All ten are settled (2026-09-24); the one open

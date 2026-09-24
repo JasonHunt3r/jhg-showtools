@@ -868,7 +868,7 @@ meet first. **To be designed with Jason.**
 
 ### The range and the ruler, after the first test (Jason, 2026-09-24)
 
-From Jason's first-test notes (`showtools_work_order_2026-09-24.md`).
+From Jason's first-test notes (`spec/history/2026-09-24-work-order.md`).
 *Decided* is his; *Proposal* is Claude's, for him to settle.
 
 **The range ends (I and O): drag, undo, lock.**

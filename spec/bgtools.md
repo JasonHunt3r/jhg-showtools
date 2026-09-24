@@ -211,7 +211,7 @@ New with BGTools:
 
 ## Jason's first-test list (2026-09-24)
 
-From `showtools_work_order_2026-09-24.md`. *Decided* is Jason's;
+From `spec/history/2026-09-24-work-order.md`. *Decided* is Jason's;
 *Proposal* is Claude's, for him to settle.
 
 1. **A Quit you can find.** Quit exists, but only as the last item in the
