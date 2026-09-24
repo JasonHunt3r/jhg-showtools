@@ -37,6 +37,52 @@ slide's level line is slide settings, which are JSON.
 
 ## What's next
 
+### Work queue for the Mac (from the cloud session, 2026-09-24)
+
+Everything below is on branch **`claude/cloud-clauding-4lij0h`**, not yet
+on `main`. **Pull it first.** The cloud session keeps to docs while the
+Mac session works, so there are no clashes; pull again whenever it
+pushes. Read `spec/history/2026-09-24-cloud-planning-aar.md` for what
+happened and why. Load `showtools-testing` before any test copy (the
+preferences-domain rules).
+
+1. **Build and test the two unbuilt code changes.** `swift test`, then
+   `./make-app.sh`.
+   - `7c1613a` (audit G1): drop two files onto the Edit Slides list, and
+     Edit ▸ Undo reads "Undo Add Slides" and ⌘Z removes them. Do the
+     same with a drop onto a show in the Library pane, and with Add to
+     Show.
+   - `dcf47c2` (audio names): the timeline's bottom row is titled Audio
+     with a waveform icon; the grid's filter reads Audio; right-click an
+     audio clip and it reads Remove Audio Clip.
+2. **⌘A in the Library grid: top priority** (audit A1; Jason: hand-
+   clicking 4,000 test images). Edit ▸ Select All selects every tile in
+   view, as a menu item through a focused scene value, so it works
+   whether or not the grid has the keyboard.
+3. **The rest of batch 1** (`spec/hig-audit.md`): the Delete key in the
+   Library pane (D1, following the settled delete conventions), and undo
+   for Delete Show (D2) and Rename Collection (D3).
+4. **Batch 2:**
+   - context menus (C1–C7, the table in `spec/conventions.md` §3; that
+     table is a draft until the right-click conversation, so build only
+     the items marked ✓ plus C1–C3's obvious ones);
+   - naming first, nothing made until OK (H1);
+   - empty-state buttons (H2, the plain tier);
+   - Import can choose audio (H3), and the "song" error text (H4).
+5. **Batch 4: selection logic in Core, with tests.** ⇧-click replaces
+   the previous range; arrow-key steps given a column count (B3, E1,
+   B2, E2 in the audit; the settled rules are in `spec/conventions.md`
+   §1–2).
+6. **The PaneKit harness** (`spec/panekit.md`, "The order", step 1): a
+   standalone app in `tools/` with dummy content, checked on the Mac and
+   felt by Jason.
+
+Then: the right-click conversation (the plan at the end of
+`spec/conventions.md`), the show session (`spec/windows.md`), and the
+New Show panel (`spec/simple-things-fast.md`).
+
+### Also next
+
 1. **A listen, twice over.** (1) An exported movie against the same show
    playing: timing, crossfades, a video slide's sound against a song.
    (2) A video slide's sound in the app (V6): a clip with its middle
@@ -50,7 +96,7 @@ slide's level line is slide settings, which are JSON.
    untested by a person.
 3. **Telling BGTools when a library moves** (B7 left it open).
 4. **Expected Mac behaviour** — `spec/hig-audit.md` (audited from code
-   2026-09-24, nothing fixed yet). Missing conventions: ⌘A, ⌘D, arrow keys
+   2026-09-24; G1 fixed, unbuilt; the rest is the work queue above). Missing conventions: ⌘A, ⌘D, arrow keys
    and Quick Look in the grid; context menus on lane images, transitions
    and markers; Edit Show's commands in no menu; Edit Slides and Edit
    Show disagreeing. One real bug: **adding slides by a drop onto Edit
