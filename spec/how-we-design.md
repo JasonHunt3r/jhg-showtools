@@ -152,10 +152,44 @@ memory of the sessions contradicted a log-based timeline, and his
 questions pushed the digging somewhere new.
 (`spec/history/2026-09-23-crash-hunt-session3.md` names the failures.)
 
-**The lesson:** when the person who uses the app every day says
-something doesn't match their experience, that's better evidence than a
-reading of the logs. Ask what they remember before building another
-theory. *(Jason's own words for the eureka moment belong here.)*
+**The eureka, in Jason's words (2026-09-24):** Claude "kept trying to
+rewrite the code to make the conflicting wrappers work". Jason asked:
+*tell me the cascade that leads to this.* The answer was that
+`.inspector()` couldn't sit inside the container it was in. And Jason
+said: then **don't wrap it in that**. "Why do they work fine over here
+for two days, but don't work in your later stuff?" Edit Show's inspector
+had worked for days on a hand-rolled split (`ColumnsSplitView`). Edit
+Slides' inspector used SwiftUI's `.inspector()`, and that was the one
+crashing. The fix was to use what already worked
+(`spec/edit-slides-inspector-port.md`).
+
+**The lessons:**
+- **When the person who uses the app every day says something doesn't
+  match their experience,** that's better evidence than a reading of the
+  logs. Ask what they remember before building another theory.
+- **Ask for the cascade, not another patch.** Trace what leads to the
+  failure, step by step, before changing code. Forcing a fix onto a cause
+  you haven't traced is the square peg.
+- **When one thing works and its twin doesn't, the difference is the
+  answer.** Compare with the working sibling before inventing anything.
+
+## Volunteered work follows the house pattern
+
+**The story:** the feature at the heart of the crash, Edit Slides'
+inspector, was design Claude volunteered. Jason was surprised to find it
+had been built at all. It was a good idea. But it didn't use the
+established convention: Edit Show's collection list (the browser) sat
+right next to an inspector pane on `ColumnsSplitView`, and that worked.
+The new one used a different mechanism, SwiftUI's `.inspector()`, and
+that difference was the crash.
+
+**The principles:**
+- **Something almost identical to what exists uses the same mechanism.**
+  A second inspector, list or panel starts as a copy of the first one's
+  pattern. A new mechanism needs a reason, stated.
+- **Volunteered work is said out loud.** An idea built without being
+  asked for is announced as such, in the commit and in the reply, so
+  it's never discovered by surprise.
 
 ## Know before you build
 
