@@ -7,6 +7,8 @@ order proposed.
 
 ## What this is
 
+*The rules these findings build toward are in `spec/conventions.md`.*
+
 A pass over the app's code against what a Mac user expects: Apple's Human
 Interface Guidelines (menus, context menus, keyboard, selection) and the
 habits Finder, Photos and Final Cut Pro have taught. The earlier audit

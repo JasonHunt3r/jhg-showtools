@@ -16,6 +16,7 @@ A macOS slideshow composer and player for Jason's own Mac.
 | `spec/edit-slides-inspector-port.md` | current | The fix for the layout-loop crash: ported Edit Slides' inspector off SwiftUI's `.inspector()`. |
 | `spec/simple-things-fast.md` | current | Planned: making simple things fast — the first run, playing without building a show, and Basic / Advanced / "Bring it on!" levels. |
 | `spec/windows.md` | current | Planned: areas of the main window in windows of their own, and editors for one thing (the Slide Editor, a row opened up). A vision with open questions, not a build plan. |
+| `spec/conventions.md` | current | What each gesture, key, right-click, drop and Edit-menu item means everywhere: Built / Settled / Proposed / Open, plus a log of conventions found by use. Fixes build toward it. |
 | `spec/hig-audit.md` | current | Expected Mac behaviour that was never built: the Edit menu, context menus, keyboard selection, Edit Slides vs Edit Show. Findings and fix batches. |
 | `spec/anatomy.md` | reference | The screen's map: one name for each area, how areas nest, the picture's layers, and what selecting or changing one area does to the others. Use its names. |
 | `spec/layout.md` | reference | The file-by-file map: which target owns what. Read before moving code between targets or adding a file. |
