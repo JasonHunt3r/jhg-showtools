@@ -173,6 +173,19 @@ crashing. The fix was to use what already worked
 - **When one thing works and its twin doesn't, the difference is the
   answer.** Compare with the working sibling before inventing anything.
 
+**More from the debrief** (`spec/history/2026-09-24-crash-hunt-debrief.md`):
+- **A latent bug isn't in the latest change.** The inspector was never
+  crash-tested when it went in, and it surfaced many steps later. The
+  hunt went backwards through the newest work (the rename, HEAD, even
+  "clicking too fast") and found nothing. Ask what was never tested, not
+  what changed last.
+- **A repro is not a cause.** Rapid mode-switching triggered the crash
+  quickly. It never caused it.
+- **Knowing you don't understand is a finding.** When fixes keep failing,
+  say what isn't understood and look upstream, before the next rewrite.
+- **Conjecture isn't a vector.** A guess that gets built on becomes a
+  direction nobody chose.
+
 ## Volunteered work follows the house pattern
 
 **The story:** the feature at the heart of the crash, Edit Slides'
