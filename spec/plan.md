@@ -961,12 +961,13 @@ the code):
   carry over proportionally. A picture of a different shape frames a
   little differently. Only pictures replace pictures (`model.pictures`);
   one undo step; a file from outside the show's collection asks first,
-  like any add. *Ways in (to settle):*
-  - **Replace Image…** on the slide's and the lane image's right-click
-    menus (settled), opening a picker of the collection;
-  - dragging a file onto a slide, as Final Cut's replace edit does: a
-    drop onto a block offers Replace or Insert;
-  - clicking the thumbnail in the inspector.
+  like any add. *Ways in (settled, Jason, 2026-09-24):*
+  - **Replace Image…** on the right-click menus of a slide, a lane image
+    and **the inspector**, opening a picker of the collection;
+  - **dragging a file onto a slide**, in the timeline or in Edit Slides'
+    list: the drop offers **Replace** or **Insert**, as Final Cut's replace
+    edit does. (Today a drop always inserts, and in the list it
+    appends, audit G2.)
 - **A strobe effect** (Jason, 2026-09-21): a slide flashing on and off
   against the background colour. Came out of the rhythm-pattern talk
 - Photos-library browsing inside the app. Deferred until the app has taken

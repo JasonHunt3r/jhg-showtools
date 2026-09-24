@@ -165,6 +165,8 @@ divider, and empty groups are skipped:
 | Audio clip | Detect Beats… ✓ · Show in Library · Remove Audio Clip ✓ |
 | Marker | Show or Hide Line · Remove Marker (C3) |
 | Browser entry | **Settled 2026-09-24.** Append to Show (E) ✓, Insert at Playhead (W) ✓, Place in Images Row at Playhead (Q) ✓; for an audio file, **Place at Playhead** · for a *use* (an entry under "In this show"): Select in Timeline, Play from Here · Show in Library · Remove from Show (that use only), Remove from Collection ✓, **Move to Trash…** (was "Delete from Library…", C7). The letters show as shortcuts at the menu's right edge, if that can be done without E, W and Q taking typing from Search; otherwise they stay in the titles (C8) |
+| Inspector: a section header | **Settled 2026-09-24.** Reset Section to Show Default · Copy Section Settings, Paste Section Settings |
+| Inspector (anywhere, for its slide) | **Settled 2026-09-24.** Replace Image… (others to settle) |
 | Browser: empty space | **Settled 2026-09-24.** Import…, Add from Library… |
 | Library pane: a show | **Settled 2026-09-24.** Play ✓, Play Full Screen ✓, Play on Desktop · Duplicate Show · Export ▸ (Show…, Movie…) · Rename… ✓ · Delete Show… ✓ |
 | Library pane: a collection | **Settled 2026-09-24.** Play (greyed out until playing without a show is built) · New Show in… ✓ · Rename… ✓ · Delete Collection… ✓ |
@@ -190,8 +192,8 @@ Library; Get Info.
 | The Library grid | Imports the files (from Finder or Photos) | Built |
 | A collection's grid, or its row in the Library pane | Imports if they're from outside, then adds them to the collection | Built |
 | A show's Library pane row | Appends pictures as slides (asks about any not in its collection) | Built; undoable since G1 |
-| The slide list | Inserts where it lands, like the timeline | **Settled** (Jason, 2026-09-24); today it appends (G2) |
-| The timeline's slides row | Inserts where it lands; audio goes into the audio row at that time | Built |
+| The slide list | Inserts where it lands, like the timeline. **Dropped onto a slide:** offers Replace or Insert (settled 2026-09-24, Replace Image…) | **Settled** (Jason, 2026-09-24); today it appends (G2) |
+| The timeline's slides row | Inserts where it lands; audio goes into the audio row at that time. **Dropped onto a slide:** offers Replace or Insert (settled 2026-09-24) | Built |
 | The images row | Places images at the drop time, end to end as room allows | Built |
 | The audio row | Places audio at the drop time | Built |
 
@@ -363,7 +365,13 @@ universals first.
 - **Replace Image…** (Jason, 2026-09-24, raised here): on a slide and a
   lane image, to swap which picture it uses and keep its settings
   (`spec/plan.md`, Later).
-- **6. The inspector:** next.
+- **6. The inspector: in progress 2026-09-24.**
+  - **A section header** (Transform, Effects, Sound…): **Reset Section to
+    Show Default**, and **Copy / Paste this section's settings** (for
+    example one slide's Transform onto others). Settled.
+  - **Replace Image…** on the inspector's right-click menu. Settled.
+  - Still to answer: Reset to Default on a single control; the header
+    bar's menu; anything reached for and not found.
 
 **The route, in the anatomy's order:**
 1. **Library pane:** the Library row, a collection row, a show row, empty
