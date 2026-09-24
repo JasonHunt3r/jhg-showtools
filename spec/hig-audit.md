@@ -34,7 +34,7 @@ only stack-like thing the grid has.
 | Library grid | Click, ⌘-click, ⇧-click; Delete / ⌘Delete; ⌘A; a full context menu | Arrow keys, ⇧-arrows, rubber-band selection, Space (Quick Look), Return, double-click |
 | Edit Slides list | Everything a `List` gives: arrows, ⇧-arrows, ⌘A, Delete, drag to reorder | Duplicate on ⌘D, a fuller context menu |
 | Storyline | Click, ⌘-click, ⇧-click; J/K/L, Space, I/O, M, N, ⇧Z | Arrow keys between slides, ⌘A, Escape for slides; context menus on lane images, transitions, markers |
-| Library pane | Right-click Rename…, Delete… | The Delete key, Return or click-to-rename, undo for two of its actions |
+| Library pane | Right-click Rename…, Delete…; the Delete key and ⌘Delete; undo for Delete Show and Rename Collection | Return or click-to-rename |
 | Menu bar | File, View, Show | Edit Show's commands (all hidden), the inspector toggle, a real Help menu |
 
 ## A. The Edit menu
@@ -159,17 +159,40 @@ Browser. Elsewhere they're thin, or missing altogether:
 
 ## D. The Library pane
 
-- **D1 (Med) — Delete does nothing on a selected show or collection.** The
-  Library pane `List` (`MainView.swift:24`) has no `onDeleteCommand`, so
-  deleting means right-clicking. Following the settled convention (plan,
-  2b): Delete asks first, and ⌘Delete moves it without asking.
-- **D2 (Med) — Delete Show can't be undone.** `AppModel.deleteShow`
-  (`AppModel.swift:723`) takes no undo manager, and its dialog doesn't
-  offer undo. Delete Collection *is* undoable, and says so. So is a show
-  deleted along with its collection, but a show deleted on its own isn't.
-  That's an inconsistency, and the one irreversible action in the Library pane.
-- **D3 (Low) — Rename Collection can't be undone** (`AppModel.swift:488`
-  takes no undo manager). Rename Show can be.
+- **D1 (Med) — Delete does nothing on a selected show or collection.**
+  **Fixed 2026-09-24.** The List's own `onDeleteCommand` is there for when
+  it genuinely has the keyboard, but a click on a row leaves the window
+  itself as first responder (measured, same problem B1 found in the
+  grid) — so a `SingleKeys` fallback on the whole `NavigationSplitView`
+  (not the List: see the crash below) handles Delete and ⌘Delete the rest
+  of the time. Delete asks first; ⌘Delete skips the question, following
+  the settled convention (plan, 2b).
+  **A crash found and fixed along the way:** a first attempt put the
+  `SingleKeys` monitor in `.background()` directly on the sidebar `List`
+  (a real `NSTableView`, unlike the grid's plain `ScrollView`). Undoing a
+  show deletion hit AppKit's layout-loop guard and crashed
+  (`EXC_BREAKPOINT`, `~/Library/Logs/DiagnosticReports/ShowTools-2026-09-24-034845.ips`,
+  thousands of repeated `CellHostingView`/`NavigationPaneModifier` layout
+  frames) — the same class of bug as the `.inspector()` crash fixed
+  2026-09-23, in a new place. Moving the monitor to the split view as a
+  whole fixed it; the exact repro (select a show, ⌘Delete, ⌘Z) no longer
+  crashes.
+  Checked with real clicks and keystrokes, cross-checked against the
+  library's own database, not just the accessibility tree (which was
+  seen to lag one step behind after a delete — a known staleness, not a
+  second bug): Delete asks, Delete Show removes the row, ⌘Z restores it
+  with its old id.
+- **D2 (Med) — Delete Show can't be undone.** **Fixed 2026-09-24**, with
+  D1. `Library.snapshotShow`/`restoreShow` (mirroring
+  `snapshotCollection`/`restoreCollection`) capture the show, its slides
+  and their ids before deleting; `AppModel.deleteShow(_:undo:)` registers
+  the restore as an undo step, redo as a fresh delete. Two new Core tests
+  (`testADeletedShowComesBackWithItsIdAndSlides`,
+  `testARestoredShowLeavesOutSlidesOfFilesDeletedSince`).
+- **D3 (Low) — Rename Collection can't be undone.** **Fixed 2026-09-24**:
+  `AppModel.renameCollection(_:to:undo:)` registers the old name as the
+  undo step, the same shape as `renameShow`. Checked with a real rename
+  and ⌘Z.
 - **D4 (Low) — Renaming is an alert, not in place.** Finder and Photos:
   select a row and press Return, or click the name of a row that's
   already selected, and it becomes editable where it is. Here Rename…

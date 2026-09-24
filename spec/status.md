@@ -70,9 +70,10 @@ preferences-domain rules).
    than a menu item (simpler, and the same fix the grid's focus problem
    already got); selects every tile in `visible`. Checked with a real
    ⌘A: 11/11 tiles, and the Search field's own select-all still works.
-3. **The rest of batch 1** (`spec/hig-audit.md`): the Delete key in the
-   Library pane (D1, following the settled delete conventions), and undo
-   for Delete Show (D2) and Rename Collection (D3).
+3. ~~**The rest of batch 1**~~ — done 2026-09-24: the Delete key and
+   ⌘Delete in the Library pane (D1), undo for Delete Show (D2) and Rename
+   Collection (D3). Found and fixed a real crash along the way — see
+   Known issues below.
 4. **Batch 2:**
    - context menus (C1–C7, the table in `spec/conventions.md` §3; that
      table is a draft until the right-click conversation, so build only
@@ -195,6 +196,17 @@ and Flush presets from 2a.
   `spec/history/2026-09-23-crash-hunt-session2.md`,
   `spec/history/2026-09-23-crash-hunt-session3.md` (the one with the
   actual cause).
+  **The same guard fired again, in a new place, 2026-09-24:** a
+  `SingleKeys` key monitor (audit D1) in `.background()` directly on the
+  sidebar `List` — a real `NSTableView`, unlike the grid's plain
+  `ScrollView` where the same technique is fine — crashed on undoing a
+  show deletion (`ShowTools-2026-09-24-034845.ips`). Fixed by moving the
+  monitor to `.background()` on the whole `NavigationSplitView` instead of
+  the List; the exact repro (select a show, ⌘Delete, ⌘Z) no longer
+  crashes. **Lesson: `.background(SingleKeys)` is safe on a plain
+  SwiftUI container, not on a `List` or anything else AppKit backs with
+  its own constraint-based layout** — worth checking before adding one to
+  Edit Slides' or the storyline's own Lists for later audit items.
 - **Pulling the inspector's divider far to the left breaks the layout**
   ("smashes both sides out off the screen"). Seen once in a test copy
   dragging from the right edge to x=300. `revealByDragging` is the obvious

@@ -671,4 +671,39 @@ extension LibraryTests {
         XCTAssertEqual(try lib.allCollections().first { $0.id == c.id }?.itemIDs, [a, b])
         XCTAssertEqual(try lib.allCollections().first { $0.id == c.id }?.name, "Trip")
     }
+
+    // MARK: - Undoing a show deletion on its own (audit D2)
+
+    func testADeletedShowComesBackWithItsIdAndSlides() throws {
+        let lib = try Library(root: dir.appendingPathComponent("W.noindex"))
+        let a = try insertItem(lib, "a"), b = try insertItem(lib, "b")
+        let c = try lib.createCollection(name: "Trip")
+        var show = try lib.createShow(name: "Beach", collectionID: c.id, itemIDs: [a, b])
+        show.markers = [Marker(time: 3)]
+        show = try lib.saveShow(show)
+        let snap = try XCTUnwrap(lib.snapshotShow(id: show.id))
+        try lib.deleteShow(id: show.id)
+        XCTAssertTrue(try lib.allShows().isEmpty)
+        try lib.restoreShow(snap)
+        let back = try XCTUnwrap(lib.allShows().first)
+        XCTAssertEqual(back.id, show.id)
+        XCTAssertEqual(back.name, "Beach")
+        XCTAssertEqual(back.collectionID, c.id)
+        XCTAssertEqual(back.slides.map(\.id), show.slides.map(\.id), "slides keep their ids")
+        XCTAssertEqual(back.markers.map(\.time), [3])
+        // The collection itself, untouched by the show's own delete/restore.
+        XCTAssertEqual(try lib.allCollections().first { $0.id == c.id }?.itemIDs, [a, b])
+    }
+
+    func testARestoredShowLeavesOutSlidesOfFilesDeletedSince() throws {
+        let lib = try Library(root: dir.appendingPathComponent("X.noindex"))
+        let a = try insertItem(lib, "a"), b = try insertItem(lib, "b")
+        let show = try lib.createShow(name: "Beach", itemIDs: [a, b])
+        let snap = try XCTUnwrap(lib.snapshotShow(id: show.id))
+        try lib.deleteShow(id: show.id)
+        _ = try lib.deleteItems([b])
+        try lib.restoreShow(snap)
+        let back = try XCTUnwrap(lib.allShows().first)
+        XCTAssertEqual(back.slides.map(\.itemID), [a], "b's slide is left out; its file is gone")
+    }
 }

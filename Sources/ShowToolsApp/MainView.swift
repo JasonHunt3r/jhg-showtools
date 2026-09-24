@@ -55,6 +55,23 @@ struct MainView: View {
             // pushed everything else off the right edge (2026-09-23).
             // A sidebar of names never needs more than this.
             .navigationSplitViewColumnWidth(min: 180, ideal: DefaultLayout.sidebarWidth, max: 360)
+            // Delete asks first (D1); ⌘Delete skips the question, as the
+            // grid's does (spec/conventions.md §Delete/⌘Delete). This
+            // `onDeleteCommand` fires when the List genuinely has the
+            // keyboard; the SingleKeys fallback for when it doesn't is
+            // attached below the whole NavigationSplitView, not here — a
+            // `.background(SingleKeys)` directly on this List (a real
+            // NSTableView, not the grid's plain ScrollView) hit AppKit's
+            // layout-loop guard and crashed on the very first check
+            // (2026-09-24, `~/Library/Logs/DiagnosticReports/`, a run of
+            // `NavigationPaneModifier`/`CellHostingView` layout frames).
+            .onDeleteCommand {
+                switch model.sidebar {
+                case .show(let id): if let s = model.show(id) { confirmDelete = s }
+                case .collection(let id): if let c = model.collection(id) { confirmDeleteCollection = c }
+                default: break
+                }
+            }
             .safeAreaInset(edge: .bottom) {
                 HStack {
                     Menu {
@@ -90,6 +107,32 @@ struct MainView: View {
         }
         // Another library's undo steps mean nothing here (see libraryGeneration).
         .onChange(of: model.libraryGeneration) { undoManager?.removeAllActions() }
+        // The sidebar's Delete/⌘Delete fallback (D1), for when its List
+        // doesn't have the keyboard (see the comment on `onDeleteCommand`
+        // above). Attached to the whole split view, not the List itself.
+        .background(SingleKeys { event in
+            guard event.keyCode == 51 || event.keyCode == 117 else { return false }
+            if !(NSApp.keyWindow?.firstResponder is NSTableView), event.plainModifiers == [] {
+                switch model.sidebar {
+                case .show(let id): guard let s = model.show(id) else { return false }; confirmDelete = s
+                case .collection(let id): guard let c = model.collection(id) else { return false }; confirmDeleteCollection = c
+                default: return false
+                }
+                return true
+            }
+            guard event.plainModifiers == [.command] else { return false }
+            switch model.sidebar {
+            case .show(let id):
+                guard let s = model.show(id) else { return false }
+                model.deleteShow(s.id, undo: undoManager)
+            case .collection(let id):
+                guard let c = model.collection(id) else { return false }
+                model.deleteCollection(c.id, undo: undoManager)
+            default:
+                return false
+            }
+            return true
+        }.opacity(0).allowsHitTesting(false))
         .overlay(alignment: .bottom) {
             VStack(spacing: 0) {
                 ExportBanner()
@@ -124,7 +167,7 @@ struct MainView: View {
             Button("Rename") {
                 let name = draftName.trimmingCharacters(in: .whitespaces)
                 switch renaming {
-                case .collection(let id): model.renameCollection(id, to: name)
+                case .collection(let id): model.renameCollection(id, to: name, undo: undoManager)
                 case .show(let id): model.renameShow(id, to: name, undo: undoManager)
                 default: break
                 }
@@ -136,7 +179,7 @@ struct MainView: View {
                             isPresented: Binding(get: { confirmDelete != nil },
                                                  set: { if !$0 { confirmDelete = nil } }),
                             presenting: confirmDelete) { show in
-            Button("Delete Show", role: .destructive) { model.deleteShow(show.id) }
+            Button("Delete Show", role: .destructive) { model.deleteShow(show.id, undo: undoManager) }
         } message: { _ in
             Text("The show's slide order and settings are deleted. The images stay in the library.")
         }

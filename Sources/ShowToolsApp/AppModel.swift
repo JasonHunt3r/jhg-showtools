@@ -485,14 +485,25 @@ final class AppModel {
         }
     }
 
-    func renameCollection(_ id: Int64, to name: String) {
-        guard let lib = library, !name.isEmpty else { return }
+    func renameCollection(_ id: Int64, to name: String, undo: UndoManager? = nil) {
+        guard let lib = library, !name.isEmpty,
+              let before = collections.first(where: { $0.id == id })?.name, before != name else { return }
         do {
             try lib.renameCollection(id: id, to: name)
             collections = try lib.allCollections()
         } catch {
             loadError = "\(error)"
+            return
         }
+        guard let undo else { return }
+        let generation = libraryGeneration
+        undo.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated {
+                guard model.libraryGeneration == generation else { return }
+                model.renameCollection(id, to: before, undo: undo)
+            }
+        }
+        undo.setActionName("Rename Collection")
     }
 
     /// Saves a rhythm pattern by name; a name already used is replaced.
@@ -723,12 +734,40 @@ final class AppModel {
         }
     }
 
-    func deleteShow(_ id: Int64) {
+    func deleteShow(_ id: Int64, undo: UndoManager? = nil) {
         guard let lib = library else { return }
         do {
+            let snap = try lib.snapshotShow(id: id)
             try lib.deleteShow(id: id)
             shows.removeAll { $0.id == id }
             if sidebar == .show(id) { sidebar = .library }
+            guard let undo, let snap else { return }
+            let generation = libraryGeneration
+            undo.registerUndo(withTarget: self) { model in
+                MainActor.assumeIsolated {
+                    guard model.libraryGeneration == generation else { return }
+                    model.restoreShow(snap, undo: undo)
+                }
+            }
+            undo.setActionName("Delete Show")
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
+    private func restoreShow(_ snap: Library.ShowSnapshot, undo: UndoManager) {
+        guard let lib = library else { return }
+        do {
+            try lib.restoreShow(snap)
+            shows = try lib.allShows()
+            let generation = libraryGeneration
+            undo.registerUndo(withTarget: self) { model in
+                MainActor.assumeIsolated {
+                    guard model.libraryGeneration == generation else { return }
+                    model.deleteShow(snap.show.id, undo: undo)
+                }
+            }
+            undo.setActionName("Delete Show")
         } catch {
             loadError = "\(error)"
         }
