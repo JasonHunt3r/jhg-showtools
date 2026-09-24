@@ -35,6 +35,12 @@ slide's level line is slide settings, which are JSON.
 
 `~/Applications/ShowTools.app` is built and installed from HEAD.
 
+**The real library was set aside 2026-09-24** (Jason's own call, mid this
+session): `~/Pictures/ShowTools Library.noindex` is now
+`~/Pictures/ShowTools Library (2026-09-24).noindex`, untouched. The next
+plain launch of the real app creates a fresh, empty library at the
+default path.
+
 ## What's next
 
 ### Work queue for the Mac (from the cloud session, 2026-09-24)
@@ -46,19 +52,24 @@ pushes. Read `spec/history/2026-09-24-cloud-planning-aar.md` for what
 happened and why. Load `showtools-testing` before any test copy (the
 preferences-domain rules).
 
-1. **Build and test the two unbuilt code changes.** `swift test`, then
-   `./make-app.sh`.
-   - `7c1613a` (audit G1): drop two files onto the Edit Slides list, and
-     Edit ▸ Undo reads "Undo Add Slides" and ⌘Z removes them. Do the
-     same with a drop onto a show in the Library pane, and with Add to
-     Show.
-   - `dcf47c2` (audio names): the timeline's bottom row is titled Audio
-     with a waveform icon; the grid's filter reads Audio; right-click an
-     audio clip and it reads Remove Audio Clip.
-2. **⌘A in the Library grid: top priority** (audit A1; Jason: hand-
-   clicking 4,000 test images). Edit ▸ Select All selects every tile in
-   view, as a menu item through a focused scene value, so it works
-   whether or not the grid has the keyboard.
+1. **Build and test the two unbuilt code changes** — done 2026-09-24.
+   `swift test` (279 tests, 0 failures) and `./make-app.sh` both pass
+   clean off `main`.
+   - `7c1613a` (audit G1) and `dcf47c2` (audio names) both compile and
+     the app launches fine against a scratch library. The hands-on
+     checks (drop two files on Edit Slides / a sidebar show / Add to
+     Show and read the Undo wording; the Audio row's title, icon, filter
+     and context-menu text) still need doing — synthetic axtool clicks on
+     the toolbar's "Add to Show" menu button and a tile-to-sidebar drag
+     didn't reliably reproduce a real click/drop in this session (the
+     popup never opened; the drop registered no undo step), so this
+     stays on the "still needs Jason's hands" list rather than counting
+     as verified.
+2. ~~**⌘A in the Library grid: top priority**~~ — done 2026-09-24 (audit
+   A1). Joins Delete/⌘Delete in the grid's `SingleKeys` monitor rather
+   than a menu item (simpler, and the same fix the grid's focus problem
+   already got); selects every tile in `visible`. Checked with a real
+   ⌘A: 11/11 tiles, and the Search field's own select-all still works.
 3. **The rest of batch 1** (`spec/hig-audit.md`): the Delete key in the
    Library pane (D1, following the settled delete conventions), and undo
    for Delete Show (D2) and Rename Collection (D3).
@@ -127,6 +138,9 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
+- **Audit G1 and the audio-naming pass** (`7c1613a`, `dcf47c2`): both
+  build and the app launches, but the hands-on checks weren't done this
+  session — see the work queue above.
 - **The Rhythm tool** (step 7): the panel's look (the space around the
   form, the notation's size: a staff space is 5.5 pt), Listen by ear on
   real music, Space stopping Listen, and whether 145 BPM is right for

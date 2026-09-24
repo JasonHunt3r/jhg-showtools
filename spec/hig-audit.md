@@ -31,7 +31,7 @@ only stack-like thing the grid has.
 | Area | Works today | Missing |
 |---|---|---|
 | Edit menu | Undo/Redo (window undo manager); Delete, where `onDeleteCommand` is wired | Select All outside Lists, Duplicate, Cut/Copy/Paste of slides or files |
-| Library grid | Click, ⌘-click, ⇧-click; Delete / ⌘Delete; a full context menu | Arrow keys, ⇧-arrows, ⌘A, rubber-band selection, Space (Quick Look), Return, double-click |
+| Library grid | Click, ⌘-click, ⇧-click; Delete / ⌘Delete; ⌘A; a full context menu | Arrow keys, ⇧-arrows, rubber-band selection, Space (Quick Look), Return, double-click |
 | Edit Slides list | Everything a `List` gives: arrows, ⇧-arrows, ⌘A, Delete, drag to reorder | Duplicate on ⌘D, a fuller context menu |
 | Storyline | Click, ⌘-click, ⇧-click; J/K/L, Space, I/O, M, N, ⇧Z | Arrow keys between slides, ⌘A, Escape for slides; context menus on lane images, transitions, markers |
 | Library pane | Right-click Rename…, Delete… | The Delete key, Return or click-to-rename, undo for two of its actions |
@@ -47,11 +47,17 @@ text fields and `List`s, and nowhere else.
 - **A1 (Med) — Select All (⌘A) does nothing in the Library grid or the
   storyline.** Neither is a `List`, so nothing answers `selectAll:`. In
   Finder, Photos and Final Cut, ⌘A selects every file or clip in view.
-  *Fix direction:* the grid and the storyline publish a select-all action
-  as a focused scene value, and an Edit-menu item calls it. Text fields
-  must still get ⌘A while they're being edited. That's the same trap as
-  audit M4, and `SingleKeys` already solves it.
-  *Prerequisite:* G1, the grid's focus problem.
+  **Fixed in the Library grid, 2026-09-24** (`MainView.swift`): ⌘A joins
+  Delete and ⌘Delete in the grid's `SingleKeys` monitor, selecting every
+  item in `visible` (the searched, filtered, sorted set — the same scope
+  Delete already works over). It stays disabled while a text field or the
+  sidebar `List` has the keyboard, the same guard Delete already used.
+  Checked with a real ⌘A keystroke (not just axtool synthetic events):
+  selects all 11 tiles in a scratch library, and still does ordinary
+  text select-all in the Search field. The storyline is still open — B1's
+  fix direction (a focused scene value + Edit-menu item) turned out to be
+  the more invasive path; `SingleKeys` alone was cheaper and matches how
+  Delete already handles this exact grid-focus problem.
 - **A2 (Med) — No Duplicate (⌘D).** Slides can be duplicated only from a
   context menu (`ShowView.swift:164`, `StorylineView.swift:621`). Finder
   and Final Cut both put Duplicate on ⌘D in the menu bar.

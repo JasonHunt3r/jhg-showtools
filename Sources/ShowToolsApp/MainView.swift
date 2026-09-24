@@ -548,15 +548,21 @@ struct LibraryGridView: View {
         // Library: Delete asks, then Trash; ⌘Delete skips the question. In a
         // collection: Delete takes them out of it (undoable); ⌘Delete deletes
         // them from the library, and asks first.
-        // Delete and ⌘Delete are taken here, before AppKit, rather than
-        // through SwiftUI focus: a click on a tile never gave the grid the
-        // keyboard (Jason's click and axtool's alike, 2026-09-22; setting
-        // the focus on click, and moving the handlers, didn't change it).
+        // Delete, ⌘Delete and ⌘A (Select All, audit A1) are taken here,
+        // before AppKit, rather than through SwiftUI focus: a click on a
+        // tile never gave the grid the keyboard (Jason's click and axtool's
+        // alike, 2026-09-22; setting the focus on click, and moving the
+        // handlers, didn't change it).
         // Not while text is edited (SingleKeys), not while a list (the
-        // sidebar) has the keyboard, and only with something selected.
+        // sidebar) has the keyboard.
         .background(SingleKeys { event in
-            guard event.keyCode == 51 || event.keyCode == 117, !selection.isEmpty,
-                  !(NSApp.keyWindow?.firstResponder is NSTableView) else { return false }
+            guard !(NSApp.keyWindow?.firstResponder is NSTableView) else { return false }
+            if event.keyCode == 0, event.plainModifiers == [.command] {
+                guard !visible.isEmpty else { return false }
+                selection = Set(visible.map(\.id))
+                return true
+            }
+            guard event.keyCode == 51 || event.keyCode == 117, !selection.isEmpty else { return false }
             switch event.plainModifiers {
             case []:
                 if let cid = collectionID { removeFromCollection(orderedSelection, cid) }
