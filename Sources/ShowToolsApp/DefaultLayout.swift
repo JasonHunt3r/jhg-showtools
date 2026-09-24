@@ -27,6 +27,11 @@ enum DefaultLayout {
     /// waiting for a relaunch: the point is to rescue a window that is
     /// unusable *now*. Preferences follow, because each view saves its
     /// own width as it changes.
+    /// UNPROVEN (2026-09-24): the staging below was written while the
+    /// layout-loop crash was still unexplained, and its real cause turned
+    /// out to be SwiftUI's .inspector(). It may be unnecessary, or not the
+    /// right fix. PaneKit replaces it with one layout transaction
+    /// (spec/panekit.md); until then, leave it be.
     /// **One change per run-loop turn, and no animation.** Doing all three
     /// in one pass is what made ⌥⌘0 raise AppKit's layout-loop exception
     /// and, once, kill the app (2026-09-23; the reason string is in the
