@@ -4,7 +4,8 @@ A long evening's session with Claude Code in the cloud: a Linux container
 holding a copy of the repo, with no Mac and no Swift toolchain. Nothing
 could be built or run, so the session did what doesn't need a Mac:
 auditing, naming, planning, and design. 35 commits, from `0250aee` to
-`5d72224`, on branch `claude/cloud-clauding-4lij0h`.
+`5d72224`, on branch `claude/cloud-clauding-4lij0h`, then merged into
+`main` (a fast-forward).
 
 ## What we set out to do
 

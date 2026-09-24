@@ -39,8 +39,8 @@ slide's level line is slide settings, which are JSON.
 
 ### Work queue for the Mac (from the cloud session, 2026-09-24)
 
-Everything below is on branch **`claude/cloud-clauding-4lij0h`**, not yet
-on `main`. **Pull it first.** The cloud session keeps to docs while the
+Everything below is on **`main`** (merged from the cloud session's branch,
+`claude/cloud-clauding-4lij0h`, 2026-09-24). **Pull `main` first.** The cloud session keeps to docs while the
 Mac session works, so there are no clashes; pull again whenever it
 pushes. Read `spec/history/2026-09-24-cloud-planning-aar.md` for what
 happened and why. Load `showtools-testing` before any test copy (the
