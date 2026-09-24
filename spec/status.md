@@ -84,11 +84,21 @@ preferences-domain rules).
      §3; that table is a draft until the right-click conversation, so
      build only the items marked ✓ plus C1–C3's obvious ones); empty-state
      buttons (H2, the plain tier).
-5. **Batch 4: selection logic in Core, with tests.** ⇧-click replaces
+   - **Update from the right-click conversation (2026-09-24):** the
+     Library pane's and the Library grid's menus are now **settled** (§3,
+     "Progress", stops 1 and 2). Build those rows in full. Items whose
+     feature isn't built yet (Play without a show, Play on Desktop) go in
+     greyed out, per Jason.
+5. **Groups inside collections: build right away (Jason, 2026-09-24).**
+   `spec/plan.md`, "Groups inside collections": decided, with a proposed
+   migration 13. Two small questions are still open there; ask Jason
+   before building those two parts. Load `showtools-gotchas` first
+   (migrations, and the older-version test trap).
+6. **Batch 4: selection logic in Core, with tests.** ⇧-click replaces
    the previous range; arrow-key steps given a column count (B3, E1,
    B2, E2 in the audit; the settled rules are in `spec/conventions.md`
    §1–2).
-6. **The PaneKit harness** (`spec/panekit.md`, "The order", step 1): a
+7. **The PaneKit harness** (`spec/panekit.md`, "The order", step 1): a
    standalone app in `tools/` with dummy content, checked on the Mac and
    felt by Jason.
 

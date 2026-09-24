@@ -875,8 +875,53 @@ collections. Being designed now, then built by the Mac session.
 - **A name clash:** the grid's **Group Similar** already calls its
   look-alike sets "groups". One of the two needs another name.
 
-*Questions (for Jason):* see the conversation of 2026-09-24; the answers
-go here.
+**Decided (Jason, 2026-09-24):**
+- **What a group is: a book cart.** Something you load up for now, more
+  temporary than a collection. Deleting a group leaves its files in the
+  collection, and in every show that uses them.
+- **Membership:** a group's files must be in its collection. A file can
+  be in several groups.
+- **Nesting:** groups hold groups, like folders.
+- **In the Library pane:** a collection opens to show its **groups and its
+  shows side by side**, as siblings. Shows don't live inside groups, and
+  aren't limited by them. Files can be dragged onto a group there.
+- **Order:** creation order by default, with a choice of alphabetical and
+  others (size, length).
+- **Using a group:**
+  - **A show can draw from a group:** the browser (the collection's files,
+    in Edit Show) gets a **drop-down in its title** to filter by group.
+  - **A Quick Show's pool** can be a group.
+- **The name clash:** Group Similar becomes **Find Similar Images**
+  (Jason's leaning), so "group" means only this.
+- **Keep as Group:** a set found by Find Similar Images can be kept as a
+  group from its header. Jason's example: the similar pictures are all so
+  good he can't choose yet, so they go in a group for later. Once he's
+  decided, he keeps one and deletes the group.
+
+**A proposal for the build** (Claude; the Mac session confirms it against
+the code):
+- **Migration 13:**
+  - `groups` (id, collection_id → collections ON DELETE CASCADE,
+    parent_id → groups ON DELETE CASCADE, null at the top; name,
+    created_at);
+  - `group_items` (group_id → groups ON DELETE CASCADE, item_id → items
+    ON DELETE CASCADE, added_at; primary key group and item).
+  - `Library.schemaVersion` to 13, and a test that opens a version-12
+    library.
+- **Keeping the membership rule:** taking a file out of a collection also
+  takes it out of that collection's groups, in the same transaction.
+- **Shows and groups need no schema.** A show still belongs to its
+  collection, and the browser's group filter is view state, remembered
+  with the show's editing state.
+- **Undo** for creating, renaming, deleting and filling groups, like
+  collections.
+- **Order:** the sort choice is a view setting, not stored per group.
+
+**Still open:**
+1. **Deleting a group that holds groups:** do its sub-groups go too
+   (Finder deletes a folder's contents), or move up a level?
+2. **Where "Keep as Group" puts the new group:** in the collection being
+   viewed, and in the Library view (no collection), which collection?
 
 ### Later
 - ~~Video export~~ — **BUILT 2026-09-22**, E1–E5, through the hook above

@@ -150,7 +150,8 @@ divider, and empty groups are skipped:
 | Target | Items |
 |---|---|
 | Library tile | **Settled 2026-09-24.** Play (the selection, or one picture; greyed out until playing without a show is built), Quick Look (⌘Y), Show Similar ✓ · New Show from *N* Items… ✓ (opens the New Show panel), Add to Show ✓ · New Collection from ✓, Add to Collection ✓ · Copy · Show in Finder ✓, Rename… ✓, Get Info ✓ · Remove from Collection ✓, Move to Trash… ✓ |
-| Group Similar header | **Settled 2026-09-24.** Select Group, Keep One… ✓ · New Show from Group…, Add Group to Collection ▸ |
+| Find Similar Images set header (was Group Similar) | **Settled 2026-09-24.** Select Group, Keep One… ✓, **Keep as Group** · New Show from Group…, Add Group to Collection ▸ |
+| Library pane: a group | *To settle with groups* (`spec/plan.md`, "Groups inside collections"). Drop files onto it; it lists beside the collection's shows |
 | Empty grid space | **Settled 2026-09-24.** Import…, Select All, New Collection |
 | Slide (list or timeline) | Play from Here (✓ list only) · Duplicate ✓ · Show in Library, Show in Finder, Open Inspector · Remove from Show ✓ |
 | Lane image | Duplicate · Show in Library, Show in Finder · Remove Image (C1) |
