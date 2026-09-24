@@ -1,8 +1,13 @@
 # PaneKit — a reusable pane system for Mac apps
 
-**Status:** Planned (Jason, 2026-09-24). Nothing is built. **Left:**
-everything, starting with a standalone harness. **Named PaneKit**, and it
-lives in this repo for now (settled, Jason).
+**Status:** Building. **Written 2026-09-24 by the cloud session and never
+compiled** (it has no Swift toolchain): the library (`Sources/PaneKit`),
+its layout tests (`Tests/PaneKitTests`) and the test app
+(`tools/pane-harness`, `swift run PaneHarness`). **Left:** compile it on
+the Mac and fix what doesn't; run the tests and the harness's checks
+(listed at the top of `tools/pane-harness/Harness.swift`); Jason feels
+it. Then steps 2–4 below. Named PaneKit, and it lives in this repo for
+now (settled, Jason).
 
 ## What it is
 
@@ -245,6 +250,49 @@ PaneSplit(.vertical, id: "window") {                // top / bottom
 Each `Pane` with an `edge` can close against it and gets its handle,
 its remembered size (under its `id`) and its menu command. `Pane.main`
 takes what's left.
+
+## What was built (2026-09-24, uncompiled)
+
+General, not ShowTools-specific (Jason: "ShowTools is the specific example
+from which to generalize other morphologies"). The harness shows three
+shapes from the one primitive: Finder's two panes, Mail's three columns,
+and ShowTools' layout with the timeline under everything.
+
+- **`PaneModel.swift`:** the tree. `PaneNode` is `.leaf(Pane)` or
+  `.branch(Split)`, built with `.pane(…)` and `.split(…)`. A split has an
+  axis, a **sized** side (keeps its size, closes against its edge) and a
+  **main** side (takes the rest), a default size and a range. The state
+  (`PaneKitState`: each split's size and whether it's closed; each pane's
+  popped-out flag and window frame) decodes field by field. An empty
+  state is the default layout, and a preset is just a state.
+- **`PaneLayout.swift`:** pure arithmetic from tree, state and rectangle to
+  frames, dividers and handles. It keeps sizes inside their range and the
+  main side above its minimum, and a squeeze never changes the stored
+  size. A closed side leaves a 12-point handle; a side whose panes have
+  all popped out closes up. This is what the tests pin.
+- **`PaneController.swift`:** `@Observable`, owns the state, and every
+  change is one transaction (`perform`: set, lay out once, save, broadcast
+  once). Toggle, pop out and put back, Restore Defaults, apply a preset;
+  drags draw live and commit on release. Saved in the preferences as
+  `PaneKit.<id>`. `menuItems()` gives an AppKit app its View-menu section.
+- **`PaneContainerView.swift`:** the AppKit view. Frames come from the
+  arithmetic in one pass (`layout()`), with no constraints between panes,
+  so there's no size negotiation to loop. Hosts take the mouse only in
+  their frame (`ColumnHost`'s lesson). Dividers draw a 1-point line with a
+  wider grab strip. Edge handles draw the frame strip's bar and capsule:
+  drag to open, double-click to open. Double-clicking a divider closes its
+  side.
+- **`PaneWindows.swift`:** popped-out panes' windows: a floating panel or
+  an ordinary window, sharing the main window's undo manager. Closing one
+  puts the pane back in its slot; its frame is remembered.
+- **`PaneLayoutView.swift`:** the SwiftUI bridge, with hosting views set
+  to `sizingOptions = []` so SwiftUI doesn't negotiate sizes.
+
+**Not in this first cut** (noted for later): keyboard focus moving
+between panes (the key-view loop); an app's window-level keys reaching a
+popped-out window (`poppedOutWindows` is there for the app to use);
+dragging a pane out by its handle to pop it out; animation of a pane
+opening or closing (changes are instant for now).
 
 ## Where it lives
 
