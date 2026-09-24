@@ -157,6 +157,9 @@ divider, and empty groups are skipped:
 | Slide (list or timeline) | **Settled for Edit Slides, 2026-09-24.** Play from Here ✓, Play Full Screen (from the slide) · Duplicate ✓, Copy, Paste (**with ⌥ held: Copy Settings, Paste Settings**) · Show in Library, Open Inspector · Remove from Show ✓. No Show in Finder. **Quick settings as submenus** (settled): Length ▸, Transition ▸, Pan and Zoom ▸, each applying to every selected slide as one undo step |
 | Edit Slides: empty list space | **Settled 2026-09-24, to try.** Add from Collection…, Import…, Paste, Select All (today it shows the slide menu with nothing to act on) |
 | Edit Slides: the defaults bar | **Settled 2026-09-24, to try by hand.** Use Defaults for All Slides (clears each slide's own values), Save as Preset… (the New Show presets), Reset to App Defaults |
+| Viewer: a slide's image in the picture | **Settled 2026-09-24.** Open in Slide Editor (greyed out until built), Show in Library · Length ▸, Transition ▸, Pan and Zoom ▸ (the slide list's quick settings) · Reset Transform, Rotation Handles on/off · **Select ▸** (everything under the pointer, e.g. a lane image and the slide beneath) |
+| Viewer: the pasteboard (the grey round the picture) | **Settled 2026-09-24.** Work Zoom ▸ (Fit, 75 %, 50 %), Onion Skin on/off, Pop Out Viewer |
+| Viewer: the frame strip | **Settled 2026-09-24.** Play from Here, Follow Timeline / Whole Show, Hide Frame Strip |
 | Lane image | Duplicate · Show in Library · Remove Image (C1) |
 | Transition | its style (submenu), Use Show Default · Remove Transition (leaves a cut) (C2) |
 | Audio clip | Detect Beats… ✓ · Show in Library · Remove Audio Clip ✓ |
@@ -335,7 +338,18 @@ universals first.
     Default), Pan and Zoom ▸ (Off, Auto, Show Default). Each applies to
     every selected slide in one undo step. Custom… opens the inspector on
     that setting.
-- **4. Edit Show, the viewer:** next.
+- **4. Edit Show, the viewer: done 2026-09-24.** Jason said yes to all:
+  - **A slide's image:** Open in Slide Editor (greyed out until built),
+    Show in Library, the quick-settings submenus, Reset Transform,
+    Rotation Handles on/off.
+  - **Select ▸** lists everything under the pointer (a lane image, the
+    slide beneath). It does the "select what's behind" job, so ⌥-click
+    stays free (§1).
+  - **The pasteboard:** Work Zoom ▸, Onion Skin, Pop Out Viewer.
+  - **The frame strip:** Play from Here, Follow Timeline / Whole Show,
+    Hide Frame Strip.
+  - **Anything missing:** nothing yet.
+- **5. Edit Show, the browser:** next.
 
 **The route, in the anatomy's order:**
 1. **Library pane:** the Library row, a collection row, a show row, empty
