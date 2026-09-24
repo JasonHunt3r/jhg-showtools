@@ -111,7 +111,7 @@ only in memory. The engine reads shows through `ShowSource`
 (`spec/layout.md`), and BGTools already builds shows it never saves
 (its random modes, `Sources/BGToolsCore`). So there's a precedent.
 
-### One settings panel, three uses (Jason, 2026-09-24)
+### Two panels, and what they share (Jason, 2026-09-24)
 
 **The problem it came from, making the first real show:**
 1. Jason selected pictures in a collection and chose New Show from them.
@@ -126,8 +126,16 @@ and Transition in Edit Slides' defaults bar change every slide that
 doesn't set its own. That's a candidate for a first-encounter tip, and
 for G6 in the audit (Edit Show can't reach the defaults at all).
 
-**The answer: one panel, used three ways.** The same fields as Quick
-Show, with only what fits each case:
+**Two panels, not one (settled, Jason).** Quick Show and New Show… have
+too much that differs to be one panel: one plays at once from a pool,
+the other makes a show that will be edited. So they're separate panels.
+Make Show from Quick Show uses the New Show panel, filled in from the
+Quick Show.
+
+**What they share is still worth reading:** the fields both need are the
+best guess at what's *essential* to a slideshow. That's what a
+newcomer sets, and what Basic most likely shows. It also informs later
+thinking (the levels, the first run). The overlap:
 
 | Field | Quick Show (play) | New Show… | Make Show from Quick Show |
 |---|---|---|---|
@@ -149,8 +157,14 @@ Show, with only what fits each case:
   a collection or a grid selection, it opens the panel. Return accepts
   the pre-filled settings, so it stays one keystroke when the defaults
   are fine.
-- **The presets are shared** between Quick Show and New Show, so "3.5
-  seconds, a quick cut" is set up once.
+- **Presets:** the table assumes the two panels share them, so "3.5
+  seconds, a quick cut" is set up once. With two panels, that's a choice
+  to make, not a given.
+
+**Read across the table, the essentials are:** the pictures (a pool or
+a selection), their order, how long each shows, how one gives way to the
+next, whether they move (Pan and Zoom), and what plays under them. Six
+things. Everything else in the app refines one of them.
 
 ### 3. Levels
 
@@ -163,11 +177,29 @@ what a show holds. So a show built in "Bring it on!" plays exactly the
 same in Basic; its lane images and effects simply aren't on view to
 edit.
 
-**Where it's chosen (Jason's options):**
-- a segmented control on the top bar, like the Edit Slides / Edit Show
-  switch; or
-- the first-launch welcome, which says it can be changed later and gives
-  the path to it in the menu bar (View ▸ Level, say).
+**Where it's chosen (settled, Jason, 2026-09-24):** in the window's
+title bar, on the left just after the title, for now. A setting, **Show
+level in title bar**, can hide it there. The first-launch welcome says it
+can be changed later, and gives its path in the menu bar as well
+(View ▸ Level, say), so it's always reachable when it's hidden.
+
+**What each level contains (settled: Jason sets it up by hand).** Jason
+arranges the app as he thinks it should be for each level. Claude Code on
+his Mac then captures that arrangement as the level's preset:
+- *Areas and layout* are already saved settings (`editMode`,
+  `inspectorShown`, `frameStripShown`, the columns' widths, and the rest
+  in `spec/anatomy.md` §5). They can be read with
+  `defaults read com.jhg.showtools`, plus screenshots.
+- *Controls inside an area* (an inspector section, a menu item, a
+  transport toggle) aren't settings today. For those, the capture is a
+  written list per level, made from what Jason hides or leaves unused, and
+  building the levels means making them hideable.
+- *Remember* a test copy shares Jason's preferences domain (CLAUDE.md):
+  capture from his real app, as he left it, and don't let a test copy
+  write over the keys first.
+
+The table below is the starting guess, until his arrangement replaces
+it.
 
 | Level | Meant for | Roughly what shows |
 |---|---|---|
@@ -225,9 +257,10 @@ Answered 2026-09-24:
 - Save as Show: yes, as **Make Show from Quick Show**, through the same
   panel as New Show.
 
+Also answered 2026-09-24: the levels' contents (Jason arranges each
+level, and Claude Code captures it), the level picker (the title bar,
+with a setting to hide it), and one panel or two (two).
+
 Still open:
-1. **The levels' contents.** Is the split in the table right?
-2. **The level picker:** the top bar, the welcome with a menu path, or
-   both?
-3. **The shared panel:** is the field table right for each case, and is
-   it one panel that changes by case, or two that look alike?
+1. **Presets across the two panels:** do Quick Show and New Show… share
+   one set of presets, or keep their own?
