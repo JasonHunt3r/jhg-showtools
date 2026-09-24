@@ -213,9 +213,44 @@ preferences-domain rules).
      slide's length and the beats as feedback before OK.
    - ~~P9~~ Settled: the first slide is just shortened; there's no tail.
 
-Then: the right-click conversation (the plan at the end of
-`spec/conventions.md`), the show session (`spec/windows.md`), and the
-New Show panel (`spec/simple-things-fast.md`).
+### The order from here (Jason, 2026-09-24)
+
+Items 8 and 9 above, and settled work that never made the list, in one
+order. Things that share code go together, so each area is opened once.
+The work-order items keep their numbers (W1–W10 = item 9's 1–10).
+
+1. **PaneKit: compile, test, run the harness, first thing.** Written by
+   the cloud session overnight, **never compiled** (it can't run Swift).
+   Expect compile errors: fix them, run `swift test` (PaneKitTests), then
+   `swift run PaneHarness` and go through the harness's checks
+   (`spec/panekit.md`, "The order", step 1). Jason feels it. Only then does
+   anything in the app move onto it.
+2. **BGTools quick wins:** Synchronize (W1), a findable Quit (W2).
+3. **The Library pane's and grid's menus** (right-click stops 1–2,
+   `spec/conventions.md` §3): Show in Finder off the tiles; Duplicate
+   Show, the Export ▸ submenu, Show in Finder on the Library row; items
+   whose feature isn't built yet go in greyed out.
+4. **The viewer's menus + the progress line** (stop 4 + W3).
+5. **Edit Slides', the browser's and the inspector's menus** (stops 3, 5,
+   6): quick-settings submenus, Copy/Paste with the ⌥ Copy/Paste Settings
+   alternates, Move to Trash….
+6. **The range package:** W6 (undoable, draggable, lock) → W7 (the range
+   button) → the ruler's and the range's menus (stop 7) → W10 (Fill Range
+   with Images…).
+7. **Timeline keys:** the arrow keys (E2; **decided** in
+   `spec/conventions.md` §2: ← → through a row's items, ↑ ↓ between rows,
+   ← → in the ruler nudge the playhead; batch 4 left them unwired as
+   "waiting") + Go Back / Go Forward (W8).
+8. **Drops onto slides + Replace Image…:** the slide list inserts where a
+   drop lands (G2), and a drop onto a slide offers Replace or Insert.
+9. **The grid's keyboard** (audit batch 7: B1, B2, B5, B6): arrow keys,
+   Quick Look on ⌘Y, Return renames, double-click.
+10. **BGTools batch:** names (W5) → the map view (W9) → the window opening
+    on your screen, with ⌥-double-click (W4).
+
+Then: the app's main window onto PaneKit (`spec/panekit.md`, steps 2–4),
+the show session (`spec/windows.md`), and the New Show panel
+(`spec/simple-things-fast.md`).
 
 ### Also next
 
