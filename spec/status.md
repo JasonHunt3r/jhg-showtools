@@ -155,8 +155,9 @@ preferences-domain rules).
 9. **Jason's first-test work order** (`showtools_work_order_2026-09-24.md`,
    folded into `spec/plan.md` "The range and the ruler", the Preview line,
    and `spec/bgtools.md` "Jason's first-test list"). One commit per item,
-   least risky first. Items marked **⏸** wait for Jason's answer to a
-   proposal (listed after); build the rest.
+   least risky first. All ten are settled (2026-09-24); the one open
+   detail, the ⌥ in item 4's modified double-click, is a proposal the
+   build can use unless Jason says otherwise.
    1. **BGTools: All same → Synchronize.** User-facing words only; the
       stored key stays `allSame`. *Check:* the panel and the settings
       window say Synchronize, and a setting that was on before is still on
@@ -168,7 +169,7 @@ preferences-domain rules).
       to hide it and Slide Progress on/off in the viewer's right-click.
       *Check:* the line grows through each slide; the setting and the menu
       item hide and show it; it still dims when paused.
-   4. **⏸ P5. BGTools: the settings window opens on your screen**, with that
+   4. **BGTools: the settings window opens on your screen**, with that
       screen's current Space selected. *Check:* with two monitors, open it
       from the panel on each; it lands there, selected.
    5. **BGTools: naming screens,** with the model-name tag. *Check:* name
@@ -189,10 +190,10 @@ preferences-domain rules).
    9. **BGTools: the map view** beside the stack. *Check:* the monitors
       sit as on the desk, each with its Spaces; the choice between views
       is remembered.
-   10. **⏸ P8, P9. Fill Range with Images…** *Check:* fill a 10-second range
+   10. **Fill Range with Images…** *Check:* fill a 10-second range
        with 5 pictures, Even, both Replace and Displace, and compare with
-       the rules in the plan; one ⌘Z undoes the whole fill; greyed-out
-       rhythms say why.
+       the rules in the plan; one ⌘Z undoes the whole fill; the dialog's
+       feedback matches what's laid down.
 
    **Waiting on Jason (Claude's proposals):**
    - ~~P1~~ Settled: the hide setting applies to the whole app.
@@ -201,14 +202,15 @@ preferences-domain rules).
    - ~~P3~~ Settled: a plain click with no range makes one from the view.
    - ~~P4~~ Settled: Spaces can be named; they default to "<monitor
      name> Space 1", 2, and so on.
-   - **P5** If the BGTools window is already open, does it stay put and
-     only change the selection (proposed), or move to the calling screen?
+   - ~~P5~~ Settled: it always opens on the calling monitor, selected; a
+     modified double-click (⌥, proposed) on a screen's box moves the window
+     to that monitor.
    - ~~P6~~ Settled: the playhead stays out of ⌘Z and gets its own Go Back
      (⌘[) and Go Forward (⌘]); the range stays in ⌘Z.
    - ~~P7~~ Settled: a Map | List switch, remembered.
    - ~~P8~~ Settled: the fill always fits exactly, since it computes the
-     lengths. Open: which rhythm choices can still be greyed out (only
-     ones tied to fixed beats?), and the proposed preview line.
+     lengths; nothing is greyed out; the dialog shows the count, each
+     slide's length and the beats as feedback before OK.
    - ~~P9~~ Settled: the first slide is just shortened; there's no tail.
 
 Then: the right-click conversation (the plan at the end of

@@ -934,11 +934,13 @@ From Jason's first-test notes (`showtools_work_order_2026-09-24.md`).
   slide and everything after it **move later**, starting where the
   imported run ends. The show gets longer.
 - **Rhythm against image count:** one image per note. A pattern runs for
-  **as many notes as there are images**, then stops. Choices whose first
-  N notes would run past the range are **greyed out**, with the reason in
-  their tooltip ("needs 14 s, the range is 10 s"). Even always fits. With
-  detected beats under the range, changes quantize onto them, as the
-  apply sheet does.
+  **as many notes as there are images**, then stops. With detected beats
+  under the range, changes quantize onto them, as the apply sheet does.
+- **Nothing is greyed out** (settled, Jason, 2026-09-24; replaces the
+  work order's greying rule). He trusts the user to set the range to the
+  beat and choose a number of images that suits the pattern. Instead, the
+  dialog **shows the details as feedback** before OK: how many slides,
+  each one's length, and how they sit on the beats.
 - **Rules kept:** slides are never split. These are trims, and a trimmed
   slide keeps its settings. The whole fill is **one undo step**. A locked
   range can still be filled, since its ends don't move.
@@ -948,12 +950,7 @@ From Jason's first-test notes (`showtools_work_order_2026-09-24.md`).
   chosen.
 - *Settled (Jason):* in Displace (and Replace), **the first slide is just
   shortened** to end at the in point. There's no tail to place anywhere.
-- *Open:* with lengths scaled to fit, a rhythm pattern never overruns, so
-  the "greyed out if it runs past the range" rule may only apply to
-  choices tied to fixed beats (a detected song's beats can't be
-  stretched). Asked.
-- *Proposal:* a **preview line** in the dialog before OK: the count and
-  each slide's length.
+
 
 ### Groups inside collections (Jason, 2026-09-24) — Built 2026-09-24, Core through UI
 

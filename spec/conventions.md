@@ -66,6 +66,7 @@ itself. Names follow `spec/anatomy.md`.
 | **⇧⌥⌘-click the range button** | Set the range to the whole show | A locked range refuses it | Settled (Jason, 2026-09-24) |
 | **Drag a range end** (I or O) on the ruler | Move that end; one undo step | Not while the range is locked | Settled (Jason, 2026-09-24) |
 | **⌘[ / ⌘]** | Go Back / Go Forward: the playhead's own history, with the timeline's scroll and zoom. The playhead is never in ⌘Z | — | Settled (Jason, 2026-09-24); not built |
+| **⌥-double-click a screen's box** (BGTools) | Move the settings window to that monitor | A plain double-click selects the screen | Modified double-click settled (Jason, 2026-09-24); ⌥ proposed |
 
 ### How ⌥ is used elsewhere (for deciding ⌥-click)
 

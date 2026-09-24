@@ -250,10 +250,15 @@ From `showtools_work_order_2026-09-24.md`. *Decided* is Jason's;
    screen with the pointer, when opened from the panel or a Control Center
    tile. Today it calls `center()` (the main screen) with a frame
    autosave, and nothing is preselected (`BGToolsApp.swift`).
-   - *Proposal:* **if the window is already open, it stays where it is**
-     (you put it there), comes to the front, and **only the selection
-     changes** to the calling screen. Only a fresh open goes to the calling
-     monitor.
+   - *Settled (Jason, 2026-09-24):* **it always opens on the calling
+     monitor**, with that monitor's Space selected, whether it was open or
+     not. From there any other screen can be selected and set up, all from
+     the one window.
+   - *Settled:* a **modified double-click on a screen's box** (in the map or
+     the list) **moves the window to that monitor**, so you can look at the
+     screen you're setting up without dragging the window across.
+     *Proposal:* ⌥-double-click. A plain double-click stays "go into it"
+     (`spec/conventions.md`), which here just selects the screen.
 
 ## Build steps (proposed 2026-09-22)
 
