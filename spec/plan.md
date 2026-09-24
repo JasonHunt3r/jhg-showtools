@@ -813,7 +813,7 @@ window and panel, its two Control Center tiles, pausing (sleep, lock, Low
 Power, hidden Spaces) and private libraries behind Touch ID, and
 installation from ShowTools. See `spec/bgtools.md` for what's left.
 
-### Pan and Zoom, and a simple way in (Jason, 2026-09-22)
+### Pan and Zoom, and simple things fast (Jason, 2026-09-22; renamed 2026-09-24)
 
 **"Ken Burns" was renamed "Pan and Zoom"** everywhere it was shown. The old
 name was a reference, not a description; the new one says what the
@@ -839,7 +839,8 @@ measurably costs CPU (see Known Issues in `spec/status.md`).
 
 **The larger point, not yet designed:** this editor is deliberately
 detailed, and that makes a plain slideshow harder than it should be.
-There should be a simple way in — a way for the app to look easy for
+There should be a simple way in (now **simple things fast**, its own
+spec: `spec/simple-things-fast.md`) — a way for the app to look easy for
 someone who just wants pictures in order with music, while everything
 underneath stays where it is. Related to the guided first run below, but
 not the same thing: that teaches the app as it is, this changes what you

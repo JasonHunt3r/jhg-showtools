@@ -100,9 +100,11 @@ and Flush presets from 2a.
   Slide Editor, the library panel and Show in Library. Jason answered six
   of seven questions 2026-09-24; what comes first is still open. Its prerequisite is moving a show's
   editing state out of the views, which the audit's menu work wants too.
-- **A simple way in.** The editor is detailed on purpose, which makes a
-  plain slideshow harder than it should be (Jason, 2026-09-22). Raised,
-  not designed.
+- **Simple things fast** (`spec/simple-things-fast.md`; was "a simple
+  way in"). The editor does a lot, but simple things aren't fast. There
+  are three answers: the guided first run, playing a library or
+  collection without building a show, and three levels (Basic, Advanced,
+  "Bring it on!"). Four questions for Jason.
 
 ## Known issues
 

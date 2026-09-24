@@ -327,6 +327,16 @@ same in either. It mostly doesn't:
   top, without changing H2. Most people see the empty Library once,
   unless they make a new library, so its welcome is the first run's job.
   See also `spec/windows.md`, "Filling a new collection".
+- **H3 (Med) — File ▸ Import… can't choose audio files.** Its panel
+  allows only images, movies and folders
+  (`allowedContentTypes = [.image, .movie, .folder]`, `runImportPanel`
+  in `MainView.swift`). Audio arrives only by a drop, or inside a chosen
+  folder. *Fix:* add `.audio`, and say "images, videos or audio" in the
+  panel's message.
+- **H4 (Low) — The import failure says "song".** A file that can't be
+  read is listed as "not a readable image, video or song"
+  (`Ingest.swift:128`). It should say "audio file", the name settled
+  2026-09-24.
 
 ## Fix batches (proposed order)
 
@@ -339,7 +349,7 @@ ordered from least to most risk.
    out; the same for Add to Show; delete a show, then ⌘Z brings it back;
    ⌘Z a collection rename.
 2. **Context menus, empty states, naming, and matching the two modes**
-   (C1–C7, H1, H2, G3). These only add buttons that call actions that
+   (C1–C7, H1–H4, G3). These only add buttons that call actions that
    already exist, or change one line. *Check:* right-click each thing
    once; New Collection goes straight to its name; an empty collection
    and an empty show each offer their buttons; double-click a slide twice

@@ -93,6 +93,40 @@ selected" in the inspector, "No Selection" in the Info panel.
 - The lingo (slide especially) is introduced along the way, spread over
   these encounters, not all at once.
 
+## Jason's draft, step by step (2026-09-24)
+
+His wording, to be edited, not final. `spec/simple-things-fast.md` has
+where this fits: the first run is one of three answers to "simple things
+aren't fast".
+
+1. **The empty library, on first open.**
+   > Welcome to ShowTools! You are currently viewing your first library,
+   > but it is empty. Click below to add the files you'll need to create
+   > Collections and Shows.
+
+   The button imports. You see it work: the files appear in the grid.
+   *(A file that isn't an image, video or audio file is left out and
+   listed in the import summary's Details. The app reads every file
+   before copying it, so a text file renamed `.jpg` is caught too. That's
+   from the code: `Ingest.copyIn`, `MediaProbe.read`.)*
+2. **My First Collection:** made with the library on first open, and
+   empty.
+   > You've found your way to your very first Collection. Collections are
+   > a subset of your Library files. You can add files from the library to
+   > focus your project's content and make it easier to create Shows. You
+   > can import files directly into a Collection and the Library will be
+   > automatically updated. Give your Collection a name and add some
+   > files. Once that's done you'll be ready to start creating your first
+   > Show!
+
+   **Adding to a collection has two ways (Jason):** from disk (import,
+   which adds to the library too) or from the library. Its button, and
+   File ▸ Import… with a collection selected, should offer both. See
+   audit H2.
+3. **Into the first show:** Jason hasn't settled this step yet.
+   `spec/simple-things-fast.md` proposes a "Ready to make your first
+   show?" bar on the collection, with New Show from “Name”….
+
 ## Apple's guidance (HIG, Onboarding; checked 2026-09-22)
 
 - People learn better by doing the task than by viewing instructions:
