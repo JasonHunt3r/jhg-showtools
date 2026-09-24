@@ -154,17 +154,18 @@ divider, and empty groups are skipped:
 | Find Similar Images set header (was Group Similar) | **Settled 2026-09-24.** Select Group, Keep One… ✓, **Keep as Group** · New Show from Group…, Add Group to Collection ▸ |
 | Library pane: a group | *To settle with groups* (`spec/plan.md`, "Groups inside collections"). Drop files onto it; it lists beside the collection's shows |
 | Empty grid space | **Settled 2026-09-24.** Import…, Select All, New Collection |
-| Slide (list or timeline) | **Settled for Edit Slides, 2026-09-24.** Play from Here ✓, Play Full Screen (from the slide) · Duplicate ✓, Copy, Paste (**with ⌥ held: Copy Settings, Paste Settings**) · Show in Library, Open Inspector · Remove from Show ✓. No Show in Finder. **Quick settings as submenus** (settled): Length ▸, Transition ▸, Pan and Zoom ▸, each applying to every selected slide as one undo step |
+| Slide (list or timeline) | **Settled for Edit Slides, 2026-09-24.** Play from Here ✓, Play Full Screen (from the slide) · Duplicate ✓, Copy, Paste (**with ⌥ held: Copy Settings, Paste Settings**) · **Replace Image…** · Show in Library, Open Inspector · Remove from Show ✓. No Show in Finder. **Quick settings as submenus** (settled): Length ▸, Transition ▸, Pan and Zoom ▸, each applying to every selected slide as one undo step |
 | Edit Slides: empty list space | **Settled 2026-09-24, to try.** Add from Collection…, Import…, Paste, Select All (today it shows the slide menu with nothing to act on) |
 | Edit Slides: the defaults bar | **Settled 2026-09-24, to try by hand.** Use Defaults for All Slides (clears each slide's own values), Save as Preset… (the New Show presets), Reset to App Defaults |
 | Viewer: a slide's image in the picture | **Settled 2026-09-24.** Open in Slide Editor (greyed out until built), Show in Library · Length ▸, Transition ▸, Pan and Zoom ▸ (the slide list's quick settings) · Reset Transform, Rotation Handles on/off · **Select ▸** (everything under the pointer, e.g. a lane image and the slide beneath) |
 | Viewer: the pasteboard (the grey round the picture) | **Settled 2026-09-24.** Work Zoom ▸ (Fit, 75 %, 50 %), Onion Skin on/off, Pop Out Viewer |
 | Viewer: the frame strip | **Settled 2026-09-24.** Play from Here, Follow Timeline / Whole Show, Hide Frame Strip |
-| Lane image | Duplicate · Show in Library · Remove Image (C1) |
+| Lane image | Duplicate, **Replace Image…** · Show in Library · Remove Image (C1) |
 | Transition | its style (submenu), Use Show Default · Remove Transition (leaves a cut) (C2) |
 | Audio clip | Detect Beats… ✓ · Show in Library · Remove Audio Clip ✓ |
 | Marker | Show or Hide Line · Remove Marker (C3) |
-| Browser entry | Append (E) ✓, Insert at Playhead (W) ✓, Place in Images Row (Q) ✓ · Show in Library · Remove from Collection ✓, Move to Trash… (today "Delete from Library…", C7) |
+| Browser entry | **Settled 2026-09-24.** Append to Show (E) ✓, Insert at Playhead (W) ✓, Place in Images Row at Playhead (Q) ✓; for an audio file, **Place at Playhead** · for a *use* (an entry under "In this show"): Select in Timeline, Play from Here · Show in Library · Remove from Show (that use only), Remove from Collection ✓, **Move to Trash…** (was "Delete from Library…", C7). The letters show as shortcuts at the menu's right edge, if that can be done without E, W and Q taking typing from Search; otherwise they stay in the titles (C8) |
+| Browser: empty space | **Settled 2026-09-24.** Import…, Add from Library… |
 | Library pane: a show | **Settled 2026-09-24.** Play ✓, Play Full Screen ✓, Play on Desktop · Duplicate Show · Export ▸ (Show…, Movie…) · Rename… ✓ · Delete Show… ✓ |
 | Library pane: a collection | **Settled 2026-09-24.** Play (greyed out until playing without a show is built) · New Show in… ✓ · Rename… ✓ · Delete Collection… ✓ |
 | Library pane: the Library row | **Settled 2026-09-24.** Import…, New Collection, Open Library Panel · Show in Finder (the library's folder) |
@@ -349,7 +350,20 @@ universals first.
   - **The frame strip:** Play from Here, Follow Timeline / Whole Show,
     Hide Frame Strip.
   - **Anything missing:** nothing yet.
-- **5. Edit Show, the browser:** next.
+- **5. Edit Show, the browser: done 2026-09-24.** Jason's answers:
+  - **Tidied by the rules:** the add items first, Show in Library, then
+    Remove from Collection and **Move to Trash…** last. No Show in Finder.
+  - **The letters (E, W, Q)** show as shortcuts at the right edge, if that
+    can be done without them taking typing from Search.
+  - **A use** gets Select in Timeline, Play from Here, and Remove from
+    Show (that use only).
+  - **An audio file** gets **Place at Playhead**. It doesn't need to say
+    "audio row"; people know where audio goes.
+  - **Empty space:** Import…, Add from Library….
+- **Replace Image…** (Jason, 2026-09-24, raised here): on a slide and a
+  lane image, to swap which picture it uses and keep its settings
+  (`spec/plan.md`, Later).
+- **6. The inspector:** next.
 
 **The route, in the anatomy's order:**
 1. **Library pane:** the Library row, a collection row, a show row, empty
