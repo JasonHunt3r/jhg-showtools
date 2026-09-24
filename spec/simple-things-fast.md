@@ -105,6 +105,15 @@ one show (`RhythmTool.open(showID:)`) and writes slide lengths into it.
 A Quick Show isn't a saved show, so the tool would work on the
 in-memory one. It's the same seam as playing without building.
 
+**A show from one picture (Jason, 2026-09-24).** One image, with audio,
+moving all the time, and dissolving into another move of itself. Play on
+a single tile, or a Quick Show whose pool is one picture, makes it.
+*From the code:* nothing new in the model. The one file becomes several
+slides (a slide is a *use* of a file), each with Pan and Zoom on Auto,
+which picks a different move per slide (seeded by the slide's id), with
+dissolves between them, looping. How many slides, and how long each, are
+the dialog's length and the audio's length.
+
 **Other ways in**, which the dialog complements:
 
 - **Play the Library, a collection, or a selection in the grid.** It

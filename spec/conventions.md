@@ -149,7 +149,9 @@ divider, and empty groups are skipped:
 
 | Target | Items |
 |---|---|
-| Library tile | New Show from ✓, Add to Show ✓, Show Similar ✓ · New Collection from ✓, Add to Collection ✓ · Show in Finder ✓, Rename… ✓, Get Info ✓ · Remove from Collection ✓, Move to Trash… ✓ |
+| Library tile | **Settled 2026-09-24.** Play (the selection, or one picture; greyed out until playing without a show is built), Quick Look (⌘Y), Show Similar ✓ · New Show from *N* Items… ✓ (opens the New Show panel), Add to Show ✓ · New Collection from ✓, Add to Collection ✓ · Copy · Show in Finder ✓, Rename… ✓, Get Info ✓ · Remove from Collection ✓, Move to Trash… ✓ |
+| Group Similar header | **Settled 2026-09-24.** Select Group, Keep One… ✓ · New Show from Group…, Add Group to Collection ▸ |
+| Empty grid space | **Settled 2026-09-24.** Import…, Select All, New Collection |
 | Slide (list or timeline) | Play from Here (✓ list only) · Duplicate ✓ · Show in Library, Show in Finder, Open Inspector · Remove from Show ✓ |
 | Lane image | Duplicate · Show in Library, Show in Finder · Remove Image (C1) |
 | Transition | its style (submenu), Use Show Default · Remove Transition (leaves a cut) (C2) |
@@ -277,7 +279,28 @@ universals first.
     File menu's two Export items become that submenu too.
   - **Anything reached for and not found:** nothing yet; there hasn't
     been enough use. It goes in §8 when it happens.
-- **2. The Library grid:** next.
+- **2. The Library grid: done 2026-09-24.** Jason's answers:
+  - **Play** goes on the tile menu too, greyed out until it's built, for
+    a selection **and for a single picture**: a show from one image is
+    wanted (below).
+  - **Quick Look (⌘Y) and Copy** go on the tile menu.
+  - **New Show from *N* Items…** keeps the count in its name, and opens
+    the New Show panel.
+  - **The Group Similar header** gets Select Group, New Show from Group…
+    and Add Group to Collection ▸, beside Keep One….
+  - **Empty grid space** gets Import…, Select All and New Collection.
+  - **Anything reached for and not found:** nothing yet.
+  - **A show from one picture** (Jason): one image, with audio, moving
+    all the time in Pan and Zoom, dissolving into another move of itself.
+    *From the code:* the model already allows it. A slide is one use of
+    a file, the same file can be many slides, and Auto picks a different
+    move per slide (seeded by the slide's id). So it's the one picture as
+    several slides, each on Auto, with dissolves between them. Playing a
+    single tile builds exactly that. Recorded in
+    `spec/simple-things-fast.md`.
+- **Groups inside collections** (Jason, 2026-09-24): raised here, to be
+  built right away: `spec/plan.md`, "Groups".
+- **3. Edit Slides:** next.
 
 **The route, in the anatomy's order:**
 1. **Library pane:** the Library row, a collection row, a show row, empty
