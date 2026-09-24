@@ -11,9 +11,9 @@ Repo: `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 ## Where it stands
 
-**Everything planned is built**, except Groups inside collections, whose
-Core is built and UI isn't (below). Phases 1–5, Phase 3b, Phase 4 and
-video export. **288 tests** (276 core + 12 BGTools). **Library schema 13.**
+**Everything planned is built**, including Groups inside collections
+(below). Phases 1–5, Phase 3b, Phase 4 and video export. **288 tests**
+(276 core + 12 BGTools). **Library schema 13.**
 
 | Phase | State |
 |---|---|
@@ -23,7 +23,8 @@ video export. **288 tests** (276 core + 12 BGTools). **Library schema 13.**
 | 2b Library manager | Built |
 | 2c The lane: transitions row + images row | Built |
 | 3 Music + timeline | All 7 steps built. Left: settle image stickiness |
-| 3b Find Similar | Built: Delete by context, Group/Show Similar, Keep One |
+| 3b Find Similar | Built: Delete by context, Find/Show Similar, Keep One, Keep as Group |
+| Groups inside collections | Built 2026-09-24, Core through UI (`spec/plan.md`) |
 | 4 Setlist export / import | Built, 4a–4d |
 | E Video export | Built, E1–E5. Own spec `spec/video-export.md`. Left: a listen |
 | 5 BGTools | Built, B1–B7. Own spec `spec/bgtools.md`. Left: Jason's hands-on pass; the Pan and Zoom cost; telling BGTools when a library moves |
@@ -119,14 +120,24 @@ preferences-domain rules).
    Remove from Collection); ⌘Delete still moves them to the Trash. `Add
    to Group` and `New Group from N Items…` are in the grid's tile
    context menu, inside a collection.
-   Ran `swift test` (288, 0 failures) and `./make-app.sh` clean, then
-   smoke-launched the built app against a scratch library (no crash, no
-   `runningTestLaunches` note left behind on quit) — a real hands-on
-   check of drag-to-group, nested folding and the delete notice's wording
-   still wants Jason's own hands.
-   **Left:** the Edit Show browser's group filter drop-down, Find Similar
-   Images' rename (still says "Group Similar" in code) and its **Keep as
-   Group**. Full detail in `spec/plan.md`, "Groups inside collections".
+   The Edit Show browser's title now has a group filter drop-down
+   (`CollectionBrowser`, "All Files" or one group; `ShowEditorState.
+   browserGroupID`, view state, not undoable — the show's editor state
+   already isn't). Find Similar Images is renamed from "Group Similar"
+   everywhere user-facing (the toolbar button's tooltip; "group" now
+   means only a `MediaGroup`); its set header has the settled context
+   menu — Select Group, Keep One… (already built), **Keep as Group**,
+   New Show from Group…, Add Group to Collection — and Keep as Group
+   with no collection open walks through making one first ("Grouped
+   Collection"), per the plan.
+   Ran `swift test` (288, 0 failures — one existing test extended to
+   round-trip `browserGroupID`) and `./make-app.sh` clean, then
+   smoke-launched the built app against a scratch library twice (no
+   crash, no `runningTestLaunches` note left behind on quit) — a real
+   hands-on check of drag-to-group, nested folding, the browser dropdown
+   and the delete notice's wording still wants Jason's own hands.
+   **Everything in the plan's decided scope is now built.** Full detail
+   in `spec/plan.md`, "Groups inside collections".
 6. **Batch 4: selection logic in Core, with tests.** ⇧-click replaces
    the previous range; arrow-key steps given a column count (B3, E1,
    B2, E2 in the audit; the settled rules are in `spec/conventions.md`

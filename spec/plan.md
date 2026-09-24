@@ -857,7 +857,7 @@ underneath stays where it is. Related to the guided first run below, but
 not the same thing: that teaches the app as it is, this changes what you
 meet first. **To be designed with Jason.**
 
-### Groups inside collections (Jason, 2026-09-24) — Core and Library-pane UI built 2026-09-24; the browser's filter and Find Similar Images' Keep as Group are next
+### Groups inside collections (Jason, 2026-09-24) — Built 2026-09-24, Core through UI
 
 A collection gets **groups**: sub-folders of its files, so a big
 collection can be organised without splitting it into several
@@ -979,11 +979,34 @@ this reason — its own closures type-check separately from the rest of
 `LibraryGridView`'s body. Worth remembering before adding much more to
 either view's body: extract early rather than inline.
 
-Not yet built: the Edit Show browser's group filter drop-down, Find
-Similar Images' **Keep as Group**. The name clash (Group Similar → **Find
-Similar Images**) was already relabelled in the maps by the cloud
-session; the feature itself still says "Group Similar" in code
-(`MainView.swift`) and needs the rename too.
+**Built 2026-09-24 (the browser filter and Find Similar Images):** the
+Edit Show browser's title gets a group filter drop-down ("All Files" or
+one of the collection's groups; hidden when the collection has none),
+restricting both the "In this show" and "Not in this show" sections to
+the group's members. The choice lives in `ShowEditorState.
+browserGroupID` — new field, additive decode like every other field in
+that struct — ignored if it names a group from a different collection
+than the show now has (its own collection changed since it was set,
+rather than crashing or showing the wrong group). Set through
+`engine.updateEditor`, so — like the range, loop and line toggles it
+sits beside — it's saved but never an undo step.
+
+The name clash is fully resolved: "Group Similar" is "**Find Similar
+Images**" everywhere user-facing (the toolbar button's tooltip; doc
+comments updated so "group" means only a `MediaGroup` in this file).
+Its set header carries the settled context menu in full — Select Group,
+Keep One… (already built), **Keep as Group**, New Show from Group…, Add
+Group to Collection — added alongside the existing inline Keep One…
+button rather than replacing it. Keep as Group goes straight to naming
+the group when a collection is open; with none open (the Library view)
+a new `GroupedCollectionAlert` walks through Jason's decided flow —
+explain, offer "Grouped Collection" as a name, create it, then the
+ordinary New Group naming step. Both new alerts are their own
+`ViewModifier`s (`GroupCreationAlert`, `GroupedCollectionAlert`) for the
+type-checker reason above.
+
+**Groups inside collections is now fully built**, Core through UI, matching
+everything Jason decided 2026-09-24.
 
 ### Later
 - ~~Video export~~ — **BUILT 2026-09-22**, E1–E5, through the hook above

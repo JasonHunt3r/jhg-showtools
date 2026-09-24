@@ -406,6 +406,10 @@ public struct ShowEditorState: Codable, Hashable, Sendable {
     public var rangeLines = true
     public var rangeInLine = true
     public var rangeOutLine = true
+    /// The browser's group filter (plan, "Groups inside collections"): view
+    /// state, not part of the show itself, so it rides along with the rest
+    /// of the editor state rather than its own schema column.
+    public var browserGroupID: Int64?
 
     public init() {}
 
@@ -423,6 +427,7 @@ public struct ShowEditorState: Codable, Hashable, Sendable {
         rangeLines = get(.rangeLines, true)
         rangeInLine = get(.rangeInLine, true)
         rangeOutLine = get(.rangeOutLine, true)
+        browserGroupID = (try? c.decodeIfPresent(Int64.self, forKey: .browserGroupID)) ?? nil
     }
 }
 

@@ -143,6 +143,7 @@ final class MusicTests: XCTestCase {
         XCTAssertEqual(show.editor, ShowEditorState())
         show.editor.rangeIn = 2; show.editor.rangeOut = 5; show.editor.loopPlayback = true
         show.editor.markerLines = false; show.editor.rangeOutLine = false
+        show.editor.browserGroupID = 7
         var m = Marker(time: 3); m.showsLine = false
         show.markers = [m]
         try lib.saveShow(show)

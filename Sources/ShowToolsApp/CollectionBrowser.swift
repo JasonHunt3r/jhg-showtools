@@ -59,6 +59,15 @@ struct CollectionBrowser: View {
     }
 
     private var collection: MediaCollection? { show.collectionID.flatMap(model.collection) }
+    /// The browser's group filter (plan, "Groups inside collections"): view
+    /// state, saved with the show's editor state, not undoable. Ignored if
+    /// it names a group from some other collection (the show's collection
+    /// changed since it was set).
+    private var groupFilter: MediaGroup? {
+        guard let id = show.editor.browserGroupID, let g = model.group(id), g.collectionID == collection?.id
+        else { return nil }
+        return g
+    }
 
     /// Files the show uses: slides, lane images and songs alike.
     private var used: Set<Int64> {
@@ -104,7 +113,8 @@ struct CollectionBrowser: View {
     private var usedEntries: [Use] {
         guard use != .unused, let c = collection else { return [] }
         let inCollection = Set(c.itemIDs)
-        return uses.filter { inCollection.contains($0.item.id) && passes($0.item) }
+        let inGroup = groupFilter.map { Set($0.itemIDs) }
+        return uses.filter { inCollection.contains($0.item.id) && (inGroup?.contains($0.item.id) ?? true) && passes($0.item) }
     }
 
     /// The show's files, once each, in the order they first appear.
@@ -114,7 +124,9 @@ struct CollectionBrowser: View {
     private var unusedFiles: [MediaItem] {
         guard use != .used, let c = collection else { return [] }
         let used = used
-        return c.itemIDs.filter { !used.contains($0) }.compactMap { model.itemsByID[$0] }.filter(passes)
+        let inGroup = groupFilter.map { Set($0.itemIDs) }
+        return c.itemIDs.filter { !used.contains($0) && (inGroup?.contains($0) ?? true) }
+            .compactMap { model.itemsByID[$0] }.filter(passes)
     }
 
     private var files: [MediaItem] { usedFiles + unusedFiles }
@@ -142,6 +154,7 @@ struct CollectionBrowser: View {
                     .fontWeight(.semibold)
                     .lineLimit(1).truncationMode(.middle)
                 Text("\(files.count)").foregroundStyle(.secondary).monospacedDigit()
+                groupFilterMenu
                 Spacer(minLength: 4)
                 Button { inspectorShown.toggle() } label: {
                     Image(systemName: inspectorShown ? "chevron.backward.2" : "chevron.forward.2")
@@ -168,6 +181,31 @@ struct CollectionBrowser: View {
         }
         .font(.callout)
         .padding(.horizontal, 10).padding(.vertical, 8)
+    }
+
+    /// "A show can draw from a group: the browser gets a drop-down in its
+    /// title to filter by group" (plan, decided). Hidden when the
+    /// collection has no groups.
+    @ViewBuilder private var groupFilterMenu: some View {
+        if let c = collection {
+            let groups = model.groups(inCollection: c.id)
+            if !groups.isEmpty {
+                Menu {
+                    Button("All Files") { engine.updateEditor { $0.browserGroupID = nil } }
+                    Divider()
+                    ForEach(groups) { g in
+                        Button(g.name) { engine.updateEditor { $0.browserGroupID = g.id } }
+                    }
+                } label: {
+                    Label(groupFilter?.name ?? "All Files", systemImage: "folder")
+                        .lineLimit(1).truncationMode(.middle).frame(maxWidth: 110)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .foregroundStyle(groupFilter != nil ? Color.accentColor : .secondary)
+                .help("Filter the browser to one group's files")
+            }
+        }
     }
 
     private var filterMenu: some View {

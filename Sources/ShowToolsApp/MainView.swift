@@ -397,6 +397,35 @@ private struct GroupCreationAlert: ViewModifier {
     }
 }
 
+/// Keep as Group with no collection open (plan, decided): explains that a
+/// group lives in a collection, offers to make one, then hands off to the
+/// group-naming step. Its own `ViewModifier`, same reason as the one above.
+private struct GroupedCollectionAlert: ViewModifier {
+    @Binding var creatingGroupedCollection: [Int64]?
+    @Binding var name: String
+    let model: AppModel
+    let startGroup: (_ ids: [Int64], _ collectionID: Int64) -> Void
+
+    func body(content: Content) -> some View {
+        content.alert("A Group Needs a Collection",
+                       isPresented: Binding(get: { creatingGroupedCollection != nil },
+                                            set: { if !$0 { creatingGroupedCollection = nil } })) {
+            TextField("Name", text: $name)
+            Button("Create") {
+                let trimmed = name.trimmingCharacters(in: .whitespaces)
+                guard !trimmed.isEmpty, let ids = creatingGroupedCollection else { return }
+                if let cid = model.newCollection(named: trimmed, itemIDs: ids, select: false) {
+                    startGroup(ids, cid)
+                }
+                creatingGroupedCollection = nil
+            }
+            Button("Cancel", role: .cancel) { creatingGroupedCollection = nil }
+        } message: {
+            Text("A group lives inside a collection, so this makes one to hold it first. The pictures stay in the library either way.")
+        }
+    }
+}
+
 /// Import progress, then a summary that stays until dismissed.
 struct ImportBanner: View {
     @Environment(AppModel.self) private var model
@@ -465,6 +494,10 @@ struct LibraryGridView: View {
     /// New Group from the grid's selection, the same way.
     @State private var creatingGroup: (ids: [Int64], collectionID: Int64)?
     @State private var newGroupName = ""
+    /// Keep as Group with no collection open (plan): the items waiting on
+    /// a collection to be made for them, and the name being typed.
+    @State private var creatingGroupedCollection: [Int64]?
+    @State private var newGroupedCollectionName = ""
     /// "Add from Library…" on an empty collection (audit H2).
     @State private var addingFromLibrary = false
 
@@ -504,7 +537,9 @@ struct LibraryGridView: View {
     @State private var anchor: Int64?
     @State private var dropTargeted = false
     // Find Similar (plan, Phase 3b).
-    /// Group Similar: the grid shows look-alikes together, in groups.
+    /// Find Similar Images (was "Group Similar"; renamed 2026-09-24 so
+    /// "group" means only a `MediaGroup`): the grid shows look-alikes
+    /// together, in clusters.
     @State private var grouping = false
     /// Show Similar: this picture, then the ones like it, closest first.
     @State private var similarTo: Int64?
@@ -544,7 +579,7 @@ struct LibraryGridView: View {
 
     private var similarActive: Bool { grouping || similarTo != nil }
 
-    /// The groups Group Similar shows, in the grid's order.
+    /// The clusters Find Similar Images shows, in the grid's order.
     private var similarGroups: [[MediaItem]] {
         guard grouping, let index else { return [] }
         let byID = Dictionary(filtered.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
@@ -648,7 +683,7 @@ struct LibraryGridView: View {
             }
             .buttonStyle(.borderless)
             .foregroundStyle(grouping ? Color.accentColor : .primary)
-            .help("Group Similar: look-alike pictures together")
+            .help("Find Similar Images: look-alike pictures together")
             if similarActive { similarControls }
 
             Spacer()
@@ -829,6 +864,9 @@ struct LibraryGridView: View {
             Button("Cancel", role: .cancel) {}
         }
         .modifier(GroupCreationAlert(creatingGroup: $creatingGroup, name: $newGroupName, model: model))
+        .modifier(GroupedCollectionAlert(creatingGroupedCollection: $creatingGroupedCollection,
+                                         name: $newGroupedCollectionName, model: model,
+                                         startGroup: startCreatingGroup(with:collectionID:)))
         .focusedSceneValue(\.librarySelectionCount, selection.count)
         .focusedSceneValue(\.requestLibraryRename, {
             guard !orderedSelection.isEmpty else { return }
@@ -910,6 +948,24 @@ struct LibraryGridView: View {
                                         .help("Choose one of these to keep; the others "
                                               + (collectionID == nil ? "go to the Trash" : "leave this collection"))
                                         .accessibilityLabel("Keep One of group \(n + 1)")
+                                }
+                                // The Find Similar Images set header's menu
+                                // (settled, spec/conventions.md §3): Select
+                                // Group · Keep One…, Keep as Group · New Show
+                                // from Group…, Add Group to Collection.
+                                .contextMenu {
+                                    Button("Select Group") { selection = Set(group.map(\.id)) }
+                                    Divider()
+                                    Button("Keep One…") { keepGroup = KeepGroup(items: group) }
+                                    Button("Keep as Group") { keepAsGroup(group) }
+                                    Divider()
+                                    Button("New Show from Group…") { model.newShow(itemIDs: group.map(\.id), in: collectionID) }
+                                    Menu("Add Group to Collection") {
+                                        ForEach(model.collections) { c in
+                                            Button(c.name) { model.addToCollection(group.map(\.id), c.id) }
+                                                .disabled(c.id == collectionID)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1054,6 +1110,21 @@ struct LibraryGridView: View {
         let taken = model.groups(inCollection: collectionID).map(\.name)
         newGroupName = model.nextName("Untitled Group", taken: taken)
         creatingGroup = (ids, collectionID)
+    }
+
+    /// Find Similar Images' Keep as Group (plan, decided): in a collection,
+    /// goes straight to naming the group. In the Library view — no
+    /// collection open — a group needs one first, so a dialog offers to
+    /// make one (suggested name "Grouped Collection"), then the usual
+    /// group-naming step follows.
+    private func keepAsGroup(_ items: [MediaItem]) {
+        let ids = items.map(\.id)
+        if let cid = collectionID {
+            startCreatingGroup(with: ids, collectionID: cid)
+        } else {
+            newGroupedCollectionName = model.nextName("Grouped Collection", taken: model.collections.map(\.name))
+            creatingGroupedCollection = ids
+        }
     }
 
     /// Selection in grid order, so a new show follows the grid.
