@@ -210,7 +210,7 @@ extension MainView {
             .onDrop(of: ItemDrag.accepted, isTargeted: nil) { providers in
                 Task {
                     let ids = await model.itemIDs(from: providers)
-                    model.append(ids, to: show.id)
+                    model.append(ids, to: show.id, undo: undoManager)
                 }
                 return true
             }
@@ -757,7 +757,7 @@ struct LibraryGridView: View {
             Button("New Show…") { model.newShow(itemIDs: ids) }
             if !model.shows.isEmpty { Divider() }
             ForEach(model.shows) { show in
-                Button(show.name) { model.append(ids, to: show.id) }
+                Button(show.name) { model.append(ids, to: show.id, undo: undoManager) }
             }
         } label: {
             Label("Add to Show", systemImage: "rectangle.stack.badge.plus")

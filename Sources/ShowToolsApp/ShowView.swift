@@ -137,6 +137,7 @@ struct EditSlidesView: View {
     /// Double-clicking a list item opens the inspector, or closes it if open.
     let toggleInspector: () -> Void
     @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
     @State private var dropTargeted = false
 
     var body: some View {
@@ -178,7 +179,7 @@ struct EditSlidesView: View {
         .onDrop(of: ItemDrag.accepted, isTargeted: $dropTargeted) { providers in
             Task {
                 let ids = await model.itemIDs(from: providers)
-                model.append(ids, to: show.id)
+                model.append(ids, to: show.id, undo: undoManager)
             }
             return true
         }

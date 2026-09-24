@@ -1,8 +1,9 @@
 # Expected-behaviour audit — menus, context menus, keyboard and selection
 
-**Status:** Audited 2026-09-24 against `43b1111`. Nothing fixed yet.
-**Left:** everything below. The fix batches are at the end, in the order
-proposed.
+**Status:** Audited 2026-09-24 against `43b1111`. **Fixed:** G1, in
+code only: written in a cloud session, **not yet built or checked**.
+**Left:** everything else below. The fix batches are at the end, in the
+order proposed.
 
 ## What this is
 
@@ -242,6 +243,13 @@ same in either. It mostly doesn't:
   undo properly. This breaks the rule that every show edit goes through a
   `ShowMutator` with an undo name. *Fix:* pass the window's undo manager at
   all three calls.
+  **Fixed 2026-09-24, unbuilt.** All three calls pass it, and `append`'s
+  `undo` no longer defaults to nil, so a new caller can't leave it out.
+  Undo takes the slides back out. Files the add put into the show's
+  collection stay in it (adding to a collection has no undo anywhere,
+  which is a separate matter). *Check:* drop two files onto the Edit Slides
+  list, then Edit ▸ Undo reads "Undo Add Slides" and ⌘Z removes them. Do
+  the same with a drop onto a sidebar show and with Add to Show.
 - **G2 (Med) — A drop onto the Edit Slides list ignores where it lands.**
   Dropping between slides 3 and 4 still appends to the end, while the same
   drop onto the storyline inserts there. A `List` shows an insertion line

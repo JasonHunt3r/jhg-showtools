@@ -664,7 +664,10 @@ final class AppModel {
         itemIDs.filter { itemsByID[$0]?.kind == .audio }
     }
 
-    func append(_ itemIDs: [Int64], to showID: Int64, undo: UndoManager? = nil) {
+    /// `undo` has no default on purpose: every show edit is one undo step,
+    /// and a default of nil once left three ways of adding slides undoable
+    /// by nothing (spec/hig-audit.md, G1).
+    func append(_ itemIDs: [Int64], to showID: Int64, undo: UndoManager?) {
         let itemIDs = pictures(itemIDs)
         guard var show = show(showID), !itemIDs.isEmpty,
               bringIntoCollection(itemIDs, forShow: showID) else { return }
