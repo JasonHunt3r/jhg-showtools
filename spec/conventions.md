@@ -62,6 +62,9 @@ itself. Names follow `spec/anatomy.md`.
 | **Double-click an edge handle** | Open or close its pane (Jason, 2026-09-24) | — | Settled; handles are Planned (`spec/windows.md`) |
 | **Drag an edge handle** | Open the pane to a width, or resize it | — | Settled; Planned |
 | **⌘⌥-click a timeline row** | Open that row's drawer | ⌥-click on a row *handle* opens or closes every drawer | Settled (Jason, 2026-09-24); not built |
+| **⌥⌘-click the range button** | Set the range to the part of the timeline in view | A locked range refuses it, with a beep | Settled (Jason, 2026-09-24) |
+| **⇧⌥⌘-click the range button** | Set the range to the whole show | A locked range refuses it | Settled (Jason, 2026-09-24) |
+| **Drag a range end** (I or O) on the ruler | Move that end; one undo step | Not while the range is locked | Settled (Jason, 2026-09-24) |
 
 ### How ⌥ is used elsewhere (for deciding ⌥-click)
 
@@ -157,7 +160,7 @@ divider, and empty groups are skipped:
 | Slide (list or timeline) | **Settled for Edit Slides, 2026-09-24.** Play from Here ✓, Play Full Screen (from the slide) · Duplicate ✓, Copy, Paste (**with ⌥ held: Copy Settings, Paste Settings**) · **Replace Image…** · Show in Library, Open Inspector · Remove from Show ✓. No Show in Finder. **Quick settings as submenus** (settled): Length ▸, Transition ▸, Pan and Zoom ▸, each applying to every selected slide as one undo step |
 | Edit Slides: empty list space | **Settled 2026-09-24, to try.** Add from Collection…, Import…, Paste, Select All (today it shows the slide menu with nothing to act on) |
 | Edit Slides: the defaults bar | **Settled 2026-09-24, to try by hand.** Use Defaults for All Slides (clears each slide's own values), Save as Preset… (the New Show presets), Reset to App Defaults |
-| Viewer: a slide's image in the picture | **Settled 2026-09-24.** Open in Slide Editor (greyed out until built), Show in Library · Length ▸, Transition ▸, Pan and Zoom ▸ (the slide list's quick settings) · Reset Transform, Rotation Handles on/off · **Select ▸** (everything under the pointer, e.g. a lane image and the slide beneath) |
+| Viewer: a slide's image in the picture | **Settled 2026-09-24.** Open in Slide Editor (greyed out until built), Show in Library · Length ▸, Transition ▸, Pan and Zoom ▸ (the slide list's quick settings) · Reset Transform, Rotation Handles on/off · **Select ▸** (everything under the pointer, e.g. a lane image and the slide beneath) · **Slide Progress on/off** (the white bar; work order, 2026-09-24) |
 | Viewer: the pasteboard (the grey round the picture) | **Settled 2026-09-24.** Work Zoom ▸ (Fit, 75 %, 50 %), Onion Skin on/off, Pop Out Viewer |
 | Viewer: the frame strip | **Settled 2026-09-24.** Play from Here, Follow Timeline / Whole Show, Hide Frame Strip |
 | Timeline: a block (a slide) | **Settled 2026-09-24.** The same menu as Edit Slides' slide (above), plus **Select All After** (Final Cut's) |
@@ -168,6 +171,8 @@ divider, and empty groups are skipped:
 | Timeline: empty audio-row space | **Settled 2026-09-24.** Add Audio… (at the pointer), **Add Audio Row** (Jason: "add audio track"; audio rows stack, `spec/plan.md`) |
 | Timeline: a marker | **Settled 2026-09-24.** Show / Hide Line · Remove Marker ✓; on a beat marker, Remove All Beat Markers (for its audio clip) |
 | Timeline: empty ruler space | **Settled 2026-09-24.** Add Marker Here, Set Range In Here, Set Range Out Here, Clear Range (M, I, O and ⌥X at the pointer) |
+| Timeline: the range on the ruler | **Settled 2026-09-24 (work order).** **Fill Range with Images…** (`spec/plan.md`, "The range and the ruler") · Lock Range (proposed: one lock for both ends) · Clear Range |
+| Timeline: the range button (transport) | **Settled 2026-09-24 (work order).** Set Range to View (⌥⌘-click), Set Range to Whole Show (⇧⌥⌘-click), Lock Range (proposed); the two Set Range commands are in the Show menu too |
 | Timeline: a row handle | **Settled 2026-09-24.** Open Drawer, Move Row Up, Move Row Down, the row's own tool (Rhythm… on the slides row, Detect Beats… on an audio row) |
 | The player | **Settled 2026-09-24.** Play/Pause, Previous Slide, Next Slide, Go to Slide…, Loop, Enter/Exit Full Screen. No Close |
 | The pop-out viewer | **Settled 2026-09-24.** The player's menu, plus Close Viewer Window |

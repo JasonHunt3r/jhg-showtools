@@ -160,7 +160,10 @@ for ripping through slides and their details.
 ```
 - **Preview:** the show plays large (drawn with the same renderer as the
   player). A livery-style play toggle sits in the frame, with a progress line
-  that drains across each slide. **Pop out** moves the preview into its own
+  that **fills left to right** across each slide, showing where the
+  playhead is within it (Jason, 2026-09-24; it used to drain). A setting
+  hides it, and the viewer's right-click switches it; it keeps its
+  dim-when-paused look. **Pop out** moves the preview into its own
   window, for a second monitor or full screen, and it stays in sync.
 - **Scrubber (CutSim transport):** play button, a slider across the whole
   show, and the time. Scrubbing plays transitions too.
@@ -537,8 +540,14 @@ to the Collection Browser and the library.
   ⌥-double-click for every one of that kind.
 - **The show's editing state is saved with it** (Jason, 2026-09-21), so a
   show opens the way it was left, like its row order: the range and
-  whether it's on, loop playback, and the lines. It isn't undoable (undo
-  keeps it as it is), but marker edits, a marker's own line included, are.
+  whether it's on, loop playback, and the lines. **The range is undoable**
+  (Jason, 2026-09-24, overturning "it isn't undoable"): dragging an end,
+  I and O, ⌥X. The rest of the editing state (the lines, loop) still
+  isn't. *Build note:* undo restores a whole-show snapshot and
+  deliberately carries the editing state over (`AppModel.update`,
+  showtools-gotchas), so the range has to be taken out of that carry-over
+  and given undo steps of its own. Marker edits, a marker's own line
+  included, are undoable, as before.
   It's multi-purpose by context: the part detection applies to, and, with
   loop on (⌘L), the region playback loops inside while editing. Option-X
   clears it, and a header button turns it off without losing it.
@@ -856,6 +865,85 @@ someone who just wants pictures in order with music, while everything
 underneath stays where it is. Related to the guided first run below, but
 not the same thing: that teaches the app as it is, this changes what you
 meet first. **To be designed with Jason.**
+
+### The range and the ruler, after the first test (Jason, 2026-09-24)
+
+From Jason's first-test notes (`showtools_work_order_2026-09-24.md`).
+*Decided* is his; *Proposal* is Claude's, for him to settle.
+
+**The range ends (I and O): drag, undo, lock.**
+- *Decided:* the ends can be **dragged** on the ruler, **⌘Z** undoes an
+  errant drag, and the range can be **locked** so a drag can't move it.
+  Locked ends still take the I and O keys and ⌥X, since keys are a
+  deliberate act. Today an end only answers a double-click (its line,
+  `StorylineView.rangeEnd`).
+- *Proposal:* **one lock for the whole range**, not one per end. It's set
+  from the right-click of either end and from the range button's
+  right-click, and shows as a small lock on both ends.
+
+**Undo a playhead jump.**
+- *Decided:* when a stray click on the ruler moves the playhead and the
+  work jumps out of view, **⌘Z puts back the playhead and the view**
+  (the timeline's scroll and zoom).
+- *Proposal:* only a **ruler click that jumps** registers; playback, arrow
+  nudges and J, K, L don't. A scrub drag is one step. **Consecutive jumps
+  collapse into one step**, so ⌘Z always returns to "where I was
+  working" and never makes you press through a pile of playhead steps to
+  undo a real edit (why Final Cut doesn't do this). The fallback, if that
+  can't be made clean: a separate **Go Back** command with its own short
+  history.
+
+**The range button.**
+- *Decided:* a **plain click** shows or hides the range, as now. **⌥⌘-click**
+  sets the range to the part of the timeline in view. **⇧⌥⌘-click** sets
+  it to the whole show, even where it's out of view. A locked range
+  refuses both modifier clicks, with a beep. Both commands also go in the
+  **Show menu** (beside Set Range In/Out) and on the button's
+  right-click, since modifier clicks can't be seen (audit F1). The button
+  is disabled today when there's no range; it has to be enabled for
+  these.
+- *Proposal:* a **plain click with no range set acts like ⌥⌘-click**:
+  there's nothing to show or hide, so it makes a range from the view.
+  That's more useful than a button that does nothing.
+
+**Fill the range with images.**
+- *Decided:* **right-click the range on the ruler → Fill Range with
+  Images…**, a dialog with:
+  - an **image picker** (`MultiItemPicker`) with a Library / Collection
+    toggle. Picking from the Library also adds the pictures to the show's
+    collection;
+  - a **transition** drop-down;
+  - a **rhythm** setting: the apply sheet's choices (roughly N beats per
+    slide, a change every roughly X seconds, a rhythm pattern) plus
+    **Even**, an equal split, the default;
+  - **Replace / Displace.**
+- **Replace:** the slide the range starts inside is trimmed to end at the
+  in point. The new slides fill the range. The slide the range ends inside
+  is shortened at its front so it starts at the out point, and everything
+  after the range **keeps its position** in time. Slides wholly inside the
+  range are removed. The show's length doesn't change.
+- **Displace:** the slide the range starts inside is trimmed to end at the
+  in point, as in Replace. Nothing inside the range is removed: the next
+  slide and everything after it **move later**, starting where the
+  imported run ends. The show gets longer.
+- **Rhythm against image count:** one image per note. A pattern runs for
+  **as many notes as there are images**, then stops. Choices whose first
+  N notes would run past the range are **greyed out**, with the reason in
+  their tooltip ("needs 14 s, the range is 10 s"). Even always fits. With
+  detected beats under the range, changes quantize onto them, as the
+  apply sheet does.
+- **Rules kept:** slides are never split. These are trims, and a trimmed
+  slide keeps its settings. The whole fill is **one undo step**. A locked
+  range can still be filled, since its ends don't move.
+- *Proposals:*
+  - a run **shorter** than the range extends its last slide to the out
+    point, so the range is always exactly filled (and Replace's "keeps its
+    position" holds);
+  - a **preview line** in the dialog before OK: the count, each slide's
+    length, and whether the run fills the range.
+- *To confirm with Jason:* in Displace, the first slide's trimmed-off tail
+  is simply **dropped**, not moved after the run. (App Claude's reading,
+  not Jason's words.)
 
 ### Groups inside collections (Jason, 2026-09-24) — Built 2026-09-24, Core through UI
 
