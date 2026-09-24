@@ -1,8 +1,8 @@
 # PaneKit — a reusable pane system for Mac apps
 
 **Status:** Planned (Jason, 2026-09-24). Nothing is built. **Left:**
-everything, starting with a standalone harness. "PaneKit" is a working
-name.
+everything, starting with a standalone harness. **Named PaneKit**, and it
+lives in this repo for now (settled, Jason).
 
 ## What it is
 
@@ -113,20 +113,59 @@ app gets it.
   out of the views) is that app-side prerequisite. PaneKit moves the
   view; the app keeps the state.
 
-## Lessons it bakes in, so no app has to learn them again
+## What's known, and how sure (checked 2026-09-24)
 
-- **Never ask for layout from inside layout.** macOS 27 kills a window
-  that does (`spec/history/2026-09-24-crash-hunt-debrief.md`). Size
-  changes that arrive during a layout pass wait for the next turn of the
-  run loop.
-- **One change per run-loop turn** when several panes move at once. Doing
-  all of Restore Default Layout in one pass raised the layout-loop
-  exception on 2026-09-23 (`DefaultLayout.restore`).
-- **No SwiftUI measuring containers** (`ViewThatFits`, `.inspector()`)
-  inside a pane's own layout.
-- **Per-window undo:** a separate window's undo manager isn't the main
-  window's, and ⌘Z asks the key window's (showtools-gotchas). A popped-
-  out pane shares the main one, above.
+These are things to know while building it, each at the strength it was
+found. Only the confirmed ones are rules.
+
+**Confirmed:**
+- **`.inspector()` crashed here.** SwiftUI's inspector modifier on Edit
+  Slides was the layout-loop crash's cause. Removing it stopped the
+  crash, and the port off it has held
+  (`spec/history/2026-09-23-crash-hunt-session3.md`). PaneKit replaces
+  what it did (below).
+- **Per-window undo.** A separate window's undo manager isn't the main
+  window's, and ⌘Z asks the key window's (showtools-gotchas, measured). A
+  popped-out pane shares the main one.
+- **`ColumnsSplitView`'s rules** listed above (divider drags, window
+  resize, collapse, remembered sizes, clear dividers, `ColumnHost`). Each
+  was measured.
+
+**Current OS behaviour, which may change:**
+- **macOS 27 aborts a window that asks for layout again from inside its
+  own layout pass.** Several projects report it as new in macOS 27 and
+  have worked around it (`spec/history/2026-09-24-crash-hunt-debrief.md`).
+  It may be a regression that a macOS update fixes. **Before building a
+  workaround, check whether the macOS in use still does it**, with a small
+  harness case, and date what was found. Keep any workaround small and
+  labelled, so it's easy to take out.
+
+**Unproven, from before the crash's cause was found (not rules):**
+- *"One change per run-loop turn"* when several panes move at once. It
+  came from Restore Default Layout raising the exception on 2026-09-23,
+  before `.inspector()` was found. That was probably the same crash, so
+  it proves nothing about pane moves. Try the simple way first.
+- *"No SwiftUI measuring containers in a pane."* `ViewThatFits` was
+  cleared outright (showtools-gotchas: "nothing should be read into its
+  removal"). Only `.inspector()` is confirmed.
+
+### What we lose by not using `.inspector()`
+
+Only what it did for us, which PaneKit defines itself:
+- **A trailing pane** that shows and hides with an animation → a PaneKit
+  pane with `edge: .trailing`.
+- **A width range** (minimum, ideal, maximum) that the user drags within
+  → the pane's `size` and `range`.
+- **A toolbar toggle** that stays in step with it → the pane's Show/Hide
+  command and state, which a toolbar button binds to.
+- **Its own sizing negotiation with the window.** That's the part that
+  looped. PaneKit sizes its panes itself, the way `ColumnsSplitView`
+  does.
+- (On iPhone and iPad it also turns into a sheet. That doesn't apply to
+  a Mac app.)
+
+Nothing it offered is out of reach. Edit Slides' and Edit Show's
+inspectors already work without it.
 
 ## A sketch of how an app would use it
 
@@ -179,8 +218,9 @@ takes what's left.
    the moving by then; this step is the show session, so the panes have
    their state to take with them.
 
-## Open questions (for Jason)
+## Settled
 
-1. The name. PaneKit is a placeholder.
-2. **Its own repo now, or later?** Starting inside ShowTools is quicker,
-   and the target boundary keeps it clean for lifting out.
+- **The name:** PaneKit (Jason, 2026-09-24).
+- **The repo:** it stays in this one for now, as its own library target
+  with no ShowTools dependencies (Jason). Lifting it out later stays
+  easy.
