@@ -862,6 +862,24 @@ meet first. **To be designed with Jason.**
   exactly as promised: a new menu item, not a rewrite. Own spec
   `spec/video-export.md`
 - ~~Beat detection~~ (moved into Phase 3, 2026-09-21)
+- **Pan and Zoom that pans, with a direction, and a point to aim at**
+  (Jason, 2026-09-24: "the pan and zoom currently only zooms").
+  *From the code:*
+  - **Auto** is mostly a zoom (`ShowTimeline.autoPanAndZoom`): from 1× to
+    1.12–1.25×, with a drift of at most 8% of the image, in or out at
+    random.
+  - **Custom** can pan. The inspector's small editor has a green start
+    frame and a red end frame to drag, which is easy to miss.
+  - With **Fit** at 1× there's no room to pan at all; the image already
+    fits the frame. A pan needs zoom, or Fill.
+
+  *Wanted:*
+  - a way to pan, with a **direction** (left, right, up, down, or a
+    choice for Auto);
+  - a way to put the **zoom-to point** on the image by clicking, or a
+    modified click (⌥-click, say), in the viewer or the Slide Editor
+    (`spec/windows.md`), rather than dragging a small frame in the
+    inspector.
 - **A strobe effect** (Jason, 2026-09-21): a slide flashing on and off
   against the background colour. Came out of the rhythm-pattern talk
 - Photos-library browsing inside the app. Deferred until the app has taken

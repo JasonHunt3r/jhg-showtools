@@ -67,6 +67,11 @@ too. `~/Applications/ShowTools.app` is rebuilt and reinstalled from HEAD.
 Pan and Zoom setting, silently, on re-import** — confirmed by hand
 against a real export. Full story: `spec/history/2026-09-23-pan-and-zoom-rename.md`.
 
+**Pan and Zoom only zooms** (Jason, 2026-09-24): Auto is mostly a zoom,
+and Custom's pan is two small frames to drag in the inspector. Wanted: a
+direction, and aiming the zoom by clicking the image. In the plan, under
+Later.
+
 Parked: image stickiness, a guided first run (`spec/first-run-brief.md`),
 and Flush presets from 2a.
 
