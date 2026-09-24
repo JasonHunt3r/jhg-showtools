@@ -118,6 +118,49 @@ close against the window's edge, and come back from it.
 - **With the panels** (the rest of this file), that makes a single-window
   layout and a many-window layout, from the same panes.
 
+### What it means to leave SwiftUI's split view (assessed 2026-09-24)
+
+The main window's left pane (the library, collections and shows) is
+SwiftUI's `NavigationSplitView` (`MainView.swift`). It's Apple's
+ready-made two-column window. Two of Jason's ideas can't be done inside
+it:
+- **A timeline pane edge to edge.** `NavigationSplitView`'s left pane
+  always runs the full height of the window, so nothing can sit under
+  it. The timeline pane, which lives in the right-hand column today,
+  can't reach the left edge while this container is in use.
+- **An edge handle for the left pane.** It collapses below its minimum
+  (180 points) and offers nowhere to attach a handle.
+
+**What `NavigationSplitView` gives for free, and would have to be
+rebuilt:**
+- the translucent Mac sidebar look under the title bar;
+- the toolbar's show/hide button for the left pane, and its animation;
+- keyboard focus moving between the list and the content;
+- its width being remembered.
+
+**What leaving it gives:**
+- full control of the layout: the timeline pane under everything, edge
+  handles on every edge, any pane able to close;
+- one mechanism for the whole window: `ColumnsSplitView`, the app's own
+  hand-built split, which Edit Show's columns already use. It's the
+  mechanism the crash fix moved Edit Slides onto
+  (`spec/edit-slides-inspector-port.md`), and it has been reliable since.
+
+**The cost and the risk:**
+- It's a restructuring of the main window, not a tweak. Everything that
+  hangs off `NavigationSplitView` today moves: the navigation title, the
+  toolbar placement, the per-library `.id` reset of the detail.
+- AppKit layout here has bitten before (CLAUDE.md: check it in a
+  standalone harness or a layer-tree dump first).
+- The translucent look can be kept with a visual-effect background, but
+  that's hand work.
+
+**Suggested approach:** a standalone harness first. It would have a
+window with a left list, a content area, and a full-width bottom pane on
+`ColumnsSplitView`, with edge handles. The harness answers "does it hold
+together" before the app is touched. The show session (below) doesn't
+depend on this, so they can go in either order.
+
 ### The timeline pane's left edge: the drawers
 
 The timeline pane is always edge to edge. Along its left side are the

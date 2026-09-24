@@ -38,7 +38,7 @@ thing.
 | Name | Where | Also called |
 |---|---|---|
 | **Main window** | The one window with the sidebar | |
-| **Sidebar** | Left column: Library, then Collections with their Shows | source list |
+| **Sidebar** *(to be renamed)* | Left column: Library, then Collections with their Shows | source list |
 | **Detail** | Everything right of the sidebar. Shows one of: the grid, or a show in one of two modes | |
 | **Library grid** | Detail, when the Library or a collection is selected: tiles of files | the grid |
 | **Filter bar** | Top of the grid: Search, Filter, Sort, Similar | the bar |
@@ -63,6 +63,18 @@ thing.
 "Layers" is used only for how the picture is built up (§4), never for
 rows. That keeps "row" for the timeline's bands, and "layer" for what's
 drawn on top of what.
+
+**"Sidebar" is to be renamed (Jason, 2026-09-24).** It names a position,
+not a thing: the browser and the inspector are sidebars too, when open.
+The left pane needs a name that says what it holds (the library, its
+collections and shows). Until it's chosen, "sidebar" in these docs means
+that left pane only.
+
+**A map to print (planned).** PNGs of each view with every area labelled
+by its name here: a map to point at when saying where something should
+be or how it should work. Schematic versions can be drawn from this file
+(the container has a browser engine that can render them). Labelled
+screenshots of the real app need Jason's Mac.
 
 **Areas and editors** (`spec/windows.md`, planned): an *area* is one of
 the places above that could move into a window of its own and back. An
