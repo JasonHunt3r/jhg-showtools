@@ -6,6 +6,7 @@ import ShowToolsPlayback
 enum SidebarItem: Hashable {
     case library
     case collection(Int64)
+    case group(Int64)
     case show(Int64)
 }
 
@@ -22,6 +23,8 @@ final class AppModel {
     var shows: [Show] = []
     /// Library → Collection → Show (plan, 2b).
     private(set) var collections: [MediaCollection] = []
+    /// Sub-folders of a collection's files (plan, "Groups inside collections").
+    private(set) var groups: [MediaGroup] = []
     /// Named rhythm patterns saved in the library (plan, Phase 3 step 7).
     private(set) var rhythmPatterns: [SavedRhythm] = []
 
@@ -227,6 +230,7 @@ final class AppModel {
             itemsByID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
             shows = try lib.allShows()
             collections = try lib.allCollections()
+            groups = try lib.allGroups()
             rhythmPatterns = try lib.allRhythmPatterns()
             loadError = nil
         } catch {
@@ -467,6 +471,11 @@ final class AppModel {
     }
 
     func collection(_ id: Int64) -> MediaCollection? { collections.first { $0.id == id } }
+    func group(_ id: Int64) -> MediaGroup? { groups.first { $0.id == id } }
+    func groups(inCollection id: Int64) -> [MediaGroup] { groups.filter { $0.collectionID == id } }
+    /// The top-level groups of a collection (`parentID` nil) — the Library
+    /// pane's own siblings, alongside that collection's shows.
+    func topGroups(inCollection id: Int64) -> [MediaGroup] { groups.filter { $0.collectionID == id && $0.parentID == nil } }
 
     /// A new collection, "Untitled Collection" unless named (a name already
     /// taken gets a number). Selected in the sidebar unless `select` is off.
@@ -534,9 +543,11 @@ final class AppModel {
             let snap = try lib.snapshotCollection(id: id)
             try lib.deleteCollection(id: id)
             collections = try lib.allCollections()
+            groups = try lib.allGroups()
             shows = try lib.allShows()
             switch sidebar {
             case .collection(id): sidebar = .library
+            case .group(let g) where group(g) == nil: sidebar = .library
             case .show(let s) where show(s) == nil: sidebar = .library
             default: break
             }
@@ -560,6 +571,7 @@ final class AppModel {
         do {
             try lib.restoreCollection(snap)
             collections = try lib.allCollections()
+            groups = try lib.allGroups()
             shows = try lib.allShows()
             let generation = libraryGeneration
             undo.registerUndo(withTarget: self) { model in
@@ -581,6 +593,7 @@ final class AppModel {
         do {
             let removed = try lib.removeItems(itemIDs, fromCollection: collectionID)
             collections = try lib.allCollections()
+            groups = try lib.allGroups()
             guard let undo, !removed.items.isEmpty else { return }
             let generation = libraryGeneration
             undo.registerUndo(withTarget: self) { model in
@@ -590,6 +603,7 @@ final class AppModel {
                         try lib.restoreItems(removed.items, toCollection: collectionID)
                         try lib.restoreGroupMemberships(removed.groupMemberships)
                         model.collections = try lib.allCollections()
+                        model.groups = try lib.allGroups()
                     } catch {
                         model.loadError = "\(error)"
                     }
@@ -600,6 +614,133 @@ final class AppModel {
                 }
             }
             undo.setActionName("Remove from Collection")
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
+    // MARK: Groups (plan, "Groups inside collections")
+
+    /// A new group, "Untitled Group" unless named. Its files must already
+    /// be in `collectionID` — the Library enforces that. Not selected on
+    /// creation (groups sit beside shows in the pane; nothing switches the
+    /// detail to one yet).
+    @discardableResult
+    func newGroup(named name: String? = nil, collectionID: Int64, parentID: Int64? = nil,
+                  itemIDs: [Int64] = []) -> Int64? {
+        guard let lib = library else { return nil }
+        do {
+            let taken = groups.filter { $0.collectionID == collectionID && $0.parentID == parentID }.map(\.name)
+            let g = try lib.createGroup(name: nextName(name ?? "Untitled Group", taken: taken),
+                                         collectionID: collectionID, parentID: parentID)
+            if !itemIDs.isEmpty { try lib.addItems(itemIDs, toGroup: g.id) }
+            groups = try lib.allGroups()
+            return g.id
+        } catch {
+            loadError = "\(error)"
+            return nil
+        }
+    }
+
+    func renameGroup(_ id: Int64, to name: String, undo: UndoManager? = nil) {
+        guard let lib = library, !name.isEmpty,
+              let before = group(id)?.name, before != name else { return }
+        do {
+            try lib.renameGroup(id: id, to: name)
+            groups = try lib.allGroups()
+        } catch {
+            loadError = "\(error)"
+            return
+        }
+        guard let undo else { return }
+        let generation = libraryGeneration
+        undo.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated {
+                guard model.libraryGeneration == generation else { return }
+                model.renameGroup(id, to: before, undo: undo)
+            }
+        }
+        undo.setActionName("Rename Group")
+    }
+
+    /// Its sub-groups go with it, as in Finder; the files stay in the
+    /// collection.
+    func deleteGroup(_ id: Int64, undo: UndoManager? = nil) {
+        guard let lib = library else { return }
+        do {
+            let snap = try lib.snapshotGroupSubtree(id: id)
+            try lib.deleteGroup(id: id)
+            groups = try lib.allGroups()
+            if case .group(let g) = sidebar, snap.contains(where: { $0.id == g }) { sidebar = .library }
+            guard let undo, !snap.isEmpty else { return }
+            let generation = libraryGeneration
+            undo.registerUndo(withTarget: self) { model in
+                MainActor.assumeIsolated {
+                    guard model.libraryGeneration == generation else { return }
+                    model.restoreGroupSubtree(snap, undo: undo)
+                }
+            }
+            undo.setActionName("Delete Group")
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
+    private func restoreGroupSubtree(_ snap: [Library.GroupSnapshot], undo: UndoManager) {
+        guard let lib = library else { return }
+        do {
+            try lib.restoreGroupSubtree(snap)
+            groups = try lib.allGroups()
+            let generation = libraryGeneration
+            undo.registerUndo(withTarget: self) { model in
+                MainActor.assumeIsolated {
+                    guard model.libraryGeneration == generation else { return }
+                    model.deleteGroup(snap[0].id, undo: undo)
+                }
+            }
+            undo.setActionName("Delete Group")
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
+    /// Only files already in the group's own collection are added; the
+    /// Library silently leaves out the rest (the membership rule).
+    func addToGroup(_ itemIDs: [Int64], _ groupID: Int64) {
+        guard let lib = library else { return }
+        do {
+            try lib.addItems(itemIDs, toGroup: groupID)
+            groups = try lib.allGroups()
+        } catch {
+            loadError = "\(error)"
+        }
+    }
+
+    /// Takes files out of a group; they stay in the collection. Undo puts
+    /// them back in their places.
+    func removeFromGroup(_ itemIDs: [Int64], _ groupID: Int64, undo: UndoManager? = nil) {
+        guard let lib = library else { return }
+        do {
+            let removed = try lib.removeItems(itemIDs, fromGroup: groupID)
+            groups = try lib.allGroups()
+            guard let undo, !removed.isEmpty else { return }
+            let generation = libraryGeneration
+            undo.registerUndo(withTarget: self) { model in
+                MainActor.assumeIsolated {
+                    guard model.libraryGeneration == generation, let lib = model.library else { return }
+                    do {
+                        try lib.restoreItems(removed, toGroup: groupID)
+                        model.groups = try lib.allGroups()
+                    } catch {
+                        model.loadError = "\(error)"
+                    }
+                    undo.registerUndo(withTarget: model) { model in
+                        MainActor.assumeIsolated { model.removeFromGroup(removed.map(\.itemID), groupID, undo: undo) }
+                    }
+                    undo.setActionName("Remove from Group")
+                }
+            }
+            undo.setActionName("Remove from Group")
         } catch {
             loadError = "\(error)"
         }

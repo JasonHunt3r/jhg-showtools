@@ -857,7 +857,7 @@ underneath stays where it is. Related to the guided first run below, but
 not the same thing: that teaches the app as it is, this changes what you
 meet first. **To be designed with Jason.**
 
-### Groups inside collections (Jason, 2026-09-24) — Core built 2026-09-24; UI next
+### Groups inside collections (Jason, 2026-09-24) — Core and Library-pane UI built 2026-09-24; the browser's filter and Find Similar Images' Keep as Group are next
 
 A collection gets **groups**: sub-folders of its files, so a big
 collection can be organised without splitting it into several
@@ -944,12 +944,46 @@ back (`restoreItems(_:toCollection:)` and the new
 `CollectionSnapshot`/`restoreCollection` now carry a collection's groups
 too, so deleting and undeleting a collection takes them with it. 267 + 12
 core tests → **288** (7 new group tests + 2 from the return-type change's
-knock-on). Not yet built: the UI (Library pane groups+shows list, drag to
-add/remove, the browser's group filter drop-down, Find Similar Images'
-**Keep as Group**, the delete confirmation with its count and "Do not
-show again"). The name clash (Group Similar → **Find Similar Images**)
-was already relabelled in the maps by the cloud session; the feature
-itself still says "Group Similar" in code and needs the rename too.
+knock-on).
+
+**Built 2026-09-24 (Library pane UI):** a collection's groups and its
+shows, side by side as siblings, each `DisclosureGroup` open by default;
+nested groups disclose recursively (`groupRow` returns `AnyView` — a
+recursive function can't define its own opaque `some View` in terms of
+itself). New Group from a collection's or a group's context menu, or
+from the grid's selection (`Add to Group ▸`, alongside `Add to
+Collection ▸`); named before it's made, like New Collection (H1).
+Rename…, and Delete Group… through `GroupDeleteNotice`
+(`SlideInspector.swift`) — an `NSAlert` with the subgroup count, "the
+files stay in the collection," and the suppression checkbox Jason asked
+for, same convention as `SlideRemovalNotice`. A group's row accepts a
+drop (adds to the group; the Library enforces the membership rule).
+Selecting a group in the pane filters `LibraryGridView` to its files
+(`groupID`, alongside `collectionID`); Delete there takes files out of
+the group without asking (as Remove from Collection); ⌘Delete still
+moves the files themselves to the Trash. **A group's own right-click
+menu is deliberately minimal** (New Group in…, Rename…, Delete Group…)
+— the fuller one is still "to settle with groups"
+(`spec/conventions.md` §3), so nothing beyond what's unambiguous was
+added.
+
+*A SwiftUI type-checker trap, hit repeatedly while building this:* once
+`MainView`'s body passed a certain size, the compiler failed with "unable
+to type-check this expression in reasonable time" — not on the new code
+itself, but on whichever nearby line pushed the whole chained-modifier
+expression over its budget, meaning the fix (extracting a sub-expression
+into its own function, computed property, or `ViewModifier`) had to be
+applied five times, each time moving the error to a new line, before the
+file compiled again. `GroupCreationAlert` is a `ViewModifier` for exactly
+this reason — its own closures type-check separately from the rest of
+`LibraryGridView`'s body. Worth remembering before adding much more to
+either view's body: extract early rather than inline.
+
+Not yet built: the Edit Show browser's group filter drop-down, Find
+Similar Images' **Keep as Group**. The name clash (Group Similar → **Find
+Similar Images**) was already relabelled in the maps by the cloud
+session; the feature itself still says "Group Similar" in code
+(`MainView.swift`) and needs the rename too.
 
 ### Later
 - ~~Video export~~ — **BUILT 2026-09-22**, E1–E5, through the hook above

@@ -718,6 +718,33 @@ enum SlideRemovalNotice {
     }
 }
 
+/// The notice before a group is deleted (plan, "Groups inside collections",
+/// Jason 2026-09-24): its sub-groups go with it, as in Finder, but the
+/// files always stay in the collection. Same suppression convention as
+/// `SlideRemovalNotice`.
+@MainActor
+enum GroupDeleteNotice {
+    static let suppressKey = "suppressGroupDeleteNotice"
+
+    /// True to go ahead.
+    static func confirm(name: String, subgroupCount: Int) -> Bool {
+        if UserDefaults.standard.bool(forKey: suppressKey) { return true }
+        let alert = NSAlert()
+        alert.messageText = "Delete “\(name)”?"
+        alert.informativeText = (subgroupCount > 0
+            ? "This also deletes \(subgroupCount) group\(subgroupCount == 1 ? "" : "s") inside it. "
+            : "") + "The files stay in the collection. You can undo this."
+        alert.addButton(withTitle: "Delete Group")
+        alert.addButton(withTitle: "Cancel")
+        alert.showsSuppressionButton = true
+        let ok = alert.runModal() == .alertFirstButtonReturn
+        if ok, alert.suppressionButton?.state == .on {
+            UserDefaults.standard.set(true, forKey: suppressKey)
+        }
+        return ok
+    }
+}
+
 // MARK: - Focus: which show the menu commands act on
 
 struct ActiveShowKey: FocusedValueKey { typealias Value = Int64 }

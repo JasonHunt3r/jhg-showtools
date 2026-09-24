@@ -97,19 +97,36 @@ preferences-domain rules).
      rows (C6, and the tile menu) needn't wait: build them in full.
      Items whose feature isn't built yet (Play without a show, Play on
      Desktop) go in greyed out, per Jason. The other menus still wait.
-5. **Groups inside collections — Core built 2026-09-24.** Migration 13,
-   `MediaGroup`, and the full `Library` API (create/rename/delete a
-   group, add/remove its files with undo, delete/undo a whole nested
-   subtree, and the membership rule enforced at the SQL level). Deleting
-   or undeleting a collection now carries its groups too.
+5. **Groups inside collections — Core and Library-pane UI built 2026-09-24.**
+   Migration 13, `MediaGroup`, and the full `Library` API (create/rename/
+   delete a group, add/remove its files with undo, delete/undo a whole
+   nested subtree, and the membership rule enforced at the SQL level).
+   Deleting or undeleting a collection now carries its groups too.
    `removeItems(_:fromCollection:)`'s return type changed to
    `CollectionRemoval` (adds the group side); `AppModel.removeFromCollection`
-   and two tests were updated to match. 7 new tests; 288 total (was 279).
-   `swift test` and `./make-app.sh` both pass clean. **Left: all of the
-   UI** — the Library pane's groups+shows list, drag to add/remove, the
-   browser's group filter drop-down, Find Similar Images' Keep as Group,
-   and the delete confirmation with its count. Full detail in
-   `spec/plan.md`, "Groups inside collections".
+   and two tests were updated to match. 7 new Core tests; 288 total
+   (was 279).
+   In the Library pane: a collection's groups and its shows sit side by
+   side as siblings, nested groups disclose recursively, New Group (from
+   a collection, a group, or the grid's selection), Rename…, drag files
+   from the grid or Finder onto a group to add them (the group's own
+   right-click menu is minimal on purpose — the fuller one is "to settle
+   with groups," `spec/conventions.md` §3), and Delete Group… with an
+   `NSAlert`-based notice (subgroup count, "the files stay in the
+   collection," a suppression checkbox — same convention as
+   `SlideRemovalNotice`). Selecting a group filters the Library grid to
+   its files; Delete there takes files out of the group (no ask, as
+   Remove from Collection); ⌘Delete still moves them to the Trash. `Add
+   to Group` and `New Group from N Items…` are in the grid's tile
+   context menu, inside a collection.
+   Ran `swift test` (288, 0 failures) and `./make-app.sh` clean, then
+   smoke-launched the built app against a scratch library (no crash, no
+   `runningTestLaunches` note left behind on quit) — a real hands-on
+   check of drag-to-group, nested folding and the delete notice's wording
+   still wants Jason's own hands.
+   **Left:** the Edit Show browser's group filter drop-down, Find Similar
+   Images' rename (still says "Group Similar" in code) and its **Keep as
+   Group**. Full detail in `spec/plan.md`, "Groups inside collections".
 6. **Batch 4: selection logic in Core, with tests.** ⇧-click replaces
    the previous range; arrow-key steps given a column count (B3, E1,
    B2, E2 in the audit; the settled rules are in `spec/conventions.md`
@@ -174,6 +191,10 @@ and Flush presets from 2a.
 - **Context menus C1–C3** (Remove Image/Transition/Marker): build and
   test clean, but not confirmed by a real click — the storyline canvas
   resisted synthetic clicking this session.
+- **Groups in the Library pane** (built 2026-09-24): drag-to-add from the
+  grid and from Finder, nested folding, New Group naming, and the delete
+  notice's wording — only smoke-tested (launch, no crash), not clicked by
+  a person.
 - **The Rhythm tool** (step 7): the panel's look (the space around the
   form, the notation's size: a staff space is 5.5 pt), Listen by ear on
   real music, Space stopping Listen, and whether 145 BPM is right for
