@@ -25,6 +25,32 @@ split (top / bottom)
 Either tree is two lines of code once the primitive exists. That's the
 point.
 
+## What it replaces, in Swift's words
+
+A **class** makes **objects**: long-lived things with an identity. AppKit's
+views are objects. A **struct** is a value, closer to a description:
+SwiftUI views are structs, and SwiftUI builds the real objects behind
+them.
+
+| What | Kind | Where | What happens to it |
+|---|---|---|---|
+| `NavigationSplitView` | SwiftUI container view (a struct) | the main window: the Library pane beside the rest | **Replaced** by PaneKit |
+| `VSplitView` | SwiftUI container view (a struct) | Edit Show: the line between the columns and the timeline pane | **Replaced** by PaneKit |
+| `.inspector()` | SwiftUI view *modifier* | was on Edit Slides | **Already gone** (the crash fix) |
+| `ColumnsSplitView` | AppKit class, a subclass of `NSSplitView` | Edit Show's and Edit Slides' columns | **Grown into PaneKit:** it's the seed |
+| `ShowColumns`, `TwoColumns` | SwiftUI structs that wrap `ColumnsSplitView` | the same two places | Replaced by PaneKit's own wrapper |
+
+**Would rebuilding `.inspector()` from its parts show why it crashed?**
+Probably not. We rebuild its *behaviour* from public parts, not Apple's
+private code. The crash was in SwiftUI's private size negotiation
+between the inspector column and its neighbour, which never settled.
+PaneKit sizes panes itself, with no negotiation, so it shouldn't
+reproduce the crash. That it doesn't is itself evidence that the
+negotiation was at fault. To learn the real *why*, a tiny app with only
+`.inspector()` in a `NavigationSplitView`, run on macOS 26 and 27, would
+isolate it. If only 27 crashes, report it to Apple (Feedback
+Assistant). Not needed for our fix.
+
 ## Why our own (settled, 2026-09-24)
 
 - **The built-ins decide too much.** `NavigationSplitView`'s left pane
