@@ -857,7 +857,7 @@ underneath stays where it is. Related to the guided first run below, but
 not the same thing: that teaches the app as it is, this changes what you
 meet first. **To be designed with Jason.**
 
-### Groups inside collections (Jason, 2026-09-24) — Planned, to build right away
+### Groups inside collections (Jason, 2026-09-24) — Core built 2026-09-24; UI next
 
 A collection gets **groups**: sub-folders of its files, so a big
 collection can be organised without splitting it into several
@@ -928,6 +928,28 @@ the code):
   Collection** suggested as its name. After that, the usual naming step
   for the group follows. (In a collection, the group simply goes in the
   collection being viewed.)
+
+**Built 2026-09-24 (Core):** migration 13 (`groups`, `group_items`),
+`MediaGroup`, and on `Library`: `allGroups`, `createGroup`, `renameGroup`,
+`deleteGroup`, `addItems(_:toGroup:)` (enforces the membership rule at the
+SQL level — a file not in the group's collection is silently left out),
+`removeItems(_:fromGroup:)` / `restoreItems(_:toGroup:)` for undo,
+`snapshotGroupSubtree`/`restoreGroupSubtree` for deleting a group (its
+whole nested subtree, root first) and undoing that. `removeItems(_:fromCollection:)`
+now also takes a file out of that collection's groups in the same
+transaction and returns both (`CollectionRemoval`), so undo puts both
+back (`restoreItems(_:toCollection:)` and the new
+`restoreGroupMemberships`) — this changed its return type, so
+`AppModel.removeFromCollection` and the tests were updated to match.
+`CollectionSnapshot`/`restoreCollection` now carry a collection's groups
+too, so deleting and undeleting a collection takes them with it. 267 + 12
+core tests → **288** (7 new group tests + 2 from the return-type change's
+knock-on). Not yet built: the UI (Library pane groups+shows list, drag to
+add/remove, the browser's group filter drop-down, Find Similar Images'
+**Keep as Group**, the delete confirmation with its count and "Do not
+show again"). The name clash (Group Similar → **Find Similar Images**)
+was already relabelled in the maps by the cloud session; the feature
+itself still says "Group Similar" in code and needs the rename too.
 
 ### Later
 - ~~Video export~~ — **BUILT 2026-09-22**, E1–E5, through the hook above

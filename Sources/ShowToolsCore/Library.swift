@@ -160,7 +160,7 @@ public final class Library {
     public func snapshot<T>(_ body: () throws -> T) throws -> T { try db.snapshot(body) }
 
     /// The schema version `migrate` brings a library up to.
-    public static let schemaVersion = 12
+    public static let schemaVersion = 13
 
     /// Before an existing library is upgraded, a copy of its database as it
     /// was, beside it: `Library.sqlite.v<N>.bak`. Upgrades are additive and
@@ -349,6 +349,29 @@ public final class Library {
                     """)
             }
         }
+        // 13 (2026-09-24): groups inside collections — sub-folders of a
+        // collection's files (plan, "Groups inside collections"). Additive:
+        // no existing library has any, so every collection opens with none.
+        if db.userVersion < 13 {
+            try db.transaction {
+                try db.exec("""
+                    CREATE TABLE groups (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+                        parent_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+                        name TEXT NOT NULL,
+                        created_at REAL NOT NULL
+                    );
+                    CREATE TABLE group_items (
+                        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+                        item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+                        added_at REAL NOT NULL,
+                        PRIMARY KEY (group_id, item_id)
+                    );
+                    PRAGMA user_version = 13;
+                    """)
+            }
+        }
     }
 
     // MARK: The library itself
@@ -459,10 +482,21 @@ public final class Library {
         }
     }
 
+    /// What `removeItems(_:fromCollection:)` took out: the collection
+    /// memberships, for the caller's own bookkeeping, and the group
+    /// memberships that came out with them (a file taken out of a
+    /// collection also comes out of that collection's groups, in the same
+    /// transaction — plan, "Groups inside collections"), so
+    /// `restoreItems(_:toCollection:)` can put both back.
+    public struct CollectionRemoval: Sendable {
+        public let items: [(itemID: Int64, addedAt: Double)]
+        public let groupMemberships: [(groupID: Int64, itemID: Int64, addedAt: Double)]
+    }
+
     /// Takes files out of a collection, and returns when each had been
     /// added, so undo can put them back in their places.
     @discardableResult
-    public func removeItems(_ itemIDs: [Int64], fromCollection id: Int64) throws -> [(itemID: Int64, addedAt: Double)] {
+    public func removeItems(_ itemIDs: [Int64], fromCollection id: Int64) throws -> CollectionRemoval {
         try db.transaction {
             let q = try db.prepare("SELECT added_at FROM collection_items WHERE collection_id = ? AND item_id = ?")
             let s = try db.prepare("DELETE FROM collection_items WHERE collection_id = ? AND item_id = ?")
@@ -472,8 +506,26 @@ public final class Library {
                 if try q.step() { removed.append((item, q.double(0))) }
                 try s.bind(.int(id), .int(item)).run()
             }
-            return removed
+            let groupMemberships = try groupMembershipsOfItems(itemIDs, inCollection: id)
+            for m in groupMemberships {
+                try db.prepare("DELETE FROM group_items WHERE group_id = ? AND item_id = ?")
+                    .bind(.int(m.groupID), .int(m.itemID)).run()
+            }
+            return CollectionRemoval(items: removed, groupMemberships: groupMemberships)
         }
+    }
+
+    private func groupMembershipsOfItems(_ itemIDs: [Int64], inCollection collectionID: Int64) throws -> [(groupID: Int64, itemID: Int64, addedAt: Double)] {
+        guard !itemIDs.isEmpty else { return [] }
+        let ids = itemIDs.map(String.init).joined(separator: ",")
+        let s = try db.prepare("""
+            SELECT group_items.group_id, group_items.item_id, group_items.added_at
+            FROM group_items JOIN groups ON groups.id = group_items.group_id
+            WHERE groups.collection_id = ? AND group_items.item_id IN (\(ids))
+            """).bind(.int(collectionID))
+        var out: [(groupID: Int64, itemID: Int64, addedAt: Double)] = []
+        while try s.step() { out.append((s.int(0), s.int(1), s.double(2))) }
+        return out
     }
 
     /// Puts files back in a collection as they were: undoing a removal.
@@ -488,6 +540,19 @@ public final class Library {
         }
     }
 
+    /// Puts files back in their groups: undoing the group side of
+    /// `removeItems(_:fromCollection:)`. Files or groups no longer there
+    /// are skipped.
+    public func restoreGroupMemberships(_ entries: [(groupID: Int64, itemID: Int64, addedAt: Double)]) throws {
+        try db.transaction {
+            let g = try db.prepare("""
+                INSERT OR IGNORE INTO group_items (group_id, item_id, added_at)
+                SELECT ?, id, ? FROM items WHERE id = ?
+                """)
+            for m in entries { try g.bind(.int(m.groupID), .double(m.addedAt), .int(m.itemID)).run() }
+        }
+    }
+
     /// Everything deleting a collection takes with it, to put back on undo.
     public struct CollectionSnapshot: Sendable {
         public let id: Int64
@@ -495,6 +560,7 @@ public final class Library {
         public let createdAt: Double
         public let members: [(itemID: Int64, addedAt: Double)]
         public let shows: [(show: Show, createdAt: Double)]
+        public let groups: [GroupSnapshot]
     }
 
     public func snapshotCollection(id: Int64) throws -> CollectionSnapshot? {
@@ -508,17 +574,20 @@ public final class Library {
         var created: [Int64: Double] = [:]
         while try times.step() { created[times.int(0)] = times.double(1) }
         let shows = try allShows().filter { $0.collectionID == id }.map { ($0, created[$0.id] ?? 0) }
-        return CollectionSnapshot(id: id, name: name, createdAt: createdAt, members: members, shows: shows)
+        let groups = try snapshotGroups(inCollection: id)
+        return CollectionSnapshot(id: id, name: name, createdAt: createdAt, members: members, shows: shows, groups: groups)
     }
 
     /// Undoes `deleteCollection`: the collection, its files in their order,
-    /// and its shows, all with their old ids, so undo steps recorded
-    /// against them still find them. Slides of files deleted since are left out.
+    /// its groups (with their own files) and its shows, all with their old
+    /// ids, so undo steps recorded against them still find them. Slides of
+    /// files deleted since are left out.
     public func restoreCollection(_ snap: CollectionSnapshot) throws {
         try db.transaction {
             try db.prepare("INSERT INTO collections (id, name, created_at) VALUES (?, ?, ?)")
                 .bind(.int(snap.id), .text(snap.name), .double(snap.createdAt)).run()
             try restoreItems(snap.members, toCollection: snap.id)
+            for g in snap.groups { try restoreGroup(g) }
             let exists = try db.prepare("SELECT 1 FROM items WHERE id = ?")
             for (show, createdAt) in snap.shows {
                 try db.prepare("INSERT INTO shows (id, name, defaults, created_at, collection_id) VALUES (?, ?, '{}', ?, ?)")
@@ -531,6 +600,141 @@ public final class Library {
                 try saveShow(s)
             }
         }
+    }
+
+    // MARK: Groups (schema 13)
+
+    public func allGroups() throws -> [MediaGroup] {
+        let s = try db.prepare("SELECT id, collection_id, parent_id, name FROM groups ORDER BY created_at, id")
+        var out: [MediaGroup] = []
+        while try s.step() {
+            out.append(MediaGroup(id: s.int(0), collectionID: s.int(1),
+                                   parentID: s.isNull(2) ? nil : s.int(2), name: s.text(3)))
+        }
+        let m = try db.prepare("SELECT group_id, item_id FROM group_items ORDER BY added_at, item_id")
+        var members: [Int64: [Int64]] = [:]
+        while try m.step() { members[m.int(0), default: []].append(m.int(1)) }
+        for i in out.indices { out[i].itemIDs = members[out[i].id] ?? [] }
+        return out
+    }
+
+    public func createGroup(name: String, collectionID: Int64, parentID: Int64? = nil) throws -> MediaGroup {
+        try db.prepare("INSERT INTO groups (collection_id, parent_id, name, created_at) VALUES (?, ?, ?, ?)")
+            .bind(.int(collectionID), parentID.map { .int($0) } ?? .null, .text(name),
+                  .double(Date().timeIntervalSince1970)).run()
+        return MediaGroup(id: db.lastInsertID, collectionID: collectionID, parentID: parentID, name: name)
+    }
+
+    public func renameGroup(id: Int64, to name: String) throws {
+        try db.prepare("UPDATE groups SET name = ? WHERE id = ?").bind(.text(name), .int(id)).run()
+    }
+
+    /// Its sub-groups go with it, as in Finder; the files stay in the
+    /// collection. Use `snapshotGroupSubtree` first if the caller wants undo.
+    public func deleteGroup(id: Int64) throws {
+        try db.prepare("DELETE FROM groups WHERE id = ?").bind(.int(id)).run()
+    }
+
+    /// Files already in the group are left as they were. Only files already
+    /// in the group's own collection are added — **a group's files must be
+    /// in its collection** (plan) — so a file not yet in that collection is
+    /// silently skipped rather than added to either.
+    public func addItems(_ itemIDs: [Int64], toGroup id: Int64) throws {
+        guard !itemIDs.isEmpty else { return }
+        let ids = itemIDs.map(String.init).joined(separator: ",")
+        let now = Date().timeIntervalSince1970
+        try db.prepare("""
+            INSERT OR IGNORE INTO group_items (group_id, item_id, added_at)
+            SELECT ?, ci.item_id, ? FROM collection_items ci
+            JOIN groups g ON g.id = ?
+            WHERE ci.collection_id = g.collection_id AND ci.item_id IN (\(ids))
+            """).bind(.int(id), .double(now), .int(id)).run()
+    }
+
+    /// Takes files out of a group, and returns when each had been added, so
+    /// undo can put them back in their places. The files stay in the collection.
+    @discardableResult
+    public func removeItems(_ itemIDs: [Int64], fromGroup id: Int64) throws -> [(itemID: Int64, addedAt: Double)] {
+        try db.transaction {
+            let q = try db.prepare("SELECT added_at FROM group_items WHERE group_id = ? AND item_id = ?")
+            let s = try db.prepare("DELETE FROM group_items WHERE group_id = ? AND item_id = ?")
+            var removed: [(itemID: Int64, addedAt: Double)] = []
+            for item in itemIDs {
+                q.bind(.int(id), .int(item))
+                if try q.step() { removed.append((item, q.double(0))) }
+                try s.bind(.int(id), .int(item)).run()
+            }
+            return removed
+        }
+    }
+
+    /// Puts files back in a group as they were: undoing a removal, or the
+    /// group side of `removeItems(_:fromCollection:)`.
+    public func restoreItems(_ entries: [(itemID: Int64, addedAt: Double)], toGroup id: Int64) throws {
+        try restoreGroupMemberships(entries.map { (groupID: id, itemID: $0.itemID, addedAt: $0.addedAt) })
+    }
+
+    /// One group's own row and files, to put back on undo — not its
+    /// sub-groups; `snapshotGroupSubtree` gathers a whole tree of these,
+    /// root first, so a parent always restores before its children.
+    public struct GroupSnapshot: Sendable {
+        public let id: Int64
+        public let collectionID: Int64
+        public let parentID: Int64?
+        public let name: String
+        public let createdAt: Double
+        public let items: [(itemID: Int64, addedAt: Double)]
+    }
+
+    private func snapshotOneGroup(id: Int64) throws -> GroupSnapshot? {
+        let g = try db.prepare("SELECT collection_id, parent_id, name, created_at FROM groups WHERE id = ?").bind(.int(id))
+        guard try g.step() else { return nil }
+        let m = try db.prepare("SELECT item_id, added_at FROM group_items WHERE group_id = ?").bind(.int(id))
+        var items: [(itemID: Int64, addedAt: Double)] = []
+        while try m.step() { items.append((m.int(0), m.double(1))) }
+        return GroupSnapshot(id: id, collectionID: g.int(0), parentID: g.isNull(1) ? nil : g.int(1),
+                              name: g.text(2), createdAt: g.double(3), items: items)
+    }
+
+    /// A group and every group nested inside it, root first (breadth-first,
+    /// so a parent's row always comes before its children's) — what
+    /// `deleteGroup` takes with it, to put back on undo.
+    public func snapshotGroupSubtree(id: Int64) throws -> [GroupSnapshot] {
+        var out: [GroupSnapshot] = []
+        var queue = [id]
+        while !queue.isEmpty {
+            let gid = queue.removeFirst()
+            guard let snap = try snapshotOneGroup(id: gid) else { continue }
+            out.append(snap)
+            let c = try db.prepare("SELECT id FROM groups WHERE parent_id = ? ORDER BY created_at, id").bind(.int(gid))
+            while try c.step() { queue.append(c.int(0)) }
+        }
+        return out
+    }
+
+    /// Every group in a collection, root groups (and their subtrees) first —
+    /// what `deleteCollection` takes with it, to put back on undo alongside
+    /// the collection itself.
+    private func snapshotGroups(inCollection collectionID: Int64) throws -> [GroupSnapshot] {
+        let r = try db.prepare("""
+            SELECT id FROM groups WHERE collection_id = ? AND parent_id IS NULL ORDER BY created_at, id
+            """).bind(.int(collectionID))
+        var roots: [Int64] = []
+        while try r.step() { roots.append(r.int(0)) }
+        return try roots.flatMap { try snapshotGroupSubtree(id: $0) }
+    }
+
+    private func restoreGroup(_ snap: GroupSnapshot) throws {
+        try db.prepare("INSERT INTO groups (id, collection_id, parent_id, name, created_at) VALUES (?, ?, ?, ?, ?)")
+            .bind(.int(snap.id), .int(snap.collectionID), snap.parentID.map { .int($0) } ?? .null,
+                  .text(snap.name), .double(snap.createdAt)).run()
+        try restoreItems(snap.items, toGroup: snap.id)
+    }
+
+    /// Undoes `deleteGroup`: the group (or the whole subtree
+    /// `snapshotGroupSubtree` gathered) and its files, each with its old id.
+    public func restoreGroupSubtree(_ snaps: [GroupSnapshot]) throws {
+        try db.transaction { for g in snaps { try restoreGroup(g) } }
     }
 
     public func url(for item: MediaItem) -> URL {

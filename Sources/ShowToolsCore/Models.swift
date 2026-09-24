@@ -493,3 +493,25 @@ public struct MediaCollection: Identifiable, Hashable, Sendable {
         self.itemIDs = itemIDs
     }
 }
+
+/// A sub-folder of a collection's files — a book cart, more temporary than
+/// a collection (plan, "Groups inside collections", Jason 2026-09-24).
+/// Deleting a group leaves its files in the collection. A group's files
+/// must be in its collection; a file can be in several groups. Groups
+/// nest, like folders (`parentID` nil at the top).
+public struct MediaGroup: Identifiable, Hashable, Sendable {
+    public var id: Int64
+    public var collectionID: Int64
+    public var parentID: Int64?
+    public var name: String
+    /// In the order they were added.
+    public var itemIDs: [Int64]
+
+    public init(id: Int64, collectionID: Int64, parentID: Int64? = nil, name: String, itemIDs: [Int64] = []) {
+        self.id = id
+        self.collectionID = collectionID
+        self.parentID = parentID
+        self.name = name
+        self.itemIDs = itemIDs
+    }
+}

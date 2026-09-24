@@ -136,7 +136,7 @@ final class MusicTests: XCTestCase {
         do { _ = try Library(root: root).createShow(name: "Old") }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("DROP TABLE rhythm_patterns; ALTER TABLE shows DROP COLUMN editor; PRAGMA user_version = 9;")
+            try db.exec("DROP TABLE group_items; DROP TABLE groups; DROP TABLE rhythm_patterns; ALTER TABLE shows DROP COLUMN editor; PRAGMA user_version = 9;")
         }
         let lib = try Library(root: root)
         var show = try XCTUnwrap(lib.allShows().first)
@@ -160,7 +160,7 @@ final class MusicTests: XCTestCase {
         do { _ = try Library(root: root).createShow(name: "Old") }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("DROP TABLE rhythm_patterns; ALTER TABLE shows DROP COLUMN editor; ALTER TABLE shows DROP COLUMN markers; PRAGMA user_version = 8;")
+            try db.exec("DROP TABLE group_items; DROP TABLE groups; DROP TABLE rhythm_patterns; ALTER TABLE shows DROP COLUMN editor; ALTER TABLE shows DROP COLUMN markers; PRAGMA user_version = 8;")
         }
         let lib = try Library(root: root)
         var show = try XCTUnwrap(lib.allShows().first)
@@ -175,7 +175,7 @@ final class MusicTests: XCTestCase {
         do { _ = try Library(root: root).createShow(name: "Old") }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("DROP TABLE rhythm_patterns; ALTER TABLE shows DROP COLUMN editor; ALTER TABLE shows DROP COLUMN markers; ALTER TABLE shows DROP COLUMN music; PRAGMA user_version = 7;")
+            try db.exec("DROP TABLE group_items; DROP TABLE groups; DROP TABLE rhythm_patterns; ALTER TABLE shows DROP COLUMN editor; ALTER TABLE shows DROP COLUMN markers; ALTER TABLE shows DROP COLUMN music; PRAGMA user_version = 7;")
         }
         let lib = try Library(root: root)
         var show = try XCTUnwrap(lib.allShows().first)

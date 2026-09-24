@@ -581,19 +581,20 @@ final class AppModel {
         do {
             let removed = try lib.removeItems(itemIDs, fromCollection: collectionID)
             collections = try lib.allCollections()
-            guard let undo, !removed.isEmpty else { return }
+            guard let undo, !removed.items.isEmpty else { return }
             let generation = libraryGeneration
             undo.registerUndo(withTarget: self) { model in
                 MainActor.assumeIsolated {
                     guard model.libraryGeneration == generation, let lib = model.library else { return }
                     do {
-                        try lib.restoreItems(removed, toCollection: collectionID)
+                        try lib.restoreItems(removed.items, toCollection: collectionID)
+                        try lib.restoreGroupMemberships(removed.groupMemberships)
                         model.collections = try lib.allCollections()
                     } catch {
                         model.loadError = "\(error)"
                     }
                     undo.registerUndo(withTarget: model) { model in
-                        MainActor.assumeIsolated { model.removeFromCollection(removed.map(\.itemID), collectionID, undo: undo) }
+                        MainActor.assumeIsolated { model.removeFromCollection(removed.items.map(\.itemID), collectionID, undo: undo) }
                     }
                     undo.setActionName("Remove from Collection")
                 }

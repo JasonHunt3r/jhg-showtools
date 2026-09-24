@@ -11,8 +11,9 @@ Repo: `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 ## Where it stands
 
-**Everything planned is built.** Phases 1–5, Phase 3b, Phase 4 and video
-export. **279 tests** (267 core + 12 BGTools). **Library schema 12.**
+**Everything planned is built**, except Groups inside collections, whose
+Core is built and UI isn't (below). Phases 1–5, Phase 3b, Phase 4 and
+video export. **288 tests** (276 core + 12 BGTools). **Library schema 13.**
 
 | Phase | State |
 |---|---|
@@ -29,7 +30,7 @@ export. **279 tests** (267 core + 12 BGTools). **Library schema 12.**
 
 Every schema upgrade is additive and tested by opening a library of the
 version before (7 rows, 8 music, 9 markers, 10 editing state, 11 rhythm
-patterns, 12 their note length). Before an upgrade the database is copied
+patterns, 12 their note length, 13 groups). Before an upgrade the database is copied
 to `Library.sqlite.v<N>.bak`. Video export needed no schema change: a video
 slide's level line is slide settings, which are JSON.
 
@@ -96,10 +97,19 @@ preferences-domain rules).
      rows (C6, and the tile menu) needn't wait: build them in full.
      Items whose feature isn't built yet (Play without a show, Play on
      Desktop) go in greyed out, per Jason. The other menus still wait.
-5. **Groups inside collections: build right away (Jason, 2026-09-24).**
-   `spec/plan.md`, "Groups inside collections": decided in full, with a
-   proposed migration 13. Load `showtools-gotchas` first (migrations,
-   and the older-version test trap).
+5. **Groups inside collections — Core built 2026-09-24.** Migration 13,
+   `MediaGroup`, and the full `Library` API (create/rename/delete a
+   group, add/remove its files with undo, delete/undo a whole nested
+   subtree, and the membership rule enforced at the SQL level). Deleting
+   or undeleting a collection now carries its groups too.
+   `removeItems(_:fromCollection:)`'s return type changed to
+   `CollectionRemoval` (adds the group side); `AppModel.removeFromCollection`
+   and two tests were updated to match. 7 new tests; 288 total (was 279).
+   `swift test` and `./make-app.sh` both pass clean. **Left: all of the
+   UI** — the Library pane's groups+shows list, drag to add/remove, the
+   browser's group filter drop-down, Find Similar Images' Keep as Group,
+   and the delete confirmation with its count. Full detail in
+   `spec/plan.md`, "Groups inside collections".
 6. **Batch 4: selection logic in Core, with tests.** ⇧-click replaces
    the previous range; arrow-key steps given a column count (B3, E1,
    B2, E2 in the audit; the settled rules are in `spec/conventions.md`
