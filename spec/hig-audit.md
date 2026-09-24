@@ -292,11 +292,18 @@ same in either. It mostly doesn't:
   `newShow`) and select it. Finder's New Folder, Photos' New Album and
   Final Cut's New Project all go straight to the name: an editable name
   in place, or a dialog. Here, renaming means right-click ▸ Rename…
-  afterwards. *Fix direction:* go straight into naming. With inline rename
-  (D4) that's the sidebar row itself. Until then, the Rename alert opens
-  on creation, with the untitled name selected. Cancel keeps the untitled
-  name rather than deleting the new collection or show (*decision for
-  Jason*).
+  afterwards. *Fix direction:* ask for the name first, and create the
+  collection or show only on OK.
+  **Settled (Jason, 2026-09-24):** Cancel means "never mind" or "I hit
+  that by accident", so it creates nothing. **Nothing is ever called
+  Untitled unless someone clicked OK on that name.** The field starts
+  with a suggested name, selected, so Return accepts it. Once inline
+  rename (D4) exists, the naming can happen in the sidebar row itself,
+  under the same rule: Esc removes the new row.
+  - *Exception to settle with the first run:* a new library starts with
+    one collection made for you (`spec/first-run-brief.md`, "My First
+    Collection" with a Rename button). That one is made by the app, not
+    by a click.
 - **H2 (Med) — An empty collection or show has no way in on its face.**
   The empty collection's message says how to fill it, with no button
   (`MainView.swift`, `LibraryGridView.body`). The empty show says "No
@@ -308,7 +315,18 @@ same in either. It mostly doesn't:
     and until then a picker like Place Image Here…'s.
   - an empty show: **Add from Collection…** and **Import…**.
 
-  See `spec/windows.md`, "Filling a new collection".
+  **Two tiers of wording (Jason, 2026-09-24),** the same shape as the
+  guided first run (`spec/first-run-brief.md`):
+  - **The first time** an empty place is seen: a welcome, a fuller
+    lesson, and the button.
+  - **Every time after:** a short reminder of what the place is for, and
+    the button.
+
+  The buttons are the same in both tiers, and they're H2. So H2 builds
+  the second tier now, and the first run later adds the first tier on
+  top, without changing H2. Most people see the empty Library once,
+  unless they make a new library, so its welcome is the first run's job.
+  See also `spec/windows.md`, "Filling a new collection".
 
 ## Fix batches (proposed order)
 
@@ -358,5 +376,3 @@ ordered from least to most risk.
   nothing.
 - **G6:** where show defaults go in Edit Show.
 - **G7:** whether the timeline's row order should become layer order.
-- **H1:** whether Cancel on the naming step keeps the untitled
-  collection or show, or removes it.

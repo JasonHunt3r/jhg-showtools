@@ -198,6 +198,16 @@ covered. The idea:
   jumps. It's scrolled away like any content, and once it's scrolled out
   of view it's gone, and the content goes back to its normal size.
 
+**The scene it's for (Jason):** a late stage of a show, played back
+large in the main window. The Timeline window sits behind it, tall, with
+only a row or two showing below the viewer. Swiping over that strip
+scrolls every row past, so each can be seen against the playback without
+disturbing it. To edit, click the Timeline window: it comes forward, the
+edit is made, and a swipe brings the whole tool into view. Click the main
+window, and the Timeline window drops behind again, ready to be swiped
+through. It should feel like magic: covered or not, nothing in the
+timeline is ever out of reach.
+
 What's known before trying it:
 - **Scrolling a window behind is already normal on the Mac.** A swipe
   scrolls whatever window is under the pointer, front or not, without
