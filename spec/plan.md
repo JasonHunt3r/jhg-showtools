@@ -917,11 +917,17 @@ the code):
   collections.
 - **Order:** the sort choice is a view setting, not stored per group.
 
-**Still open:**
-1. **Deleting a group that holds groups:** do its sub-groups go too
-   (Finder deletes a folder's contents), or move up a level?
-2. **Where "Keep as Group" puts the new group:** in the collection being
-   viewed, and in the Library view (no collection), which collection?
+- **Deleting a group that holds groups** (Jason): its sub-groups go with
+  it, as in Finder. The confirmation says how many groups will be
+  deleted ("This also deletes 3 groups inside it. The files stay in the
+  collection."), and has a **Do not show this message again** checkbox,
+  as the slide-removal notice does. Files are never deleted with a group.
+- **Keep as Group with no collection open** (the Library view; Jason): a
+  dialog explains that a group lives in a collection, so saving this one
+  needs a collection first. It offers to create one, with **Grouped
+  Collection** suggested as its name. After that, the usual naming step
+  for the group follows. (In a collection, the group simply goes in the
+  collection being viewed.)
 
 ### Later
 - ~~Video export~~ — **BUILT 2026-09-22**, E1–E5, through the hook above

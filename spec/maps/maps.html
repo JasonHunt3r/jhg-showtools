@@ -54,7 +54,7 @@ h1{margin:0 0 4px;font-size:26px}
  <div class="area gr" style="left:318px;top:52px;right:8px;bottom:8px">
   <div class="n">Detail → Library grid</div><div class="d">the files of the Library or one collection · its own selection, not shared with any show</div><div class="a">the grid</div>
   <div class="area fb" style="left:10px;right:10px;top:70px;height:64px">
-   <div class="n">Filter bar</div><div class="d">Search · Filter (kind: pictures / video / Audio) · Sort · Similar (Group Similar, Show Similar)</div>
+   <div class="n">Filter bar</div><div class="d">Search · Filter (kind: pictures / video / Audio) · Sort · Similar (Find Similar Images, Show Similar)</div>
   </div>
   <div id="tiles" style="position:absolute;left:10px;right:10px;top:150px;bottom:10px"></div>
  </div>
@@ -141,7 +141,7 @@ h1{margin:0 0 4px;font-size:26px}
 // tiles
 const T=document.getElementById('tiles');
 for(let r=0;r<5;r++)for(let c=0;c<9;c++){const d=document.createElement('div');d.className='tile'+((r==1&&(c==2||c==3))?' s':'');d.style.left=(c*132)+'px';d.style.top=(r*102)+'px';T.appendChild(d)}
-T.insertAdjacentHTML('beforeend','<div class="lbl" style="left:0;top:520px">Tiles — one per file · click / ⌘-click / ⇧-click select · with Group Similar they fall into groups, each with a header</div><div class="lbl" style="left:270px;top:108px;border-color:#2f6de0;color:#2f6de0">selected tiles</div>');
+T.insertAdjacentHTML('beforeend','<div class="lbl" style="left:0;top:520px">Tiles — one per file · click / ⌘-click / ⇧-click select · with Find Similar Images they fall into look-alike sets, each with a header</div><div class="lbl" style="left:270px;top:108px;border-color:#2f6de0;color:#2f6de0">selected tiles</div>');
 // slide list
 const S=document.getElementById('slist');
 ['IMG_2041.jpg','IMG_2042.jpg','truck_night.heic','IMG_2050.jpg','dust.mov','IMG_2061.jpg','IMG_2077.jpg','sunset.jpg','IMG_2090.jpg','IMG_2101.jpg','IMG_2110.jpg'].forEach((n,i)=>{
