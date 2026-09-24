@@ -130,13 +130,17 @@ the rows wherever they are.
    - The two are joined on request instead: a context-menu item, **Show
      in Library**, on a slide, lane image or audio clip. It opens the
      library window and selects that file.
-3. **Floating or ordinary also depends on the job.**
-   - The **Slide Editor** is bold and in front, like a big popover: you
-     work in it, and when you're done it goes away.
-   - The **inspector** behaves like an ordinary window, and keeps its
-     place over time.
-   - Each area finds its behaviour by trial and error. It can be thought
-     through here, but not settled.
+3. **Floating or ordinary also depends on the job.** Settled so far
+   (later the same evening):
+
+   | Window | Kind | Why |
+   |---|---|---|
+   | **Library** | panel (floats) | It floats over a new, empty collection so files can be dragged into a big target. This is the use that started the idea (see "Filling a new collection" below) |
+   | **Inspector** | panel (floats) | Settings stay in reach over whatever is being worked on. It keeps its place over time |
+   | **Timeline window** | ordinary window | It must be able to go *behind* the main viewer, especially once a show has extra rows |
+   | **Slide Editor** | bold and in front, transient | Like a big popover: you work in it, and when you're done it goes away |
+
+   The rest are found by trial and error.
 4. **Launch restores everything:** which windows are open or detached,
    where they are, their sizes and states. The possible exception is the
    playhead.
@@ -144,7 +148,7 @@ the rows wherever they are.
    the space. With the inspector out, the viewer widens and the browser
    slides over. With the browser out as well, the viewer takes that space
    too.
-6. **The library list is a floating window, a panel.**
+6. **The library list is a floating window, a panel** (confirmed: see 3).
    - On the Mac, a *panel* is a window that floats above the app's other
      windows (the Info panel is one). An ordinary window can go behind.
    - It opens from the **Library** item in the sidebar, which stays there.
@@ -163,6 +167,54 @@ the rows wherever they are.
      round.
    - Worth knowing when this is tried: ⌥-click on a row handle already
      opens or closes every drawer at once.
+
+## Filling a new collection: the problem the library panel solves
+
+Today, making a collection and filling it goes like this:
+
+1. File ▸ New Collection makes "Untitled Collection" and selects it.
+   There's no naming step (see `spec/hig-audit.md` §H).
+2. The collection is empty. Its message says to drag photos in, or to
+   use Add to Collection from the Library, but there's no button.
+3. So you either hunt for the small Import button in the toolbar, or
+   select the Library, pick files, and drag them onto the collection's
+   small row in the sidebar.
+
+With the library panel floating over the empty collection, the whole
+collection is the drop target. The audit's H1 and H2 fix the rest,
+whether or not the panel exists: name it on creation, and put a button
+front and centre.
+
+## Scrolling a window that's partly covered (Jason's idea)
+
+The Timeline window can sit behind the main window, with its top
+covered. The idea:
+
+- **While covered:** the Timeline window adds padding at the top of its
+  content, as tall as the part that's covered. The top rows can then be
+  scrolled down into the visible part with a two-finger swipe, without
+  bringing the window to the front.
+- **Brought to the front:** the padding stays where it is, so nothing
+  jumps. It's scrolled away like any content, and once it's scrolled out
+  of view it's gone, and the content goes back to its normal size.
+
+What's known before trying it:
+- **Scrolling a window behind is already normal on the Mac.** A swipe
+  scrolls whatever window is under the pointer, front or not, without
+  activating it. So only the padding is new.
+- **Knowing what's covered:** ShowTools knows where its own windows are
+  and in what order. Other apps' window frames are readable too
+  (`CGWindowListCopyWindowInfo`; bounds need no screen-recording
+  permission). The covered height is where the covering windows' bottom
+  edges fall across the Timeline window's top.
+- **The padding:** `NSScrollView.contentInsets.top`, changed as windows
+  move. The front-window behaviour takes the inset away only once the
+  scroll position has passed it, adjusting the scroll position in the
+  same step so the content doesn't jump.
+- **Not standard Mac behaviour.** No app I know of does this, so it will
+  want a harness first and a hands-on feel for it. The timeline scrolls
+  only sideways today: vertical scrolling arrives with extra rows, and so
+  does this.
 
 ## A possible order (not a plan)
 

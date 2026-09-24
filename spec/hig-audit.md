@@ -285,6 +285,31 @@ same in either. It mostly doesn't:
   decide that row order *is* layer order before a show can have two rows
   of one kind.
 
+## H. Making new things (Jason, 2026-09-24)
+
+- **H1 (Med) — New Collection and New Show skip naming.** They make
+  "Untitled Collection" or "Untitled Show" (`AppModel.newCollection`,
+  `newShow`) and select it. Finder's New Folder, Photos' New Album and
+  Final Cut's New Project all go straight to the name: an editable name
+  in place, or a dialog. Here, renaming means right-click ▸ Rename…
+  afterwards. *Fix direction:* go straight into naming. With inline rename
+  (D4) that's the sidebar row itself. Until then, the Rename alert opens
+  on creation, with the untitled name selected. Cancel keeps the untitled
+  name rather than deleting the new collection or show (*decision for
+  Jason*).
+- **H2 (Med) — An empty collection or show has no way in on its face.**
+  The empty collection's message says how to fill it, with no button
+  (`MainView.swift`, `LibraryGridView.body`). The empty show says "No
+  slides yet", with no button (`ShowView.swift`, `EditSlidesView`). Only
+  the empty *library* has an Import… button. *Fix direction:* front and
+  centre in each empty state:
+  - an empty collection: **Import…** (into this collection) and **Add
+    from Library…**. The second opens the library panel once it exists,
+    and until then a picker like Place Image Here…'s.
+  - an empty show: **Add from Collection…** and **Import…**.
+
+  See `spec/windows.md`, "Filling a new collection".
+
 ## Fix batches (proposed order)
 
 Each batch is one commit and can be written in a cloud session, **unbuilt**:
@@ -295,10 +320,12 @@ ordered from least to most risk.
    call. *Check:* drop files onto the Edit Slides list, then ⌘Z takes them
    out; the same for Add to Show; delete a show, then ⌘Z brings it back;
    ⌘Z a collection rename.
-2. **Context menus and matching the two modes** (C1–C7, G3). These only add
-   buttons that call actions that already exist, or change one line.
-   *Check:* right-click each thing once; double-click a slide twice in
-   each mode.
+2. **Context menus, empty states, naming, and matching the two modes**
+   (C1–C7, H1, H2, G3). These only add buttons that call actions that
+   already exist, or change one line. *Check:* right-click each thing
+   once; New Collection goes straight to its name; an empty collection
+   and an empty show each offer their buttons; double-click a slide twice
+   in each mode.
 3. **Sidebar Delete key** (D1). *Check:* Delete asks first, and ⌘Delete
    doesn't.
 4. **Selection logic, moved into Core and unit-tested** (B3, E1, and the
@@ -331,3 +358,5 @@ ordered from least to most risk.
   nothing.
 - **G6:** where show defaults go in Edit Show.
 - **G7:** whether the timeline's row order should become layer order.
+- **H1:** whether Cancel on the naming step keeps the untitled
+  collection or show, or removes it.
