@@ -35,7 +35,11 @@ patterns, 12 their note length, 13 groups). Before an upgrade the database is co
 to `Library.sqlite.v<N>.bak`. Video export needed no schema change: a video
 slide's level line is slide settings, which are JSON.
 
-`~/Applications/ShowTools.app` is built and installed from HEAD.
+`~/Applications/ShowTools.app` is **one commit behind HEAD** (built
+2026-09-23; the Groups work above isn't installed there yet).
+`build/ShowTools.app` is current. BGTools' desktop extension is running
+from the installed copy, so reinstalling wasn't done without asking —
+say when to swap it in.
 
 **The real library was set aside 2026-09-24** (Jason's own call, mid this
 session): `~/Pictures/ShowTools Library.noindex` is now
@@ -98,62 +102,12 @@ preferences-domain rules).
      rows (C6, and the tile menu) needn't wait: build them in full.
      Items whose feature isn't built yet (Play without a show, Play on
      Desktop) go in greyed out, per Jason. The other menus still wait.
-5. **Groups inside collections — Core and Library-pane UI built 2026-09-24.**
-   Migration 13, `MediaGroup`, and the full `Library` API (create/rename/
-   delete a group, add/remove its files with undo, delete/undo a whole
-   nested subtree, and the membership rule enforced at the SQL level).
-   Deleting or undeleting a collection now carries its groups too.
-   `removeItems(_:fromCollection:)`'s return type changed to
-   `CollectionRemoval` (adds the group side); `AppModel.removeFromCollection`
-   and two tests were updated to match. 7 new Core tests; 288 total
-   (was 279).
-   In the Library pane: a collection's groups and its shows sit side by
-   side as siblings, nested groups disclose recursively, New Group (from
-   a collection, a group, or the grid's selection), Rename…, drag files
-   from the grid or Finder onto a group to add them (the group's own
-   right-click menu is minimal on purpose — the fuller one is "to settle
-   with groups," `spec/conventions.md` §3), and Delete Group… with an
-   `NSAlert`-based notice (subgroup count, "the files stay in the
-   collection," a suppression checkbox — same convention as
-   `SlideRemovalNotice`). Selecting a group filters the Library grid to
-   its files; Delete there takes files out of the group (no ask, as
-   Remove from Collection); ⌘Delete still moves them to the Trash. `Add
-   to Group` and `New Group from N Items…` are in the grid's tile
-   context menu, inside a collection.
-   The Edit Show browser's title now has a group filter drop-down
-   (`CollectionBrowser`, "All Files" or one group; `ShowEditorState.
-   browserGroupID`, view state, not undoable — the show's editor state
-   already isn't). Find Similar Images is renamed from "Group Similar"
-   everywhere user-facing (the toolbar button's tooltip; "group" now
-   means only a `MediaGroup`); its set header has the settled context
-   menu — Select Group, Keep One… (already built), **Keep as Group**,
-   New Show from Group…, Add Group to Collection — and Keep as Group
-   with no collection open walks through making one first ("Grouped
-   Collection"), per the plan.
-   **Nesting by drag, and dragging a group into another collection,
-   built 2026-09-24 (Jason's ask, after the fact):** `Library.
-   moveGroup(id:toParent:)` nests a group inside another, or back to the
-   top, refusing a cycle (a group nested inside its own descendant) or a
-   move across collections — both stay in the same collection, since a
-   group's `collection_id` never changes. A group's row is now draggable
-   (`GroupDrag`) and accepts a drop of another group (nests it) besides
-   files (adds them). Dropped on its own collection's row, it un-nests to
-   the top, no question; dropped on a **different** collection — since
-   the group itself can't move there — **its files are added to that
-   collection instead**, after a notice with a "don't show again"
-   checkbox (`GroupToCollectionNotice`, same convention as
-   `CollectionAddNotice`).
-   Ran `swift test` (291, 0 failures — 3 new `moveGroup` tests: nest and
-   un-nest, refuses a cycle at every depth, refuses a different
-   collection; one existing test extended to round-trip
-   `browserGroupID`) and `./make-app.sh` clean, then smoke-launched the
-   built app against a scratch library three times (no crash, no
-   `runningTestLaunches` note left behind on quit).
-   **Everything in the plan's decided scope is now built.** Real
-   dragging — a group onto a group, onto its own collection, onto
-   another — still wants Jason's own hands: this was built and reasoned
-   about, not clicked. Full detail in `spec/plan.md`, "Groups inside
-   collections".
+5. ~~**Groups inside collections**~~ — done 2026-09-24, Core through UI,
+   including nesting and cross-collection dragging added after the fact
+   on Jason's ask. 291 tests (was 279 before this item). Full story in
+   `spec/plan.md`, "Groups inside collections". Real dragging (group
+   onto group, onto its own collection, onto another) still wants
+   Jason's hands — built and reasoned about, not clicked.
 6. **Batch 4: selection logic in Core, with tests.** ⇧-click replaces
    the previous range; arrow-key steps given a column count (B3, E1,
    B2, E2 in the audit; the settled rules are in `spec/conventions.md`
@@ -335,7 +289,7 @@ resets every app's login items, so they are left alone.
 ## Quick start
 
 ```sh
-swift test                                  # 267 core + 12 BGTools tests
+swift test                                  # 279 core + 12 BGTools tests
 ./make-app.sh                               # → build/ShowTools.app
 tools/make-test-library.sh <scratch>/STTest # scratch library + generated media
 open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools.app
