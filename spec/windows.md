@@ -12,9 +12,12 @@ generalized rather than ShowTools-specific, and merged into the app
 below that says `ColumnsSplitView`, `NavigationSplitView` or "the custom
 splits already work," read PaneKit: it's what those sections' outcome
 was. PaneKit already does the pane-moving this doc calls for — pop out,
-put back, remembered frames, the main window closing up — so what's left
-of this doc is **the show session** (below) and the two window kinds it
-unblocks, not the pane mechanics. That's `panekit.md`'s own step 4.
+put back, remembered frames, the main window closing up. **The show
+session is done too** (2026-09-24, "What stands in the way" below) — so
+what's left of this doc is the design work step 4 was always going to
+need anyway: what comes first among the Slide Editor, the library panel
+and detaching an actual pane, and the open questions under "Jason's
+answers" below.
 
 Names follow `spec/anatomy.md`.
 
@@ -241,16 +244,26 @@ second:**
 
 ## What stands in the way (from the code, before any design)
 
-- **The show's editing state lives inside views.** The slide selection is
-  `@State` in `ShowView`. The lane, song and marker selections, the
-  engine and the zoom are `@State` in `EditShowView`, which also creates
-  the engine on appear and shuts it down on disappear. A browser or timeline
-  pane in another window can't reach any of that.
-  **The prerequisite for all of this:** move it into one shared object
-  per open show (a "show session": selection, engine, zoom), owned by the
-  model rather than by a view. The screen wouldn't change, and it would
-  also make the audit's menu work (`spec/hig-audit.md` batch 5) simpler,
-  since menus need the same state.
+- ~~**The show's editing state lives inside views.**~~ — **done
+  2026-09-24** (`spec/panekit.md`, step 4's own prerequisite): the slide
+  selection, the engine, the lane's transition/overlay/song/marker
+  selections and the storyline's scroll offset are `ShowSession.swift`
+  now, one object per open show, owned by `AppModel`
+  (`AppModel.session(for:)`, `.closeShowSession()`) — not `@State` in
+  `ShowView` or `EditShowView`. `ShowView` and `EditShowView` still read
+  and write it through `Binding`s built from the session (`@Bindable var
+  session = session`), so the child views below them (`PreviewStage`,
+  `CollectionBrowser`, `StorylineView`, `SlideInspector`) needed no
+  changes at all. The screen didn't change: verified against a real demo
+  show (`tools/make-demo-show.sh`) — selection survives switching between
+  Edit Slides and Edit Show, the engine's lifecycle is unchanged (made
+  when Edit Show is entered, shut down when it or the whole show is
+  left), and leaving the show and reopening it starts a fresh session,
+  same as the old `@State` did. Still true and still ahead: zoom
+  (`storylineZoom`/`snapping`) stays app-wide `@AppStorage`, not part of
+  the session, since it never was per-show; the audit's menu work
+  (`spec/hig-audit.md` batch 5) this was also meant to simplify hasn't
+  been revisited yet.
 - **Keys are per window.** `SingleKeys` (J/K/L, Space, I/O…) is a monitor
   on one window, and menus read focused values from the key window. A
   detached timeline pane needs its own, so Space still plays when it's the
@@ -373,9 +386,10 @@ What's known before trying it:
 
 ## A possible order (not a plan)
 
-1. **The show session:** state out of the views. It changes nothing on
-   screen, it's worth doing for the menus anyway, and nothing else here
-   is possible without it.
+1. ~~**The show session:** state out of the views.~~ — **done 2026-09-24**
+   (`ShowSession.swift`, "What stands in the way" above). Changed nothing
+   on screen, as expected; the menu work it was meant to simplify
+   (`spec/hig-audit.md` batch 5) hasn't been revisited yet.
 2. **The Slide Editor,** as the first new window. It's additive, and it's
    the home the collage maker needs.
 3. **The library panel,** the second: it opens from the Library pane and moves

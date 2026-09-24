@@ -14,11 +14,17 @@ struct ShowView: View {
     let showID: Int64
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
-    @State private var selection: Set<Int64> = []
     @AppStorage("inspectorShown") private var inspectorShown = true
     @AppStorage("editMode") private var mode: EditMode = .slides
 
     private var show: Show { model.show(showID) ?? Show(id: showID, name: "") }
+    /// The show's editing state, out of this view and into the model
+    /// (`spec/windows.md`, `ShowSession`) — a fresh one whenever `showID`
+    /// changes, so nothing here resets it by hand.
+    private var session: ShowSession { model.session(for: showID) }
+    private var selection: Binding<Set<Int64>> {
+        Binding(get: { session.selection }, set: { session.selection = $0 })
+    }
 
     private func mutate(_ action: String, _ change: (inout Show) -> Void) {
         var s = show
@@ -37,14 +43,14 @@ struct ShowView: View {
                 // layout-loop crash. See spec/edit-slides-inspector-port.md.
                 TwoColumns(
                     inspectorShown: $inspectorShown, model: model, panes: model.editSlidesColumns,
-                    main: EditSlidesView(show: show, timeline: timeline, selection: $selection, mutate: mutate,
+                    main: EditSlidesView(show: show, timeline: timeline, selection: selection, mutate: mutate,
                                          toggleInspector: { inspectorShown.toggle() }),
-                    inspector: SlideInspector(show: show, timeline: timeline, selection: selection,
+                    inspector: SlideInspector(show: show, timeline: timeline, selection: session.selection,
                                               mutate: mutate, close: { inspectorShown = false }))
             case .show:
                 // Lays its own inspector out itself, above the storyline —
                 // no SwiftUI .inspector() column here at all.
-                EditShowView(show: show, timeline: timeline, selection: $selection, mutate: mutate,
+                EditShowView(show: show, timeline: timeline, session: session, mutate: mutate,
                              inspectorShown: $inspectorShown)
             }
         }
@@ -76,23 +82,23 @@ struct ShowView: View {
             }
         }
         .focusedSceneValue(\.activeShowID, showID)
-        .focusedSceneValue(\.activeSlideSelection, selection)
-        .focusedSceneValue(\.requestDuplicateSlides, { SlideActions.duplicate(selection, mutate: mutate) })
+        .focusedSceneValue(\.activeSlideSelection, session.selection)
+        .focusedSceneValue(\.requestDuplicateSlides, { SlideActions.duplicate(session.selection, mutate: mutate) })
         .focusedSceneValue(\.requestSlideGetInfo, requestSlideGetInfo)
-        .onChange(of: showID) { selection = [] }
         .onAppear {
-            if let id = model.devSelection { selection = [id]; model.devSelection = nil }
+            if let id = model.devSelection { session.selection = [id]; model.devSelection = nil }
         }
+        .onDisappear { model.closeShowSession() }
     }
 
     private var firstSelectedIndex: Int? {
-        show.slides.firstIndex { selection.contains($0.id) }
+        show.slides.firstIndex { session.selection.contains($0.id) }
     }
 
     /// Get Info (⌘I, F4) on the selected slides: their files, as the
     /// Library grid's own Get Info already shows.
     private func requestSlideGetInfo() {
-        let itemIDs = show.slides.filter { selection.contains($0.id) }.map(\.itemID)
+        let itemIDs = show.slides.filter { session.selection.contains($0.id) }.map(\.itemID)
         guard !itemIDs.isEmpty else { return }
         model.infoPanelSelection = itemIDs
         InfoPanel.show(model: model, undoManager: undoManager)

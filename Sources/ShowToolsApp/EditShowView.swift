@@ -8,51 +8,50 @@ import ShowToolsPlayback
 struct EditShowView: View {
     let show: Show
     let timeline: ShowTimeline
-    @Binding var selection: Set<Int64>
+    /// The show's editing state (`spec/windows.md`, `ShowSession`): the
+    /// slide selection (shared with Edit Slides, via `ShowView`), the
+    /// engine and the lane's own selections — `@Bindable` below so
+    /// `$session.selection` and the rest read exactly as the old
+    /// `@State`/`@Binding` properties did.
+    let session: ShowSession
     let mutate: ShowMutator
     @Binding var inspectorShown: Bool
     @Environment(AppModel.self) private var model
-    @State private var engine: PlaybackEngine?
-    /// The transition selected in the storyline's lane, by the slide it
-    /// leads into; its settings show over the preview.
-    @State private var selectedTransition: Int64?
-    /// The image selected in the lane's images row.
-    @State private var selectedOverlay: UUID?
-    @State private var selectedSong: UUID?
-    @State private var selectedMarkers: Set<UUID> = []
     @AppStorage("snapping") private var snapping = true
     @AppStorage("storylineZoom") private var pps: Double = 24
-    @State private var storylineOffset: CGFloat = 0
 
     var body: some View {
+        @Bindable var session = session
         // A ZStack, not a Group: modifiers on a Group apply to each child, so
         // the placeholder's onDisappear would shut down the engine it made way for.
         ZStack {
-            if let engine, engine.showID == show.id {
+            if let engine = session.engine, engine.showID == show.id {
                 // The columns on top, the transport and storyline running the
                 // full width underneath: PaneKit's job now, in place of
                 // VSplitView + ShowColumns (spec/panekit.md, step 3).
                 PaneLayoutView(controller: model.editShowColumns, content: [
                     "preview": AnyView(PreviewStage(engine: engine, title: show.name,
-                                                    selection: $selection, selectedTransition: $selectedTransition,
-                                                    selectedOverlay: $selectedOverlay, mutate: mutate,
+                                                    selection: $session.selection,
+                                                    selectedTransition: $session.selectedTransition,
+                                                    selectedOverlay: $session.selectedOverlay, mutate: mutate,
                                                     show: show, timeline: timeline, pps: pps,
-                                                    storylineOffset: storylineOffset).environment(model)),
+                                                    storylineOffset: session.storylineOffset).environment(model)),
                     "list": AnyView(CollectionBrowser(show: show, timeline: timeline, engine: engine,
                                                       mutate: mutate, inspectorShown: $inspectorShown,
-                                                      selection: $selection, selectedOverlay: $selectedOverlay)
+                                                      selection: $session.selection,
+                                                      selectedOverlay: $session.selectedOverlay)
                         .environment(model)),
-                    "inspector": AnyView(SlideInspector(show: show, timeline: timeline, selection: selection,
+                    "inspector": AnyView(SlideInspector(show: show, timeline: timeline, selection: session.selection,
                                                         mutate: mutate, close: { inspectorShown = false },
                                                         engine: engine).environment(model)),
                     "storyline": AnyView(VStack(spacing: 0) {
                         TransportRow(engine: engine, show: show, pps: $pps, fit: fitStoryline)
                         Divider()
                         StorylineView(show: show, timeline: timeline, engine: engine,
-                                      selection: $selection, selectedTransition: $selectedTransition,
-                                      selectedOverlay: $selectedOverlay, selectedSong: $selectedSong,
-                                      selectedMarkers: $selectedMarkers,
-                                      pps: $pps, scrollOffset: $storylineOffset, mutate: mutate,
+                                      selection: $session.selection, selectedTransition: $session.selectedTransition,
+                                      selectedOverlay: $session.selectedOverlay, selectedSong: $session.selectedSong,
+                                      selectedMarkers: $session.selectedMarkers,
+                                      pps: $pps, scrollOffset: $session.storylineOffset, mutate: mutate,
                                       openInspector: { inspectorShown = true })
                     }.environment(model)),
                 ])
@@ -64,35 +63,43 @@ struct EditShowView: View {
                 .onDeleteCommand {
                     // What's selected in the lane goes first: an image is
                     // taken out; a transition leaves a cut.
-                    if !selectedMarkers.isEmpty {
-                        let ids = selectedMarkers
+                    if !session.selectedMarkers.isEmpty {
+                        let ids = session.selectedMarkers
                         mutate(ids.count == 1 ? "Remove Marker" : "Remove Markers") { $0.removeMarkers(ids) }
-                        selectedMarkers = []
-                    } else if let id = selectedSong {
+                        session.selectedMarkers = []
+                    } else if let id = session.selectedSong {
                         mutate("Remove Audio Clip") { $0.music.removeAll { $0.id == id } }
-                        selectedSong = nil
-                    } else if let id = selectedOverlay {
+                        session.selectedSong = nil
+                    } else if let id = session.selectedOverlay {
                         mutate("Remove Image") { $0.overlays.removeAll { $0.id == id } }
-                        selectedOverlay = nil
-                    } else if let id = selectedTransition {
+                        session.selectedOverlay = nil
+                    } else if let id = session.selectedTransition {
                         mutate("Remove Transition") { s in
                             guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
                             s.slides[i].settings.transition = ShowToolsCore.Transition(style: .cut, duration: 0)
                         }
-                        selectedTransition = nil
+                        session.selectedTransition = nil
                     } else {
-                        SlideActions.remove(selection, selection: $selection, mutate: mutate)
+                        SlideActions.remove(session.selection, selection: $session.selection, mutate: mutate)
                     }
                 }
-                .onChange(of: selection) { _, s in
-                    if !s.isEmpty { selectedTransition = nil; selectedOverlay = nil; selectedSong = nil; selectedMarkers = [] }
+                .onChange(of: session.selection) { _, s in
+                    if !s.isEmpty {
+                        session.selectedTransition = nil; session.selectedOverlay = nil
+                        session.selectedSong = nil; session.selectedMarkers = []
+                    }
                 }
-                .onChange(of: selectedOverlay) { _, o in if o != nil { selectedTransition = nil; selectedSong = nil; selectedMarkers = [] } }
-                .onChange(of: selectedSong) { _, o in if o != nil { selectedMarkers = [] } }
-                .onChange(of: selectedTransition) { _, o in if o != nil { selectedMarkers = [] } }
-                .onChange(of: selectedMarkers) { _, m in
+                .onChange(of: session.selectedOverlay) { _, o in
+                    if o != nil { session.selectedTransition = nil; session.selectedSong = nil; session.selectedMarkers = [] }
+                }
+                .onChange(of: session.selectedSong) { _, o in if o != nil { session.selectedMarkers = [] } }
+                .onChange(of: session.selectedTransition) { _, o in if o != nil { session.selectedMarkers = [] } }
+                .onChange(of: session.selectedMarkers) { _, m in
                     // Markers are selected on their own, so Delete knows what it's for.
-                    if !m.isEmpty { selection = []; selectedTransition = nil; selectedOverlay = nil; selectedSong = nil }
+                    if !m.isEmpty {
+                        session.selection = []; session.selectedTransition = nil
+                        session.selectedOverlay = nil; session.selectedSong = nil
+                    }
                 }
                 .task {
                     // Dev hook: SHOWTOOLS_DEV_TRANSITION=<slideIndex> selects the
@@ -102,8 +109,8 @@ struct EditShowView: View {
                        show.overlays.indices.contains(n) {
                         try? await Task.sleep(for: .seconds(1.2))
                         let c = show.overlays[n]
-                        selection = []
-                        selectedOverlay = c.id
+                        session.selection = []
+                        session.selectedOverlay = c.id
                         engine.pause()
                         engine.seek(c.start + min(c.fadeIn, c.length / 2) + 0.5)
                         return
@@ -111,8 +118,8 @@ struct EditShowView: View {
                     guard let v = ProcessInfo.processInfo.environment["SHOWTOOLS_DEV_TRANSITION"],
                           let i = Int(v), show.slides.indices.contains(i) else { return }
                     try? await Task.sleep(for: .seconds(1.2))
-                    selection = []
-                    selectedTransition = show.slides[i].id
+                    session.selection = []
+                    session.selectedTransition = show.slides[i].id
                     if let r = timeline.slides.first(where: { $0.slide.id == show.slides[i].id }) {
                         engine.pause()
                         engine.seek(r.start)
@@ -125,22 +132,22 @@ struct EditShowView: View {
         }
         .task(id: show.id) {
             // One engine per show on screen; the old one is let go properly.
-            if let old = engine, old.showID != show.id {
+            if let old = session.engine, old.showID != show.id {
                 Player.closeWindows(for: old)
                 old.shutdown()
             }
-            if engine?.showID != show.id {
+            if session.engine?.showID != show.id {
                 let e = PlaybackEngine(showID: show.id, model: model)
-                if let first = show.slides.firstIndex(where: { selection.contains($0.id) }) { e.go(to: first) }
-                engine = e
+                if let first = show.slides.firstIndex(where: { session.selection.contains($0.id) }) { e.go(to: first) }
+                session.engine = e
             }
         }
         .onDisappear {
-            if let engine {
+            if let engine = session.engine {
                 Player.closeWindows(for: engine)
                 engine.shutdown()
             }
-            engine = nil
+            session.engine = nil
         }
     }
 

@@ -9,9 +9,15 @@ PaneKit too — `ColumnsSplitView` and `VSplitView` are both gone, and
 building Edit Show's three columns turned into `PaneNode.row(…)`, a
 reusable recipe for a row of three independently-sized panes ("Building a
 row" below) — not ShowTools-specific, since a second app hitting the same
-shape shouldn't have to re-derive it. **Left:** step 4 (panes popping
-out — the show session). PaneKit is a local package dependency now
-(`Package.swift` and `project.yml`), named PaneKit, and lives in this
+shape shouldn't have to re-derive it. Step 4's own prerequisite, the show
+session, is also done (`spec/windows.md`, `ShowSession.swift`) — the
+show's selection, engine and lane state moved out of `ShowView`'s and
+`EditShowView`'s `@State` into one object `AppModel` owns, so nothing on
+screen changed but a pane in another window now has something to read.
+**Left:** step 4 itself (the library panel, an actual detached pane, the
+Slide Editor — a design conversation with Jason, not just a port).
+PaneKit is a local package dependency now (`Package.swift` and
+`project.yml`), named PaneKit, and lives in this
 repo for now (settled, Jason).
 
 ## What it is
@@ -411,8 +417,10 @@ opening or closing (changes are instant for now).
      kind of cross-axis leak, noted here rather than silently accepted.
 4. **ShowTools' panes popping out** (`spec/windows.md`): the library
    panel, the inspector panel, the Timeline window. PaneKit already does
-   the moving by then; this step is the show session, so the panes have
-   their state to take with them.
+   the moving; the show session — its own prerequisite, so the panes have
+   their state to take with them — is **done 2026-09-24** (`ShowSession.swift`).
+   What's left is the design (which pane first, the Slide Editor, the
+   library panel) — `spec/windows.md`'s own open questions, not a port.
 
 ## Settled
 

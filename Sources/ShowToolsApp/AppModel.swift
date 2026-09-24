@@ -47,6 +47,9 @@ final class AppModel {
         EditColumnsLayout.editShowTree(storylineMin: StorylineView.fullHeight + 56,
                                        storylineDefault: StorylineView.fullHeight + 56 + 10))
     let editSlidesColumns = PaneController(id: "EditSlidesColumns", root: EditColumnsLayout.twoColumns)
+    /// The open show's editing state (`spec/windows.md`, `ShowSession`).
+    /// One at a time: this app edits one show in the main window.
+    private(set) var showSession: ShowSession?
     /// Developer hook only: a slide for the show view to select on appearing.
     var devSelection: Int64?
     /// The Info panel's targets: kept here, not in the grid's own state,
@@ -458,6 +461,32 @@ final class AppModel {
         } catch {
             exportAlert("“\(folder.lastPathComponent)” couldn't be imported.", "\(error).")
         }
+    }
+
+    // MARK: Show session
+
+    /// The session for `showID`: the current one if it's already that
+    /// show's, otherwise a fresh one, closing whatever was open first (its
+    /// engine, if Edit Show made one). One per open show, not per view, so
+    /// a window besides the main one could reach it (`spec/windows.md`).
+    func session(for showID: Int64) -> ShowSession {
+        if let s = showSession, s.showID == showID { return s }
+        closeShowSession()
+        let s = ShowSession(showID: showID)
+        showSession = s
+        return s
+    }
+
+    /// Shuts down the session's engine, if it made one, and clears the
+    /// session. Called when the main window leaves the show entirely, not
+    /// just when Edit Show's own mode does (that's `EditShowView`'s own
+    /// `onDisappear`, unchanged).
+    func closeShowSession() {
+        if let engine = showSession?.engine {
+            Player.closeWindows(for: engine)
+            engine.shutdown()
+        }
+        showSession = nil
     }
 
     // MARK: Shows
