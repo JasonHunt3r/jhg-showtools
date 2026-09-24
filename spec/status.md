@@ -219,15 +219,13 @@ Items 8 and 9 above, and settled work that never made the list, in one
 order. Things that share code go together, so each area is opened once.
 The work-order items keep their numbers (W1–W10 = item 9's 1–10).
 
-1. ~~**PaneKit: compile, test, run the harness, first thing.**~~ —
-   compiled and tested 2026-09-24: `swift build` and `swift test` (14
-   tests) both passed clean, no fixes needed against the cloud session's
-   code. `swift run PaneHarness` launches and runs without crashing;
-   it's up and frontmost. **Left:** the harness's hands-on checks
-   (`spec/panekit.md`, "The order", step 1) — dragging, edge handles,
-   pop-out, relaunch persistence, undo, typing, Restore Defaults, the
-   stress test. Jason feels it. Only then does anything in the app move
-   onto it.
+1. ~~**PaneKit: compile, test, run the harness, first thing.**~~ — done
+   2026-09-24: `swift build` and `swift test` (14 tests) both passed
+   clean, no fixes needed against the cloud session's code. The
+   harness's hands-on checks (dragging, edge handles, pop-out, relaunch
+   persistence, undo, typing, Restore Defaults, the stress test) all
+   passed, Jason's own hands. Step 1 closed; steps 2–4 in
+   `spec/panekit.md` ("The order") wait their turn in the queue below.
 2. **BGTools quick wins:** Synchronize (W1), a findable Quit (W2).
 3. **The Library pane's and grid's menus** (right-click stops 1–2,
    `spec/conventions.md` §3): Show in Finder off the tiles; Duplicate
