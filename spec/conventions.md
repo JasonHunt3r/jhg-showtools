@@ -170,6 +170,7 @@ divider, and empty groups are skipped:
 | Timeline: empty ruler space | **Settled 2026-09-24.** Add Marker Here, Set Range In Here, Set Range Out Here, Clear Range (M, I, O and ⌥X at the pointer) |
 | Timeline: a row handle | **Settled 2026-09-24.** Open Drawer, Move Row Up, Move Row Down, the row's own tool (Rhythm… on the slides row, Detect Beats… on an audio row) |
 | The player | **Settled 2026-09-24.** Play/Pause, Previous Slide, Next Slide, Go to Slide…, Loop, Enter/Exit Full Screen. No Close |
+| The pop-out viewer | **Settled 2026-09-24.** The player's menu, plus Close Viewer Window |
 | The Info panel | **Settled 2026-09-24.** Show in Library |
 | Timeline: the transport | **Settled 2026-09-24.** Loop Playback on/off |
 | Browser entry | **Settled 2026-09-24.** Append to Show (E) ✓, Insert at Playhead (W) ✓, Place in Images Row at Playhead (Q) ✓; for an audio file, **Place at Playhead** · for a *use* (an entry under "In this show"): Select in Timeline, Play from Here · Show in Library · Remove from Show (that use only), Remove from Collection ✓, **Move to Trash…** (was "Delete from Library…", C7). The letters show as shortcuts at the menu's right edge, if that can be done without E, W and Q taking typing from Search; otherwise they stay in the titles (C8) |
@@ -410,14 +411,15 @@ universals first.
   - **The player:** Play/Pause, Previous / Next Slide, Go to Slide…,
     Loop, Enter/Exit Full Screen. **No Close:** the player is the star of
     the show; everything else closes for it (Jason).
-  - **The pop-out viewer:** explained, awaiting Jason's answer.
+  - **The pop-out viewer:** the player's menu, plus **Close Viewer
+    Window** (Jason: plainer than "Put Back in Viewer").
   - **The Info panel:** Show in Library. More ideas will come from using
     it.
   - **The Rhythm tool:** no menu yet; learn by using it.
   - **The library panel and the Slide Editor:** no inheriting. The
     library panel shows the grid's own tiles, so it has the tile menu
     anyway. The Slide Editor gets its own menus when it's designed.
-- **The right-click conversation is complete,** except the pop-out viewer.
+- **The right-click conversation is complete** (2026-09-24).
   What's reached for and missing goes in §8 as it's found.
 
 **The route, in the anatomy's order:**
