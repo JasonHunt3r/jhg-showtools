@@ -74,13 +74,16 @@ preferences-domain rules).
    ⌘Delete in the Library pane (D1), undo for Delete Show (D2) and Rename
    Collection (D3). Found and fixed a real crash along the way — see
    Known issues below.
-4. **Batch 2:**
-   - context menus (C1–C7, the table in `spec/conventions.md` §3; that
-     table is a draft until the right-click conversation, so build only
-     the items marked ✓ plus C1–C3's obvious ones);
-   - naming first, nothing made until OK (H1);
-   - empty-state buttons (H2, the plain tier);
-   - Import can choose audio (H3), and the "song" error text (H4).
+4. **Batch 2, partly done 2026-09-24:**
+   - ~~naming first, nothing made until OK (H1)~~ — New Collection done
+     everywhere it's made; New Show deliberately left for the settings
+     panel (`spec/simple-things-fast.md`), not a throwaway dialog now.
+   - ~~Import can choose audio (H3), and the "song" error text (H4)~~ —
+     done.
+   - Still open: context menus (C1–C7, the table in `spec/conventions.md`
+     §3; that table is a draft until the right-click conversation, so
+     build only the items marked ✓ plus C1–C3's obvious ones); empty-state
+     buttons (H2, the plain tier).
 5. **Batch 4: selection logic in Core, with tests.** ⇧-click replaces
    the previous range; arrow-key steps given a column count (B3, E1,
    B2, E2 in the audit; the settled rules are in `spec/conventions.md`

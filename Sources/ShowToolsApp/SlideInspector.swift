@@ -735,6 +735,10 @@ extension FocusedValues {
 struct LibrarySelectionCountKey: FocusedValueKey { typealias Value = Int }
 struct LibraryRenameKey: FocusedValueKey { typealias Value = () -> Void }
 struct LibraryGetInfoKey: FocusedValueKey { typealias Value = () -> Void }
+/// New Collection, named before it's made (audit H1). Published by
+/// `MainView` itself, not the grid: it's always available, whatever the
+/// detail pane is showing.
+struct NewCollectionKey: FocusedValueKey { typealias Value = () -> Void }
 
 extension FocusedValues {
     var librarySelectionCount: Int? {
@@ -748,5 +752,9 @@ extension FocusedValues {
     var requestLibraryGetInfo: (() -> Void)? {
         get { self[LibraryGetInfoKey.self] }
         set { self[LibraryGetInfoKey.self] = newValue }
+    }
+    var requestNewCollection: (() -> Void)? {
+        get { self[NewCollectionKey.self] }
+        set { self[NewCollectionKey.self] = newValue }
     }
 }

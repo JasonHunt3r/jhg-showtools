@@ -347,25 +347,26 @@ Today they disagree on several of the "should match" items:
 
 ## H. Making new things (Jason, 2026-09-24)
 
-- **H1 (Med) — New Collection and New Show skip naming.** They make
-  "Untitled Collection" or "Untitled Show" (`AppModel.newCollection`,
-  `newShow`) and select it. Finder's New Folder, Photos' New Album and
-  Final Cut's New Project all go straight to the name: an editable name
-  in place, or a dialog. Here, renaming means right-click ▸ Rename…
-  afterwards. *Fix direction:* ask for the name first, and create the
-  collection or show only on OK.
-  **Settled (Jason, 2026-09-24):** Cancel means "never mind" or "I hit
-  that by accident", so it creates nothing. **Nothing is ever called
-  Untitled unless someone clicked OK on that name.** The field starts
-  with a suggested name, selected, so Return accepts it. Once inline
-  rename (D4) exists, the naming can happen in the Library pane row itself,
-  under the same rule: Esc removes the new row.
-  - **New Show asks for more than a name (Jason):** made from a
-    selection, it used fixed defaults with no dialog, so the lengths and
-    the dissolve had to be fixed afterwards. Its naming step is the
-    shared settings panel in `spec/simple-things-fast.md` (name, length,
-    transition, Pan and Zoom, audio, presets). New Collection needs only
-    the name.
+- **H1 (Med) — New Collection and New Show skip naming.**
+  **New Collection fixed, 2026-09-24.** Every path that made one with no
+  real name — the sidebar's + menu, File ▸ New Collection…, and the
+  grid's "New Collection from N Items" / "New Collection…" — now asks
+  first (an alert, `TextField` pre-filled with the next free "Untitled
+  Collection" name) and creates only on Create; Cancel makes nothing.
+  Wired through a new `requestNewCollection` focused scene value
+  (`SlideInspector.swift`), published by `MainView` itself rather than
+  the grid, so File ▸ New Collection… still works whatever the detail
+  pane is showing — unlike Rename…/Get Info, which are genuinely
+  grid-scoped. Checked with real clicks and keystrokes: Cancel creates
+  nothing, Create with a typed name makes exactly that collection and
+  selects it.
+  **New Show is still open, on purpose:** made from a selection, it used
+  fixed defaults with no dialog, so the lengths and the dissolve had to
+  be fixed afterwards. Its naming step is the shared settings panel in
+  `spec/simple-things-fast.md` (name, length, transition, Pan and Zoom,
+  audio, presets) — a separate, larger piece of work, already tracked on
+  its own. Building a throwaway name-only dialog for New Show now, ahead
+  of that panel, wasn't worth it.
   - *Exception to settle with the first run:* a new library starts with
     one collection made for you (`spec/first-run-brief.md`, "My First
     Collection" with a Rename button). That one is made by the app, not
@@ -405,16 +406,12 @@ Today they disagree on several of the "should match" items:
   top, without changing H2. Most people see the empty Library once,
   unless they make a new library, so its welcome is the first run's job.
   See also `spec/windows.md`, "Filling a new collection".
-- **H3 (Med) — File ▸ Import… can't choose audio files.** Its panel
-  allows only images, movies and folders
-  (`allowedContentTypes = [.image, .movie, .folder]`, `runImportPanel`
-  in `MainView.swift`). Audio arrives only by a drop, or inside a chosen
-  folder. *Fix:* add `.audio`, and say "images, videos or audio" in the
-  panel's message.
-- **H4 (Low) — The import failure says "song".** A file that can't be
-  read is listed as "not a readable image, video or song"
-  (`Ingest.swift:128`). It should say "audio file", the name settled
-  2026-09-24.
+- **H3 (Med) — File ▸ Import… can't choose audio files.** **Fixed
+  2026-09-24**: `allowedContentTypes` gained `.audio`, and the panel's
+  message reads "images, videos or audio".
+- **H4 (Low) — The import failure says "song".** **Fixed 2026-09-24**:
+  `Ingest.Failure.notMedia` now reads "not a readable image, video or
+  audio file", the name settled 2026-09-24.
 
 ## I. Panes lost past the window's edge (Jason, 2026-09-24)
 
