@@ -156,9 +156,9 @@ divider, and empty groups are skipped:
 | Audio clip | Detect Beats… ✓ · Show in Library, Show in Finder · Remove Audio Clip ✓ |
 | Marker | Show or Hide Line · Remove Marker (C3) |
 | Browser entry | Append (E) ✓, Insert at Playhead (W) ✓, Place in Images Row (Q) ✓ · Show in Finder ✓ · Remove from Collection ✓, Move to Trash… (today "Delete from Library…", C7) |
-| Library pane: a show | Play ✓, Play Full Screen ✓ · Duplicate Show · Export Show…, Export Movie… · Rename… ✓ · Delete Show… ✓ |
-| Library pane: a collection | New Show in… ✓ · Rename… ✓ · Delete Collection… ✓ |
-| Library pane: the Library row | Import…, New Collection, Open Library Panel |
+| Library pane: a show | **Settled 2026-09-24.** Play ✓, Play Full Screen ✓, Play on Desktop · Duplicate Show · Export ▸ (Show…, Movie…) · Rename… ✓ · Delete Show… ✓ |
+| Library pane: a collection | **Settled 2026-09-24.** Play (greyed out until playing without a show is built) · New Show in… ✓ · Rename… ✓ · Delete Collection… ✓ |
+| Library pane: the Library row | **Settled 2026-09-24.** Import…, New Collection, Open Library Panel · Show in Finder (the library's folder) |
 | An empty row | Place Image Here… ✓ (images row), Add Audio… (audio row) |
 
 **One action, one name** everywhere: Move to Trash… (not "Delete from
@@ -261,6 +261,23 @@ universals first.
    of a kind (e.g. Show in Library on anything that uses a file).
 3. **What's contextual?** Items only this thing, in this place, needs.
    Then the order.
+
+**Progress:**
+- **1. The Library pane: done 2026-09-24.** Jason's answers:
+  - **The Library row** gets **Show in Finder**, which reveals the
+    library's folder ("would be nice").
+  - **Playing a collection without making a show** goes on the
+    collection's menu now, **greyed out until it's built**
+    (`spec/simple-things-fast.md`, Quick Show).
+  - **Duplicate Show and Play on Desktop:** both wanted. They're the two
+    items here that need new code, not just a menu item. Play on Desktop
+    hands the show to BGTools (`spec/bgtools.md`).
+  - **Export:** in the show's menu **and** in File ▸ Export, as one
+    **Export ▸** submenu (Show…, Movie…) wherever export appears. The
+    File menu's two Export items become that submenu too.
+  - **Anything reached for and not found:** nothing yet; there hasn't
+    been enough use. It goes in §8 when it happens.
+- **2. The Library grid:** next.
 
 **The route, in the anatomy's order:**
 1. **Library pane:** the Library row, a collection row, a show row, empty

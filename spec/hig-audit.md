@@ -140,6 +140,12 @@ Browser. Elsewhere they're thin, or missing altogether:
 - **C6 (Low) — The Library pane.** The Library row has no menu at all (Import…,
   New Collection would fit). Show rows lack Duplicate Show, Export Show…
   and Export Movie…, which are otherwise only in the File menu.
+  **Settled 2026-09-24** (`spec/conventions.md` §3): the Library row gets
+  Import…, New Collection, Open Library Panel and Show in Finder; a show
+  gets Play on Desktop, Duplicate Show and an Export ▸ submenu (which
+  the File menu uses too); a collection gets Play, greyed out until
+  playing without a show is built. Duplicate Show and Play on Desktop
+  need new code; the rest are menu items.
 - **C7 (Low) — One action, two names.** Deleting a file from the library
   is "Move to Trash…" in the grid (`MainView.swift:751`) and "Delete from
   Library…" in the Collection Browser. Pick one: "Move to Trash…" says
