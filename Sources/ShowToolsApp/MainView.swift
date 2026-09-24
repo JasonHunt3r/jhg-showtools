@@ -17,6 +17,10 @@ struct MainView: View {
     /// Renaming: what, and the name being typed.
     @State private var renaming: SidebarItem?
     @State private var draftName = ""
+    /// New Collection, named before it's made (audit H1): nothing is ever
+    /// called "Untitled" unless someone clicked OK on that name.
+    @State private var creatingCollection = false
+    @State private var newCollectionName = ""
 
     var body: some View {
         @Bindable var model = model
@@ -55,10 +59,27 @@ struct MainView: View {
             // pushed everything else off the right edge (2026-09-23).
             // A sidebar of names never needs more than this.
             .navigationSplitViewColumnWidth(min: 180, ideal: DefaultLayout.sidebarWidth, max: 360)
+            // Delete asks first (D1); ⌘Delete skips the question, as the
+            // grid's does (spec/conventions.md §Delete/⌘Delete). This
+            // `onDeleteCommand` fires when the List genuinely has the
+            // keyboard; the SingleKeys fallback for when it doesn't is
+            // attached below the whole NavigationSplitView, not here — a
+            // `.background(SingleKeys)` directly on this List (a real
+            // NSTableView, not the grid's plain ScrollView) hit AppKit's
+            // layout-loop guard and crashed on the very first check
+            // (2026-09-24, `~/Library/Logs/DiagnosticReports/`, a run of
+            // `NavigationPaneModifier`/`CellHostingView` layout frames).
+            .onDeleteCommand {
+                switch model.sidebar {
+                case .show(let id): if let s = model.show(id) { confirmDelete = s }
+                case .collection(let id): if let c = model.collection(id) { confirmDeleteCollection = c }
+                default: break
+                }
+            }
             .safeAreaInset(edge: .bottom) {
                 HStack {
                     Menu {
-                        Button("New Collection") { model.newCollection() }
+                        Button("New Collection…") { startCreatingCollection() }
                         Button("New Show") { model.newShow() }
                             .disabled(model.collections.isEmpty)
                     } label: {
@@ -90,6 +111,33 @@ struct MainView: View {
         }
         // Another library's undo steps mean nothing here (see libraryGeneration).
         .onChange(of: model.libraryGeneration) { undoManager?.removeAllActions() }
+        .focusedSceneValue(\.requestNewCollection, startCreatingCollection)
+        // The sidebar's Delete/⌘Delete fallback (D1), for when its List
+        // doesn't have the keyboard (see the comment on `onDeleteCommand`
+        // above). Attached to the whole split view, not the List itself.
+        .background(SingleKeys { event in
+            guard event.keyCode == 51 || event.keyCode == 117 else { return false }
+            if !(NSApp.keyWindow?.firstResponder is NSTableView), event.plainModifiers == [] {
+                switch model.sidebar {
+                case .show(let id): guard let s = model.show(id) else { return false }; confirmDelete = s
+                case .collection(let id): guard let c = model.collection(id) else { return false }; confirmDeleteCollection = c
+                default: return false
+                }
+                return true
+            }
+            guard event.plainModifiers == [.command] else { return false }
+            switch model.sidebar {
+            case .show(let id):
+                guard let s = model.show(id) else { return false }
+                model.deleteShow(s.id, undo: undoManager)
+            case .collection(let id):
+                guard let c = model.collection(id) else { return false }
+                model.deleteCollection(c.id, undo: undoManager)
+            default:
+                return false
+            }
+            return true
+        }.opacity(0).allowsHitTesting(false))
         .overlay(alignment: .bottom) {
             VStack(spacing: 0) {
                 ExportBanner()
@@ -124,7 +172,7 @@ struct MainView: View {
             Button("Rename") {
                 let name = draftName.trimmingCharacters(in: .whitespaces)
                 switch renaming {
-                case .collection(let id): model.renameCollection(id, to: name)
+                case .collection(let id): model.renameCollection(id, to: name, undo: undoManager)
                 case .show(let id): model.renameShow(id, to: name, undo: undoManager)
                 default: break
                 }
@@ -132,11 +180,20 @@ struct MainView: View {
             }
             Button("Cancel", role: .cancel) { renaming = nil }
         }
+        .alert("New Collection", isPresented: $creatingCollection) {
+            TextField("Name", text: $newCollectionName)
+            Button("Create") {
+                let name = newCollectionName.trimmingCharacters(in: .whitespaces)
+                guard !name.isEmpty else { return }
+                model.newCollection(named: name)
+            }
+            Button("Cancel", role: .cancel) {}
+        }
         .confirmationDialog("Delete “\(confirmDelete?.name ?? "")”?",
                             isPresented: Binding(get: { confirmDelete != nil },
                                                  set: { if !$0 { confirmDelete = nil } }),
                             presenting: confirmDelete) { show in
-            Button("Delete Show", role: .destructive) { model.deleteShow(show.id) }
+            Button("Delete Show", role: .destructive) { model.deleteShow(show.id, undo: undoManager) }
         } message: { _ in
             Text("The show's slide order and settings are deleted. The images stay in the library.")
         }
@@ -169,6 +226,11 @@ extension MainView {
     private func startRenaming(_ item: SidebarItem, current: String) {
         draftName = current
         renaming = item
+    }
+
+    private func startCreatingCollection() {
+        newCollectionName = model.nextName("Untitled Collection", taken: model.collections.map(\.name))
+        creatingCollection = true
     }
 
     func collectionRow(_ c: MediaCollection) -> some View {
@@ -276,6 +338,10 @@ struct LibraryGridView: View {
     @State private var confirmDeleteIDs: [Int64]?
     /// The batch-rename sheet's targets — nil while it's closed.
     @State private var renameIDs: [Int64]?
+    /// New Collection, named before it's made (audit H1): the item ids it
+    /// starts with, and the name being typed.
+    @State private var creatingCollection: [Int64]?
+    @State private var newCollectionName = ""
 
     enum KindFilter: String, CaseIterable {
         case all, stills, animations, videos, songs
@@ -595,6 +661,16 @@ struct LibraryGridView: View {
                              set: { renameIDs = $0?.ids })) { wrapped in
             BatchRenameSheet(itemIDs: wrapped.ids, undoManager: undoManager)
         }
+        .alert("New Collection", isPresented: Binding(get: { creatingCollection != nil },
+                                                       set: { if !$0 { creatingCollection = nil } })) {
+            TextField("Name", text: $newCollectionName)
+            Button("Create") {
+                let name = newCollectionName.trimmingCharacters(in: .whitespaces)
+                guard !name.isEmpty, let ids = creatingCollection else { return }
+                model.newCollection(named: name, itemIDs: ids)
+            }
+            Button("Cancel", role: .cancel) {}
+        }
         .focusedSceneValue(\.librarySelectionCount, selection.count)
         .focusedSceneValue(\.requestLibraryRename, {
             guard !orderedSelection.isEmpty else { return }
@@ -607,6 +683,11 @@ struct LibraryGridView: View {
         guard !orderedSelection.isEmpty else { return }
         model.infoPanelSelection = orderedSelection
         InfoPanel.show(model: model, undoManager: undoManager)
+    }
+
+    private func startCreatingCollection(with ids: [Int64]) {
+        newCollectionName = model.nextName("Untitled Collection", taken: model.collections.map(\.name))
+        creatingCollection = ids
     }
 
     private var deleteDialogTitle: String {
@@ -738,8 +819,8 @@ struct LibraryGridView: View {
                 }
             }
             Divider()
-            Button("New Collection from \(ids.count == 1 ? "Item" : "\(ids.count) Items")") {
-                model.newCollection(itemIDs: ids)
+            Button("New Collection from \(ids.count == 1 ? "Item" : "\(ids.count) Items")…") {
+                startCreatingCollection(with: ids)
             }
             addToCollectionMenu(ids: ids)
             if let cid = collectionID {
@@ -773,7 +854,7 @@ struct LibraryGridView: View {
 
     private func addToCollectionMenu(ids: [Int64]) -> some View {
         Menu("Add to Collection") {
-            Button("New Collection…") { model.newCollection(itemIDs: ids) }
+            Button("New Collection…") { startCreatingCollection(with: ids) }
             if !model.collections.isEmpty { Divider() }
             ForEach(model.collections) { c in
                 Button(c.name) { model.addToCollection(ids, c.id) }
@@ -821,9 +902,9 @@ func runImportPanel(_ model: AppModel, intoCollection: Bool = true) {
     panel.allowsMultipleSelection = true
     panel.canChooseDirectories = true
     panel.canChooseFiles = true
-    panel.allowedContentTypes = [.image, .movie, .folder]
+    panel.allowedContentTypes = [.image, .movie, .audio, .folder]
     panel.prompt = intoCollection ? "Import" : "Add to Library"
-    panel.message = "Files are copied into the ShowTools library. Folders are searched for images and videos."
+    panel.message = "Files are copied into the ShowTools library. Folders are searched for images, videos or audio."
 
     enum Target { static let newCollection = -1, libraryOnly = -2 }
     var popup: NSPopUpButton?

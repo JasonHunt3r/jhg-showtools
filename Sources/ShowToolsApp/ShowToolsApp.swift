@@ -33,6 +33,7 @@ struct AppCommands: Commands {
     @FocusedValue(\.librarySelectionCount) private var librarySelectionCount
     @FocusedValue(\.requestLibraryRename) private var requestLibraryRename
     @FocusedValue(\.requestLibraryGetInfo) private var requestLibraryGetInfo
+    @FocusedValue(\.requestNewCollection) private var requestNewCollection
     @AppStorage("frameStripShown") private var frameStripShown = true
 
     var body: some Commands {
@@ -40,7 +41,7 @@ struct AppCommands: Commands {
             Button("New Show") { model.newShow() }
                 .keyboardShortcut("n")
                 .disabled(model.collections.isEmpty)
-            Button("New Collection") { model.newCollection() }
+            Button("New Collection…") { requestNewCollection?() }
                 .keyboardShortcut("n", modifiers: [.command, .option])
             Divider()
             Button("Import…") { runImportPanel(model) }

@@ -125,7 +125,7 @@ public enum Ingest {
         case notMedia, verifyFailed, copy(String)
         public var description: String {
             switch self {
-            case .notMedia: "not a readable image, video or song"
+            case .notMedia: "not a readable image, video or audio file"
             case .verifyFailed: "the copy didn't match the original"
             case .copy(let m): m
             }

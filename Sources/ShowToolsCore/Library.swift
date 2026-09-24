@@ -859,4 +859,37 @@ public final class Library {
     public func deleteShow(id: Int64) throws {
         try db.prepare("DELETE FROM shows WHERE id = ?").bind(.int(id)).run()
     }
+
+    /// Everything deleting a show on its own takes with it, to put back on
+    /// undo (a show deleted along with its collection is `CollectionSnapshot`'s job).
+    public struct ShowSnapshot: Sendable {
+        public let show: Show
+        public let createdAt: Double
+    }
+
+    public func snapshotShow(id: Int64) throws -> ShowSnapshot? {
+        let c = try db.prepare("SELECT created_at FROM shows WHERE id = ?").bind(.int(id))
+        guard try c.step() else { return nil }
+        let createdAt = c.double(0)
+        guard let show = try allShows().first(where: { $0.id == id }) else { return nil }
+        return ShowSnapshot(show: show, createdAt: createdAt)
+    }
+
+    /// Undoes `deleteShow`: the show, with its old id, so undo steps
+    /// recorded against it still find it. Slides of files deleted since are
+    /// left out, as `restoreCollection` already does for a show's shows.
+    public func restoreShow(_ snap: ShowSnapshot) throws {
+        try db.transaction {
+            try db.prepare("INSERT INTO shows (id, name, defaults, created_at, collection_id) VALUES (?, ?, '{}', ?, ?)")
+                .bind(.int(snap.show.id), .text(snap.show.name), .double(snap.createdAt),
+                      snap.show.collectionID.map { .int($0) } ?? .null).run()
+            let exists = try db.prepare("SELECT 1 FROM items WHERE id = ?")
+            var s = snap.show
+            s.slides = try s.slides.filter { slide in
+                exists.bind(.int(slide.itemID))
+                return try exists.step()
+            }
+            try saveShow(s)
+        }
+    }
 }

@@ -34,7 +34,7 @@ only stack-like thing the grid has.
 | Library grid | Click, ⌘-click, ⇧-click; Delete / ⌘Delete; ⌘A; a full context menu | Arrow keys, ⇧-arrows, rubber-band selection, Space (Quick Look), Return, double-click |
 | Edit Slides list | Everything a `List` gives: arrows, ⇧-arrows, ⌘A, Delete, drag to reorder | Duplicate on ⌘D, a fuller context menu |
 | Storyline | Click, ⌘-click, ⇧-click; J/K/L, Space, I/O, M, N, ⇧Z | Arrow keys between slides, ⌘A, Escape for slides; context menus on lane images, transitions, markers |
-| Library pane | Right-click Rename…, Delete… | The Delete key, Return or click-to-rename, undo for two of its actions |
+| Library pane | Right-click Rename…, Delete…; the Delete key and ⌘Delete; undo for Delete Show and Rename Collection | Return or click-to-rename |
 | Menu bar | File, View, Show | Edit Show's commands (all hidden), the inspector toggle, a real Help menu |
 
 ## A. The Edit menu
@@ -165,17 +165,40 @@ Browser. Elsewhere they're thin, or missing altogether:
 
 ## D. The Library pane
 
-- **D1 (Med) — Delete does nothing on a selected show or collection.** The
-  Library pane `List` (`MainView.swift:24`) has no `onDeleteCommand`, so
-  deleting means right-clicking. Following the settled convention (plan,
-  2b): Delete asks first, and ⌘Delete moves it without asking.
-- **D2 (Med) — Delete Show can't be undone.** `AppModel.deleteShow`
-  (`AppModel.swift:723`) takes no undo manager, and its dialog doesn't
-  offer undo. Delete Collection *is* undoable, and says so. So is a show
-  deleted along with its collection, but a show deleted on its own isn't.
-  That's an inconsistency, and the one irreversible action in the Library pane.
-- **D3 (Low) — Rename Collection can't be undone** (`AppModel.swift:488`
-  takes no undo manager). Rename Show can be.
+- **D1 (Med) — Delete does nothing on a selected show or collection.**
+  **Fixed 2026-09-24.** The List's own `onDeleteCommand` is there for when
+  it genuinely has the keyboard, but a click on a row leaves the window
+  itself as first responder (measured, same problem B1 found in the
+  grid) — so a `SingleKeys` fallback on the whole `NavigationSplitView`
+  (not the List: see the crash below) handles Delete and ⌘Delete the rest
+  of the time. Delete asks first; ⌘Delete skips the question, following
+  the settled convention (plan, 2b).
+  **A crash found and fixed along the way:** a first attempt put the
+  `SingleKeys` monitor in `.background()` directly on the sidebar `List`
+  (a real `NSTableView`, unlike the grid's plain `ScrollView`). Undoing a
+  show deletion hit AppKit's layout-loop guard and crashed
+  (`EXC_BREAKPOINT`, `~/Library/Logs/DiagnosticReports/ShowTools-2026-09-24-034845.ips`,
+  thousands of repeated `CellHostingView`/`NavigationPaneModifier` layout
+  frames) — the same class of bug as the `.inspector()` crash fixed
+  2026-09-23, in a new place. Moving the monitor to the split view as a
+  whole fixed it; the exact repro (select a show, ⌘Delete, ⌘Z) no longer
+  crashes.
+  Checked with real clicks and keystrokes, cross-checked against the
+  library's own database, not just the accessibility tree (which was
+  seen to lag one step behind after a delete — a known staleness, not a
+  second bug): Delete asks, Delete Show removes the row, ⌘Z restores it
+  with its old id.
+- **D2 (Med) — Delete Show can't be undone.** **Fixed 2026-09-24**, with
+  D1. `Library.snapshotShow`/`restoreShow` (mirroring
+  `snapshotCollection`/`restoreCollection`) capture the show, its slides
+  and their ids before deleting; `AppModel.deleteShow(_:undo:)` registers
+  the restore as an undo step, redo as a fresh delete. Two new Core tests
+  (`testADeletedShowComesBackWithItsIdAndSlides`,
+  `testARestoredShowLeavesOutSlidesOfFilesDeletedSince`).
+- **D3 (Low) — Rename Collection can't be undone.** **Fixed 2026-09-24**:
+  `AppModel.renameCollection(_:to:undo:)` registers the old name as the
+  undo step, the same shape as `renameShow`. Checked with a real rename
+  and ⌘Z.
 - **D4 (Low) — Renaming is an alert, not in place.** Finder and Photos:
   select a row and press Return, or click the name of a row that's
   already selected, and it becomes editable where it is. Here Rename…
@@ -330,25 +353,26 @@ Today they disagree on several of the "should match" items:
 
 ## H. Making new things (Jason, 2026-09-24)
 
-- **H1 (Med) — New Collection and New Show skip naming.** They make
-  "Untitled Collection" or "Untitled Show" (`AppModel.newCollection`,
-  `newShow`) and select it. Finder's New Folder, Photos' New Album and
-  Final Cut's New Project all go straight to the name: an editable name
-  in place, or a dialog. Here, renaming means right-click ▸ Rename…
-  afterwards. *Fix direction:* ask for the name first, and create the
-  collection or show only on OK.
-  **Settled (Jason, 2026-09-24):** Cancel means "never mind" or "I hit
-  that by accident", so it creates nothing. **Nothing is ever called
-  Untitled unless someone clicked OK on that name.** The field starts
-  with a suggested name, selected, so Return accepts it. Once inline
-  rename (D4) exists, the naming can happen in the Library pane row itself,
-  under the same rule: Esc removes the new row.
-  - **New Show asks for more than a name (Jason):** made from a
-    selection, it used fixed defaults with no dialog, so the lengths and
-    the dissolve had to be fixed afterwards. Its naming step is the
-    shared settings panel in `spec/simple-things-fast.md` (name, length,
-    transition, Pan and Zoom, audio, presets). New Collection needs only
-    the name.
+- **H1 (Med) — New Collection and New Show skip naming.**
+  **New Collection fixed, 2026-09-24.** Every path that made one with no
+  real name — the sidebar's + menu, File ▸ New Collection…, and the
+  grid's "New Collection from N Items" / "New Collection…" — now asks
+  first (an alert, `TextField` pre-filled with the next free "Untitled
+  Collection" name) and creates only on Create; Cancel makes nothing.
+  Wired through a new `requestNewCollection` focused scene value
+  (`SlideInspector.swift`), published by `MainView` itself rather than
+  the grid, so File ▸ New Collection… still works whatever the detail
+  pane is showing — unlike Rename…/Get Info, which are genuinely
+  grid-scoped. Checked with real clicks and keystrokes: Cancel creates
+  nothing, Create with a typed name makes exactly that collection and
+  selects it.
+  **New Show is still open, on purpose:** made from a selection, it used
+  fixed defaults with no dialog, so the lengths and the dissolve had to
+  be fixed afterwards. Its naming step is the shared settings panel in
+  `spec/simple-things-fast.md` (name, length, transition, Pan and Zoom,
+  audio, presets) — a separate, larger piece of work, already tracked on
+  its own. Building a throwaway name-only dialog for New Show now, ahead
+  of that panel, wasn't worth it.
   - *Exception to settle with the first run:* a new library starts with
     one collection made for you (`spec/first-run-brief.md`, "My First
     Collection" with a Rename button). That one is made by the app, not
@@ -388,16 +412,12 @@ Today they disagree on several of the "should match" items:
   top, without changing H2. Most people see the empty Library once,
   unless they make a new library, so its welcome is the first run's job.
   See also `spec/windows.md`, "Filling a new collection".
-- **H3 (Med) — File ▸ Import… can't choose audio files.** Its panel
-  allows only images, movies and folders
-  (`allowedContentTypes = [.image, .movie, .folder]`, `runImportPanel`
-  in `MainView.swift`). Audio arrives only by a drop, or inside a chosen
-  folder. *Fix:* add `.audio`, and say "images, videos or audio" in the
-  panel's message.
-- **H4 (Low) — The import failure says "song".** A file that can't be
-  read is listed as "not a readable image, video or song"
-  (`Ingest.swift:128`). It should say "audio file", the name settled
-  2026-09-24.
+- **H3 (Med) — File ▸ Import… can't choose audio files.** **Fixed
+  2026-09-24**: `allowedContentTypes` gained `.audio`, and the panel's
+  message reads "images, videos or audio".
+- **H4 (Low) — The import failure says "song".** **Fixed 2026-09-24**:
+  `Ingest.Failure.notMedia` now reads "not a readable image, video or
+  audio file", the name settled 2026-09-24.
 
 ## I. Panes lost past the window's edge (Jason, 2026-09-24)
 
