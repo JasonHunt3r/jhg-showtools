@@ -160,8 +160,10 @@ divider, and empty groups are skipped:
 | Viewer: a slide's image in the picture | **Settled 2026-09-24.** Open in Slide Editor (greyed out until built), Show in Library · Length ▸, Transition ▸, Pan and Zoom ▸ (the slide list's quick settings) · Reset Transform, Rotation Handles on/off · **Select ▸** (everything under the pointer, e.g. a lane image and the slide beneath) |
 | Viewer: the pasteboard (the grey round the picture) | **Settled 2026-09-24.** Work Zoom ▸ (Fit, 75 %, 50 %), Onion Skin on/off, Pop Out Viewer |
 | Viewer: the frame strip | **Settled 2026-09-24.** Play from Here, Follow Timeline / Whole Show, Hide Frame Strip |
-| Lane image | Duplicate, **Replace Image…** · Show in Library · Remove Image (C1) |
-| Transition | its style (submenu), Use Show Default · Remove Transition (leaves a cut) (C2) |
+| Timeline: a block (a slide) | **Settled 2026-09-24.** The same menu as Edit Slides' slide (above), plus **Select All After** (Final Cut's) |
+| Timeline: a cut with no transition | **Settled 2026-09-24.** Add Transition ▸ (the styles), Add Show Default Transition (what the "+" on hover does) |
+| Transition | **Settled 2026-09-24.** Style ▸, Duration ▸ (0.5 s, 1 s, 2 s, Custom…), Use Show Default, Apply to All Cuts · Remove Transition ✓ (leaves a cut) |
+| Lane image | **Settled 2026-09-24.** Duplicate, Replace Image… · Fade ▸ (In, Out, Both, None) · Show in Library · Remove Image ✓ |
 | Audio clip | Detect Beats… ✓ · Show in Library · Remove Audio Clip ✓ |
 | Marker | Show or Hide Line · Remove Marker (C3) |
 | Browser entry | **Settled 2026-09-24.** Append to Show (E) ✓, Insert at Playhead (W) ✓, Place in Images Row at Playhead (Q) ✓; for an audio file, **Place at Playhead** · for a *use* (an entry under "In this show"): Select in Timeline, Play from Here · Show in Library · Remove from Show (that use only), Remove from Collection ✓, **Move to Trash…** (was "Delete from Library…", C7). The letters show as shortcuts at the menu's right edge, if that can be done without E, W and Q taking typing from Search; otherwise they stay in the titles (C8) |
@@ -376,8 +378,18 @@ universals first.
     Settled.
   - **Anything missing:** "I'm sure we'll find something, but this will
     do for a start." It goes in §8 when it's found.
-- **7. The timeline pane:** next (the transport, the ruler, row handles,
-  and each row).
+- **7. The timeline pane: first half done 2026-09-24** (Jason: yes to
+  each).
+  - **A block:** the same menu as Edit Slides' slide, plus Select All
+    After. (Jason's "yes" was read as both parts; correct if not.)
+  - **A cut with no transition:** Add Transition ▸, Add Show Default
+    Transition.
+  - **A transition:** Style ▸, Duration ▸, Use Show Default, Apply to All
+    Cuts, then Remove Transition.
+  - **A lane image:** Duplicate, Replace Image…, Fade ▸, Show in Library,
+    then Remove Image. The empty images row keeps Place Image Here….
+  - **Second half, next:** audio clips and the empty audio row, the ruler
+    (markers, the range), row handles, the transport.
 
 **The route, in the anatomy's order:**
 1. **Library pane:** the Library row, a collection row, a show row, empty
