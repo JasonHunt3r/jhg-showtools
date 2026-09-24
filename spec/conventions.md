@@ -51,9 +51,9 @@ itself. Names follow `spec/anatomy.md`.
 | **⌘-click** | Add to or remove from the selection | Lane images, transitions and audio clips select one at a time (E4) | Built, where multiple selection exists |
 | **⇧-click** | Select the range from the anchor (the last plain click or ⌘-click) to here, *replacing* the previous ⇧-range | — | **Settled** (Jason, 2026-09-24). Today the grid and the timeline only ever add to it (B3, E1). Lists already do it right |
 | **Click on empty space** | Deselect all | — | Built in the grid |
-| **Drag on empty space** | Rubber-band selection; ⌘ or ⇧ adds | The timeline: a drag on the ruler scrubs instead | Proposed (B4) |
+| **Drag on empty space** | Rubber-band selection; ⌘ or ⇧ adds | The timeline: a drag on the ruler scrubs instead | **Settled** (Jason, 2026-09-24; B4) |
 | **Double-click** | **Go into it:** open the thing one level deeper | See "Double-click and ⌥-click" below | **Settled** as the meaning (Jason, 2026-09-24); some targets are still to be tried |
-| **⌥-click** | The second meaning, where a thing has two | ⌥-click on a row handle already opens or closes every drawer | **Open** |
+| **⌥-click** | Jason's leading idea: **select the thing behind** in an overlap, such as the slide under a transition or a lane image | ⌥-click on a row handle already opens or closes every drawer. ⌥-drag copies (§1 note) | **Open**. See "How ⌥ is used elsewhere" below |
 | **Right-click** | The commands for what's under the pointer, or for the selection if it's part of it (§3) | — | Built in some places; missing on lane images, transitions, markers (C1–C3) |
 | **Hover** | A tooltip saying what it is, and its shortcut | — | Built for most controls |
 | **Drag an item** | Move it: within an area it reorders; onto another area it adds or places there (§4) | A selected item drags the whole selection | Built |
@@ -61,6 +61,32 @@ itself. Names follow `spec/anatomy.md`.
 | **Two-finger swipe** | Scroll, even over a window that's behind | The covered Timeline window's padding (`spec/windows.md`) | Built by macOS; the padding is Planned |
 
 ### Double-click and ⌥-click
+
+### How ⌥ is used elsewhere (for deciding ⌥-click)
+
+What's well established on the Mac and in creative apps:
+- **⌥-drag copies instead of moving:** Finder, Keynote, Final Cut, and
+  most editors. This is the strongest convention for ⌥ with the mouse,
+  and **proposed here: ⌥-drag a slide, lane image or audio clip to
+  duplicate it** there.
+- **⌥ widens a click to "all of them":** ⌥-click a disclosure triangle
+  opens every nested one; ⌥-click a window's close button closes all of
+  the app's windows. The row handle's ⌥-click (every drawer) already
+  follows this.
+- **⌥-click sets a point:** Photoshop's Clone Stamp sets its source with
+  ⌥-click. It's a precedent for **aiming Pan and Zoom's zoom-to point**
+  by ⌥-clicking the image (plan, Later).
+- **Selecting what's behind:** design apps mostly use ⌘-click
+  (Illustrator's "select behind"), or a right-click menu listing
+  everything under the pointer (Photoshop, Figma). In ShowTools ⌘-click
+  already means "add to the selection", so **⌥-click for "behind" would
+  be a knowing departure.** A right-click "Select" submenu of what's
+  under the pointer could do the same job without taking ⌥.
+
+*Not checked here:* exactly what ⌥-click does on a clip in Final Cut's
+timeline. Worth trying there before deciding.
+
+### Double-click
 
 **Settled (Jason, 2026-09-24): double-click means "go into it"**, and
 every item below is a double-click action. Where a target lists two
@@ -86,10 +112,10 @@ and opens it (never closes it) in the timeline (G3).
 |---|---|---|---|
 | **Delete** | Remove the selection from *where it is*: a slide from its show, a file from its collection, a lane item from its row. Asks first where the plan says so | In the Library (not a collection), a file goes to the Trash, after asking | Built for slides, the grid and the browser. The sidebar is missing (D1) |
 | **⌘Delete** | Move to the Trash (delete from the library), without asking | In a collection it still asks, since it's more than leaving it | Built (settled, plan 2b) |
-| **Esc** | Step back one level: close a drawer or popover, then clear the selection | In a text field, cancel the edit. In the player, leave full screen | Built partly; the timeline's Esc doesn't clear slides or a transition (E3) |
+| **Esc** | Step back one level: **close the Slide Editor** (Jason), a drawer or a popover; then clear the selection | In a text field, cancel the edit. In the player, leave full screen | Built partly. Little use for it yet (Jason, 2026-09-24): more cases will turn up with use, and go in §8 |
 | **Return** | Do the default: OK in a dialog, commit a text field | On a selected item: rename it (Finder) | Built in dialogs; rename on Return **Settled** (Jason, 2026-09-24; B6, D4) |
 | **Space** | **Play and pause, pretty much always** (Jason, 2026-09-24). Wanting to stop playback and having to juggle windows first would be confusing and frustrating | Never while typing in a text field. **Not Quick Look**, which departs from Finder on purpose: Quick Look is ⌘Y (Finder's other key for it) and double-clicking a tile. In Edit Slides, Space plays from the selected slide, and pauses what's playing | **Settled.** Built in Edit Show and the player |
-| **← → ↑ ↓** | Move the selection; with ⇧, extend it | The timeline: by slide or by frame (E2, Open). The player: previous and next slide. The viewer with an image selected: nudge it | Built in lists, the player and the viewer; missing in the grid and the timeline (B2, E2) |
+| **← → ↑ ↓** | Move the selection; with ⇧, extend it | **The timeline (settled, Jason, 2026-09-24):** ← → move through the items in the current row (slides, or audio clips); ↑ ↓ move between rows; **in the ruler**, ← → nudge the playhead. The player: previous and next slide. The viewer with an image selected: nudge it | Built in lists, the player and the viewer; missing in the grid and the timeline (B2, E2) |
 | **Home / End** | The first or last item, or the show's start or end | — | Built in the player |
 | **Tab** | Move the keyboard to the next area | — | Built by SwiftUI where areas are focusable |
 | **Single letters** | Final Cut's keys, where there's a timeline: J K L shuttle, I O range, M marker, N snapping; E W Q add from the browser | Never while typing in a text field (`SingleKeys`) | Built; shown in no menu (F1) |
@@ -140,7 +166,7 @@ Library; Get Info.
 | The Library grid | Imports the files (from Finder or Photos) | Built |
 | A collection's grid, or its sidebar row | Imports if they're from outside, then adds them to the collection | Built |
 | A show's sidebar row | Appends pictures as slides (asks about any not in its collection) | Built; undoable since G1 |
-| The slide list | Inserts where it lands, like the timeline | Proposed; today it appends (G2) |
+| The slide list | Inserts where it lands, like the timeline | **Settled** (Jason, 2026-09-24); today it appends (G2) |
 | The timeline's slides row | Inserts where it lands; audio goes into the audio row at that time | Built |
 | The images row | Places images at the drop time, end to end as room allows | Built |
 | The audio row | Places audio at the drop time | Built |
@@ -153,12 +179,22 @@ collection, unless the setting says always. (Built.)
 | Item | In the grid | In a show (either mode) | In a text field |
 |---|---|---|---|
 | Undo / Redo | the window's history | the window's history | the field's own |
-| Cut / Copy / Paste | Copy: the files, for Finder or Mail (A3) | slides, with their settings (A3, Open: wanted?) | text |
+| Cut / Copy / Paste | Copy: the files, for Finder or Mail (A3; wanted if it's easy, and it is: see below) | **slides with their settings and effects, from one show to another** (A3, settled wanted) | text |
+| Paste Settings ⇧⌘V | — | Proposed: paste the copied slide's settings and effects onto the selected slides, like Final Cut's Paste Attributes | — |
 | Duplicate ⌘D | — | slides; a selected lane image (A2) | — |
 | Delete | as the Delete key | as the Delete key | text |
-| Select All ⌘A | every tile in view (A1) | every slide (A1) | text |
+| Select All ⌘A | every tile in view (A1). **Top priority** (Jason: hand-clicking 4,000 test images) | every slide (A1) | text |
 
-All of these are Proposed except Undo, Redo and Delete, which are Built.
+Undo, Redo and Delete are Built. Copy and Paste of slides and ⌘A are
+wanted (settled 2026-09-24); the rest is Proposed.
+
+**Copying tiles to Finder or Mail is small:** the files' URLs go on the
+pasteboard, and Finder pastes copies. Photos is different: **native
+access to the Photos library** (browsing it inside ShowTools, plan,
+Later) is the larger job. Jason believes it needs a paid developer
+membership. That's worth checking before it's ruled out, since Photos'
+framework asks mainly for the user's permission, but it hasn't been
+checked here.
 
 ## 6. Dialogs and naming
 

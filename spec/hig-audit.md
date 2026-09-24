@@ -417,6 +417,11 @@ ordered from least to most risk.
    two slides, and they land there.
 7. **The grid's keyboard** (B1, B2, A1, B5, B6). The riskiest batch: it
    depends on the focus problem that stopped the Delete key before.
+   **⌘A in the grid is Jason's top priority** (2026-09-24: hand-clicking
+   4,000 test images). It can go ahead of the batch on its own: an Edit ▸
+   Select All menu item whose action selects every tile in view doesn't
+   depend on the grid having the keyboard, since the menu item works from
+   the menu bar either way.
    *Check:* by hand, with axtool if Jason isn't using the app.
 8. **Later:** rubber-band selection (B4), group selection (B7), several
    lane images or songs at once (E4), Cut/Copy/Paste (A3), and inline
