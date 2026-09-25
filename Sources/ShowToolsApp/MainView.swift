@@ -677,6 +677,10 @@ struct LibraryGridView: View {
     @AppStorage("gridMinRating") private var minRating = 0
     @AppStorage("gridUncollected") private var onlyUncollected = false
     @AppStorage("gridSort") private var sort: SortOrder = .added
+    /// The tile a drag-to-reorder is currently hovering, for its highlight —
+    /// nil the rest of the time. One piece of state for the whole grid,
+    /// since `tile(_:)` is a function, not its own view with state of its own.
+    @State private var dropTargetID: Int64?
     /// The grid takes the keyboard on a click, so Delete and ⌘Delete reach
     /// it even before anything's been clicked in this session.
     @FocusState private var focused: Bool
@@ -1314,6 +1318,36 @@ struct LibraryGridView: View {
             .padding(40)
     }
 
+    /// A drag dropped onto `targetID`: Custom Order (`spec/plan.md`,
+    /// "Reordering") — the dragged files (their own relative order kept)
+    /// land right before it, among the collection's or group's *whole*
+    /// membership, not just what search/filters are showing right now (so
+    /// a drag under an active filter never silently drops the files it
+    /// can't currently see out of the collection's order). Switches the
+    /// sort to Custom Order itself, so the reorder that was just made is
+    /// never invisible under whatever sort was active. Refused in the
+    /// plain Library (nothing to carry a `sort_key`) or onto one of the
+    /// dragged files itself.
+    private func reorderDrop(_ providers: [NSItemProvider], onto targetID: Int64) -> Bool {
+        guard collectionID != nil || groupID != nil else { return false }
+        Task {
+            guard let dragged = await ItemDrag.ids(from: providers), !dragged.isEmpty,
+                  !dragged.contains(targetID) else { return }
+            var order = all.map(\.id)
+            let draggedSet = Set(dragged)
+            order.removeAll { draggedSet.contains($0) }
+            guard let targetIndex = order.firstIndex(of: targetID) else { return }
+            order.insert(contentsOf: dragged, at: targetIndex)
+            if sort != .custom { sort = .custom }
+            if let gid = groupID {
+                model.setOrder(order, inGroup: gid, undo: undoManager)
+            } else if let cid = collectionID {
+                model.setOrder(order, inCollection: cid, undo: undoManager)
+            }
+        }
+        return true
+    }
+
     private func tile(_ item: MediaItem) -> some View {
         let selected = selection.contains(item.id)
         return Group {
@@ -1347,12 +1381,25 @@ struct LibraryGridView: View {
             }
         }
         .contentShape(Rectangle())
+        // The drag-to-reorder target highlight (Custom Order,
+        // `spec/plan.md` "Reordering") — a plain ring, distinct from the
+        // selection ring above so the two are never confused mid-drag.
+        .overlay(dropTargetID == item.id
+                 ? RoundedRectangle(cornerRadius: 5).strokeBorder(Color.accentColor, lineWidth: 2).padding(-2)
+                 : nil)
         // Double-click: "go into it" (conventions.md), settled as Quick
         // Look for a Library tile (B5, B6) now that Space is play/pause.
         .onTapGesture(count: 2) { click(item.id); quickLook(startingAt: item.id) }
         .onTapGesture { click(item.id) }
         // A selected tile drags the whole selection; any other, just itself.
         .onDrag { ItemDrag.provider(selection.contains(item.id) ? orderedSelection : [item.id]) }
+        // Dropping onto another tile reorders — Custom Order, only
+        // meaningful inside a collection or group (the plain Library has
+        // no membership to carry a `sort_key`, `spec/plan.md`).
+        .onDrop(of: [ItemDrag.type], isTargeted: Binding(
+            get: { dropTargetID == item.id },
+            set: { over in dropTargetID = over ? item.id : (dropTargetID == item.id ? nil : dropTargetID) }
+        )) { providers in reorderDrop(providers, onto: item.id) }
         .contextMenu {
             let ids = selection.contains(item.id) ? orderedSelection : [item.id]
             Button("New Show from \(ids.count == 1 ? "Item" : "\(ids.count) Items")") {

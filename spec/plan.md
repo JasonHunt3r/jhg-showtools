@@ -1146,17 +1146,31 @@ collection's grid shows a new **Custom Order** sort option (only when a
 collection or group is selected — the plain Library has no drag order to
 show), selecting it doesn't crash and shows the files normally.
 
-**Left:** the drag interaction itself. `LibraryGridView`'s tiles need an
-`.onDrag`/`.onDrop`-driven reorder (or `.itemProvider`, per the codebase's
-own rule against `.onDrag` breaking a `List`'s click/selection — the grid
-isn't a `List`, so plain `.onDrag` is what the grid's tiles already use
-elsewhere) that computes the dropped-at array and calls `setOrder`,
-wrapped in an undo step like every other `ShowMutator`-adjacent edit.
-thelivery's web reordering tool is the interaction reference (a different
-codebase/language, for the drag *feel*, not the code). Also left:
-whether choosing Custom Order should be automatic the moment someone
-drags (so the drag is never silently discarded under a different active
-sort), or left for Jason to switch to by hand.
+**The drag gesture itself is built, 2026-09-25.** `LibraryGridView.tile(_:)`
+gets a `.onDrop(of: [ItemDrag.type], isTargeted:)` (the grid isn't a
+`List`, so plain `.onDrag`/`.onDrop` is fine — the codebase's rule against
+`.onDrag` on a `List` doesn't apply here). Dropping onto a tile
+(`reorderDrop`) takes the dragged ids (the whole selection, if the drag
+started on a selected tile — same as the existing `.onDrag`) out of the
+collection's or group's **whole** membership (`all`, not the
+filtered/searched `visible` list — a drag under an active filter never
+silently drops an unseen file out of the true order) and reinserts them
+right before the drop target, then calls `AppModel.setOrder(_:inCollection
+:undo:)` / `setOrder(_:inGroup:undo:)` (new wrappers next to `addToCollection`/
+`addToGroup`, same shape as `moveGroup`'s undo registration) — one "Reorder"
+undo step per drop. **Settled the open question above: yes, automatic.**
+Dropping switches `sort` to `.custom` itself, so a reorder is never
+invisible under whatever sort was showing. A small `dropTargetID` state
+on the grid draws a ring on the tile under the drag, separate from the
+selection ring so the two are never confused mid-drag. Refused (returns
+`false`) in the plain Library, where there's no membership to carry a
+`sort_key`, and a no-op onto one of the dragged tiles itself.
+**Confirmed with axtool** against the scratch library: a real synthetic
+drag moved a tile to the front of the grid, the Sort menu's checkmark
+jumped to Custom Order on its own, `Edit ▸ Undo Reorder` was enabled and
+reading correctly, and firing it put the exact original order back —
+screenshotted at each step. Never tried by a real drag from Jason's own
+hand.
 
 **Built 2026-09-24 (nesting by drag, and dragging into another
 collection):** `Library.moveGroup(id:toParent:)` — nests a group inside

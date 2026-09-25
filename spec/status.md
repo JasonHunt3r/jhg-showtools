@@ -101,14 +101,15 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   collection** — is still a design question (`spec/plan.md`, "Groups
   inside collections," "Promotion"): what happens to the original group,
   and whether nested sub-groups come along.
-- **Item 17 / 38** (drag-to-reorder) — **the schema is built**, migration
-  14: `sort_key` on `collection_items`/`group_items`, kept apart from
-  `added_at` so a reorder never changes what Date Added shows; a new
-  **Custom Order** sort option in the grid; `Library.setOrder` to write a
-  dropped-into array. 310 core tests. Confirmed with axtool: Custom Order
-  appears only with a collection or group selected, and shows the files
-  with no crash. **Left:** the drag gesture itself on the grid's tiles,
-  wired to `setOrder` and an undo step (`spec/plan.md`, "Reordering").
+- **Item 17 / 38** (drag-to-reorder) — **fully built**, 2026-09-25:
+  migration 14's `sort_key` (`spec/plan.md`, "Reordering"), the grid's
+  **Custom Order** sort option, and now the drag itself — dropping one
+  tile onto another in a collection's or group's grid reorders its whole
+  membership, switches the sort to Custom Order automatically, and is one
+  "Reorder" undo step. 310 core tests. Confirmed with axtool: a real
+  synthetic drag moved a tile to the front, the Sort menu's check jumped
+  to Custom Order, and `Edit ▸ Undo Reorder` put it back exactly.
+  **Never tried by a real drag from Jason's own hand.**
 - **Items 23–25** — queued as their own BGTools work list, to pick up
   once the ShowTools fixes above are done: `spec/bgtools.md`, "Next up —
   queued 2026-09-25, after the ShowTools fixes."
@@ -184,6 +185,14 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
+- **The grid's drag-to-reorder** (built 2026-09-25, item 17, `spec/plan.md`
+  "Reordering"): dropping a tile onto another reorders a collection's or
+  group's whole membership, switches the sort to Custom Order, and undoes
+  as one step — confirmed with axtool's synthetic `drag`, never with a
+  real trackpad/mouse drag. Worth a particular look: whether the drop
+  target's ring reads clearly enough mid-drag, and whether landing a
+  multi-file drag (a selection, not just one tile) feels right — only a
+  single-tile drag was tried.
 - **BGTools: naming screens, the map view, the window opening on your
   screen** (built 2026-09-25, `spec/bgtools.md` items 3–5): renaming a
   monitor or a Space, the Map | List switch, and the window landing on the

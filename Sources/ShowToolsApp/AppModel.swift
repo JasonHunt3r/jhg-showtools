@@ -826,6 +826,27 @@ final class AppModel {
         }
     }
 
+    /// The group version of `setOrder(_:inCollection:undo:)`.
+    func setOrder(_ itemIDs: [Int64], inGroup groupID: Int64, undo: UndoManager? = nil) {
+        guard let lib = library, let before = group(groupID)?.itemIDs, before != itemIDs else { return }
+        do {
+            try lib.setOrder(itemIDs, inGroup: groupID)
+            groups = try lib.allGroups()
+        } catch {
+            loadError = "\(error)"
+            return
+        }
+        guard let undo else { return }
+        let generation = libraryGeneration
+        undo.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated {
+                guard model.libraryGeneration == generation else { return }
+                model.setOrder(before, inGroup: groupID, undo: undo)
+            }
+        }
+        undo.setActionName("Reorder")
+    }
+
     /// Takes files out of a group; they stay in the collection. Undo puts
     /// them back in their places.
     func removeFromGroup(_ itemIDs: [Int64], _ groupID: Int64, undo: UndoManager? = nil) {
@@ -993,6 +1014,30 @@ final class AppModel {
         } catch {
             loadError = "\(error)"
         }
+    }
+
+    /// A drag-reorder of a collection's grid (Custom Order, `spec/plan.md`
+    /// "Reordering"): `itemIDs` is the grid's own new order, dropped-into
+    /// array and all — `Library.setOrder` renumbers `sort_key` to match.
+    /// One undo step puts the collection's whole previous order back.
+    func setOrder(_ itemIDs: [Int64], inCollection collectionID: Int64, undo: UndoManager? = nil) {
+        guard let lib = library, let before = collection(collectionID)?.itemIDs, before != itemIDs else { return }
+        do {
+            try lib.setOrder(itemIDs, inCollection: collectionID)
+            collections = try lib.allCollections()
+        } catch {
+            loadError = "\(error)"
+            return
+        }
+        guard let undo else { return }
+        let generation = libraryGeneration
+        undo.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated {
+                guard model.libraryGeneration == generation else { return }
+                model.setOrder(before, inCollection: collectionID, undo: undo)
+            }
+        }
+        undo.setActionName("Reorder")
     }
 
     /// A copy of a show — its slides, rows, music, markers and editor
