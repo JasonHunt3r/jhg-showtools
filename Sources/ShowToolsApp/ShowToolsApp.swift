@@ -16,7 +16,7 @@ struct ShowToolsApp: App {
             MainView()
                 .environment(model)
                 .frame(minWidth: 1100, minHeight: 700)
-                .task { DevHooks.run(model) }
+                .task { DevHooks.run(model); BGToolsHelper.launchAtShowToolsStartupIfEnabled() }
         }
         .defaultSize(width: 1320, height: 820)
         .commands { AppCommands(model: model, undoState: undoState) }
@@ -291,13 +291,19 @@ struct AppCommands: Commands {
             Divider()
         }
 
-        CommandGroup(after: .toolbar) {
+        // Item 21, `ShowTools Feedback — Worklist for Next CC Session.md`:
+        // a dedicated menu for launching BGTools, more discoverable than
+        // the toolbar group it lived in before. "Open at Login" stays in
+        // BGTools' own window (View ▸ BGTools ▸ Desktop Show…, its
+        // Settings tab) — this menu is only for launching it, and the new
+        // "launch with ShowTools" setting, which lives in ShowTools'
+        // own Settings alongside its other startup-time preferences.
+        CommandMenu("BGTools") {
             // Phase 5: the desktop is BGTools' job, and it lives inside
             // this app (spec/bgtools.md, spec/xcode-port.md).
             Button("Desktop Show…") {
                 do { try BGToolsHelper.openDesktop() } catch { NSAlert(error: error).runModal() }
             }
-            Divider()
         }
 
         CommandMenu("Show") {
@@ -391,6 +397,7 @@ struct SettingsView: View {
     @AppStorage(FinderTagsSetting.key) private var writeFinderTags = false
     @AppStorage(ExportSettings.stripKey) private var stripOnExport = true
     @AppStorage("showSlideProgress") private var showSlideProgress = true
+    @AppStorage(BGToolsHelper.launchWithShowToolsKey) private var launchBGToolsWithShowTools = false
 
     var body: some View {
         ScrollView {
@@ -472,6 +479,17 @@ struct SettingsView: View {
                     get: { !suppressRemovalNotice },
                     set: { suppressRemovalNotice = !$0 }))
                 Text("The notice that a slide removed from a show isn't moved to the Trash.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            // Item 21, `ShowTools Feedback — Worklist for Next CC
+            // Session.md`. "Open BGTools at Login" already lives in
+            // BGTools' own window (View ▸ BGTools ▸ Launch BGTools, then
+            // its Settings tab) — this is the separate ask: BGTools
+            // starting alongside ShowTools itself, not just at login.
+            Section("BGTools") {
+                Toggle("Launch BGTools when ShowTools launches", isOn: $launchBGToolsWithShowTools)
+                Text("Starts the desktop background player in the background, without opening its window.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

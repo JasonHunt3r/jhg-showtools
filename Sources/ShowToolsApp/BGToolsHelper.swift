@@ -27,6 +27,18 @@ enum BGToolsHelper {
         }
     }
 
+    static func unregisterAtLogin() {
+        let service = SMAppService.loginItem(identifier: bundleID)
+        guard service.status == .enabled else { return }
+        do { try service.unregister() } catch {
+            NSLog("BGTools login unregistration failed: \(error)")
+        }
+    }
+
+    static var isRegisteredAtLogin: Bool {
+        SMAppService.loginItem(identifier: bundleID).status == .enabled
+    }
+
     /// Launches BGTools and opens its window.
     static func openDesktop() throws {
         guard let nestedURL else { throw BGToolsError.notBundled }
@@ -42,6 +54,23 @@ enum BGToolsHelper {
             }
         }
     }
+
+    /// Item 21, `ShowTools Feedback — Worklist for Next CC Session.md`:
+    /// "Launch BGT when launching ShowTools." No window request — this is
+    /// meant to be silent, just getting the desktop background ready, not
+    /// popping BGTools' own window in front of ShowTools' every time it
+    /// opens. A no-op if it's already running (its own accessory-app
+    /// activation policy means a second launch would still just reopen it
+    /// quietly, but there's no reason to ask twice).
+    static func launchAtShowToolsStartupIfEnabled() {
+        guard UserDefaults.standard.bool(forKey: launchWithShowToolsKey), let nestedURL else { return }
+        guard NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty else { return }
+        NSWorkspace.shared.openApplication(at: nestedURL, configuration: NSWorkspace.OpenConfiguration()) { _, error in
+            if let error { NSLog("BGTools didn't open at ShowTools launch: \(error)") }
+        }
+    }
+
+    static let launchWithShowToolsKey = "launchBGToolsWithShowTools"
 }
 
 enum BGToolsError: LocalizedError {
