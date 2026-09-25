@@ -52,9 +52,13 @@ final class AppModel {
         .split("window", .vertical, sized: .second,
                size: StorylineView.fullHeight + 56 + 10,
                range: (StorylineView.fullHeight + 56)...(StorylineView.fullHeight + 456),
+               // Item 15, `ShowTools Feedback — Worklist for Next CC
+               // Session.md`: 180 read too wide as a floor. 140 still
+               // shows an icon, a truncated name and the count badge on
+               // the narrowest real row ("Untitled Collection").
                .split("main", .horizontal, sized: .first, size: DefaultLayout.sidebarWidth,
-                      range: 180...360, title: "Library",
-                      .pane("library", title: "Library", minSize: 180),
+                      range: 140...360, title: "Library",
+                      .pane("library", title: "Library", minSize: 140),
                       .pane("detail", title: "Detail", minSize: 240)),
                .pane("storyline", title: "Timeline", minSize: StorylineView.fullHeight + 56, popOut: .window)))
     /// Edit Show's and Edit Slides' columns (`spec/panekit.md`, step 3): one
