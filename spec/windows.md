@@ -1,8 +1,16 @@
 # Windows of their own — the edit suite inside the edit suite
 
 **Status:** Mostly built. Six of Jason's seven answers are in (below).
-**Left:** the seventh answer (what comes first among the areas nothing's
-asked for yet), and the open questions under "Jason's answers."
+**Left:** answer 7 (double-click's meaning — still genuinely undecided,
+confirmed 2026-09-25), and two areas from the original list ("Areas that
+can leave the main window," below) that the built pop-outs don't cover:
+**the Library pane itself** (the collections/shows sidebar — what's built
+is the separate *Library panel*, all files in a floating window, not this
+area detaching) and **the Browser** (Edit Show's collection-file column).
+Also still open: the "scrolling a window that's partly covered" idea
+(designed, not built), and item 2's other half from the 2026-09-25
+feedback worklist — a written window-layer hierarchy, and an audit of the
+built pop-outs against it.
 
 **Superseded by PaneKit, 2026-09-24** (`spec/panekit.md`): this doc's own
 "suggested approach" below — a standalone harness proving `ColumnsSplitView`

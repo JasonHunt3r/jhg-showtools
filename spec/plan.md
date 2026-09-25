@@ -1103,6 +1103,33 @@ type-checker reason above.
 **Groups inside collections is now fully built**, Core through UI, matching
 everything Jason decided 2026-09-24.
 
+**Icons, settled 2026-09-25 (item 12, feedback worklist):** a collection
+gets the solid folder (`folder.fill`); a group keeps the outline
+(`folder`) it already had. **Built**: `collectionRow` in `MainView.swift`
+now uses `folder.fill` (was `rectangle.stack`); `groupRow`'s `folder` was
+already right. The collapsible groups-and-shows list in the Library pane
+Jason had in mind (`spec/plan.md` above, "the Library pane: a collection
+opens to show its groups and its shows side by side") was already built
+2026-09-24 — the icon was the only piece missing.
+
+**Promotion — a group becomes its own collection (Jason, 2026-09-25):**
+an idea, not yet designed or built. Needs answers before it's built: does
+the original group survive (emptied, or deleted) once promoted; do a
+promoted group's own nested sub-groups come along as the new collection's
+groups; and where the command lives (the group's context menu, presumably,
+alongside New Group in…/Rename…/Delete Group…, which today is
+deliberately minimal — "the fuller one is still 'to settle with
+groups'"). Worth settling together with that fuller group context menu.
+
+**Reordering — items 17/38 (feedback worklist), confirmed (Jason,
+2026-09-25):** yes, build the schema. Today `collection_items` and
+`group_items` only carry `added_at`; dragging to reorder needs a position
+column to drag against. Not yet designed: whether it's a plain integer
+sort column (renumbered on every reorder, as thelivery's web app does — a
+Vue implementation, referenced there for the interaction pattern, not the
+schema) or a fractional/gap-based order key (avoiding a renumbering pass
+on drag). Migration 14.
+
 **Built 2026-09-24 (nesting by drag, and dragging into another
 collection):** `Library.moveGroup(id:toParent:)` — nests a group inside
 another, or (nil) back to the top; both stay in the same collection (a

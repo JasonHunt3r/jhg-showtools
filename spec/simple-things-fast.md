@@ -2,8 +2,11 @@
 
 **Status:** Planned: ideas, not yet designed (Jason, 2026-09-22 and
 2026-09-24). Nothing is built. Jason has answered the first round of
-questions (below). **Left:** the Quick Show dialog's details, then a
-design with Jason.
+questions (below). **Confirmed 2026-09-25: all three answers (the guided
+first run, Quick Show, and the levels) are to be built, not chosen
+among** — they work together, per "Three answers, which work together"
+above. **Left:** the one still-open question below, the Quick Show
+dialog's details, then a design with Jason.
 
 Names follow `spec/anatomy.md`. This was called "a simple way in" in the
 plan and status. Jason's own framing is the better name: the app does a

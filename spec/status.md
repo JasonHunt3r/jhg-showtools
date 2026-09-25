@@ -63,8 +63,8 @@ axtool check actually covered:
 ### The 2026-09-25 feedback worklist
 
 Jason's own build feedback, `ShowTools Feedback — Worklist for Next CC
-Session.md` (repo root), 37 items, worked through in five batches grouped
-by shared code. **26 of 37 done** (batches 1–5 below); each fix checked
+Session.md` (repo root), 37 items, worked through in batches grouped
+by shared code. **27 of 37 done** (batches 1–6 below); each fix checked
 with axtool against a scratch library, not just compiled. Full dated
 story — root causes, what each check actually covered, the commit for
 each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
@@ -76,22 +76,59 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
 | 3 — frames row/transport | Items 7, 8, 18 (18 was already built) |
 | 4 — BGTools | Items 10, 21, 22 |
 | 5 — P2 polish | Items 30, 31 (31 was already built) |
+| 6 — transport/icon, discussed 2026-09-25 | Item 19; item 12's icon half (its promotion idea is still open, above) |
 
-**Left, going into the next discussion:**
-- **Item 12** (groups → a library item / catalog folder) needs a design
-  pass — the feedback doc's own Open Questions say so, Jason confirmed.
-- **Item 17** (drag-to-reorder in collections/groups) needs a schema
-  migration first (`collection_items`/`group_items` only order by
-  `added_at` today; no position column to drag against).
-- **Item 19** (transport greyed-out state) is the feedback doc's own
-  Open Question 1 — needs a concrete interaction spec.
+**Batch 6 — decided/built 2026-09-25** (this discussion):
+- **Item 19** (transport greyed-out state) — **built**: the timeline
+  pane's split now stays open in both edit modes (`MainView.isShowOpen`,
+  was `isEditingShow`, gated on `mode == .show` too); Edit Slides shows
+  `TimelinePanePlaceholder` (`EditShowTimelinePane.swift`), the same
+  chrome dimmed and inert, instead of the pane closing and the window
+  reflowing. Checked with axtool against the scratch library: the
+  placeholder's "Switch to Edit Show to use the timeline" reads correctly
+  in Edit Slides, and clicking back to Edit Show restores the real,
+  interactive transport and storyline, screenshotted both ways. **Left,
+  on purpose:** what a drop onto the greyed bar should do (item 33) — an
+  Open Question Jason wants to answer once he has a working copy to play
+  with, not before.
+- **Item 12** (groups → a library item / catalog folder) — Jason's actual
+  intent was already built 2026-09-24 (the Library pane's collapsible
+  groups-and-shows list); the only missing piece, the icon convention
+  (solid folder for a collection, outline for a group), is **built**
+  (`collectionRow` now uses `folder.fill`, confirmed by screenshot). The
+  bigger idea Jason raised alongside it — **promoting a group to its own
+  collection** — is still a design question (`spec/plan.md`, "Groups
+  inside collections," "Promotion"): what happens to the original group,
+  and whether nested sub-groups come along.
+- **Item 17 / 38** (drag-to-reorder, the schema) — confirmed: build it.
+  Migration 14, a position column on `collection_items`/`group_items`.
+  The interaction pattern from thelivery's web-app reordering tool is the
+  reference (a different codebase/language, referenced for the pattern
+  only). Not yet designed: plain integer sort vs. a gap-based order key.
 - **Items 23–25** (BGTools: Control Center tile clicks/icon, per-screen
-  stop, pan/zoom/length/transition parity) need real hands, a mechanism
-  choice, and a feature port, respectively.
+  stop, pan/zoom/length/transition parity) — Jason wants these queued as
+  their own BGTools work list, after the ShowTools fixes are done.
 - **Items 26, 27, 29** (header-bar restyling, corner-radius override, app
-  icons) need Jason's own design or artwork direction.
-- Item 2's other half: a written window-layer hierarchy, and an audit of
-  the other pop-outs against it.
+  icons) — Jason's counter-proposal: a small **live value-changer
+  panel** (corner radius, text size, control size, container-border
+  visibility, …) as a reusable dev tool for tuning any app's look by
+  trial and error, rather than one-off asks each needing a build. Not
+  scoped yet: still needs a design pass (where its values live —
+  UserDefaults keys the views already read, most likely — and which knobs
+  it exposes first).
+- Item 2's other half (a written window-layer hierarchy, and an audit of
+  the built pop-outs against it) — still open, not started.
+- **Simple things fast** — Jason confirmed 2026-09-25 all three answers
+  (guided first run, Quick Show, the levels) are to be **built**, not
+  chosen among. Its doc's own "Still open" list has shrunk to one real
+  question (presets shared or separate between Quick Show and New Show…);
+  status.md's older "Four questions" line was stale.
+- **Windows of their own** — the built pop-outs (Slide Editor, the
+  library panel, the Inspector, the Timeline pane) don't cover the whole
+  original list: **the Library pane itself** (the sidebar, not the
+  separate floating Library panel) and **the Browser** (Edit Show's file
+  column) still can't detach. Answer 7 (double-click's meaning) is also
+  still genuinely undecided — not superseded by the pop-out work.
 - **Five Open Questions** in the feedback doc itself (greyed-transport
   drag target, glass/vibrancy in light mode, Show Similar's engine,
   large-library DB/indexing, the collections list column dropdown) —

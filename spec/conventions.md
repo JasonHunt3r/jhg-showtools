@@ -165,7 +165,7 @@ divider, and empty groups are skipped:
 |---|---|
 | Library tile | **Settled 2026-09-24.** Play (the selection, or one picture; greyed out until playing without a show is built), Quick Look (⌘Y), Show Similar ✓ · New Show from *N* Items… ✓ (opens the New Show panel), Add to Show ✓ · New Collection from ✓, Add to Collection ✓ · Copy · Rename… ✓, Get Info ✓ · Remove from Collection ✓, Move to Trash… ✓ |
 | Find Similar Images set header (was Group Similar) | **Settled 2026-09-24.** Select Group, Keep One… ✓, **Keep as Group** · New Show from Group…, Add Group to Collection ▸ |
-| Library pane: a group | *To settle with groups* (`spec/plan.md`, "Groups inside collections"). Drop files onto it; it lists beside the collection's shows |
+| Library pane: a group | *To settle with groups* (`spec/plan.md`, "Groups inside collections"). Drop files onto it; it lists beside the collection's shows. **Promotion to its own collection** is one idea for it (Jason, 2026-09-25), not yet designed |
 | Empty grid space | **Settled 2026-09-24.** Import…, Select All, New Collection |
 | Slide (list or timeline) | **Settled for Edit Slides, 2026-09-24.** Play from Here ✓, Play Full Screen (from the slide) · Duplicate ✓, Copy, Paste (**with ⌥ held: Copy Settings, Paste Settings**) · **Replace Image…** · Show in Library, Open Inspector · Remove from Show ✓. No Show in Finder. **Quick settings as submenus** (settled): Length ▸, Transition ▸, Pan and Zoom ▸, each applying to every selected slide as one undo step |
 | Edit Slides: empty list space | **Settled 2026-09-24, to try.** Add from Collection…, Import…, Paste, Select All (today it shows the slide menu with nothing to act on) |
