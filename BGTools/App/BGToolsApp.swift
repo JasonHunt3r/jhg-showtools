@@ -41,9 +41,26 @@ final class BGToolsApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
         self.desktop = desktop
         panel = PanelController(desktop: desktop, windowState: windowState) { [weak self] in self?.showWindow() }
         windowState.moveToDisplay = { [weak self] display in self?.moveWindow(toDisplay: display) }
+        NotificationCenter.default.addObserver(self, selector: #selector(screensChanged),
+                                                name: NSApplication.didChangeScreenParametersNotification,
+                                                object: nil)
         let env = ProcessInfo.processInfo.environment
         if env["BGTOOLS_OPEN_WINDOW"] != nil { showWindow() }
         if env["BGTOOLS_OPEN_PANEL"] != nil { panel?.open() }
+    }
+
+    /// A monitor going away (item 11, `ShowTools Feedback — Worklist for
+    /// Next CC Session.md`) can leave an already-open window sitting on a
+    /// screen that no longer exists, off in coordinates nothing draws —
+    /// unreachable, since `showWindow()`'s own recenter-on-the-calling-
+    /// screen logic only runs when the window is (re)opened, not while it's
+    /// already open and visible. Recenter it onto the main screen the
+    /// moment its own screen disappears from `NSScreen.screens`, rather
+    /// than waiting for the next open.
+    @objc private func screensChanged() {
+        guard let window, window.isVisible, let screen = window.screen,
+              !NSScreen.screens.contains(screen), let main = NSScreen.main else { return }
+        center(window, on: main)
     }
 
     /// Opening BGTools again (Finder, Spotlight, `open`) shows its window.
