@@ -377,10 +377,45 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
      **Not checked:** the Library tab, a song under the range (so a
      non-Even rhythm has something real to quantize onto), Displace, and a
      real click — only axtool's.
-7. **Timeline keys:** the arrow keys (E2; **decided** in
-   `spec/conventions.md` §2: ← → through a row's items, ↑ ↓ between rows,
-   ← → in the ruler nudge the playhead; batch 4 left them unwired as
-   "waiting") + Go Back / Go Forward (W8).
+7. **Timeline keys — done 2026-09-24:** the arrow keys (E2; `spec/conventions.md`
+   §2: ← → through a row's items, ↑ ↓ between rows, ← → in the ruler nudge
+   the playhead) and Go Back / Go Forward (W8).
+   - **Arrow keys:** batch 4's `GridSelection.step` finally wired in.
+     Which row is "current" comes from whichever selection is
+     active — slides, the transition it leads into, a lane image or a
+     song — since `EditShowView` already keeps those mutually exclusive;
+     nothing selected falls back to nudging the playhead (one frame,
+     1/30 s), as the settled decision says "in the ruler" should. ↑ ↓
+     switch to the row above/below in the show's own row order and land
+     on whichever item there sits nearest the old selection's time (or
+     the playhead, from nothing). ⇧← / ⇧→ extend the slides row's
+     selection exactly as a ⇧-click would (its anchor/base/cursor moved
+     from `StorylineView`'s own `@State` into `ShowSession` — a click and
+     an arrow key both touch it now, so they can't desync); the other
+     rows are single-selection in this UI, so ⇧ has no effect there.
+     **A gap found by hand, not fixed:** moving to an empty row (this
+     show has no lane images or songs) deselects everything instead of
+     skipping to the next non-empty row — reasoned as acceptable for now,
+     worth Jason's opinion.
+   - **Go Back / Go Forward (W8):** a browser-style two-stack history on
+     `ShowSession` (`PlayheadStep`: time, zoom, and the slide nearest the
+     ruler's left edge in place of a raw scroll offset, which
+     `ScrollViewReader` has no way to restore directly — it only scrolls
+     to a view's id, so restoring re-centres on that slide instead). A
+     ruler click or scrub drag pushes one step at its start, not on every
+     `onChanged` tick; a keyboard nudge pushes one per press; Go Back and
+     Go Forward themselves push the opposite direction's stack, browser-
+     style, and never register as edits. ⌘[ / ⌘] and matching View menu
+     items (`Go Back`, `Go Forward`, disabled at either end of the
+     history). Checked with axtool against a scratch library: a slide
+     selection, ↑ to its transition, ↑ again to the (empty) images row,
+     → moving the selection, a ruler click, Go Back and Go Forward both
+     landing on the exact recorded times, and `Edit ▸ Undo` staying
+     disabled throughout (confirming the playhead really does stay out of
+     ⌘Z). **Not checked:** whether Go Back's scroll restoration (jumping
+     to the nearest slide rather than the exact pixel offset) actually
+     looks right zoomed out with a lot of storyline in view — only the
+     time and zoom were confirmed, not a real look at the scroll.
 8. **Drops onto slides + Replace Image…:** the slide list inserts where a
    drop lands (G2), and a drop onto a slide offers Replace or Insert.
 9. **The grid's keyboard** (audit batch 7: B1, B2, B5, B6): arrow keys,
@@ -454,6 +489,13 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
+- **Timeline keys** (built 2026-09-24, `spec/conventions.md` §2): arrow-key
+  navigation across all four rows and Go Back/Forward — checked with
+  axtool against a scratch library's saved state (times, the enabled/
+  disabled menu items, `Edit ▸ Undo` staying off), never by a real
+  keypress or a real look at the storyline. Worth a particular look: the
+  empty-row deselect gap noted above, and whether Go Back's scroll
+  restoration (the nearest slide, not the exact offset) feels right.
 - **The whole range package, W6–W10** (built 2026-09-24, `spec/plan.md`
   "The range and the ruler" and "Fill the range with images"): dragging
   an end, the lock (right-click of either end, the shaded span or the

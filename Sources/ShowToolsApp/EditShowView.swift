@@ -52,7 +52,7 @@ struct EditShowView: View {
                                      setRangeToView: setRangeToView, setRangeToWholeShow: setRangeToWholeShow,
                                      clearRange: clearRange, toggleRangeLock: { toggleRangeLock(engine) })
                         Divider()
-                        StorylineView(show: show, timeline: timeline, engine: engine,
+                        StorylineView(show: show, timeline: timeline, engine: engine, session: session,
                                       selection: $session.selection, selectedTransition: $session.selectedTransition,
                                       selectedOverlay: $session.selectedOverlay, selectedSong: $session.selectedSong,
                                       selectedMarkers: $session.selectedMarkers,
@@ -238,14 +238,156 @@ struct EditShowView: View {
         engine.updateEditor { $0.rangeLocked.toggle() }
     }
 
+    // MARK: Arrow keys (item 7, work order; spec/conventions.md §2, settled
+    // 2026-09-24): ← → move through the items in the current row, ↑ ↓ move
+    // between rows, and with nothing selected, ← → nudge the playhead
+    // instead, as in the ruler.
+
+    /// Whichever selection is active names the current row — they're kept
+    /// mutually exclusive elsewhere in this view (the `onChange` handlers
+    /// below). Nil means nothing's selected: ← → falls back to the
+    /// playhead, and ↑ ↓ starts from the slides row.
+    private var currentRow: TimelineRow.Kind? {
+        if !session.selection.isEmpty { return .slides }
+        if session.selectedTransition != nil { return .transitions }
+        if session.selectedOverlay != nil { return .images }
+        if session.selectedSong != nil { return .music }
+        return nil
+    }
+
+    /// The time whatever's selected sits at, for ↑ ↓ to land near when it
+    /// switches rows; the playhead's, with nothing selected.
+    private func currentTime(_ engine: PlaybackEngine) -> Double {
+        if let id = session.slideCursor ?? session.selection.first,
+           let r = timeline.slides.first(where: { $0.slide.id == id }) { return r.start }
+        if let id = session.selectedTransition, let r = timeline.slides.first(where: { $0.slide.id == id }) {
+            return r.start
+        }
+        if let id = session.selectedOverlay, let o = show.overlays.first(where: { $0.id == id }) { return o.start }
+        if let id = session.selectedSong, let c = show.music.first(where: { $0.id == id }) { return c.start }
+        return engine.timeline.wrap(engine.now)
+    }
+
+    /// ← → within the current row (batch 4's `GridSelection`, unwired
+    /// until now): the slides row supports ⇧ to extend, like a ⇧-click;
+    /// the others are single-selection in this UI, so ⇧ has no effect
+    /// there. Nothing selected: nudge the playhead instead.
+    private func moveSelection(_ delta: Int, extend: Bool, engine: PlaybackEngine) {
+        guard let row = currentRow else { nudgePlayhead(delta, engine: engine); return }
+        switch row {
+        case .slides:
+            let items = timeline.slides.map(\.slide.id)
+            let r = GridSelection.step(from: session.slideCursor, by: delta, anchor: session.slideAnchor,
+                                       base: session.slideAnchorBase, in: items, extend: extend)
+            session.selection = r.selected
+            session.slideAnchor = r.anchor
+            session.slideAnchorBase = r.base
+            session.slideCursor = r.cursor
+            if let id = r.cursor { engine.showSlide(id: id) }
+        case .transitions:
+            let items = timeline.slides.map(\.slide.id)
+            session.selectedTransition = GridSelection.step(from: session.selectedTransition, by: delta,
+                                                             anchor: nil, base: [], in: items, extend: false).cursor
+        case .images:
+            let items = show.overlays.sorted { $0.start < $1.start }.map(\.id)
+            session.selectedOverlay = GridSelection.step(from: session.selectedOverlay, by: delta,
+                                                          anchor: nil, base: [], in: items, extend: false).cursor
+        case .music:
+            let items = show.music.sorted { $0.start < $1.start }.map(\.id)
+            session.selectedSong = GridSelection.step(from: session.selectedSong, by: delta,
+                                                       anchor: nil, base: [], in: items, extend: false).cursor
+        }
+    }
+
+    /// ↑ ↓ between rows, in the show's own row order (a live drag of a
+    /// row's handle isn't in play while a key is being pressed, so
+    /// `show.rows` — not the storyline's own `displayRows` — is enough).
+    /// Lands on whichever item in the new row sits nearest the old
+    /// selection's time; nothing selected starts at the slides row,
+    /// nearest the playhead.
+    private func moveRow(_ delta: Int, engine: PlaybackEngine) {
+        let kinds = show.rows.map(\.kind)
+        guard !kinds.isEmpty else { return }
+        let time = currentTime(engine)
+        if let row = currentRow, let i = kinds.firstIndex(of: row) {
+            let to = min(max(i + delta, 0), kinds.count - 1)
+            guard to != i else { return }
+            selectNearest(in: kinds[to], to: time, engine: engine)
+        } else {
+            selectNearest(in: kinds.contains(.slides) ? .slides : kinds[0], to: time, engine: engine)
+        }
+    }
+
+    private func selectNearest(in kind: TimelineRow.Kind, to time: Double, engine: PlaybackEngine) {
+        session.selection = []; session.selectedTransition = nil
+        session.selectedOverlay = nil; session.selectedSong = nil
+        switch kind {
+        case .slides:
+            guard let r = timeline.slides.min(by: { abs($0.start - time) < abs($1.start - time) }) else { return }
+            let res = GridSelection.click(r.slide.id)
+            session.selection = res.selected; session.slideAnchor = res.anchor
+            session.slideAnchorBase = res.base; session.slideCursor = res.cursor
+            engine.showSlide(id: r.slide.id)
+        case .transitions:
+            session.selectedTransition = timeline.slides.min { abs($0.start - time) < abs($1.start - time) }?.slide.id
+        case .images:
+            session.selectedOverlay = show.overlays.min { abs($0.start - time) < abs($1.start - time) }?.id
+        case .music:
+            session.selectedSong = show.music.min { abs($0.start - time) < abs($1.start - time) }?.id
+        }
+    }
+
+    /// One frame (item 7, work order: "← → nudge the playhead"). A
+    /// deliberate nudge, so it's its own Go Back step (W8).
+    private func nudgePlayhead(_ delta: Int, engine: PlaybackEngine) {
+        recordPlayheadJump(engine)
+        if engine.isPlaying { engine.pause() }
+        let t = engine.timeline.wrap(engine.now) + Double(delta) / 30
+        engine.seek(min(max(t, 0), max(engine.duration - 0.001, 0)))
+    }
+
+    // MARK: Go Back / Go Forward (W8, item 7; plan, "Go Back, not undo")
+
+    /// Push the position as it is right now, before a jump changes it —
+    /// called at a ruler click/drag's start (`StorylineView`) and before
+    /// each keyboard nudge. Clears Go Forward: a genuinely new jump isn't
+    /// a redo of one just undone by Go Back.
+    private func recordPlayheadJump(_ engine: PlaybackEngine) {
+        session.goBackHistory.append(.current(engine: engine, timeline: timeline, pps: pps,
+                                              scrollOffset: session.storylineOffset))
+        session.goForwardHistory = []
+    }
+
+    private func goBack(_ engine: PlaybackEngine) {
+        guard let step = session.goBackHistory.popLast() else { return }
+        session.goForwardHistory.append(.current(engine: engine, timeline: timeline, pps: pps,
+                                                  scrollOffset: session.storylineOffset))
+        apply(step, engine)
+    }
+
+    private func goForward(_ engine: PlaybackEngine) {
+        guard let step = session.goForwardHistory.popLast() else { return }
+        session.goBackHistory.append(.current(engine: engine, timeline: timeline, pps: pps,
+                                              scrollOffset: session.storylineOffset))
+        apply(step, engine)
+    }
+
+    private func apply(_ step: PlayheadStep, _ engine: PlaybackEngine) {
+        if engine.isPlaying { engine.pause() }
+        engine.seek(step.time)
+        pps = step.pps
+        session.pendingScroll = step.leadingSlideID
+    }
+
     /// Keyboard shortcuts: Final Cut's J/K/L, space, and its M (marker), I
-    /// and O (range), N (snapping) — bare keys, so `SingleKeys` handles
-    /// them (never `.keyboardShortcut`, which would become a window key
-    /// equivalent AppKit offers before the focused text field, stealing
-    /// "j" or a space out of Search — audit M4). ⌘L (loop), ⌘=/⌘− (zoom),
-    /// ⌥X (clear range) and ⇧Z (fit) all need a modifier, so they're safe
-    /// as real menu shortcuts instead (F1, batch 5) — `editShowCommands`,
-    /// below, publishes the actions the Show and View menus call.
+    /// and O (range), N (snapping), and the arrow keys (item 7, work
+    /// order) — bare keys, so `SingleKeys` handles them (never
+    /// `.keyboardShortcut`, which would become a window key equivalent
+    /// AppKit offers before the focused text field, stealing "j" or a
+    /// space out of Search — audit M4). ⌘L (loop), ⌘=/⌘− (zoom), ⌥X (clear
+    /// range) and ⇧Z (fit) all need a modifier, so they're safe as real
+    /// menu shortcuts instead (F1, batch 5) — `editShowCommands`, below,
+    /// publishes the actions the Show and View menus call.
     private func shortcuts(_ engine: PlaybackEngine) -> some View {
         ZStack {
             SingleKeys { event in
@@ -258,6 +400,12 @@ struct EditShowView: View {
                 case (_, "i", []): setRangeIn(engine)
                 case (_, "o", []): setRangeOut(engine)
                 case (_, "n", []): snapping.toggle()
+                case (123, _, []): moveSelection(-1, extend: false, engine: engine)     // ←
+                case (123, _, [.shift]): moveSelection(-1, extend: true, engine: engine)
+                case (124, _, []): moveSelection(1, extend: false, engine: engine)      // →
+                case (124, _, [.shift]): moveSelection(1, extend: true, engine: engine)
+                case (126, _, []): moveRow(-1, engine: engine)                          // ↑
+                case (125, _, []): moveRow(1, engine: engine)                           // ↓
                 default: return false
                 }
                 return true
@@ -281,7 +429,11 @@ struct EditShowView: View {
             rangeLocked: show.editor.rangeLocked,
             toggleLoop: { engine.updateEditor { $0.loopPlayback.toggle() } },
             loopOn: show.editor.loopPlayback,
-            zoomToFit: fitStoryline))
+            zoomToFit: fitStoryline,
+            goBack: { goBack(engine) },
+            goForward: { goForward(engine) },
+            canGoBack: !session.goBackHistory.isEmpty,
+            canGoForward: !session.goForwardHistory.isEmpty))
     }
 }
 

@@ -158,6 +158,17 @@ struct AppCommands: Commands {
             Button("Zoom to Fit") { editShowCommands?.zoomToFit() }
                 .keyboardShortcut("z", modifiers: .shift)
                 .disabled(editShowCommands == nil)
+            Divider()
+            // W8, item 7: the playhead's own history — out of ⌘Z on
+            // purpose (plan, "Go Back, not undo"). ⌘[ / ⌘], as in Finder
+            // and Safari.
+            Button("Go Back") { editShowCommands?.goBack() }
+                .keyboardShortcut("[", modifiers: .command)
+                .disabled(!(editShowCommands?.canGoBack ?? false))
+            Button("Go Forward") { editShowCommands?.goForward() }
+                .keyboardShortcut("]", modifiers: .command)
+                .disabled(!(editShowCommands?.canGoForward ?? false))
+            Divider()
             Toggle("Snapping  (N)", isOn: $snapping)
                 .disabled(editShowCommands == nil)
             Divider()

@@ -889,6 +889,12 @@ struct EditShowCommandsValue {
     var toggleLoop: () -> Void
     var loopOn: Bool
     var zoomToFit: () -> Void
+    /// W8, item 7: the playhead's own history, out of ⌘Z on purpose
+    /// (plan, "Go Back, not undo").
+    var goBack: () -> Void
+    var goForward: () -> Void
+    var canGoBack: Bool
+    var canGoForward: Bool
 }
 
 struct EditShowCommandsKey: FocusedValueKey { typealias Value = EditShowCommandsValue }

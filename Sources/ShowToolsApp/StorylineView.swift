@@ -14,16 +14,25 @@ struct StorylineView: View {
     let show: Show
     let timeline: ShowTimeline
     let engine: PlaybackEngine
+    /// Its own anchor/cursor state for the slides row (item 7, work order):
+    /// shared with `EditShowView`'s arrow-key handling, which needs the
+    /// same anchor a click just set, so the two don't desync.
+    let session: ShowSession
     @Binding var selection: Set<Int64>
     /// The anchor for ⇧-click (batch 4, E1): the last plain or ⌘-click,
     /// not derived from `selection` itself (the old bug used the first
     /// selected slide instead, which isn't the same thing once ⌘-click has
     /// moved the anchor elsewhere). `selectionBase` is `selection` at the
     /// moment the anchor was last set, for `GridSelection`'s ⇧-click to
-    /// union with — local to the storyline, not shared with Edit Slides,
-    /// which is a plain `List` and doesn't need it.
-    @State private var anchor: Int64?
-    @State private var selectionBase: Set<Int64> = []
+    /// union with.
+    private var anchor: Int64? {
+        get { session.slideAnchor }
+        nonmutating set { session.slideAnchor = newValue }
+    }
+    private var selectionBase: Set<Int64> {
+        get { session.slideAnchorBase }
+        nonmutating set { session.slideAnchorBase = newValue }
+    }
     /// The transition selected in the lane, by the slide it leads into.
     @Binding var selectedTransition: Int64?
     /// The image selected in the lane's images row.
@@ -51,6 +60,9 @@ struct StorylineView: View {
         var dt: Double
     }
     @State private var markerDrag: MarkerDrag?
+    /// Whether the current ruler drag has already pushed its Go Back step
+    /// (W8, item 7) — reset when the drag ends.
+    @State private var scrubJumpRecorded = false
 
     /// A range end being dragged (W6, work order item 6): which one, and its
     /// time while the drag is in progress.
@@ -344,6 +356,16 @@ struct StorylineView: View {
                 // Keep the playing slide in view.
                 guard engine.isPlaying, timeline.slides.indices.contains(i) else { return }
                 withAnimation(.easeInOut(duration: 0.3)) { proxy.scrollTo(timeline.slides[i].slide.id, anchor: .center) }
+            }
+            // Go Back/Forward (W8, item 7): `ScrollViewReader` only scrolls
+            // to a view's id, not a raw offset, so restoring the view
+            // re-centres on whichever slide was nearest the left edge when
+            // the step was recorded, rather than reproducing the exact
+            // pixel offset.
+            .onChange(of: session.pendingScroll) { _, id in
+                guard let id else { return }
+                withAnimation(.easeInOut(duration: 0.3)) { proxy.scrollTo(id, anchor: .leading) }
+                session.pendingScroll = nil
             }
         }
         .gesture(MagnifyGesture()
@@ -769,6 +791,7 @@ struct StorylineView: View {
         selection = r.selected
         anchor = r.anchor
         selectionBase = r.base
+        session.slideCursor = r.cursor
         selectedTransition = nil
         selectedOverlay = nil
         focused = true
@@ -1221,10 +1244,12 @@ struct StorylineView: View {
     private var scrubGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .local)
             .onChanged { g in
+                recordScrubJump()
                 if engine.isPlaying { engine.pause() }
                 let t = max(0, Double(g.location.x - Self.inset) / pps)
                 engine.seek(min(t, max(timeline.duration - 0.001, 0)))
             }
+            .onEnded { _ in scrubJumpRecorded = false }
     }
 
     /// The same seek as `scrubGesture`, in the "storyline" named space
@@ -1234,10 +1259,24 @@ struct StorylineView: View {
     private var rangeScrubGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named("storyline"))
             .onChanged { g in
+                recordScrubJump()
                 if engine.isPlaying { engine.pause() }
                 let t = max(0, Double(g.location.x - Self.inset) / pps)
                 engine.seek(min(t, max(timeline.duration - 0.001, 0)))
             }
+            .onEnded { _ in scrubJumpRecorded = false }
+    }
+
+    /// One Go Back step per click-and-release or scrub drag (W8, item 7;
+    /// plan, "Go Back's steps"), not once per `onChanged` tick: the first
+    /// tick of a gesture pushes the position from before it started, and
+    /// `scrubJumpRecorded` keeps the rest of the same drag from pushing
+    /// again.
+    private func recordScrubJump() {
+        guard !scrubJumpRecorded else { return }
+        scrubJumpRecorded = true
+        session.goBackHistory.append(.current(engine: engine, timeline: timeline, pps: pps, scrollOffset: scrollOffset))
+        session.goForwardHistory = []
     }
 }
 
