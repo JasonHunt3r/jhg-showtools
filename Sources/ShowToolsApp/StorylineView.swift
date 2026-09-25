@@ -96,6 +96,8 @@ struct StorylineView: View {
     /// editor's current bounds (not the drag preview — a menu only opens
     /// once a drag has ended).
     @State private var fillRangeSheet: FillRangeSheet.Request?
+    /// Replace Image… (item 8, work order), by the slide it's for.
+    @State private var replacingImage: Int64?
     /// The markers the open sheet would place, drawn faintly on the ruler.
     @State private var beatPreview: [Double] = []
 
@@ -399,6 +401,13 @@ struct StorylineView: View {
         }
         .sheet(item: $fillRangeSheet) { req in
             FillRangeSheet(request: req, show: show, timeline: timeline, mutate: mutate)
+        }
+        .sheet(isPresented: Binding(get: { replacingImage != nil }, set: { if !$0 { replacingImage = nil } })) {
+            if let slideID = replacingImage, let itemID = show.slides.first(where: { $0.id == slideID })?.itemID {
+                ReplaceImagePicker(show: show, currentItemID: itemID) { newItemID in
+                    SlideActions.replaceImage(slideID, with: newItemID, mutate: mutate)
+                }
+            }
         }
         .onKeyPress(.escape) {
             if !openDrawers.isEmpty {
@@ -749,6 +758,7 @@ struct StorylineView: View {
                 let ids = selection.contains(p.id) ? selection : [p.id]
                 Button("Open in Slide Editor") { openSlideEditor(p.id) }
                 Button("Duplicate") { SlideActions.duplicate(ids, mutate: mutate) }
+                if ids.count == 1 { Button("Replace Image…") { replacingImage = p.id } }
                 Button("Remove from Show") { SlideActions.remove(ids, selection: $selection, mutate: mutate) }
             }
             // A video slide's own sound (spec/video-audio.md). Silent until

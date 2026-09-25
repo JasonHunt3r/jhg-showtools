@@ -19,6 +19,8 @@ struct SlideInspector: View {
     var engine: PlaybackEngine? = nil
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
+    /// Replace Image… (item 8, work order): only offered for one slide.
+    @State private var replacingImage = false
 
     private var selected: [Slide] { show.slides.filter { selection.contains($0.id) } }
 
@@ -90,12 +92,19 @@ struct SlideInspector: View {
         }
         .font(.callout)
         .padding(.horizontal, 10).padding(.vertical, 8)
-        // Settled 2026-09-24 (`spec/conventions.md` §3, item 6). Replace
-        // Image… is deferred (`spec/plan.md`, Later) so left off for now.
+        // Settled 2026-09-24 (`spec/conventions.md` §3, item 6).
         .contextMenu {
             Button("Play from Here") { playFromHere() }
             if let itemID = selected.first?.itemID {
                 Button("Show in Library") { showInLibrary(itemID, model: model, undoManager: undoManager) }
+                if selected.count == 1 { Button("Replace Image…") { replacingImage = true } }
+            }
+        }
+        .sheet(isPresented: $replacingImage) {
+            if let slide = selected.first {
+                ReplaceImagePicker(show: show, currentItemID: slide.itemID) { newItemID in
+                    SlideActions.replaceImage(slide.id, with: newItemID, mutate: mutate)
+                }
             }
         }
     }

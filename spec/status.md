@@ -416,8 +416,25 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
      to the nearest slide rather than the exact pixel offset) actually
      looks right zoomed out with a lot of storyline in view — only the
      time and zoom were confirmed, not a real look at the scroll.
-8. **Drops onto slides + Replace Image…:** the slide list inserts where a
-   drop lands (G2), and a drop onto a slide offers Replace or Insert.
+8. **Drops onto slides + Replace Image…:** ~~Replace Image…~~ — done
+   2026-09-24 — → the slide list inserts where a drop lands (G2), and a
+   drop onto a slide offers Replace or Insert, still to come.
+   - **Replace Image…** (plan.md, "Replace a slide's image"): only a
+     slide's (or lane image's) `itemID` changes — length, transition, Pan
+     and Zoom, transform and effects all carry over unchanged, since
+     every position in its settings is already a fraction of the image,
+     not pixels. One tap in a new `ReplaceImagePicker` (the same shape as
+     `LibraryPicker`, scoped to the show's own collection, the current
+     image shown disabled) picks and closes; one undo step
+     (`SlideActions.replaceImage`). Wired into all four places the plan
+     names: a slide's menu in both Edit Slides' list and the storyline,
+     a lane image's menu, and the inspector's header bar (the "deferred"
+     note there is gone). Checked with axtool against a scratch library:
+     opened from the storyline, swapped photo_01.jpg for photo_06.jpg,
+     confirmed the slide's `item_id` changed in the saved show and
+     `⌘Z` put it back in one step. **Not checked:** the Edit Slides list,
+     the lane image and the inspector menus, or a real click anywhere —
+     only the storyline's was actually exercised.
 9. **The grid's keyboard** (audit batch 7: B1, B2, B5, B6): arrow keys,
    Quick Look on ⌘Y, Return renames, double-click.
 10. **BGTools batch:** names (W5) → the map view (W9) → the window opening

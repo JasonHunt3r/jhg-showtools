@@ -48,6 +48,8 @@ struct ImagesRow: View {
     @State private var hoverX: CGFloat = 0
     /// While the library picker is open: the time to place at.
     @State private var placing: PlaceRequest?
+    /// Replace Image… (item 8, work order), by the overlay it's for.
+    @State private var replacingImage: UUID?
 
     struct PlaceRequest: Identifiable {
         let time: Double
@@ -94,6 +96,16 @@ struct ImagesRow: View {
                 // joins it, after asking.
                 if let item, model.bringIntoCollection([item.id], forShow: show.id) {
                     place([item.id], at: request.time)
+                }
+            }
+        }
+        .sheet(isPresented: Binding(get: { replacingImage != nil }, set: { if !$0 { replacingImage = nil } })) {
+            if let overlayID = replacingImage, let itemID = show.overlays.first(where: { $0.id == overlayID })?.itemID {
+                ReplaceImagePicker(show: show, currentItemID: itemID) { newItemID in
+                    mutate("Replace Image") { s in
+                        guard let i = s.overlays.firstIndex(where: { $0.id == overlayID }) else { return }
+                        s.overlays[i].itemID = newItemID
+                    }
                 }
             }
         }
@@ -187,6 +199,7 @@ struct ImagesRow: View {
         // (Duplicate, Show in Finder, Open Inspector) waits for the
         // right-click conversation (spec/conventions.md §3).
         .contextMenu {
+            Button("Replace Image…") { replacingImage = id }
             Button("Remove Image") {
                 select(id)
                 mutate("Remove Image") { $0.overlays.removeAll { $0.id == id } }

@@ -144,6 +144,19 @@ enum SlideActions {
             s.slides = rest
         }
     }
+
+    /// Replace a slide's image (item 8, work order; plan.md, "Replace a
+    /// slide's image"): only its `itemID` changes. Length, transition, Pan
+    /// and Zoom, transform and effects carry over unchanged, since every
+    /// position in a slide's settings is already a fraction of the image,
+    /// not pixels — a picture of a different shape just frames a little
+    /// differently.
+    static func replaceImage(_ slideID: Int64, with itemID: Int64, mutate: ShowMutator) {
+        mutate("Replace Image") { s in
+            guard let i = s.slides.firstIndex(where: { $0.id == slideID }) else { return }
+            s.slides[i].itemID = itemID
+        }
+    }
 }
 
 // MARK: - Edit Slides mode
@@ -160,6 +173,8 @@ struct EditSlidesView: View {
     @State private var dropTargeted = false
     /// "Add from Collection…" on an empty show (audit H2).
     @State private var addingFromCollection = false
+    /// Replace Image… (item 8, work order), by the slide it's for.
+    @State private var replacingImage: Int64?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -189,6 +204,7 @@ struct EditSlidesView: View {
                     guard let itemID = show.slides.first(where: { $0.id == id })?.itemID else { return }
                     showInLibrary(itemID, model: model, undoManager: undoManager)
                 }
+                if ids.count == 1 { Button("Replace Image…") { replacingImage = id } }
             }
             Divider()
             Button("Play from Here") {
@@ -241,6 +257,13 @@ struct EditSlidesView: View {
         .sheet(isPresented: $addingFromCollection) {
             MultiItemPicker(title: "Add from Collection", items: collectionItems) { ids in
                 model.append(Array(ids), to: show.id, undo: undoManager)
+            }
+        }
+        .sheet(isPresented: Binding(get: { replacingImage != nil }, set: { if !$0 { replacingImage = nil } })) {
+            if let slideID = replacingImage, let itemID = show.slides.first(where: { $0.id == slideID })?.itemID {
+                ReplaceImagePicker(show: show, currentItemID: itemID) { newItemID in
+                    SlideActions.replaceImage(slideID, with: newItemID, mutate: mutate)
+                }
             }
         }
         .onDrop(of: ItemDrag.accepted, isTargeted: $dropTargeted) { providers in
