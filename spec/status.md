@@ -85,9 +85,35 @@ half, still open — a documentation task, not a bug):**
   "divider isolation" trade `panekit.md` documented and confirmed by hand
   on 2026-09-24 — Jason's own feedback the next day reversed it.
 
-Batches 2–5 (library/collections interactions, frames row/transport,
-BGTools P1s, P2 polish) not started. Five items need Jason's own decision
-first (Open Questions in the feedback doc) before CC can build them.
+**Batch 2 (library/collections interactions) mostly done:**
+- **Item 6**, clicking a use in Edit Show's list moved the playhead:
+  fixed — a plain click now only selects; ⌥-click keeps the old jump.
+  Checked with axtool: selecting a later slide leaves the preview and
+  timeline at 0:00.
+- **Item 3**, clicking the library pane's background switched the detail
+  pane to the plain Library grid: fixed — the sidebar `List`'s selection
+  binding now ignores a background click's nil write. Checked with
+  axtool.
+- **Item 4**, no right-click response in the main window's background:
+  fixed for the Library grid's own background (Import…/New Collection…/
+  Add from Library…). Checked with axtool. The sidebar's own background
+  right-click wasn't separately checked — worth a look.
+- **Item 5**, "New Group from Selected" ignoring the entered name and
+  creating "Untitled Show": **not reproduced.** The actual menu path
+  (right-click a selection ▸ Add to Group ▸ New Group…) was driven with
+  axtool end to end — typed "My Test Group," clicked Create, and the
+  library's `groups` table shows exactly that name, not "Untitled Show."
+  Every `newGroup`/`newShow` call site was also read; none conflates the
+  two. Needs Jason's own steps to pin down what he actually clicked —
+  possibly a different path than the grid's own "New Group…", since that
+  string doesn't appear verbatim anywhere in the app's menus.
+- Not yet started: collections list min-width (15), delete-from-library
+  checkbox (16), reordering drag (17), groups→library item (12),
+  "Change Library" right-click entry (28), modified-click rename (32).
+
+Batches 3–5 (frames row/transport, BGTools P1s, P2 polish) not started.
+Five items need Jason's own decision first (Open Questions in the
+feedback doc) before CC can build them.
 
 **A preferences leak, caught and fixed mid-session:** testing item 1's
 pop-out interactively wrote a scratch pop-out state into the *shared*
