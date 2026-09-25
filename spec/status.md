@@ -325,12 +325,6 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
-- **The Slide Editor's v1** (built 2026-09-24, `spec/panekit.md` "Step 4,
-  first piece"): checked with axtool against a scratch library — both
-  double-click paths, retargeting, Esc, no new exception-log entries —
-  but the handles' feel (drag, corner scale, rotation, the sliders' live
-  preview) hasn't been tried by a real hand yet, and neither has resizing
-  or moving the window itself.
 - **Audit G1 and the audio-naming pass** (`7c1613a`, `dcf47c2`): both
   build and the app launches, but the hands-on checks weren't done this
   session — see the work queue above.

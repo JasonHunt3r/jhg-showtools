@@ -37,11 +37,12 @@ engine running at all); retargeting to a different slide reuses the same
 window rather than opening a second one. Opens from a double-click on a
 slide in Edit Slides' list or the storyline, or "Open in Slide Editor" on
 either's context menu. `swift test` (305) and `./make-app.sh` clean;
-checked by hand with axtool against a scratch library — both double-click
-paths open it, retargeting reuses the window, Esc closes it, no new
-`ShowTools-exception.log` entries. **Left of step 4:** the library panel,
-one detachable area (probably the inspector), the timeline pane detached
-last — `spec/windows.md`, "A possible order".
+checked with axtool against a scratch library — both double-click paths
+open it, retargeting reuses the window, Esc closes it, no new
+`ShowTools-exception.log` entries — and **confirmed by Jason's own hands,
+2026-09-24: "seems to work as expected."** **Left of step 4:** the
+library panel, one detachable area (probably the inspector), the
+timeline pane detached last — `spec/windows.md`, "A possible order".
 
 ## What it is
 
