@@ -311,9 +311,9 @@ universals first.
 - **1. The Library pane: done 2026-09-24.** Jason's answers:
   - **The Library row** gets **Show in Finder**, which reveals the
     library's folder ("would be nice"). **Built 2026-09-24**, along
-    with Import… and New Collection… (it had no menu at all); Open
-    Library Panel is on it too, greyed out (the library panel itself
-    isn't built, `spec/windows.md`).
+    with Import… and New Collection… (it had no menu at all) and Open
+    Library Panel, which opens `LibraryPanel` (`Libraries.swift`),
+    built.
   - **Playing a collection without making a show** goes on the
     collection's menu now, **greyed out until it's built**
     (`spec/simple-things-fast.md`, Quick Show). Not yet added to the
@@ -463,16 +463,14 @@ universals first.
     (the timeline widget) is genuinely ambiguous — "reset" and "copy"
     would need to mean something for a whole timeline, not one field —
     so it's left out rather than guessed at.
-  - **Replace Image…** on the inspector's right-click menu. Settled, but
-    deferred with the rest of Replace Image… (`spec/plan.md`, Later) —
-    not built.
   - **A single control:** Reset to Default. **Not built**: every control
     already has an equivalent through its own "Show default" picker
     option or its section's Reset, so a right-click on each individual
     slider is a mechanical pass touching every control, not core
     function — left for later rather than done partially.
   - **The header bar:** Play from Here, Replace Image…, Show in Library.
-    **Built**, minus Replace Image… (deferred, as above). Play from Here
+    **Built**, including Replace Image… (`SlideInspector.swift`).
+    Play from Here
     uses the live engine when there is one (Edit Show), or opens a player
     window at the slide otherwise (Edit Slides, which has no engine).
   - **Anything missing:** "I'm sure we'll find something, but this will
