@@ -52,6 +52,16 @@ final class AppModel {
     private(set) var showSession: ShowSession?
     /// Developer hook only: a slide for the show view to select on appearing.
     var devSelection: Int64?
+    /// Edit Show's transport/timeline commands, for the Show and View
+    /// menus (`ShowToolsApp.swift`'s `AppCommands`). Was
+    /// `@FocusedValue`/`.focusedSceneValue` until 2026-09-25: that's
+    /// scoped to SwiftUI's own `Scene` graph, so it never reached the
+    /// menus while the Timeline pane's popped-out window was key
+    /// (`spec/panekit.md`, "The order," step 5) — a plain stored property
+    /// here is reachable regardless of which window is key, matching
+    /// `UndoMenuState`'s fix for Undo/Redo. `EditShowView` sets and
+    /// clears it; absent outside Edit Show, same as before.
+    var editShowCommands: EditShowCommandsValue?
     /// The Info panel's targets: kept here, not in the grid's own state,
     /// because the panel is a separate window and needs to live-update as
     /// the grid's selection changes while it's open.

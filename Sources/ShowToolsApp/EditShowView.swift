@@ -162,6 +162,11 @@ struct EditShowView: View {
                 engine.shutdown()
             }
             session.engine = nil
+            // Matches the old FocusedValue's own absence outside Edit
+            // Show (spec/hig-audit.md, "G"): leaving this view, by
+            // switching to Edit Slides or away from the show entirely,
+            // disables the Show/View menu's editShowCommands items again.
+            model.editShowCommands = nil
         }
     }
 
@@ -385,6 +390,19 @@ struct EditShowView: View {
         session.pendingScroll = step.leadingSlideID
     }
 
+    /// What the Show/View menu commands need refreshed for
+    /// (`editShowCommands`, below): everything else in
+    /// `EditShowCommandsValue` is a closure that reads live state when
+    /// called (through `mutate`/`engine`, never a captured snapshot), so
+    /// only these four plus the show itself need to be watched.
+    private struct CommandsTrigger: Equatable {
+        var showID: Int64
+        var rangeLocked: Bool
+        var loopOn: Bool
+        var canGoBack: Bool
+        var canGoForward: Bool
+    }
+
     /// Keyboard shortcuts: Final Cut's J/K/L, space, and its M (marker), I
     /// and O (range), N (snapping), and the arrow keys (item 7, work
     /// order) — bare keys, so `SingleKeys` handles them (never
@@ -394,6 +412,20 @@ struct EditShowView: View {
     /// range) and ⇧Z (fit) all need a modifier, so they're safe as real
     /// menu shortcuts instead (F1, batch 5) — `editShowCommands`, below,
     /// publishes the actions the Show and View menus call.
+    ///
+    /// **Not `.focusedSceneValue` any more** (`spec/panekit.md`, "The
+    /// order," step 5, found 2026-09-25): that's scoped to SwiftUI's own
+    /// `Scene` graph, so it never reached the Show/View menus while the
+    /// Timeline pane's popped-out window was key, even though its content
+    /// — this view, moved onto the storyline pane — was still live and
+    /// on screen. `model.editShowCommands` is a plain stored property, so
+    /// it's reachable regardless of which window is key, the same fix
+    /// `UndoMenuState` made for Undo/Redo. Pushed via `onChange` rather
+    /// than written directly in `body` (SwiftUI doesn't allow mutating
+    /// `@Observable` state during a view update) — **and reading `show`,
+    /// not `engine.show`**, since `PlaybackEngine.show` is
+    /// `@ObservationIgnored` (showtools-gotchas): reading it here would
+    /// silently stop `CommandsTrigger` from ever refreshing.
     private func shortcuts(_ engine: PlaybackEngine) -> some View {
         ZStack {
             SingleKeys { event in
@@ -423,23 +455,29 @@ struct EditShowView: View {
             Color.clear.onAppear { visibleWidth = g.size.width }
                 .onChange(of: g.size.width) { _, w in visibleWidth = w }
         })
-        .focusedSceneValue(\.editShowCommands, EditShowCommandsValue(
-            togglePlay: { engine.togglePlay() },
-            addMarker: { addMarker(engine) },
-            setRangeIn: { setRangeIn(engine) },
-            setRangeOut: { setRangeOut(engine) },
-            clearRange: clearRange,
-            setRangeToView: setRangeToView,
-            setRangeToWholeShow: setRangeToWholeShow,
-            toggleRangeLock: { toggleRangeLock(engine) },
-            rangeLocked: show.editor.rangeLocked,
-            toggleLoop: { engine.updateEditor { $0.loopPlayback.toggle() } },
-            loopOn: show.editor.loopPlayback,
-            zoomToFit: fitStoryline,
-            goBack: { goBack(engine) },
-            goForward: { goForward(engine) },
-            canGoBack: !session.goBackHistory.isEmpty,
-            canGoForward: !session.goForwardHistory.isEmpty))
+        .onChange(of: CommandsTrigger(showID: show.id, rangeLocked: show.editor.rangeLocked,
+                                      loopOn: show.editor.loopPlayback,
+                                      canGoBack: !session.goBackHistory.isEmpty,
+                                      canGoForward: !session.goForwardHistory.isEmpty),
+                 initial: true) { _, t in
+            model.editShowCommands = EditShowCommandsValue(
+                togglePlay: { engine.togglePlay() },
+                addMarker: { addMarker(engine) },
+                setRangeIn: { setRangeIn(engine) },
+                setRangeOut: { setRangeOut(engine) },
+                clearRange: clearRange,
+                setRangeToView: setRangeToView,
+                setRangeToWholeShow: setRangeToWholeShow,
+                toggleRangeLock: { toggleRangeLock(engine) },
+                rangeLocked: t.rangeLocked,
+                toggleLoop: { engine.updateEditor { $0.loopPlayback.toggle() } },
+                loopOn: t.loopOn,
+                zoomToFit: fitStoryline,
+                goBack: { goBack(engine) },
+                goForward: { goForward(engine) },
+                canGoBack: t.canGoBack,
+                canGoForward: t.canGoForward)
+        }
     }
 }
 

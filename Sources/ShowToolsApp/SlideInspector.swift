@@ -914,12 +914,3 @@ struct EditShowCommandsValue {
     var canGoBack: Bool
     var canGoForward: Bool
 }
-
-struct EditShowCommandsKey: FocusedValueKey { typealias Value = EditShowCommandsValue }
-
-extension FocusedValues {
-    var editShowCommands: EditShowCommandsValue? {
-        get { self[EditShowCommandsKey.self] }
-        set { self[EditShowCommandsKey.self] = newValue }
-    }
-}

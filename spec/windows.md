@@ -436,10 +436,13 @@ What's known before trying it:
    onto the storyline pane's own content so `SingleKeys` re-attaches when
    PaneKit reparents it — done, and confirmed working from the popped-out
    window. Undo/Redo, already fixed app-wide for the Inspector, needed no
-   further work here. **Found, not fixed:** the Show/View menu's
-   `editShowCommands`-gated items (Play/Pause, Add Marker, Set Range,
-   Zoom, Go Back/Forward, Loop) go disabled while the Timeline window is
-   key — `.focusedSceneValue` turns out to be Scene-scoped the same way
-   SwiftUI's automatic Undo/Redo was, so a pop-out never publishes into
-   it. The fix looks like `EditShowCommandsValue` moving onto `AppModel`
-   (`spec/panekit.md`, step 5, for the reasoning and the trap to avoid).
+   further work here. **`editShowCommands` — found broken, fixed the same
+   day:** the Show/View menu's items (Play/Pause, Add Marker, Set Range,
+   Zoom, Go Back/Forward, Loop) went disabled while the Timeline window
+   was key — `.focusedSceneValue` turns out to be Scene-scoped the same
+   way SwiftUI's automatic Undo/Redo was, so a pop-out never published
+   into it. `EditShowCommandsValue` moved onto `AppModel`
+   (`spec/panekit.md`, step 5, for the fix and the `@ObservationIgnored`
+   trap it had to route around), checked with axtool: Loop Playback and
+   Set Range In both work through the menu from the popped-out window,
+   and Go Back correctly enables after a real nudge.

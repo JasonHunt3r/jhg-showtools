@@ -553,19 +553,21 @@ own content so `SingleKeys` re-attaches its key monitor to whichever
 window the pane is actually in; confirmed with a real Space keypress
 toggling playback from the popped-out window. Undo/Redo, already fixed
 app-wide, needed no further work — confirmed with a real Set Range In
-from the popped-out Timeline window and a real ⌘Z undoing it. **Found,
-not fixed:** the Show/View menu's `editShowCommands`-gated items
-(Play/Pause, Add Marker, Set Range, Zoom, Go Back/Forward, Loop) read
-disabled while the Timeline window is key — `.focusedSceneValue` is
-Scene-scoped the same way SwiftUI's automatic Undo/Redo was, and a
-pop-out never publishes into it. The bare keys already cover the core
-playback/editing actions; what's left is the ⌘-modifier shortcuts (⌘L,
-⌘=/⌘−, ⌥X, ⌘[/⌘]) and the menu-only items (Set Range to View/Whole Show,
-Lock Range). The fix looks like moving `EditShowCommandsValue` onto
-`AppModel`, but naively reading `PlaybackEngine.show` there risks its own
-`@ObservationIgnored` trap (showtools-gotchas) — scoped out as its own
-follow-up, not guessed at. And the New Show panel
-(`spec/simple-things-fast.md`).
+from the popped-out Timeline window and a real ⌘Z undoing it.
+**`editShowCommands` — found broken, fixed the same session:** the
+Show/View menu's items (Play/Pause, Add Marker, Set Range, Zoom, Go
+Back/Forward, Loop) read disabled while the Timeline window was key —
+same cause as the Undo gap, `.focusedSceneValue` being Scene-scoped.
+Moved `EditShowCommandsValue` off `@FocusedValue`/`.focusedSceneValue`
+onto a plain stored property, `AppModel.editShowCommands` (`EditShowView`
+sets it via `.onChange`, reading the saved `show` rather than
+`engine.show` to dodge `PlaybackEngine.show`'s own `@ObservationIgnored`
+trap, showtools-gotchas). Checked with axtool against a scratch library,
+all from the popped-out Timeline window: Loop Playback toggled through
+the menu and the saved show's JSON flipped, Set Range In through the
+menu wrote `editor.rangeIn`, and Go Back went from disabled to enabled
+after a real arrow-key nudge. `swift test` (306) and `./make-app.sh`
+clean. And the New Show panel (`spec/simple-things-fast.md`).
 
 ### Also next
 
@@ -637,16 +639,15 @@ and Flush presets from 2a.
 - **The timeline pane popping out** (built 2026-09-25, View ▸ "Timeline
   in Its Own Window," `spec/panekit.md` "The order" step 5): the window,
   the columns growing to fill the vacated height, bare-key shortcuts
-  (Space, J/K/L, M, I, O, N, arrows) and Undo/Redo all confirmed with
-  axtool — a real Space keypress toggled playback and a real Set Range
-  In + ⌘Z round-tripped, both from the popped-out window. **Known,
-  scoped-out gap:** the Show/View menu's `editShowCommands` items
-  (Play/Pause, Add Marker, Set Range, Zoom, Go Back/Forward, Loop) read
-  disabled while that window is key — see "What's next" above and
-  `spec/panekit.md`, step 5, for why and what the fix would need. Never
-  confirmed by a real click, drag or keypress from Jason's own hands,
-  and worth noting the bare keys cover the everyday case even before
-  that gap closes.
+  (Space, J/K/L, M, I, O, N, arrows), Undo/Redo, and — after a same-day
+  fix moving `EditShowCommandsValue` onto `AppModel` — the Show/View
+  menu's Play/Pause, Set Range, Zoom, Loop and Go Back/Forward items, all
+  confirmed with axtool against a scratch library, all from the
+  popped-out window: a real Space keypress toggled playback, a real Set
+  Range In + ⌘Z round-tripped, Loop Playback toggled through the menu and
+  the saved show's JSON flipped, and Go Back went from disabled to
+  enabled after a real arrow-key nudge. Never confirmed by a real click,
+  drag or keypress from Jason's own hands.
 - **The grid's keyboard** (built 2026-09-25, audit batch 7): arrow keys,
   Return-renames, and Quick Look on ⌘Y or a double-click — all confirmed
   by their actual effect with axtool (selection counts, the rename sheet,

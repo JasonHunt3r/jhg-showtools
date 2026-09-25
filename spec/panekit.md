@@ -593,26 +593,30 @@ opening or closing (changes are instant for now).
    in the `content: [...]` dictionary let `SingleKeys`' existing
    `viewDidMoveToWindow` override re-attach its key monitor to whichever
    window the pane is actually in — confirmed with a real Space keypress
-   toggling playback from the popped-out window. **Not fixed, found and
-   left open:** `editShowCommands` (`.focusedSceneValue`, gating the
-   Show/View menu's Play/Pause, Add Marker, Set Range, Zoom, Go
-   Back/Forward and Loop items) reads disabled outright while the
-   popped-out Timeline window is key, checked against several items by
-   menu validation — the same class of bug `UndoMenuState` fixed for
-   Undo/Redo (`.focusedSceneValue` is Scene-graph-scoped, same as
-   SwiftUI's automatic Undo/Redo, and a PaneKit pop-out sits outside that
-   graph), but a bigger fix this time: `EditShowCommandsValue`'s state
-   (`rangeLocked`, `loopOn`, `canGoBack`, `canGoForward`) would need to
-   live somewhere window-independent, most naturally `AppModel` (matching
-   how `editShowColumns`/`mainPanes` already do), but a naive move risks
-   `PlaybackEngine.show`'s own `@ObservationIgnored` trap
-   (showtools-gotchas) if its computed properties read the engine's copy
-   instead of the saved `show` SwiftUI actually observes. Left for a
-   scoped follow-up, not guessed at here. The bare keys already cover
-   the core playback/editing actions (Play/Pause, shuttle, marker, range
-   in/out, snapping, arrow nav) — what's left is the ⌘-modifier shortcuts
-   (⌘L, ⌘=/⌘−, ⌥X, ⌘[/⌘]) and the menu-only items (Set Range to
-   View/Whole Show, Lock Range).
+   toggling playback from the popped-out window. **`editShowCommands` —
+   found broken, fixed the same day:** it read disabled outright for
+   every Show/View menu item (Play/Pause, Add Marker, Set Range, Zoom, Go
+   Back/Forward, Loop) while the popped-out Timeline window was key —
+   the same class of bug `UndoMenuState` fixed for Undo/Redo:
+   `.focusedSceneValue` is Scene-graph-scoped, same as SwiftUI's
+   automatic Undo/Redo, and a PaneKit pop-out sits outside that graph.
+   **The fix:** `EditShowCommandsValue` moved off `@FocusedValue`/
+   `.focusedSceneValue` onto a plain stored property, `AppModel
+   .editShowCommands` (matching how `editShowColumns`/`mainPanes`
+   already live there) — `EditShowView` sets it via `.onChange(of:
+   CommandsTrigger, initial: true)` rather than writing it directly in
+   `body` (SwiftUI doesn't allow mutating `@Observable` state during a
+   view update), reading the trigger from the saved `show`, **not**
+   `engine.show`, to avoid `PlaybackEngine.show`'s own
+   `@ObservationIgnored` trap (showtools-gotchas) silently freezing it;
+   `.onDisappear` clears it, matching the old `@FocusedValue`'s own
+   absence outside Edit Show. The `FocusedValueKey`/`FocusedValues`
+   plumbing is gone; `AppCommands` reads `model.editShowCommands`
+   directly. Checked with axtool against a scratch library, all from the
+   popped-out Timeline window: Loop Playback toggled through the menu and
+   the saved show's `editor.loopPlayback` flipped; Set Range In through
+   the menu wrote `editor.rangeIn`; Go Back went from disabled to enabled
+   after a real arrow-key nudge, matching its history correctly.
 
 ## Settled
 

@@ -119,7 +119,12 @@ struct AppCommands: Commands {
     @FocusedValue(\.activeSlideSelection) private var activeSlideSelection
     @FocusedValue(\.requestDuplicateSlides) private var requestDuplicateSlides
     @FocusedValue(\.requestSlideGetInfo) private var requestSlideGetInfo
-    @FocusedValue(\.editShowCommands) private var editShowCommands
+    // Not `@FocusedValue` any more (found 2026-09-25, `spec/panekit.md`,
+    // "The order," step 5): that's scoped to SwiftUI's own Scene graph,
+    // so it never reached these menus while the Timeline pane's
+    // popped-out window was key. `model.editShowCommands` is a plain
+    // stored property, reachable regardless of which window is key.
+    private var editShowCommands: EditShowCommandsValue? { model.editShowCommands }
     @AppStorage("frameStripShown") private var frameStripShown = true
     @AppStorage("inspectorShown") private var inspectorShown = true
     @AppStorage("editMode") private var mode: EditMode = .slides
