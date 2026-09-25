@@ -35,11 +35,12 @@ patterns, 12 their note length, 13 groups). Before an upgrade the database is co
 to `Library.sqlite.v<N>.bak`. Video export needed no schema change: a video
 slide's level line is slide settings, which are JSON.
 
-`~/Applications/ShowTools.app` is **well behind HEAD** (built
-2026-09-23, 05:30 — before Groups, PaneKit, the library panel, and every
-menu this session added). `build/ShowTools.app` is current. BGTools'
-desktop extension is running from the installed copy, so reinstalling
-wasn't done without asking — say when to swap it in.
+`~/Applications/ShowTools.app` is **current again, reinstalled
+2026-09-25** off HEAD, so Jason can start building a show from his own
+photos and music by hand (`spec/status.md`, "Also next" #2). BGTools'
+desktop extension (`BGToolsControls.appex`) was killed before the swap,
+on Jason's own call, rather than relaunched — it needs re-enabling by
+hand before BGTools' desktop features work again.
 
 **The real library was set aside 2026-09-24** (Jason's own call, mid this
 session): `~/Pictures/ShowTools Library.noindex` is now
