@@ -337,12 +337,19 @@ struct CollectionBrowser: View {
         }
         // Picking one use selects it in the show; the show's selection comes
         // back here. Each side only changes the other when they differ.
+        // A plain click only selects (item 6, `ShowTools Feedback —
+        // Worklist for Next CC Session.md`); ⌥-click keeps the old jump-
+        // the-viewer behavior. `List(selection:)` gives no click info of
+        // its own, so this reads the modifier flags live, right after the
+        // click that changed `picked` set them — the same trick
+        // `StorylineView` and `EditShowView` already use for their own
+        // ⌥-click checks.
         .onChange(of: picked) { _, p in
             guard p.count == 1, let only = p.first else { return }
             switch only {
             case .slide(let id):
                 if selection != [id] { selection = [id] }
-                if !engine.isPlaying { engine.showSlide(id: id) }
+                if NSEvent.modifierFlags.contains(.option), !engine.isPlaying { engine.showSlide(id: id) }
             case .overlay(let id):
                 if selectedOverlay != id { selectedOverlay = id }
             case .file, .song:
