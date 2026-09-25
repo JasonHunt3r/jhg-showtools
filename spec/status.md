@@ -199,8 +199,34 @@ Batch 2 is otherwise done.
   All three are real next steps, just not one-sitting fixes, same as
   items 12/17/19 above.
 
-Batch 5 (P2 polish) not started. Five items need Jason's own decision
-first (Open Questions in the feedback doc) before CC can build them.
+**Batch 5 (P2 polish): the two real code items done, three deferred —
+Jason chose this scope 2026-09-25 over doing all five or waiting for
+design direction:**
+- **Item 30** (frames row collapses to a stacked handle): the "collapse"
+  half was already built (every PaneKit split collapses to its own
+  edge handle by default) — just not discoverable. Added View ▸
+  "Show Timeline" (⌘⌥T), matching Show Library/Frame Strip/Inspector's
+  own toggles right above it. The "stacked" half depends on item 13
+  (Collections' own closed-drawer state stacking against the closed
+  inspector), which was never built either — a real, open-ended
+  pattern to design, not touched here.
+- **Item 31** (scale-to-fill, as a ShowTools effect and a BGT setting):
+  **already fully built, both halves, no change needed.** `Fit.fill`
+  has existed in the core model all along; ShowTools' own
+  `SlideInspector`'s Fit picker already iterates every `Fit` case, and
+  BGTools' Random Pictures settings (`MainWindow.swift`,
+  `RandomPicturesDetail`) already has the identical picker. Same
+  pattern as item 18 — feedback describing something the codebase had
+  already caught up to.
+- **Items 26, 27, 29 not started, on purpose:** 26 (kill the rounded
+  header-bar controls for a tighter "Pro" look) and 27 (app-wide
+  corner-radius override) are visual redesigns with no existing token
+  to hang off, not fixes — guessing risks producing something that
+  just looks wrong. 29 (an icon for each app) needs actual icon
+  artwork, not code. All three need Jason's own direction first.
+
+Five items still need Jason's own decision first (Open Questions in
+the feedback doc) before CC can build them.
 
 **A preferences leak, caught and fixed mid-session:** testing item 1's
 pop-out interactively wrote a scratch pop-out state into the *shared*
