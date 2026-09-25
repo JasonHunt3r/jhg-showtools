@@ -487,7 +487,16 @@ struct StorylineView: View {
         .frame(width: w, height: 10)
         .padding(.horizontal, 2)
         .contentShape(Rectangle())
-        .offset(x: isIn ? x - 2 : x - w - 2, y: h - 10)
+        // Item 7, `ShowTools Feedback — Worklist for Next CC Session.md`:
+        // the out marker sat `w` (7pt) left of the ruler position it
+        // should mark. `Path`'s own coordinates aren't rescaled to its
+        // `.frame` box — the triangle's ink for `isIn: false` bleeds left
+        // of the frame's nominal origin (to `-w`), but the frame's own
+        // *layout* origin (what `.padding` and `.offset` position) stays
+        // at local x=0 regardless of which way the triangle points. So
+        // both ends want the same offset: only the path's own points
+        // (above) need to differ by direction, not this placement math.
+        .offset(x: x - 2, y: h - 10)
         .onTapGesture {
             guard (NSApp.currentEvent?.clickCount ?? 1) >= 2 else { return }
             if NSEvent.modifierFlags.contains(.option) {
