@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import LocalAuthentication
 import ShowToolsCore
 import ShowToolsPlayback
@@ -74,4 +75,71 @@ struct LockedLibraryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.background)
     }
+}
+
+/// The library panel (`spec/windows.md`, "A possible order" #3, and Jason's
+/// answer 6): the whole library, in a window of its own. Settled as a
+/// **panel** (floats above the app's other windows) rather than an ordinary
+/// window — it's meant to float over a new, empty collection so the whole
+/// panel becomes a drop target (`spec/windows.md`, "Filling a new
+/// collection", the problem it solves). Opens from the Library item's
+/// context menu; moves nothing out of the main window, which keeps showing
+/// its own Library grid exactly as before. Follows `InfoPanel`'s pattern
+/// (an `NSPanel` hosting SwiftUI, its own shared `undoManager`) rather than
+/// a new SwiftUI window scene, per `spec/windows.md`'s note on the
+/// layout-loop crash.
+@MainActor
+final class LibraryPanel: NSObject, NSWindowDelegate {
+    private static var shared: LibraryPanel?
+
+    static func show(model: AppModel, undoManager: UndoManager?) {
+        if let shared { shared.window.makeKeyAndOrderFront(nil); return }
+        let panel = LibraryPanel(model: model, undoManager: undoManager)
+        shared = panel
+        panel.present()
+    }
+
+    private let window: LibraryPanelWindow
+
+    private init(model: AppModel, undoManager: UndoManager?) {
+        window = LibraryPanelWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 560),
+            styleMask: [.titled, .closable, .resizable, .utilityWindow],
+            backing: .buffered, defer: false)
+        super.init()
+        window.title = "Library"
+        // Narrow, it's a list; wider, the grid's own tile-size slider
+        // already grows the thumbnails (spec/windows.md, answer 6) — no
+        // second view needed, just the grid in a window of its own.
+        window.minSize = NSSize(width: 240, height: 300)
+        window.isFloatingPanel = true
+        window.level = .floating
+        window.isReleasedWhenClosed = false
+        window.delegate = self
+        window.sharedUndoManager = undoManager
+        // Passed in via `undoManagerOverride`, not read from the
+        // environment — the same fix InfoPanel's own content needed (see
+        // its note): a separate window's undoManager isn't the main
+        // window's, and `\.undoManager` isn't a writable environment key.
+        let content = LibraryGridView(undoManagerOverride: undoManager).environment(model)
+        window.contentView = NSHostingView(rootView: content)
+        window.setFrameAutosaveName("libraryPanel")
+    }
+
+    private func present() {
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        Self.shared = nil
+    }
+}
+
+/// Overriding `undoManager` matters the same way it does for `InfoPanelWindow`
+/// (see its own note): without it, ⌘Z right after an edit made from this
+/// panel would ask the wrong manager.
+final class LibraryPanelWindow: NSPanel {
+    override var canBecomeKey: Bool { true }
+    var sharedUndoManager: UndoManager?
+    override var undoManager: UndoManager? { sharedUndoManager }
 }

@@ -169,9 +169,7 @@ struct MainView: View {
                 .contextMenu {
                     Button("Import…") { runImportPanel(model) }
                     Button("New Collection…") { startCreatingCollection() }
-                    // Not built (spec/windows.md, "the library panel");
-                    // settled 2026-09-24 to go in greyed out until it is.
-                    Button("Open Library Panel") {}.disabled(true)
+                    Button("Open Library Panel") { LibraryPanel.show(model: model, undoManager: undoManager) }
                     Divider()
                     Button("Show in Finder") {
                         if let root = model.library?.root {
@@ -541,8 +539,15 @@ struct LibraryGridView: View {
     var collectionID: Int64? = nil
     /// Set to filter to one group's files, inside `collectionID`.
     var groupID: Int64? = nil
+    /// Set when this grid is hosted outside the main window (`LibraryPanel`):
+    /// `\.undoManager` isn't writable in the environment, and a separate
+    /// window's own `undoManager` isn't the main window's (the same gotcha
+    /// `InfoPanel`'s content works around), so the panel passes the shared
+    /// one in directly instead.
+    var undoManagerOverride: UndoManager? = nil
     @Environment(AppModel.self) private var model
-    @Environment(\.undoManager) private var undoManager
+    @Environment(\.undoManager) private var envUndoManager
+    private var undoManager: UndoManager? { undoManagerOverride ?? envUndoManager }
     @State private var selection: Set<Int64> = []
     @State private var search = ""
     @AppStorage("gridKind") private var kind: KindFilter = .all

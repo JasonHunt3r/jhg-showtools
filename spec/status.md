@@ -148,9 +148,9 @@ preferences-domain rules).
    typing in Search still types, Show ▸ Play starts at the selection —
    all reasoned through, not clicked; wants Jason's hands, especially
    the new Keyboard Shortcuts window and the moved ⌥⌘I/⌘1/⌘2 shortcuts.
-8. **The PaneKit harness** (`spec/panekit.md`, "The order", step 1): a
-   standalone app in `tools/` with dummy content, checked on the Mac and
-   felt by Jason.
+8. ~~**The PaneKit harness**~~ (`spec/panekit.md`, "The order", step 1):
+   a standalone app with dummy content — done 2026-09-24 (see item 1
+   under "The order from here" below).
 
 9. **Jason's first-test work order** (`spec/history/2026-09-24-work-order.md`,
    folded into `spec/plan.md` "The range and the ruler", the Preview line,
@@ -271,13 +271,17 @@ Show's/Edit Slides' columns), the show session (its own prerequisite),
 and `nearIsRigid` (found watching Jason use it — Edit Show's list column
 now only resizes from its own divider; `spec/panekit.md`, "Building a
 row"). **Step 4 itself: the order is settled** (Slide Editor, library
-panel, one detachable area, timeline pane last) **and the Slide Editor's
-v1 is built**, 2026-09-24 — the image, its handles and the full
-inspector, opened by double-click on a slide (settled over the inspector)
-in Edit Slides' list or the storyline, or "Open in Slide Editor" on
-either's context menu (`spec/panekit.md`, "Step 4, first piece"). Left of
-step 4: the library panel, then the detachable area. And the New Show
-panel (`spec/simple-things-fast.md`).
+panel, one detachable area, timeline pane last), **and both the Slide
+Editor and the library panel are built**, 2026-09-24: the Slide Editor
+(v1: the image, its handles and the full inspector, opened by
+double-click on a slide, settled over the inspector, in Edit Slides'
+list or the storyline, or "Open in Slide Editor" on either's context
+menu — `spec/panekit.md`, "Step 4, first piece"); the library panel (a
+floating window on the whole library grid, opened from "Open Library
+Panel" on the Library item's context menu, previously stubbed in greyed
+out — `spec/panekit.md`, "Step 4, second piece"). Left of step 4: the
+one detachable area. And the New Show panel
+(`spec/simple-things-fast.md`).
 
 ### Also next
 
@@ -325,6 +329,11 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
+- **The library panel** (built 2026-09-24, `spec/panekit.md`, "Step 4,
+  second piece"): opens and shows the whole library correctly, checked
+  with axtool against a scratch library, but a real drag from it (its own
+  reason for existing — filling a new collection with the panel floating
+  over it) hasn't been tried by hand.
 - **Audit G1 and the audio-naming pass** (`7c1613a`, `dcf47c2`): both
   build and the app launches, but the hands-on checks weren't done this
   session — see the work queue above.

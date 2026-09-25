@@ -40,9 +40,39 @@ either's context menu. `swift test` (305) and `./make-app.sh` clean;
 checked with axtool against a scratch library — both double-click paths
 open it, retargeting reuses the window, Esc closes it, no new
 `ShowTools-exception.log` entries — and **confirmed by Jason's own hands,
-2026-09-24: "seems to work as expected."** **Left of step 4:** the
-library panel, one detachable area (probably the inspector), the
-timeline pane detached last — `spec/windows.md`, "A possible order".
+2026-09-24: "seems to work as expected."** **Left of step 4:** one
+detachable area (probably the inspector), the timeline pane detached
+last — `spec/windows.md`, "A possible order".
+
+**Step 4, second piece — the library panel: built 2026-09-24**
+(`LibraryPanel`/`LibraryPanelWindow`, `Sources/ShowToolsApp/Libraries.swift`).
+Settled as a **panel** (floats above the app's other windows), per
+`spec/windows.md` answer 3 — it's meant to float over a new, empty
+collection so the whole panel becomes a drop target. Opens from "Open
+Library Panel" on the Library item's context menu (previously stubbed
+in, greyed out); moves nothing out of the main window, which keeps
+showing its own Library grid exactly as before — it's a second window on
+the same content, not a detach. It's the grid itself
+(`LibraryGridView(collectionID: nil)`), not a second view, so narrow it's
+a list and wide the grid's own tile-size slider grows the thumbnails —
+`spec/windows.md` answer 6's guess confirmed rather than built new.
+Follows `InfoPanel`'s pattern: an `NSPanel` hosting SwiftUI, its own
+`undoManager` override, singleton (`show` brings the existing one
+forward rather than opening a second). One thing `InfoPanel` didn't have
+to solve: **`\.undoManager` isn't a writable environment key** on this
+SDK (`\.environment(\.undoManager, …)` fails to type-check — "cannot
+convert `KeyPath` to `WritableKeyPath`"), so `LibraryGridView` gained a
+plain `undoManagerOverride: UndoManager? = nil` init parameter instead,
+falling back to the ambient environment value when nil (unchanged for
+every other caller). `swift build`, `swift test` (305) and `./make-app.sh`
+all clean; checked with axtool against a scratch library, Jason's own
+real copy left untouched throughout: the context menu item is enabled
+(was disabled), opens a floating "Library" panel showing all 11 seeded
+items with its search/filter/sort/tile-size bar, reopening brings the
+same window forward rather than duplicating, Esc closes it, no new
+`ShowTools-exception.log` entries. **Not yet checked by Jason's own
+hands**, and Show in Library (which lands here per the plan) still waits
+on the right-click-menu work that hasn't built that item anywhere yet.
 
 ## What it is
 
@@ -475,12 +505,13 @@ opening or closing (changes are instant for now).
      window height (700) with room to spare (measured: ~691 total), so
      it isn't reachable in the app's normal range, but it's the same
      kind of cross-axis leak, noted here rather than silently accepted.
-4. **ShowTools' panes popping out** (`spec/windows.md`): the library
-   panel, the inspector panel, the Timeline window. PaneKit already does
-   the moving; the show session — its own prerequisite, so the panes have
-   their state to take with them — is **done 2026-09-24** (`ShowSession.swift`).
-   What's left is the design (which pane first, the Slide Editor, the
-   library panel) — `spec/windows.md`'s own open questions, not a port.
+4. **ShowTools' panes popping out** (`spec/windows.md`): the inspector
+   panel, the Timeline window. PaneKit already does the moving; the show
+   session — its own prerequisite, so the panes have their state to take
+   with them — is **done 2026-09-24** (`ShowSession.swift`). The Slide
+   Editor and the library panel are both built (above). What's left is
+   one detachable area (probably the inspector) — `spec/windows.md`'s own
+   open questions, not a port.
 
 ## Settled
 

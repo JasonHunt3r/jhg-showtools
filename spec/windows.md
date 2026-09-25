@@ -15,9 +15,10 @@ was. PaneKit already does the pane-moving this doc calls for — pop out,
 put back, remembered frames, the main window closing up. **The show
 session is done too** (2026-09-24, "What stands in the way" below), and
 so is the order question: Slide Editor, then the library panel, then one
-detachable area (`spec/panekit.md`, "The order"). The Slide Editor's v1
-is built (below); what's left of this doc is the library panel, the
-detachable area, and the open questions under "Jason's answers" below.
+detachable area (`spec/panekit.md`, "The order"). **The Slide Editor's
+v1 and the library panel are both built** (`spec/panekit.md`, "Step 4,
+first piece" and "second piece"); what's left of this doc is the
+detachable area and the open questions under "Jason's answers" below.
 
 Names follow `spec/anatomy.md`.
 
@@ -397,9 +398,11 @@ What's known before trying it:
    (v1: the image, its handles, the full inspector — no playback controls;
    `spec/panekit.md`, "Step 4, first piece"). The collage maker still waits
    for it, since it isn't built yet either.
-3. **The library panel,** the second: it opens from the Library pane and moves
-   nothing out of the main window. It's also where Show in Library
-   lands.
+3. ~~**The library panel,** the second: it opens from the Library pane and
+   moves nothing out of the main window.~~ — **built 2026-09-24**
+   (`spec/panekit.md`, "Step 4, second piece"). Show in Library, which
+   lands here, still waits on the right-click-menu work — it isn't built
+   anywhere yet.
 4. **One detachable area,** probably the inspector, to prove the pattern:
    undo, keys, and the main window closing up. Then the others.
 5. **The timeline pane, detached,** last: it carries the most keys and
