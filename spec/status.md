@@ -58,6 +58,24 @@ above. Full dated story, including what each item's `swift test` run and
 axtool check actually covered:
 `spec/history/2026-09-25-work-queue-narrative.md`.
 
+### The 2026-09-25 feedback worklist
+
+Jason's own build feedback, 37 items, triaged into `spec/history/` — see
+`ShowTools Feedback — Worklist for Next CC Session.md` in the repo root for
+the full grouped list. **Fixed so far (batch 1, PaneKit/window-layer P0s):**
+Settings panel running off the bottom of the screen (item 9); a popped-out
+pane panel floating over other apps' windows, not just this app's own
+(item 2 — build-clean, checked with axtool, not yet seen by eye against a
+real other-app window); BGTools' window left stranded on a monitor that
+gets unplugged while already open (item 11 — reasoned through, untestable
+here with one monitor). **Still open from batch 1:** the collections
+column handing its freed width to the wrong side when the inspector
+closes (item 1); the window-layer hierarchy write-up and an audit of the
+other pop-outs (item 2's other half). Batches 2–5 (library/collections
+interactions, frames row/transport, BGTools P1s, P2 polish) not started.
+Five items need Jason's own decision first (Open Questions in the
+feedback doc) before CC can build them.
+
 ### Also next
 
 1. **A listen, twice over.** (1) An exported movie against the same show
