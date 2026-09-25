@@ -263,14 +263,21 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
 10. **BGTools batch:** names (W5) → the map view (W9) → the window opening
     on your screen, with ⌥-double-click (W4).
 
-Then: the design conversation step 4 itself needs — the library panel, an
+Then: the design conversation step 4 itself needed — the library panel, an
 actual detached pane, the Slide Editor (`spec/windows.md`) — now that
 everything ahead of it is done, moved up this list on purpose to de-risk
 it early, 2026-09-24: steps 2 and 3 (the app's main window and Edit
 Show's/Edit Slides' columns), the show session (its own prerequisite),
 and `nearIsRigid` (found watching Jason use it — Edit Show's list column
 now only resizes from its own divider; `spec/panekit.md`, "Building a
-row"). And the New Show panel (`spec/simple-things-fast.md`).
+row"). **Step 4 itself: the order is settled** (Slide Editor, library
+panel, one detachable area, timeline pane last) **and the Slide Editor's
+v1 is built**, 2026-09-24 — the image, its handles and the full
+inspector, opened by double-click on a slide (settled over the inspector)
+in Edit Slides' list or the storyline, or "Open in Slide Editor" on
+either's context menu (`spec/panekit.md`, "Step 4, first piece"). Left of
+step 4: the library panel, then the detachable area. And the New Show
+panel (`spec/simple-things-fast.md`).
 
 ### Also next
 
@@ -318,6 +325,12 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
+- **The Slide Editor's v1** (built 2026-09-24, `spec/panekit.md` "Step 4,
+  first piece"): checked with axtool against a scratch library — both
+  double-click paths, retargeting, Esc, no new exception-log entries —
+  but the handles' feel (drag, corner scale, rotation, the sliders' live
+  preview) hasn't been tried by a real hand yet, and neither has resizing
+  or moving the window itself.
 - **Audit G1 and the audio-naming pass** (`7c1613a`, `dcf47c2`): both
   build and the app launches, but the hands-on checks weren't done this
   session — see the work queue above.

@@ -43,8 +43,7 @@ struct ShowView: View {
                 // layout-loop crash. See spec/edit-slides-inspector-port.md.
                 TwoColumns(
                     inspectorShown: $inspectorShown, model: model, panes: model.editSlidesColumns,
-                    main: EditSlidesView(show: show, timeline: timeline, selection: selection, mutate: mutate,
-                                         toggleInspector: { inspectorShown.toggle() }),
+                    main: EditSlidesView(show: show, timeline: timeline, selection: selection, mutate: mutate),
                     inspector: SlideInspector(show: show, timeline: timeline, selection: session.selection,
                                               mutate: mutate, close: { inspectorShown = false }))
             case .show:
@@ -153,8 +152,6 @@ struct EditSlidesView: View {
     let timeline: ShowTimeline
     @Binding var selection: Set<Int64>
     let mutate: ShowMutator
-    /// Double-clicking a list item opens the inspector, or closes it if open.
-    let toggleInspector: () -> Void
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
     @State private var dropTargeted = false
@@ -183,6 +180,9 @@ struct EditSlidesView: View {
         }
         .onDeleteCommand { SlideActions.remove(selection, selection: $selection, mutate: mutate) }
         .contextMenu(forSelectionType: Int64.self) { ids in
+            if let id = ids.first {
+                Button("Open in Slide Editor") { openSlideEditor(id) }
+            }
             Button("Duplicate") { SlideActions.duplicate(ids, mutate: mutate) }
             Button("Remove from Show") { SlideActions.remove(ids, selection: $selection, mutate: mutate) }
             Divider()
@@ -190,7 +190,11 @@ struct EditSlidesView: View {
                 let i = show.slides.firstIndex { ids.contains($0.id) }
                 Player.open(show: show, model: model, fullScreen: false, startAt: i)
             }
-        } primaryAction: { _ in toggleInspector() }
+        } primaryAction: { ids in
+            // Double-click: "go into it" (conventions.md, settled
+            // 2026-09-24) — the Slide Editor, not the inspector.
+            if let id = ids.first { openSlideEditor(id) }
+        }
         .overlay {
             if show.slides.isEmpty {
                 ContentUnavailableView {
@@ -227,6 +231,10 @@ struct EditSlidesView: View {
     private var collectionItems: [MediaItem] {
         guard let cid = show.collectionID, let ids = model.collection(cid)?.itemIDs else { return [] }
         return ids.compactMap { model.itemsByID[$0] }.filter { $0.kind.isPicture }
+    }
+
+    private func openSlideEditor(_ id: Int64) {
+        SlideEditorWindow.show(slideID: id, show: show, model: model, mutate: mutate, undoManager: undoManager)
     }
 }
 

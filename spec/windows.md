@@ -13,11 +13,11 @@ below that says `ColumnsSplitView`, `NavigationSplitView` or "the custom
 splits already work," read PaneKit: it's what those sections' outcome
 was. PaneKit already does the pane-moving this doc calls for — pop out,
 put back, remembered frames, the main window closing up. **The show
-session is done too** (2026-09-24, "What stands in the way" below) — so
-what's left of this doc is the design work step 4 was always going to
-need anyway: what comes first among the Slide Editor, the library panel
-and detaching an actual pane, and the open questions under "Jason's
-answers" below.
+session is done too** (2026-09-24, "What stands in the way" below), and
+so is the order question: Slide Editor, then the library panel, then one
+detachable area (`spec/panekit.md`, "The order"). The Slide Editor's v1
+is built (below); what's left of this doc is the library panel, the
+detachable area, and the open questions under "Jason's answers" below.
 
 Names follow `spec/anatomy.md`.
 
@@ -279,7 +279,10 @@ second:**
 
 ## Jason's answers (2026-09-24)
 
-1. **What comes first:** not sure yet. Still open.
+1. **What comes first: settled 2026-09-24** — the Slide Editor, then the
+   library panel, then one detachable area (probably the inspector), then
+   the timeline pane last ("A possible order" below, which is now a plan,
+   not a guess).
 2. **Following the show depends on the window's job.**
    - Windows tied to playback follow the show's state: the timeline pane,
      the transport, the viewer. They show what's playing and where.
@@ -390,8 +393,10 @@ What's known before trying it:
    (`ShowSession.swift`, "What stands in the way" above). Changed nothing
    on screen, as expected; the menu work it was meant to simplify
    (`spec/hig-audit.md` batch 5) hasn't been revisited yet.
-2. **The Slide Editor,** as the first new window. It's additive, and it's
-   the home the collage maker needs.
+2. ~~**The Slide Editor,** as the first new window.~~ — **built 2026-09-24**
+   (v1: the image, its handles, the full inspector — no playback controls;
+   `spec/panekit.md`, "Step 4, first piece"). The collage maker still waits
+   for it, since it isn't built yet either.
 3. **The library panel,** the second: it opens from the Library pane and moves
    nothing out of the main window. It's also where Show in Library
    lands.

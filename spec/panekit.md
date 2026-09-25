@@ -16,11 +16,32 @@ show's selection, engine and lane state moved out of `ShowView`'s and
 screen changed but a pane in another window now has something to read.
 `.row` also gained `nearIsRigid` (found watching Jason use Edit Show:
 `near`, the list column, now only changes size from its own divider —
-"Building a row" below). **Left:** step 4 itself (the library panel, an
-actual detached pane, the Slide Editor — a design conversation with
-Jason, not just a port). PaneKit is a local package dependency now
+"Building a row" below). PaneKit is a local package dependency now
 (`Package.swift` and `project.yml`), named PaneKit, and lives in this
 repo for now (settled, Jason).
+
+**Step 4, first piece — the Slide Editor: built 2026-09-24**
+(`Sources/ShowToolsApp/SlideEditorWindow.swift`). Jason picked the build
+order (Slide Editor, then the library panel, then one detachable area) and
+settled double-click in its favour over the inspector (`spec/conventions.md`
+§"Double-click"). v1 scope, also Jason's call: the image with its
+Transform/Rotation handles and the full inspector beside it — no playback
+controls, since it's one slide, not the show; the collage maker and
+clicking to aim the Pan and Zoom point stay Later (`spec/plan.md`).
+Follows the Info panel's pattern (an `NSPanel` hosting SwiftUI, its own
+`undoManager` override) rather than a new SwiftUI window scene, per
+`spec/windows.md`'s note on the layout-loop crash. Owns its own
+`PlaybackEngine`, paused on the one slide, so opening it never disturbs
+the main window's preview and it works from Edit Slides too (which has no
+engine running at all); retargeting to a different slide reuses the same
+window rather than opening a second one. Opens from a double-click on a
+slide in Edit Slides' list or the storyline, or "Open in Slide Editor" on
+either's context menu. `swift test` (305) and `./make-app.sh` clean;
+checked by hand with axtool against a scratch library — both double-click
+paths open it, retargeting reuses the window, Esc closes it, no new
+`ShowTools-exception.log` entries. **Left of step 4:** the library panel,
+one detachable area (probably the inspector), the timeline pane detached
+last — `spec/windows.md`, "A possible order".
 
 ## What it is
 

@@ -17,6 +17,7 @@ struct EditShowView: View {
     let mutate: ShowMutator
     @Binding var inspectorShown: Bool
     @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
     @AppStorage("snapping") private var snapping = true
     @AppStorage("storylineZoom") private var pps: Double = 24
 
@@ -52,7 +53,10 @@ struct EditShowView: View {
                                       selectedOverlay: $session.selectedOverlay, selectedSong: $session.selectedSong,
                                       selectedMarkers: $session.selectedMarkers,
                                       pps: $pps, scrollOffset: $session.storylineOffset, mutate: mutate,
-                                      openInspector: { inspectorShown = true })
+                                      openSlideEditor: { id in
+                                          SlideEditorWindow.show(slideID: id, show: show, model: model,
+                                                                 mutate: mutate, undoManager: undoManager)
+                                      })
                     }.environment(model)),
                 ])
                 .onAppear { model.editShowColumns.setOpen("columns.near", inspectorShown) }

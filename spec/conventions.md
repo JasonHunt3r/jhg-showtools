@@ -106,16 +106,24 @@ candidates, real testing picks one:
   - a collection row: open its disclosure (Jason's original idea);
   - a Library tile: Quick Look, or Get Info (B6). Quick Look is the
     natural one, now that Space is play/pause (§2);
-  - a slide, in either mode: the Slide Editor, or the inspector (G3);
+  - **a slide, in either mode: the Slide Editor.** Settled 2026-09-24
+    (PaneKit step 4's first piece, `spec/windows.md`, `spec/panekit.md`):
+    the Slide Editor won double-click over the inspector, since it matches
+    "go into it" everywhere else. ⌥-click on a slide is the inspector's
+    quick version — **not yet built**, the inspector still opens only from
+    the toolbar button and ⌥⌘I;
   - a lane image or transition: its settings bar, or the Slide Editor;
   - a row's handle or title: the row opened up (`spec/windows.md`);
   - the Library item in the Library pane: the library panel.
-- **⌥-click (Open):** takes the other meaning where a thing has two. For
-  example, if double-clicking a slide opens the inspector, ⌥-click opens
-  the Slide Editor.
 
-Today double-click toggles the inspector in Edit Slides and the browser,
-and opens it (never closes it) in the timeline (G3).
+**Built 2026-09-24:** double-click a slide, in Edit Slides' list or the
+storyline, opens the Slide Editor (`SlideEditorWindow.swift`) — the image
+with its Transform/Rotation handles, and the full inspector beside it, in
+one window that replaces itself when a different slide is opened. Also on
+"Open in Slide Editor" in both places' context menus. **Not yet done:**
+the picture's own right-click (stop 4, `spec/status.md`'s "The order from
+here"), ⌥-click's inspector meaning, and Esc clearing the selection
+afterward (Esc closes the window; built no further than that).
 
 ## 2. Keys
 

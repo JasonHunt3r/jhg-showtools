@@ -37,7 +37,9 @@ struct StorylineView: View {
     /// How far the storyline is scrolled, for the frame strip to follow.
     @Binding var scrollOffset: CGFloat
     let mutate: ShowMutator
-    let openInspector: () -> Void
+    /// Double-clicking a slide block: conventions.md's "go into it" —
+    /// the Slide Editor, settled 2026-09-24 (it used to open the inspector).
+    let openSlideEditor: (Int64) -> Void
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
     /// N: edges land on markers (plan, Phase 3). App-wide, like Final Cut's.
@@ -636,6 +638,7 @@ struct StorylineView: View {
             .modifier(HoverInfo(slide: p.slide, length: length(p.slide)))
             .contextMenu {
                 let ids = selection.contains(p.id) ? selection : [p.id]
+                Button("Open in Slide Editor") { openSlideEditor(p.id) }
                 Button("Duplicate") { SlideActions.duplicate(ids, mutate: mutate) }
                 Button("Remove from Show") { SlideActions.remove(ids, selection: $selection, mutate: mutate) }
             }
@@ -685,7 +688,7 @@ struct StorylineView: View {
         engine.showSlide(id: id)
         // Checked on the event rather than with a double-tap gesture, which
         // would hold every single click back while it waits for a second.
-        if (NSApp.currentEvent?.clickCount ?? 1) >= 2 { openInspector() }
+        if (NSApp.currentEvent?.clickCount ?? 1) >= 2 { openSlideEditor(id) }
     }
 
     private func moveGesture(_ p: Placed) -> some Gesture {
