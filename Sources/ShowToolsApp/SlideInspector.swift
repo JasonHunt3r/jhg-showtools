@@ -830,6 +830,11 @@ extension FocusedValues {
 struct LibrarySelectionCountKey: FocusedValueKey { typealias Value = Int }
 struct LibraryRenameKey: FocusedValueKey { typealias Value = () -> Void }
 struct LibraryGetInfoKey: FocusedValueKey { typealias Value = () -> Void }
+/// Quick Look, ⌘Y (B5): a real menu shortcut, not `SingleKeys` — unlike
+/// Delete/⌘A, ⌘Y still needs to work while the Quick Look panel itself is
+/// key (a different `NSWindow`, which a window-scoped `SingleKeys` monitor
+/// never sees), and a menu key equivalent fires wherever the app's focus is.
+struct LibraryQuickLookKey: FocusedValueKey { typealias Value = () -> Void }
 /// New Collection, named before it's made (audit H1). Published by
 /// `MainView` itself, not the grid: it's always available, whatever the
 /// detail pane is showing.
@@ -847,6 +852,10 @@ extension FocusedValues {
     var requestLibraryGetInfo: (() -> Void)? {
         get { self[LibraryGetInfoKey.self] }
         set { self[LibraryGetInfoKey.self] = newValue }
+    }
+    var requestLibraryQuickLook: (() -> Void)? {
+        get { self[LibraryQuickLookKey.self] }
+        set { self[LibraryQuickLookKey.self] = newValue }
     }
     var requestNewCollection: (() -> Void)? {
         get { self[NewCollectionKey.self] }

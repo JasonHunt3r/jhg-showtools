@@ -620,6 +620,9 @@ struct LibraryGridView: View {
     /// `GridSelection`'s pure functions (batch 4, B3).
     @State private var selectionBase: Set<Int64> = []
     @State private var cursor: Int64?
+    /// The grid's own on-screen width, measured for `columnCount` (B2):
+    /// `.adaptive` columns don't expose their count any other way.
+    @State private var gridWidth: CGFloat = 0
     @State private var dropTargeted = false
     // Find Similar (plan, Phase 3b).
     /// Find Similar Images (was "Group Similar"; renamed 2026-09-24 so
@@ -904,11 +907,15 @@ struct LibraryGridView: View {
         // Library: Delete asks, then Trash; ⌘Delete skips the question. In a
         // collection: Delete takes them out of it (undoable); ⌘Delete deletes
         // them from the library, and asks first.
-        // Delete, ⌘Delete and ⌘A (Select All, audit A1) are taken here,
-        // before AppKit, rather than through SwiftUI focus: a click on a
-        // tile never gave the grid the keyboard (Jason's click and axtool's
-        // alike, 2026-09-22; setting the focus on click, and moving the
-        // handlers, didn't change it).
+        // Delete, ⌘Delete, ⌘A (Select All, audit A1), the arrow keys (B2)
+        // and Return (rename, B6) are all taken here, before AppKit,
+        // rather than through SwiftUI focus: a click on a tile never gave
+        // the grid the keyboard (Jason's click and axtool's alike,
+        // 2026-09-22; setting the focus on click, and moving the handlers,
+        // didn't change it). ⌘Y (Quick Look, B5) is a real menu shortcut
+        // instead — see `requestLibraryQuickLook`, below — since it still
+        // has to work while the Quick Look panel itself, a different
+        // window, is key.
         // Not while text is edited (SingleKeys), not while a list (the
         // sidebar) has the keyboard.
         .background(SingleKeys { event in
@@ -919,14 +926,26 @@ struct LibraryGridView: View {
                 selectionBase = selection
                 return true
             }
-            guard event.keyCode == 51 || event.keyCode == 117, !selection.isEmpty else { return false }
-            switch event.plainModifiers {
-            case []:
+            switch (event.keyCode, event.charactersIgnoringModifiers?.lowercased(), event.plainModifiers) {
+            case (51, _, []), (117, _, []):
+                guard !selection.isEmpty else { return false }
                 if let gid = groupID { removeFromGroup(orderedSelection, gid) }
                 else if let cid = collectionID { removeFromCollection(orderedSelection, cid) }
                 else { requestDelete(orderedSelection, confirm: true) }
-            case [.command]:
+            case (51, _, [.command]), (117, _, [.command]):
+                guard !selection.isEmpty else { return false }
                 requestDelete(orderedSelection, confirm: collectionID != nil)
+            case (123, _, []): guard moveSelection(-1, extend: false) else { return false }        // ←
+            case (123, _, [.shift]): guard moveSelection(-1, extend: true) else { return false }
+            case (124, _, []): guard moveSelection(1, extend: false) else { return false }          // →
+            case (124, _, [.shift]): guard moveSelection(1, extend: true) else { return false }
+            case (126, _, []): guard moveSelection(-columnCount, extend: false) else { return false } // ↑
+            case (126, _, [.shift]): guard moveSelection(-columnCount, extend: true) else { return false }
+            case (125, _, []): guard moveSelection(columnCount, extend: false) else { return false }  // ↓
+            case (125, _, [.shift]): guard moveSelection(columnCount, extend: true) else { return false }
+            case (36, _, []):
+                guard !orderedSelection.isEmpty else { return false }
+                renameIDs = orderedSelection
             default:
                 return false
             }
@@ -979,6 +998,10 @@ struct LibraryGridView: View {
             renameIDs = orderedSelection
         })
         .focusedSceneValue(\.requestLibraryGetInfo, showGetInfo)
+        .focusedSceneValue(\.requestLibraryQuickLook, {
+            guard let first = orderedSelection.first else { return }
+            quickLook(startingAt: first)
+        })
     }
 
     private func showGetInfo() {
@@ -1095,6 +1118,14 @@ struct LibraryGridView: View {
             }
         }
         .background(Color(nsColor: .textBackgroundColor).opacity(0.001))
+        .background(GeometryReader { g in
+            Color.clear.onAppear { gridWidth = g.size.width }
+                .onChange(of: g.size.width) { _, w in gridWidth = w }
+        })
+        .onChange(of: cursor) { _, id in
+            guard let id else { return }
+            withAnimation { proxy.scrollTo(id, anchor: nil) }
+        }
         .onTapGesture { selection = []; focused = true }
         // The grid, not the bar above it with Search, is what takes the
         // keyboard (by Tab; Delete itself is caught by SingleKeys, above).
@@ -1170,6 +1201,9 @@ struct LibraryGridView: View {
             }
         }
         .contentShape(Rectangle())
+        // Double-click: "go into it" (conventions.md), settled as Quick
+        // Look for a Library tile (B5, B6) now that Space is play/pause.
+        .onTapGesture(count: 2) { click(item.id); quickLook(startingAt: item.id) }
         .onTapGesture { click(item.id) }
         // A selected tile drags the whole selection; any other, just itself.
         .onDrag { ItemDrag.provider(selection.contains(item.id) ? orderedSelection : [item.id]) }
@@ -1296,6 +1330,46 @@ struct LibraryGridView: View {
         selectionBase = r.base
         cursor = r.cursor
         focused = true
+    }
+
+    /// How many tiles fit per row: `.adaptive(minimum: tileSize, maximum:
+    /// tileSize * 1.4)` doesn't expose its own column count, so this works
+    /// it out the same way SwiftUI does (B2) — fit as many `tileSize`-plus-
+    /// spacing tiles as the measured width allows. A mismatch against
+    /// SwiftUI's own rounding only changes which tile ↑ / ↓ lands on, not
+    /// whether ← / → work.
+    private var columnCount: Int {
+        guard !isListMode else { return 1 }
+        let spacing: CGFloat = 10
+        return max(1, Int((gridWidth + spacing) / (tileSize + spacing)))
+    }
+
+    /// An arrow key (B2): steps the cursor by `delta` positions in the
+    /// grid's own order, extending from the anchor with ⇧ exactly as a
+    /// ⇧-click would (`GridSelection.step`). Returns false (so the event
+    /// isn't swallowed) when there's nothing to move over.
+    @discardableResult
+    private func moveSelection(_ delta: Int, extend: Bool) -> Bool {
+        let items = visible.map(\.id)
+        guard !items.isEmpty else { return false }
+        let r = GridSelection.step(from: cursor, by: delta, anchor: anchor, base: selectionBase,
+                                    in: items, extend: extend)
+        selection = r.selected
+        anchor = r.anchor
+        selectionBase = r.base
+        cursor = r.cursor
+        focused = true
+        return true
+    }
+
+    /// Quick Look (B5, B6): ⌘Y, and double-clicking a tile. Steps through
+    /// the current selection, starting on the one that was double-clicked
+    /// or, from ⌘Y, the first of it.
+    private func quickLook(startingAt id: Int64) {
+        let ids = orderedSelection.isEmpty ? [id] : orderedSelection
+        let urls = ids.compactMap { model.itemsByID[$0].flatMap { model.url(for: $0) } }
+        guard !urls.isEmpty else { return }
+        QuickLookController.shared.toggle(urls: urls, startAt: ids.firstIndex(of: id) ?? 0)
     }
 }
 

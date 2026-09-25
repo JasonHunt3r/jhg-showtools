@@ -459,8 +459,42 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
      overlap in this scratch setup, and a cross-window synthetic drag has
      a documented history of not reproducing reliably in this app — same
      limitation noted in earlier sessions); real visual feedback by eye.
-9. **The grid's keyboard** (audit batch 7: B1, B2, B5, B6): arrow keys,
-   Quick Look on ⌘Y, Return renames, double-click.
+9. ~~**The grid's keyboard**~~ (audit batch 7: B1, B2, B5, B6) — done
+   2026-09-25. `GridSelection.step` (already built and tested, batch 4)
+   wired into the Library grid's own `SingleKeys` handler alongside
+   Delete/⌘Delete/⌘A: ← → step one tile, ↑ ↓ step a whole row (a new
+   `columnCount`, worked out from the grid's own measured width the same
+   way `.adaptive(minimum:maximum:)` does, since SwiftUI doesn't expose
+   the column count itself), ⇧ extends from the anchor exactly as
+   ⇧-click does, and the cursor scrolls into view (`ScrollViewProxy`,
+   already in scope for `scrollingGrid`). Return renames the selection
+   (reuses `renameIDs`, the same sheet the context menu's Rename… opens).
+   Quick Look (B5, B6, settled as double-click's meaning in
+   `spec/conventions.md`) is new: `QuickLookController.swift`, a direct
+   `QLPreviewPanel.shared()` data source (not the full
+   `acceptsPreviewPanelControl` responder-chain dance — this app never
+   puts Quick Look behind Space, which is play/pause everywhere, so
+   there's no other owner to hand the panel to). **⌘Y is a real menu
+   shortcut** (`requestLibraryQuickLook`, alongside Get Info and
+   Rename…), not `SingleKeys`: a first attempt used `SingleKeys` and
+   ⌘Y stopped closing the panel once the panel itself — a different
+   `NSWindow` — was key, since a window-scoped local monitor never sees
+   that window's events; a real `NSMenuItem` shortcut fires wherever the
+   app's focus is, which fixed it. Double-click on a tile opens Quick
+   Look too (`.onTapGesture(count: 2)`, before the plain one so SwiftUI
+   doesn't fire both). `swift build`, `swift test` (306) and
+   `./make-app.sh` all clean. **Checked with axtool against a scratch
+   library:** click selects, → and ↓ land on the right tile (↓ moved
+   exactly one row down, confirming `columnCount`'s math against the
+   real `.adaptive` layout), ⇧← extends to 2 selected, Return opens
+   "Rename 2 Items", ⌘Y opens Quick Look on the first of a 2-item
+   selection (confirmed by screenshot — the right file, "photo_05.jpg"),
+   double-click opens it too, and ⌘Y a second time closes it **even
+   while the Quick Look panel itself was the key window** — the exact
+   case the menu-shortcut fix was for. Prefs diffed clean against a
+   pre-session export; no stray `runningTestLaunches` after quitting.
+   **Not checked:** a real keypress or double-click by hand — every
+   check above was axtool's.
 10. **BGTools batch:** names (W5) → the map view (W9) → the window opening
     on your screen, with ⌥-double-click (W4).
 
@@ -530,6 +564,15 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
+- **The grid's keyboard** (built 2026-09-25, audit batch 7): arrow keys,
+  Return-renames, and Quick Look on ⌘Y or a double-click — all confirmed
+  by their actual effect with axtool (selection counts, the rename sheet,
+  a screenshot of the right file in Quick Look, the panel really closing
+  on a second ⌘Y even while it was the key window), never by a real
+  keypress or click. Worth a particular look: whether `columnCount`'s
+  worked-out math ever drifts from `.adaptive`'s own at an odd window
+  width or thumbnail size (only the default 250pt tile size, at the
+  window's default width, was exercised).
 - **Drops onto slides and Replace Image…** (built 2026-09-24, plan.md
   "Replace a slide's image"): Replace Image… from all four menus (only
   the storyline's was actually clicked through), the storyline's drag

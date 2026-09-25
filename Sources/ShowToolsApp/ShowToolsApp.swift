@@ -41,6 +41,7 @@ struct AppCommands: Commands {
     @FocusedValue(\.librarySelectionCount) private var librarySelectionCount
     @FocusedValue(\.requestLibraryRename) private var requestLibraryRename
     @FocusedValue(\.requestLibraryGetInfo) private var requestLibraryGetInfo
+    @FocusedValue(\.requestLibraryQuickLook) private var requestLibraryQuickLook
     @FocusedValue(\.requestNewCollection) private var requestNewCollection
     // Batch 5 (A2, F1–F4, G5): the open show's slide selection and its
     // Duplicate/Get Info, and Edit Show's transport and timeline commands —
@@ -91,6 +92,9 @@ struct AppCommands: Commands {
             .keyboardShortcut("i")
             .disabled((librarySelectionCount ?? 0) == 0 && (activeSlideSelection ?? []).isEmpty)
             Button("Rename…") { requestLibraryRename?() }
+                .disabled((librarySelectionCount ?? 0) == 0)
+            Button("Quick Look") { requestLibraryQuickLook?() }
+                .keyboardShortcut("y")
                 .disabled((librarySelectionCount ?? 0) == 0)
             Divider()
             // Whole-library maintenance, not scoped to a selection (2b).
