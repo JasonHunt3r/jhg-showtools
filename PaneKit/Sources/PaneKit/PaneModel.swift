@@ -69,10 +69,10 @@ public struct Split: Sendable, Identifiable, Equatable {
     /// pane's title.
     public var title: String?
     /// Another split whose stored size moves by the same amount whenever
-    /// this one's divider is dragged (never on a collapse or a window
-    /// resize — just a direct drag) — so a pane sandwiched between this
-    /// split's own boundary and that ancestor's doesn't change size, only
-    /// position. `.row`'s `nearIsRigid` is what sets this
+    /// this one's divider is dragged, or whenever this one collapses or
+    /// reopens (never on a plain window resize) — so a pane sandwiched
+    /// between this split's own boundary and that ancestor's doesn't change
+    /// size, only position. `.row`'s `nearIsRigid` is what sets this
     /// (`spec/panekit.md`, "Building a row").
     public var linkedAncestor: String?
     public var first: PaneNode
@@ -147,9 +147,14 @@ public indirect enum PaneNode: Sendable, Equatable {
     /// breaking divider isolation, moving `far` when the main|near divider
     /// drags. `far` is the only one of the three that keeps a real upper
     /// bound by default. Closing `far` (it can, `near` and `main` can't)
-    /// hands its space to `near`, not to `main` — `near` is what's
-    /// adjacent to it, and this doesn't change under `nearIsRigid` below
-    /// (that only governs a direct drag, not a collapse).
+    /// hands its space to `near`, not to `main`, by default — `near` is
+    /// what's adjacent to it. **Under `nearIsRigid`, closing or reopening
+    /// `far` hands the space to `main` instead** (`PaneController.setOpen`),
+    /// matching what a direct drag already did — found wrong the other way
+    /// on Edit Show's own list column (item 1,
+    /// `ShowTools Feedback — Worklist for Next CC Session.md`, 2026-09-25):
+    /// closing the inspector grew the list, when list was meant to stay
+    /// fixed-width and only the divider it owns should ever resize it.
     ///
     /// - Parameters:
     ///   - mainFirst: `main` reads first (left/top) when true, matching
@@ -176,7 +181,16 @@ public indirect enum PaneNode: Sendable, Equatable {
                            farCollapsible: Bool = true, nearIsRigid: Bool = false) -> PaneNode {
         let d = PaneLayout.dividerThickness
         let comboDefault = nearDefault + d + farSize
-        let comboRange = (near.minSize + d + farRange.lowerBound)...(nearMax + d + farRange.upperBound)
+        // Under `nearIsRigid`, `far` collapsing shrinks the stored combo
+        // size down to just `near` plus the handle (`PaneController
+        // .setOpen`), so the combo's own floor must reach that low, not
+        // stop at `near` plus a full-width `far` — otherwise the stored
+        // value gets clamped back up and `near` grows anyway, the bug
+        // `setOpen`'s change fixes.
+        let comboLower = nearIsRigid && farCollapsible
+            ? near.minSize + PaneLayout.handleThickness
+            : near.minSize + d + farRange.lowerBound
+        let comboRange = comboLower...(nearMax + d + farRange.upperBound)
         let linkedAncestor = nearIsRigid ? id : nil
         let inner: PaneNode = mainFirst
             ? .split("\(id).near", axis, sized: .second, size: farSize, range: farRange,

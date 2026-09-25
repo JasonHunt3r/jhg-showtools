@@ -74,8 +74,26 @@ public final class PaneController {
         NotificationCenter.default.post(name: Self.didChange, object: self)
     }
 
+    /// A `linkedAncestor` split (`.row`'s `nearIsRigid`) now also keeps
+    /// `near` unmoved when `far` collapses or reopens, not just on a direct
+    /// drag: the freed space goes to `main` instead — item 1,
+    /// `ShowTools Feedback — Worklist for Next CC Session.md`. Before this,
+    /// a collapse skipped the link (`PaneModel.row`'s own doc comment said
+    /// so), so closing the inspector grew the list column, not the preview.
     public func setOpen(_ splitID: String, _ open: Bool) {
-        perform { $0.splits[splitID, default: SplitState()].collapsed = !open }
+        perform { s in
+            let wasOpen = !(s.splits[splitID]?.collapsed ?? false)
+            s.splits[splitID, default: SplitState()].collapsed = !open
+            guard open != wasOpen, let split = root.split(splitID), let ancestorID = split.linkedAncestor,
+                  let ancestor = root.split(ancestorID) else { return }
+            let ownSize = s.splits[splitID]?.size ?? split.defaultSize
+            let delta = ownSize + PaneLayout.dividerThickness - PaneLayout.handleThickness
+            var ancestorState = s.splits[ancestorID] ?? SplitState()
+            let current = ancestorState.size ?? ancestor.defaultSize
+            let next = current + (open ? delta : -delta)
+            ancestorState.size = min(max(next, ancestor.range.lowerBound), ancestor.range.upperBound)
+            s.splits[ancestorID] = ancestorState
+        }
     }
 
     public func toggle(_ splitID: String) { setOpen(splitID, !isOpen(splitID)) }
