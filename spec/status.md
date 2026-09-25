@@ -263,11 +263,14 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
 10. **BGTools batch:** names (W5) → the map view (W9) → the window opening
     on your screen, with ⌥-double-click (W4).
 
-Then: the last of PaneKit (`spec/panekit.md`, step 4 — steps 2 and 3, the
-app's main window and Edit Show's/Edit Slides' columns, both moved ahead
-of this list already, 2026-09-24, to de-risk them early), the show
-session (`spec/windows.md`), and the New Show panel
-(`spec/simple-things-fast.md`).
+Then: the design conversation step 4 itself needs — the library panel, an
+actual detached pane, the Slide Editor (`spec/windows.md`) — now that
+everything ahead of it is done, moved up this list on purpose to de-risk
+it early, 2026-09-24: steps 2 and 3 (the app's main window and Edit
+Show's/Edit Slides' columns), the show session (its own prerequisite),
+and `nearIsRigid` (found watching Jason use it — Edit Show's list column
+now only resizes from its own divider; `spec/panekit.md`, "Building a
+row"). And the New Show panel (`spec/simple-things-fast.md`).
 
 ### Also next
 

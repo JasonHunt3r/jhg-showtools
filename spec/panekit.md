@@ -14,10 +14,12 @@ session, is also done (`spec/windows.md`, `ShowSession.swift`) — the
 show's selection, engine and lane state moved out of `ShowView`'s and
 `EditShowView`'s `@State` into one object `AppModel` owns, so nothing on
 screen changed but a pane in another window now has something to read.
-**Left:** step 4 itself (the library panel, an actual detached pane, the
-Slide Editor — a design conversation with Jason, not just a port).
-PaneKit is a local package dependency now (`Package.swift` and
-`project.yml`), named PaneKit, and lives in this
+`.row` also gained `nearIsRigid` (found watching Jason use Edit Show:
+`near`, the list column, now only changes size from its own divider —
+"Building a row" below). **Left:** step 4 itself (the library panel, an
+actual detached pane, the Slide Editor — a design conversation with
+Jason, not just a port). PaneKit is a local package dependency now
+(`Package.swift` and `project.yml`), named PaneKit, and lives in this
 repo for now (settled, Jason).
 
 ## What it is
