@@ -542,8 +542,29 @@ ones that ask `NSApp.keyWindow?.undoManager` directly, app-wide — checked
 with axtool against a scratch library: `Edit ▸ Undo` reads "Undo Move"
 (the real action name) and a real ⌘Z from the popped-out window reverts
 the edit (confirmed against the saved show's JSON), ⇧⌘Z redoes it.
-`swift test` (306) and `./make-app.sh` clean. Left of step 4: the
-timeline pane, last. And the New Show panel
+`swift test` (306) and `./make-app.sh` clean. **The timeline pane, step
+4's last piece, built the same session** (View ▸ "Timeline in Its Own
+Window"; `spec/panekit.md`, "The order," step 5): pops out as an ordinary
+window (it can go behind, unlike the Inspector's floating panel); the
+columns above grow to fill the vacated height when it does. This was the
+real keys test step 4 flagged — bare-key shortcuts (Space, J/K/L, M, I,
+O, N, arrows) needed `shortcuts(engine)` moved onto the storyline pane's
+own content so `SingleKeys` re-attaches its key monitor to whichever
+window the pane is actually in; confirmed with a real Space keypress
+toggling playback from the popped-out window. Undo/Redo, already fixed
+app-wide, needed no further work — confirmed with a real Set Range In
+from the popped-out Timeline window and a real ⌘Z undoing it. **Found,
+not fixed:** the Show/View menu's `editShowCommands`-gated items
+(Play/Pause, Add Marker, Set Range, Zoom, Go Back/Forward, Loop) read
+disabled while the Timeline window is key — `.focusedSceneValue` is
+Scene-scoped the same way SwiftUI's automatic Undo/Redo was, and a
+pop-out never publishes into it. The bare keys already cover the core
+playback/editing actions; what's left is the ⌘-modifier shortcuts (⌘L,
+⌘=/⌘−, ⌥X, ⌘[/⌘]) and the menu-only items (Set Range to View/Whole Show,
+Lock Range). The fix looks like moving `EditShowCommandsValue` onto
+`AppModel`, but naively reading `PlaybackEngine.show` there risks its own
+`@ObservationIgnored` trap (showtools-gotchas) — scoped out as its own
+follow-up, not guessed at. And the New Show panel
 (`spec/simple-things-fast.md`).
 
 ### Also next
@@ -613,6 +634,19 @@ and Flush presets from 2a.
   undoes and redoes the edit, checked against the saved show's JSON.
   Never confirmed by a real click, drag or keypress from Jason's own
   hands.
+- **The timeline pane popping out** (built 2026-09-25, View ▸ "Timeline
+  in Its Own Window," `spec/panekit.md` "The order" step 5): the window,
+  the columns growing to fill the vacated height, bare-key shortcuts
+  (Space, J/K/L, M, I, O, N, arrows) and Undo/Redo all confirmed with
+  axtool — a real Space keypress toggled playback and a real Set Range
+  In + ⌘Z round-tripped, both from the popped-out window. **Known,
+  scoped-out gap:** the Show/View menu's `editShowCommands` items
+  (Play/Pause, Add Marker, Set Range, Zoom, Go Back/Forward, Loop) read
+  disabled while that window is key — see "What's next" above and
+  `spec/panekit.md`, step 5, for why and what the fix would need. Never
+  confirmed by a real click, drag or keypress from Jason's own hands,
+  and worth noting the bare keys cover the everyday case even before
+  that gap closes.
 - **The grid's keyboard** (built 2026-09-25, audit batch 7): arrow keys,
   Return-renames, and Quick Look on ⌘Y or a double-click — all confirmed
   by their actual effect with axtool (selection counts, the rename sheet,
@@ -755,6 +789,17 @@ and Flush presets from 2a.
 
 ## Known issues
 
+- **A caught, non-fatal exception on the Library sidebar's right-click**
+  (`~/Library/Logs/ShowTools-exception.log`, 2026-09-25 08:42:35 and
+  08:42:36 UTC): `NSTableViewException`, "Row index -1 out of row range,"
+  from `-[NSTableView menuForEvent:]` on `SwiftUIOutlineListView` — a
+  stale/negative row index when a context menu is asked for. Logged
+  twice, a second apart, with no crash dialog and not witnessed by
+  Jason — `ExceptionProbe` catches exceptions AppKit's own event loop may
+  already be recovering from, so a log entry isn't proof of a visible
+  crash. Not investigated: found while looking at the log for an
+  unrelated reason, no repro yet, no PaneKit/pop-out frames in the stack
+  so unrelated to that work.
 - **The layout-loop crash — fixed 2026-09-23.** `NSGenericException` from
   AppKit's layout-loop guard, on selecting a show or switching Edit Slides
   ↔ Edit Show. **Confirmed cause:** SwiftUI's `.inspector()` modifier on

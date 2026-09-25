@@ -429,5 +429,17 @@ What's known before trying it:
    first place). Keys weren't exercised (the Inspector has none of its
    own; a future detach with keys, like the timeline, is the real test).
    Then the others.
-5. **The timeline pane, detached,** last: it carries the most keys and
-   playback.
+5. ~~**The timeline pane, detached,** last: it carries the most keys and
+   playback.~~ — **built 2026-09-25** (`spec/panekit.md`, "The order,"
+   step 5). It was the real keys test step 4 flagged: bare-key shortcuts
+   (Space, J/K/L, M, I, O, N, arrows) needed `shortcuts(engine)` moved
+   onto the storyline pane's own content so `SingleKeys` re-attaches when
+   PaneKit reparents it — done, and confirmed working from the popped-out
+   window. Undo/Redo, already fixed app-wide for the Inspector, needed no
+   further work here. **Found, not fixed:** the Show/View menu's
+   `editShowCommands`-gated items (Play/Pause, Add Marker, Set Range,
+   Zoom, Go Back/Forward, Loop) go disabled while the Timeline window is
+   key — `.focusedSceneValue` turns out to be Scene-scoped the same way
+   SwiftUI's automatic Undo/Redo was, so a pop-out never publishes into
+   it. The fix looks like `EditShowCommandsValue` moving onto `AppModel`
+   (`spec/panekit.md`, step 5, for the reasoning and the trap to avoid).

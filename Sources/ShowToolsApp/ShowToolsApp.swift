@@ -230,6 +230,13 @@ struct AppCommands: Commands {
                 get: { model.editShowColumns.isPoppedOut("inspector") },
                 set: { _ in model.editShowColumns.togglePopOut("inspector") }))
                 .disabled(editShowCommands == nil)
+            // Step 4's last piece: the timeline pane (`spec/windows.md`,
+            // "The timeline pane"). Pops out as an ordinary window, so it
+            // can go behind — unlike the Inspector's panel, which floats.
+            Toggle("Timeline in Its Own Window", isOn: Binding(
+                get: { model.editShowColumns.isPoppedOut("storyline") },
+                set: { _ in model.editShowColumns.togglePopOut("storyline") }))
+                .disabled(editShowCommands == nil)
             Divider()
             Button("Edit Slides") { mode = .slides }
                 .keyboardShortcut("1")

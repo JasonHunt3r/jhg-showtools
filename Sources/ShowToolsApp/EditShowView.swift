@@ -61,7 +61,14 @@ struct EditShowView: View {
                                           SlideEditorWindow.show(slideID: id, show: show, model: model,
                                                                  mutate: mutate, undoManager: undoManager)
                                       })
-                    }.environment(model)),
+                    }
+                    // The keyboard shortcuts live on the storyline pane's
+                    // own content, not the outer view: `SingleKeys` (below)
+                    // re-attaches its key monitor on `viewDidMoveToWindow`,
+                    // so nesting it here is what makes Space/J/K/L and the
+                    // Show/View menu commands follow the timeline pane when
+                    // it pops out (`spec/panekit.md`, "The order," step 4).
+                    .environment(model).background(shortcuts(engine))),
                 ])
                 .onAppear { model.editShowColumns.setOpen("columns.near", inspectorShown) }
                 .onChange(of: inspectorShown) { _, shown in model.editShowColumns.setOpen("columns.near", shown) }
@@ -133,7 +140,6 @@ struct EditShowView: View {
                         engine.seek(r.start)
                     }
                 }
-                .background(shortcuts(engine))
             } else {
                 Color.black
             }

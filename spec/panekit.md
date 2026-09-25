@@ -573,10 +573,46 @@ opening or closing (changes are instant for now).
    .isEmpty`, already generic — no ShowTools-specific code needed),
    selecting a slide in the main window live-updates the popped-out
    content (the show session already shared), and an edit made from it
-   (a Position X drag) saves to the library correctly. **What isn't
-   proven: undo** — see "Pane ⇄ panel" above; a real gap, not yet fixed.
-   Edit Slides' own inspector stays inline; this is the first case, not a
-   port of both. Left of step 4: the timeline pane, last.
+   (a Position X drag) saves to the library correctly. Undo was a real
+   gap, found and fixed the same session — see "Pane ⇄ panel" above and
+   `UndoMenuState`. Edit Slides' own inspector stays inline; this is the
+   first case, not a port of both.
+5. **The timeline pane, last: built 2026-09-25** (`EditColumnsLayout
+   .editShowTree`, `.pane("storyline", ..., popOut: .window)`; View ▸
+   "Timeline in Its Own Window"). Pops out as an ordinary window, not a
+   panel — it can go behind, per its own table entry above. `swift test`
+   (306) and `./make-app.sh` clean. Checked with axtool against a scratch
+   library: pops out at the storyline's own width, the columns above grow
+   to fill the vacated height (`PaneLayout.isEmpty` again, no new code),
+   Undo/Redo work from it (the same `UndoMenuState` fix, confirmed with a
+   real Set Range In from the popped-out window and a real ⌘Z undoing it).
+   **Bare-key shortcuts follow it — a second, harder gap found and
+   fixed:** `shortcuts(engine)` (Space, J/K/L, M, I, O, N, arrows) was
+   attached to the outer view, outside `PaneLayoutView`, so it never
+   moved with the pane; moving it onto the storyline pane's own content
+   in the `content: [...]` dictionary let `SingleKeys`' existing
+   `viewDidMoveToWindow` override re-attach its key monitor to whichever
+   window the pane is actually in — confirmed with a real Space keypress
+   toggling playback from the popped-out window. **Not fixed, found and
+   left open:** `editShowCommands` (`.focusedSceneValue`, gating the
+   Show/View menu's Play/Pause, Add Marker, Set Range, Zoom, Go
+   Back/Forward and Loop items) reads disabled outright while the
+   popped-out Timeline window is key, checked against several items by
+   menu validation — the same class of bug `UndoMenuState` fixed for
+   Undo/Redo (`.focusedSceneValue` is Scene-graph-scoped, same as
+   SwiftUI's automatic Undo/Redo, and a PaneKit pop-out sits outside that
+   graph), but a bigger fix this time: `EditShowCommandsValue`'s state
+   (`rangeLocked`, `loopOn`, `canGoBack`, `canGoForward`) would need to
+   live somewhere window-independent, most naturally `AppModel` (matching
+   how `editShowColumns`/`mainPanes` already do), but a naive move risks
+   `PlaybackEngine.show`'s own `@ObservationIgnored` trap
+   (showtools-gotchas) if its computed properties read the engine's copy
+   instead of the saved `show` SwiftUI actually observes. Left for a
+   scoped follow-up, not guessed at here. The bare keys already cover
+   the core playback/editing actions (Play/Pause, shuttle, marker, range
+   in/out, snapping, arrow nav) — what's left is the ⌘-modifier shortcuts
+   (⌘L, ⌘=/⌘−, ⌥X, ⌘[/⌘]) and the menu-only items (Set Range to
+   View/Whole Show, Lock Range).
 
 ## Settled
 
