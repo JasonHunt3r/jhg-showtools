@@ -1121,14 +1121,42 @@ alongside New Group in…/Rename…/Delete Group…, which today is
 deliberately minimal — "the fuller one is still 'to settle with
 groups'"). Worth settling together with that fuller group context menu.
 
-**Reordering — items 17/38 (feedback worklist), confirmed (Jason,
-2026-09-25):** yes, build the schema. Today `collection_items` and
-`group_items` only carry `added_at`; dragging to reorder needs a position
-column to drag against. Not yet designed: whether it's a plain integer
-sort column (renumbered on every reorder, as thelivery's web app does — a
-Vue implementation, referenced there for the interaction pattern, not the
-schema) or a fractional/gap-based order key (avoiding a renumbering pass
-on drag). Migration 14.
+**Reordering — items 17/38 (feedback worklist).** The schema is
+**built**, migration 14, 2026-09-25: `collection_items` and `group_items`
+each gain a `sort_key REAL` column, backfilled from `added_at` on upgrade
+(tested: a version-13 library opens with its files in exactly the order
+they read today). `sort_key` and `added_at` are now two separate things —
+dragging to reorder must not also change what Date Added shows.
+`MediaCollection`/`MediaGroup.itemIDs` reads in `sort_key` order (the drag
+order); a new `addedAt: [Int64: Double]` on each carries the original
+timestamps for Date Added/Date Added, Newest First to sort by
+independently. `Library.setOrder(_:inCollection:)` /
+`setOrder(_:inGroup:)` take the dropped-into array and renumber `sort_key`
+as plain integers (0, 1, 2, …) in one transaction — a personal media
+library's collections aren't big enough for a full rewrite to cost
+anything real, so the fractional/gap-based alternative wasn't needed.
+Every add/remove/restore/undo path (`addItems`, `removeItems`,
+`restoreItems`, `CollectionSnapshot`, `GroupSnapshot`,
+`restoreItems(_ deleted:)` for a Trash undo) carries `sort_key` alongside
+`added_at` now. Tested: `setOrder` changes `itemIDs` without touching
+`addedAt`; an id not actually in the collection is silently ignored;
+group-side reorder is independent of its collection's. 310 tests
+(306 → 310). **Confirmed with axtool** against the scratch library: a
+collection's grid shows a new **Custom Order** sort option (only when a
+collection or group is selected — the plain Library has no drag order to
+show), selecting it doesn't crash and shows the files normally.
+
+**Left:** the drag interaction itself. `LibraryGridView`'s tiles need an
+`.onDrag`/`.onDrop`-driven reorder (or `.itemProvider`, per the codebase's
+own rule against `.onDrag` breaking a `List`'s click/selection — the grid
+isn't a `List`, so plain `.onDrag` is what the grid's tiles already use
+elsewhere) that computes the dropped-at array and calls `setOrder`,
+wrapped in an undo step like every other `ShowMutator`-adjacent edit.
+thelivery's web reordering tool is the interaction reference (a different
+codebase/language, for the drag *feel*, not the code). Also left:
+whether choosing Custom Order should be automatic the moment someone
+drags (so the drag is never silently discarded under a different active
+sort), or left for Jason to switch to by hand.
 
 **Built 2026-09-24 (nesting by drag, and dragging into another
 collection):** `Library.moveGroup(id:toParent:)` — nests a group inside

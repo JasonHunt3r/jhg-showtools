@@ -249,7 +249,7 @@ extension LibraryTests {
         }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("DROP TABLE group_items; DROP TABLE groups; DROP TABLE rhythm_patterns; ALTER TABLE shows DROP COLUMN editor; ALTER TABLE shows DROP COLUMN markers; ALTER TABLE shows DROP COLUMN music; ALTER TABLE shows DROP COLUMN rows; PRAGMA user_version = 6;")
+            try db.exec("DROP TABLE group_items; DROP TABLE groups; ALTER TABLE collection_items DROP COLUMN sort_key; DROP TABLE rhythm_patterns; ALTER TABLE shows DROP COLUMN editor; ALTER TABLE shows DROP COLUMN markers; ALTER TABLE shows DROP COLUMN music; ALTER TABLE shows DROP COLUMN rows; PRAGMA user_version = 6;")
         }
         let lib = try Library(root: root)
         var show = try XCTUnwrap(lib.allShows().first)
@@ -265,7 +265,7 @@ extension LibraryTests {
         do { _ = try Library(root: root) }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("DROP TABLE group_items; DROP TABLE groups; DROP TABLE rhythm_patterns; PRAGMA user_version = 10;")
+            try db.exec("DROP TABLE group_items; DROP TABLE groups; ALTER TABLE collection_items DROP COLUMN sort_key; DROP TABLE rhythm_patterns; PRAGMA user_version = 10;")
         }
         let lib = try Library(root: root)
         XCTAssertEqual(try lib.allRhythmPatterns(), [])
@@ -280,7 +280,7 @@ extension LibraryTests {
         }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("DROP TABLE group_items; DROP TABLE groups; ALTER TABLE rhythm_patterns DROP COLUMN beats_per_quarter; PRAGMA user_version = 11;")
+            try db.exec("DROP TABLE group_items; DROP TABLE groups; ALTER TABLE collection_items DROP COLUMN sort_key; ALTER TABLE rhythm_patterns DROP COLUMN beats_per_quarter; PRAGMA user_version = 11;")
         }
         let lib = try Library(root: root)
         XCTAssertEqual(try lib.allRhythmPatterns().map(\.pattern.text), ["h q q"])
@@ -653,6 +653,49 @@ extension LibraryTests {
         XCTAssertEqual(try lib.allCollections().first { $0.id == c.id }?.itemIDs, ids, "back in the order they were added")
     }
 
+    /// Custom Order (schema 14): `setOrder` rewrites the drag order without
+    /// touching `addedAt`, which Date Added keeps reading from.
+    func testSetOrderChangesItemIDsButNotAddedAt() throws {
+        let lib = try Library(root: dir.appendingPathComponent("SortKey.noindex"))
+        let ids = try (1...3).map { i -> Int64 in try insertItem(lib, "\(i)") }
+        let c = try lib.createCollection(name: "C")
+        for id in ids { try lib.addItems([id], toCollection: c.id); usleep(2000) }
+        let addedBefore = try XCTUnwrap(lib.allCollections().first { $0.id == c.id }).addedAt
+
+        try lib.setOrder([ids[2], ids[0], ids[1]], inCollection: c.id)
+        let c2 = try XCTUnwrap(lib.allCollections().first { $0.id == c.id })
+        XCTAssertEqual(c2.itemIDs, [ids[2], ids[0], ids[1]], "the drag order")
+        XCTAssertEqual(c2.addedAt, addedBefore, "Date Added is untouched by a reorder")
+    }
+
+    /// A file dropped into `setOrder` that isn't actually in the collection
+    /// is silently ignored — no crash, no row created for it.
+    func testSetOrderIgnoresAnIDNotInTheCollection() throws {
+        let lib = try Library(root: dir.appendingPathComponent("SortKeyIgnore.noindex"))
+        let ids = try (1...2).map { i -> Int64 in try insertItem(lib, "\(i)") }
+        let stray = try insertItem(lib, "stray")
+        let c = try lib.createCollection(name: "C")
+        try lib.addItems(ids, toCollection: c.id)
+        try lib.setOrder([stray, ids[1], ids[0]], inCollection: c.id)
+        XCTAssertEqual(try lib.allCollections().first { $0.id == c.id }?.itemIDs, [ids[1], ids[0]])
+    }
+
+    /// The group version of `testSetOrderChangesItemIDsButNotAddedAt`.
+    func testSetOrderInAGroupChangesItemIDsButNotAddedAt() throws {
+        let lib = try Library(root: dir.appendingPathComponent("SortKeyGroup.noindex"))
+        let ids = try (1...3).map { i -> Int64 in try insertItem(lib, "\(i)") }
+        let c = try lib.createCollection(name: "C")
+        try lib.addItems(ids, toCollection: c.id)
+        let g = try lib.createGroup(name: "G", collectionID: c.id)
+        for id in ids { try lib.addItems([id], toGroup: g.id); usleep(2000) }
+        let addedBefore = try XCTUnwrap(lib.allGroups().first { $0.id == g.id }).addedAt
+
+        try lib.setOrder([ids[1], ids[2], ids[0]], inGroup: g.id)
+        let g2 = try XCTUnwrap(lib.allGroups().first { $0.id == g.id })
+        XCTAssertEqual(g2.itemIDs, [ids[1], ids[2], ids[0]])
+        XCTAssertEqual(g2.addedAt, addedBefore)
+    }
+
     func testADeletedCollectionComesBackWithItsShowsAndIds() throws {
         let lib = try Library(root: dir.appendingPathComponent("V.noindex"))
         let a = try insertItem(lib, "a"), b = try insertItem(lib, "b")
@@ -716,7 +759,7 @@ extension LibraryTests {
         do { _ = try Library(root: root) }
         do {
             let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
-            try db.exec("DROP TABLE group_items; DROP TABLE groups; PRAGMA user_version = 12;")
+            try db.exec("DROP TABLE group_items; DROP TABLE groups; ALTER TABLE collection_items DROP COLUMN sort_key; PRAGMA user_version = 12;")
         }
         let lib = try Library(root: root)
         XCTAssertEqual(try lib.allGroups(), [])
@@ -725,6 +768,30 @@ extension LibraryTests {
         let g = try lib.createGroup(name: "Favourites", collectionID: c.id)
         XCTAssertEqual(try lib.allGroups().map(\.name), ["Favourites"])
         XCTAssertEqual(g.collectionID, c.id)
+    }
+
+    /// A version-13 library has no `sort_key` at all — the upgrade backfills
+    /// it from `added_at`, so nothing reorders on the upgrade itself (plan,
+    /// "Reordering").
+    func testAVersionThirteenLibraryBackfillsSortKeyFromAddedAt() throws {
+        let root = dir.appendingPathComponent("Thirteen.noindex")
+        var ids: [Int64] = []
+        var cid: Int64 = 0
+        do {
+            let lib = try Library(root: root)
+            ids = try (1...3).map { i in try insertItem(lib, "\(i)") }
+            let c = try lib.createCollection(name: "C")
+            cid = c.id
+            for id in ids { try lib.addItems([id], toCollection: c.id); usleep(2000) }
+        }
+        do {
+            let db = try Database(path: root.appendingPathComponent("Library.sqlite").path)
+            try db.exec("ALTER TABLE collection_items DROP COLUMN sort_key; ALTER TABLE group_items DROP COLUMN sort_key; PRAGMA user_version = 13;")
+        }
+        let lib = try Library(root: root)
+        let c = try XCTUnwrap(lib.allCollections().first { $0.id == cid })
+        XCTAssertEqual(c.itemIDs, ids, "still in added-at order after the upgrade")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("Library.sqlite.v13.bak").path))
     }
 
     /// A group's files must be in its collection (plan): a file not in the

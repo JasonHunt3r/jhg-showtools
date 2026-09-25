@@ -160,7 +160,7 @@ public final class Library {
     public func snapshot<T>(_ body: () throws -> T) throws -> T { try db.snapshot(body) }
 
     /// The schema version `migrate` brings a library up to.
-    public static let schemaVersion = 13
+    public static let schemaVersion = 14
 
     /// Before an existing library is upgraded, a copy of its database as it
     /// was, beside it: `Library.sqlite.v<N>.bak`. Upgrades are additive and
@@ -372,6 +372,22 @@ public final class Library {
                     """)
             }
         }
+        // 14 (2026-09-25): a drag order for a collection's or group's files
+        // (plan, "Reordering"), separate from `added_at`. Additive: every
+        // existing membership starts ordered exactly as it reads today,
+        // since `sort_key` is backfilled from `added_at` — the same order
+        // `allCollections`/`allGroups` already sorted by.
+        if db.userVersion < 14 {
+            try db.transaction {
+                try db.exec("""
+                    ALTER TABLE collection_items ADD COLUMN sort_key REAL;
+                    UPDATE collection_items SET sort_key = added_at;
+                    ALTER TABLE group_items ADD COLUMN sort_key REAL;
+                    UPDATE group_items SET sort_key = added_at;
+                    PRAGMA user_version = 14;
+                    """)
+            }
+        }
     }
 
     // MARK: The library itself
@@ -449,10 +465,14 @@ public final class Library {
         let s = try db.prepare("SELECT id, name FROM collections ORDER BY created_at, id")
         var out: [MediaCollection] = []
         while try s.step() { out.append(MediaCollection(id: s.int(0), name: s.text(1))) }
-        let m = try db.prepare("SELECT collection_id, item_id FROM collection_items ORDER BY added_at, item_id")
+        let m = try db.prepare("SELECT collection_id, item_id, added_at FROM collection_items ORDER BY sort_key, item_id")
         var members: [Int64: [Int64]] = [:]
-        while try m.step() { members[m.int(0), default: []].append(m.int(1)) }
-        for i in out.indices { out[i].itemIDs = members[out[i].id] ?? [] }
+        var added: [Int64: [Int64: Double]] = [:]
+        while try m.step() { members[m.int(0), default: []].append(m.int(1)); added[m.int(0), default: [:]][m.int(1)] = m.double(2) }
+        for i in out.indices {
+            out[i].itemIDs = members[out[i].id] ?? []
+            out[i].addedAt = added[out[i].id] ?? [:]
+        }
         return out
     }
 
@@ -471,15 +491,27 @@ public final class Library {
         try db.prepare("DELETE FROM collections WHERE id = ?").bind(.int(id)).run()
     }
 
-    /// Files already in it are left as they were.
+    /// Files already in it are left as they were. New ones join at the end
+    /// of the drag order (`sort_key`), all at the same key — as they
+    /// already shared one `added_at`, ties break on item id, same as today.
     public func addItems(_ itemIDs: [Int64], toCollection id: Int64) throws {
         let now = Date().timeIntervalSince1970
         try db.transaction {
+            let next = try nextSortKey("collection_items", column: "collection_id", id: id)
             let s = try db.prepare("""
-                INSERT OR IGNORE INTO collection_items (collection_id, item_id, added_at) VALUES (?, ?, ?)
+                INSERT OR IGNORE INTO collection_items (collection_id, item_id, added_at, sort_key) VALUES (?, ?, ?, ?)
                 """)
-            for item in itemIDs { try s.bind(.int(id), .int(item), .double(now)).run() }
+            for item in itemIDs { try s.bind(.int(id), .int(item), .double(now), .double(next)).run() }
         }
+    }
+
+    /// One past the highest `sort_key` already in `table` for `id` (0 if
+    /// there's none), so newly added files land after everything already
+    /// there.
+    private func nextSortKey(_ table: String, column: String, id: Int64) throws -> Double {
+        let q = try db.prepare("SELECT COALESCE(MAX(sort_key), -1) FROM \(table) WHERE \(column) = ?").bind(.int(id))
+        _ = try q.step()
+        return q.double(0) + 1
     }
 
     /// What `removeItems(_:fromCollection:)` took out: the collection
@@ -489,21 +521,22 @@ public final class Library {
     /// transaction — plan, "Groups inside collections"), so
     /// `restoreItems(_:toCollection:)` can put both back.
     public struct CollectionRemoval: Sendable {
-        public let items: [(itemID: Int64, addedAt: Double)]
-        public let groupMemberships: [(groupID: Int64, itemID: Int64, addedAt: Double)]
+        public let items: [(itemID: Int64, addedAt: Double, sortKey: Double)]
+        public let groupMemberships: [(groupID: Int64, itemID: Int64, addedAt: Double, sortKey: Double)]
     }
 
     /// Takes files out of a collection, and returns when each had been
-    /// added, so undo can put them back in their places.
+    /// added and its drag position, so undo can put them back exactly
+    /// where they were.
     @discardableResult
     public func removeItems(_ itemIDs: [Int64], fromCollection id: Int64) throws -> CollectionRemoval {
         try db.transaction {
-            let q = try db.prepare("SELECT added_at FROM collection_items WHERE collection_id = ? AND item_id = ?")
+            let q = try db.prepare("SELECT added_at, sort_key FROM collection_items WHERE collection_id = ? AND item_id = ?")
             let s = try db.prepare("DELETE FROM collection_items WHERE collection_id = ? AND item_id = ?")
-            var removed: [(itemID: Int64, addedAt: Double)] = []
+            var removed: [(itemID: Int64, addedAt: Double, sortKey: Double)] = []
             for item in itemIDs {
                 q.bind(.int(id), .int(item))
-                if try q.step() { removed.append((item, q.double(0))) }
+                if try q.step() { removed.append((item, q.double(0), q.double(1))) }
                 try s.bind(.int(id), .int(item)).run()
             }
             let groupMemberships = try groupMembershipsOfItems(itemIDs, inCollection: id)
@@ -515,41 +548,61 @@ public final class Library {
         }
     }
 
-    private func groupMembershipsOfItems(_ itemIDs: [Int64], inCollection collectionID: Int64) throws -> [(groupID: Int64, itemID: Int64, addedAt: Double)] {
+    private func groupMembershipsOfItems(_ itemIDs: [Int64], inCollection collectionID: Int64) throws -> [(groupID: Int64, itemID: Int64, addedAt: Double, sortKey: Double)] {
         guard !itemIDs.isEmpty else { return [] }
         let ids = itemIDs.map(String.init).joined(separator: ",")
         let s = try db.prepare("""
-            SELECT group_items.group_id, group_items.item_id, group_items.added_at
+            SELECT group_items.group_id, group_items.item_id, group_items.added_at, group_items.sort_key
             FROM group_items JOIN groups ON groups.id = group_items.group_id
             WHERE groups.collection_id = ? AND group_items.item_id IN (\(ids))
             """).bind(.int(collectionID))
-        var out: [(groupID: Int64, itemID: Int64, addedAt: Double)] = []
-        while try s.step() { out.append((s.int(0), s.int(1), s.double(2))) }
+        var out: [(groupID: Int64, itemID: Int64, addedAt: Double, sortKey: Double)] = []
+        while try s.step() { out.append((s.int(0), s.int(1), s.double(2), s.double(3))) }
         return out
     }
 
     /// Puts files back in a collection as they were: undoing a removal.
     /// Files no longer in the library are skipped.
-    public func restoreItems(_ entries: [(itemID: Int64, addedAt: Double)], toCollection id: Int64) throws {
+    public func restoreItems(_ entries: [(itemID: Int64, addedAt: Double, sortKey: Double)], toCollection id: Int64) throws {
         try db.transaction {
             let s = try db.prepare("""
-                INSERT OR IGNORE INTO collection_items (collection_id, item_id, added_at)
-                SELECT ?, id, ? FROM items WHERE id = ?
+                INSERT OR IGNORE INTO collection_items (collection_id, item_id, added_at, sort_key)
+                SELECT ?, id, ?, ? FROM items WHERE id = ?
                 """)
-            for e in entries { try s.bind(.int(id), .double(e.addedAt), .int(e.itemID)).run() }
+            for e in entries { try s.bind(.int(id), .double(e.addedAt), .double(e.sortKey), .int(e.itemID)).run() }
         }
     }
 
     /// Puts files back in their groups: undoing the group side of
     /// `removeItems(_:fromCollection:)`. Files or groups no longer there
     /// are skipped.
-    public func restoreGroupMemberships(_ entries: [(groupID: Int64, itemID: Int64, addedAt: Double)]) throws {
+    public func restoreGroupMemberships(_ entries: [(groupID: Int64, itemID: Int64, addedAt: Double, sortKey: Double)]) throws {
         try db.transaction {
             let g = try db.prepare("""
-                INSERT OR IGNORE INTO group_items (group_id, item_id, added_at)
-                SELECT ?, id, ? FROM items WHERE id = ?
+                INSERT OR IGNORE INTO group_items (group_id, item_id, added_at, sort_key)
+                SELECT ?, id, ?, ? FROM items WHERE id = ?
                 """)
-            for m in entries { try g.bind(.int(m.groupID), .double(m.addedAt), .int(m.itemID)).run() }
+            for m in entries { try g.bind(.int(m.groupID), .double(m.addedAt), .double(m.sortKey), .int(m.itemID)).run() }
+        }
+    }
+
+    /// Sets a collection's whole drag order at once, from the front end's
+    /// own reordered array — however the drag got there. Renumbered as
+    /// plain integers every call: a personal media library's collections
+    /// aren't big enough for a full rewrite to cost anything real (plan,
+    /// "Reordering"). Ids not in the collection are ignored.
+    public func setOrder(_ itemIDs: [Int64], inCollection id: Int64) throws {
+        try db.transaction {
+            let s = try db.prepare("UPDATE collection_items SET sort_key = ? WHERE collection_id = ? AND item_id = ?")
+            for (i, item) in itemIDs.enumerated() { try s.bind(.double(Double(i)), .int(id), .int(item)).run() }
+        }
+    }
+
+    /// The group version of `setOrder(_:inCollection:)`.
+    public func setOrder(_ itemIDs: [Int64], inGroup id: Int64) throws {
+        try db.transaction {
+            let s = try db.prepare("UPDATE group_items SET sort_key = ? WHERE group_id = ? AND item_id = ?")
+            for (i, item) in itemIDs.enumerated() { try s.bind(.double(Double(i)), .int(id), .int(item)).run() }
         }
     }
 
@@ -558,7 +611,7 @@ public final class Library {
         public let id: Int64
         public let name: String
         public let createdAt: Double
-        public let members: [(itemID: Int64, addedAt: Double)]
+        public let members: [(itemID: Int64, addedAt: Double, sortKey: Double)]
         public let shows: [(show: Show, createdAt: Double)]
         public let groups: [GroupSnapshot]
     }
@@ -567,9 +620,9 @@ public final class Library {
         let c = try db.prepare("SELECT name, created_at FROM collections WHERE id = ?").bind(.int(id))
         guard try c.step() else { return nil }
         let name = c.text(0), createdAt = c.double(1)
-        let m = try db.prepare("SELECT item_id, added_at FROM collection_items WHERE collection_id = ?").bind(.int(id))
-        var members: [(itemID: Int64, addedAt: Double)] = []
-        while try m.step() { members.append((m.int(0), m.double(1))) }
+        let m = try db.prepare("SELECT item_id, added_at, sort_key FROM collection_items WHERE collection_id = ?").bind(.int(id))
+        var members: [(itemID: Int64, addedAt: Double, sortKey: Double)] = []
+        while try m.step() { members.append((m.int(0), m.double(1), m.double(2))) }
         let times = try db.prepare("SELECT id, created_at FROM shows WHERE collection_id = ?").bind(.int(id))
         var created: [Int64: Double] = [:]
         while try times.step() { created[times.int(0)] = times.double(1) }
@@ -611,10 +664,14 @@ public final class Library {
             out.append(MediaGroup(id: s.int(0), collectionID: s.int(1),
                                    parentID: s.isNull(2) ? nil : s.int(2), name: s.text(3)))
         }
-        let m = try db.prepare("SELECT group_id, item_id FROM group_items ORDER BY added_at, item_id")
+        let m = try db.prepare("SELECT group_id, item_id, added_at FROM group_items ORDER BY sort_key, item_id")
         var members: [Int64: [Int64]] = [:]
-        while try m.step() { members[m.int(0), default: []].append(m.int(1)) }
-        for i in out.indices { out[i].itemIDs = members[out[i].id] ?? [] }
+        var added: [Int64: [Int64: Double]] = [:]
+        while try m.step() { members[m.int(0), default: []].append(m.int(1)); added[m.int(0), default: [:]][m.int(1)] = m.double(2) }
+        for i in out.indices {
+            out[i].itemIDs = members[out[i].id] ?? []
+            out[i].addedAt = added[out[i].id] ?? [:]
+        }
         return out
     }
 
@@ -677,25 +734,28 @@ public final class Library {
         guard !itemIDs.isEmpty else { return }
         let ids = itemIDs.map(String.init).joined(separator: ",")
         let now = Date().timeIntervalSince1970
-        try db.prepare("""
-            INSERT OR IGNORE INTO group_items (group_id, item_id, added_at)
-            SELECT ?, ci.item_id, ? FROM collection_items ci
-            JOIN groups g ON g.id = ?
-            WHERE ci.collection_id = g.collection_id AND ci.item_id IN (\(ids))
-            """).bind(.int(id), .double(now), .int(id)).run()
+        try db.transaction {
+            let next = try nextSortKey("group_items", column: "group_id", id: id)
+            try db.prepare("""
+                INSERT OR IGNORE INTO group_items (group_id, item_id, added_at, sort_key)
+                SELECT ?, ci.item_id, ?, ? FROM collection_items ci
+                JOIN groups g ON g.id = ?
+                WHERE ci.collection_id = g.collection_id AND ci.item_id IN (\(ids))
+                """).bind(.int(id), .double(now), .double(next), .int(id)).run()
+        }
     }
 
     /// Takes files out of a group, and returns when each had been added, so
     /// undo can put them back in their places. The files stay in the collection.
     @discardableResult
-    public func removeItems(_ itemIDs: [Int64], fromGroup id: Int64) throws -> [(itemID: Int64, addedAt: Double)] {
+    public func removeItems(_ itemIDs: [Int64], fromGroup id: Int64) throws -> [(itemID: Int64, addedAt: Double, sortKey: Double)] {
         try db.transaction {
-            let q = try db.prepare("SELECT added_at FROM group_items WHERE group_id = ? AND item_id = ?")
+            let q = try db.prepare("SELECT added_at, sort_key FROM group_items WHERE group_id = ? AND item_id = ?")
             let s = try db.prepare("DELETE FROM group_items WHERE group_id = ? AND item_id = ?")
-            var removed: [(itemID: Int64, addedAt: Double)] = []
+            var removed: [(itemID: Int64, addedAt: Double, sortKey: Double)] = []
             for item in itemIDs {
                 q.bind(.int(id), .int(item))
-                if try q.step() { removed.append((item, q.double(0))) }
+                if try q.step() { removed.append((item, q.double(0), q.double(1))) }
                 try s.bind(.int(id), .int(item)).run()
             }
             return removed
@@ -704,8 +764,8 @@ public final class Library {
 
     /// Puts files back in a group as they were: undoing a removal, or the
     /// group side of `removeItems(_:fromCollection:)`.
-    public func restoreItems(_ entries: [(itemID: Int64, addedAt: Double)], toGroup id: Int64) throws {
-        try restoreGroupMemberships(entries.map { (groupID: id, itemID: $0.itemID, addedAt: $0.addedAt) })
+    public func restoreItems(_ entries: [(itemID: Int64, addedAt: Double, sortKey: Double)], toGroup id: Int64) throws {
+        try restoreGroupMemberships(entries.map { (groupID: id, itemID: $0.itemID, addedAt: $0.addedAt, sortKey: $0.sortKey) })
     }
 
     /// One group's own row and files, to put back on undo — not its
@@ -717,15 +777,15 @@ public final class Library {
         public let parentID: Int64?
         public let name: String
         public let createdAt: Double
-        public let items: [(itemID: Int64, addedAt: Double)]
+        public let items: [(itemID: Int64, addedAt: Double, sortKey: Double)]
     }
 
     private func snapshotOneGroup(id: Int64) throws -> GroupSnapshot? {
         let g = try db.prepare("SELECT collection_id, parent_id, name, created_at FROM groups WHERE id = ?").bind(.int(id))
         guard try g.step() else { return nil }
-        let m = try db.prepare("SELECT item_id, added_at FROM group_items WHERE group_id = ?").bind(.int(id))
-        var items: [(itemID: Int64, addedAt: Double)] = []
-        while try m.step() { items.append((m.int(0), m.double(1))) }
+        let m = try db.prepare("SELECT item_id, added_at, sort_key FROM group_items WHERE group_id = ?").bind(.int(id))
+        var items: [(itemID: Int64, addedAt: Double, sortKey: Double)] = []
+        while try m.step() { items.append((m.int(0), m.double(1), m.double(2))) }
         return GroupSnapshot(id: id, collectionID: g.int(0), parentID: g.isNull(1) ? nil : g.int(1),
                               name: g.text(2), createdAt: g.double(3), items: items)
     }
@@ -909,8 +969,13 @@ public final class Library {
                               .double(item.ingestedAt.timeIntervalSince1970), .text(item.sourcePath),
                               .int(Int64(item.rating)), .text(Self.encodeTags(item.tags))).run()
                 let now = Date().timeIntervalSince1970
-                let ci = try db.prepare("INSERT INTO collection_items (collection_id, item_id, added_at) VALUES (?, ?, ?)")
-                for cid in d.collectionIDs { try? ci.bind(.int(cid), .int(item.id), .double(now)).run() }
+                let ci = try db.prepare("""
+                    INSERT INTO collection_items (collection_id, item_id, added_at, sort_key) VALUES (?, ?, ?, ?)
+                    """)
+                for cid in d.collectionIDs {
+                    let next = try nextSortKey("collection_items", column: "collection_id", id: cid)
+                    try? ci.bind(.int(cid), .int(item.id), .double(now), .double(next)).run()
+                }
                 let si = try db.prepare("INSERT INTO slides (id, show_id, position, item_id, settings) VALUES (?, ?, ?, ?, ?)")
                 for s in d.slides { try? si.bind(.int(s.slideID), .int(s.showID), .int(s.position), .int(item.id), .text(s.settings)).run() }
             }

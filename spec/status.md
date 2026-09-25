@@ -13,7 +13,7 @@ Repo: `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 **Everything planned is built**, including Groups inside collections and
 the range package (below). Phases 1–5, Phase 3b, Phase 4 and video
-export. **319 tests** (306 core + 13 BGTools). **Library schema 13.**
+export. **323 tests** (310 core + 13 BGTools). **Library schema 14.**
 
 | Phase | State |
 |---|---|
@@ -31,7 +31,8 @@ export. **319 tests** (306 core + 13 BGTools). **Library schema 13.**
 
 Every schema upgrade is additive and tested by opening a library of the
 version before (7 rows, 8 music, 9 markers, 10 editing state, 11 rhythm
-patterns, 12 their note length, 13 groups). Before an upgrade the database is copied
+patterns, 12 their note length, 13 groups, 14 a drag order for a
+collection's/group's files). Before an upgrade the database is copied
 to `Library.sqlite.v<N>.bak`. Video export needed no schema change: a video
 slide's level line is slide settings, which are JSON.
 
@@ -100,11 +101,14 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   collection** — is still a design question (`spec/plan.md`, "Groups
   inside collections," "Promotion"): what happens to the original group,
   and whether nested sub-groups come along.
-- **Item 17 / 38** (drag-to-reorder, the schema) — confirmed: build it.
-  Migration 14, a position column on `collection_items`/`group_items`.
-  The interaction pattern from thelivery's web-app reordering tool is the
-  reference (a different codebase/language, referenced for the pattern
-  only). Not yet designed: plain integer sort vs. a gap-based order key.
+- **Item 17 / 38** (drag-to-reorder) — **the schema is built**, migration
+  14: `sort_key` on `collection_items`/`group_items`, kept apart from
+  `added_at` so a reorder never changes what Date Added shows; a new
+  **Custom Order** sort option in the grid; `Library.setOrder` to write a
+  dropped-into array. 310 core tests. Confirmed with axtool: Custom Order
+  appears only with a collection or group selected, and shows the files
+  with no crash. **Left:** the drag gesture itself on the grid's tiles,
+  wired to `setOrder` and an undo step (`spec/plan.md`, "Reordering").
 - **Items 23–25** — queued as their own BGTools work list, to pick up
   once the ShowTools fixes above are done: `spec/bgtools.md`, "Next up —
   queued 2026-09-25, after the ShowTools fixes."

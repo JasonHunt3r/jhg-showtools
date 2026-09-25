@@ -496,13 +496,20 @@ public struct TimelineRow: Codable, Hashable, Identifiable, Sendable {
 public struct MediaCollection: Identifiable, Hashable, Sendable {
     public var id: Int64
     public var name: String
-    /// In the order they were added.
+    /// In their drag order — Custom Order, in the grid's sort menu
+    /// (`sort_key`, schema 14). Separate from `addedAt` now: dragging to
+    /// reorder must not also change when the Date Added sort thinks a file
+    /// joined.
     public var itemIDs: [Int64]
+    /// When each file joined this collection, keyed by item id — Date
+    /// Added/Date Added, Newest First read this, not `itemIDs`' order.
+    public var addedAt: [Int64: Double]
 
-    public init(id: Int64, name: String, itemIDs: [Int64] = []) {
+    public init(id: Int64, name: String, itemIDs: [Int64] = [], addedAt: [Int64: Double] = [:]) {
         self.id = id
         self.name = name
         self.itemIDs = itemIDs
+        self.addedAt = addedAt
     }
 }
 
@@ -516,14 +523,19 @@ public struct MediaGroup: Identifiable, Hashable, Sendable {
     public var collectionID: Int64
     public var parentID: Int64?
     public var name: String
-    /// In the order they were added.
+    /// In their drag order — Custom Order, in the grid's sort menu
+    /// (`sort_key`, schema 14). Separate from `addedAt` — see `MediaCollection`.
     public var itemIDs: [Int64]
+    /// When each file joined this group, keyed by item id.
+    public var addedAt: [Int64: Double]
 
-    public init(id: Int64, collectionID: Int64, parentID: Int64? = nil, name: String, itemIDs: [Int64] = []) {
+    public init(id: Int64, collectionID: Int64, parentID: Int64? = nil, name: String, itemIDs: [Int64] = [],
+                addedAt: [Int64: Double] = [:]) {
         self.id = id
         self.collectionID = collectionID
         self.parentID = parentID
         self.name = name
         self.itemIDs = itemIDs
+        self.addedAt = addedAt
     }
 }

@@ -721,9 +721,10 @@ struct LibraryGridView: View {
     }
 
     enum SortOrder: String, CaseIterable {
-        case added, addedNewest, name, rating
+        case custom, added, addedNewest, name, rating
         var title: String {
             switch self {
+            case .custom: "Custom Order"
             case .added: "Date Added, Oldest First"
             case .addedNewest: "Date Added, Newest First"
             case .name: "Name"
@@ -839,11 +840,23 @@ struct LibraryGridView: View {
                 && !(onlyUncollected && collection == nil && collected.contains(item.id))
         }
         switch sort {
-        case .added: return shown
-        case .addedNewest: return shown.reversed()
+        case .custom: return shown
+        case .added: return shown.sorted { addedAt($0.id) < addedAt($1.id) }
+        case .addedNewest: return shown.sorted { addedAt($0.id) > addedAt($1.id) }
         case .name: return shown.sorted { $0.fileName.localizedStandardCompare($1.fileName) == .orderedAscending }
         case .rating: return shown.sorted { $0.rating > $1.rating }
         }
+    }
+
+    /// When a file joined the group or collection in view — a group's or
+    /// collection's own `addedAt`, kept apart from `itemIDs`' drag order
+    /// (schema 14) so reordering by hand doesn't also rewrite Date Added.
+    /// The plain Library has no such membership, so it falls back to the
+    /// file's own `ingestedAt` (`allItems()` is already in that order).
+    private func addedAt(_ id: Int64) -> Double {
+        if let g = group { return g.addedAt[id] ?? 0 }
+        if let c = collection { return c.addedAt[id] ?? 0 }
+        return model.itemsByID[id]?.ingestedAt.timeIntervalSince1970 ?? 0
     }
 
     private var filtering: Bool {
@@ -890,8 +903,11 @@ struct LibraryGridView: View {
             .foregroundStyle(filtering ? Color.accentColor : .primary)
 
             Menu {
+                // Custom Order is a group's or collection's own drag order
+                // (schema 14) — the plain Library has no such thing to show.
                 Picker("Sort", selection: $sort) {
-                    ForEach(SortOrder.allCases, id: \.self) { Text($0.title).tag($0) }
+                    ForEach(SortOrder.allCases.filter { $0 != .custom || group != nil || collection != nil },
+                            id: \.self) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.inline)
             } label: {
