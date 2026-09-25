@@ -164,9 +164,43 @@ Batch 2 is otherwise done.
   transport with no show loaded"), which the doc itself says needs a
   concrete interaction spec before CC can build it.
 
-Batches 4–5 (BGTools P1s, P2 polish) not started. Five items need
-Jason's own decision first (Open Questions in the feedback doc) before
-CC can build them.
+**Batch 4 (BGTools) partly done:**
+- **Item 10**, BGTools couldn't be self-quit during the last rebuild:
+  fixed in `install.sh` — it asked BGTools.app to quit only via
+  `pkill` (no graceful `osascript` quit, unlike ShowTools right above
+  it) and never touched `BGToolsControls.appex` at all. A Control
+  Center extension runs as its own process, hosted by the system, not
+  by BGTools.app — reinstalling over it while it's still running is
+  exactly this symptom. Now quits BGTools.app gracefully first, and
+  `pkill`s the extension by its own path too.
+- **Item 21** (launch + install from a ShowTools menu, plus a setting):
+  fixed — "Desktop Show…" moved out of the View menu's toolbar group
+  into its own top-level "BGTools" menu; a new Settings ▸ BGTools
+  toggle, "Launch BGTools when ShowTools launches," starts it silently
+  (no window) at ShowTools' own launch, separate from the existing
+  "Open at Login" switch (which stays in BGTools' own window, where it
+  already was). Checked with axtool.
+- **Item 22**, BGTools' window not staying visible across a Space
+  switch: fixed — `canJoinAllSpaces`, the same treatment the Control
+  Center panel already had.
+- **Items 23–25 not started, on purpose:**
+  - **23** (Control Center tile: two clicks instead of one, and a
+    better icon) needs real hands and real Control Center registration
+    to even reproduce — this environment can't drive Control Center's
+    own UI, and the repo's own notes call this area cache-heavy and
+    fragile (`CLAUDE.md`'s install.sh comment). The icon half also
+    needs Jason's own direction on what "better" means.
+  - **24** (per-screen stop) is a real feature, not a bug fix — a new
+    per-monitor toggle or a "Plays Nothing" list entry, model changes
+    plus a UI decision the feedback doc itself frames as "two possible
+    mechanisms, pick one."
+  - **25** (BGT pan & zoom, length, transition options, matching
+    ShowTools' own slides) is a sizable feature port, not a fix.
+  All three are real next steps, just not one-sitting fixes, same as
+  items 12/17/19 above.
+
+Batch 5 (P2 polish) not started. Five items need Jason's own decision
+first (Open Questions in the feedback doc) before CC can build them.
 
 **A preferences leak, caught and fixed mid-session:** testing item 1's
 pop-out interactively wrote a scratch pop-out state into the *shared*
