@@ -634,6 +634,11 @@ struct LibraryGridView: View {
     }
     static let closest = 0.15, loosest = 0.75
     @AppStorage("gridTileSize") private var tileSize: Double = 150
+    /// The thumbnail-size slider's own range. At its smallest, the grid
+    /// becomes a single-column list with a small icon per row (Jason,
+    /// 2026-09-24) rather than a row of tiny tiles.
+    static let tileSizeRange: ClosedRange<Double> = 90...320
+    private var isListMode: Bool { tileSize <= Self.tileSizeRange.lowerBound }
 
     private var collection: MediaCollection? { collectionID.flatMap(model.collection) }
     private var group: MediaGroup? { groupID.flatMap(model.group) }
@@ -863,8 +868,8 @@ struct LibraryGridView: View {
         .onChange(of: selection) { model.infoPanelSelection = orderedSelection }
         .toolbar {
             ToolbarItemGroup {
-                Slider(value: $tileSize, in: 90...320).frame(width: 100)
-                    .help("Thumbnail size")
+                Slider(value: $tileSize, in: Self.tileSizeRange).frame(width: 100)
+                    .help(isListMode ? "Thumbnail size (list view)" : "Thumbnail size")
                 Button { runImportPanel(model) } label: { Label("Import", systemImage: "square.and.arrow.down") }
                     .help("Import files or folders")
                 addToShowMenu(ids: orderedSelection)
@@ -1006,7 +1011,9 @@ struct LibraryGridView: View {
     }
 
     private var grid: some View {
-        let columns = [GridItem(.adaptive(minimum: tileSize, maximum: tileSize * 1.4), spacing: 10)]
+        let columns = isListMode
+            ? [GridItem(.flexible())]
+            : [GridItem(.adaptive(minimum: tileSize, maximum: tileSize * 1.4), spacing: 10)]
         return ScrollView {
             if grouping && similarTo == nil {
                 let groups = similarGroups
@@ -1092,16 +1099,35 @@ struct LibraryGridView: View {
 
     private func tile(_ item: MediaItem) -> some View {
         let selected = selection.contains(item.id)
-        return VStack(spacing: 4) {
-            ThumbnailView(item: item, url: model.url(for: item))
-                .aspectRatio(1, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-                .overlay(RoundedRectangle(cornerRadius: 5)
-                    .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 3))
-            Text(item.fileName)
-                .font(.caption)
-                .lineLimit(1).truncationMode(.middle)
-                .foregroundStyle(selected ? .primary : .secondary)
+        return Group {
+            if isListMode {
+                HStack(spacing: 8) {
+                    ThumbnailView(item: item, url: model.url(for: item))
+                        .aspectRatio(1, contentMode: .fit)
+                        .frame(width: 28, height: 28)
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                    Text(item.fileName)
+                        .font(.callout)
+                        .lineLimit(1).truncationMode(.middle)
+                        .foregroundStyle(selected ? .primary : .secondary)
+                    Spacer(minLength: 0)
+                }
+                .padding(.vertical, 3).padding(.horizontal, 6)
+                .background(selected ? Color.accentColor.opacity(0.18) : .clear,
+                            in: RoundedRectangle(cornerRadius: 4))
+            } else {
+                VStack(spacing: 4) {
+                    ThumbnailView(item: item, url: model.url(for: item))
+                        .aspectRatio(1, contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .overlay(RoundedRectangle(cornerRadius: 5)
+                            .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 3))
+                    Text(item.fileName)
+                        .font(.caption)
+                        .lineLimit(1).truncationMode(.middle)
+                        .foregroundStyle(selected ? .primary : .secondary)
+                }
+            }
         }
         .contentShape(Rectangle())
         .onTapGesture { click(item.id) }

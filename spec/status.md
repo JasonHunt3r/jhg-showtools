@@ -334,6 +334,12 @@ and Flush presets from 2a.
   with axtool against a scratch library, but a real drag from it (its own
   reason for existing — filling a new collection with the panel floating
   over it) hasn't been tried by hand.
+- **The grid's list view at the size slider's minimum** (Jason,
+  2026-09-24, `spec/windows.md` answer 6): checked with axtool — dragging
+  the slider to its floor and back switches cleanly between a
+  single-column list (small icon, filename, full-width selection
+  highlight) and the tile grid, selection carries across the switch — but
+  never watched by a real drag of the actual slider control.
 - **Audit G1 and the audio-naming pass** (`7c1613a`, `dcf47c2`): both
   build and the app launches, but the hands-on checks weren't done this
   session — see the work queue above.

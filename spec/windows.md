@@ -318,7 +318,12 @@ second:**
      thumbnails grow until each is as wide as the window, a stacked list
      of images. That's the resizing the grid already does with its size
      slider, driven by the window's width. So it's probably the grid
-     itself, not a second view.
+     itself, not a second view. **Built this way 2026-09-24:** it is the
+     grid, with one addition — at the size slider's own minimum, the grid
+     becomes a genuine single-column list (a small icon, the filename, a
+     highlighted full-width row on selection) rather than a row of tiny
+     tiles, everywhere the grid appears, not just the panel (Jason,
+     2026-09-24).
 7. **Double-click: not decided, and to be settled by real testing.**
    - Jason's original idea: double-clicking a collection opens its
      disclosure if it's closed.
