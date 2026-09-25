@@ -416,9 +416,7 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
      to the nearest slide rather than the exact pixel offset) actually
      looks right zoomed out with a lot of storyline in view — only the
      time and zoom were confirmed, not a real look at the scroll.
-8. **Drops onto slides + Replace Image…:** ~~Replace Image…~~ — done
-   2026-09-24 — → the slide list inserts where a drop lands (G2), and a
-   drop onto a slide offers Replace or Insert, still to come.
+8. **Drops onto slides + Replace Image… — done 2026-09-24.**
    - **Replace Image…** (plan.md, "Replace a slide's image"): only a
      slide's (or lane image's) `itemID` changes — length, transition, Pan
      and Zoom, transform and effects all carry over unchanged, since
@@ -435,6 +433,32 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
      `⌘Z` put it back in one step. **Not checked:** the Edit Slides list,
      the lane image and the inspector menus, or a real click anywhere —
      only the storyline's was actually exercised.
+   - **Drops onto slides — G2's fix, and Replace-or-Insert** (plan.md,
+     "dragging a file onto a slide... the drop offers Replace or Insert,
+     as Final Cut's replace edit does"): geometry, not a dialog — the
+     middle 60% of a slide's block is the replace zone (one picture only;
+     several always insert), its outer edges still insert there, matching
+     the feel of Final Cut's own affordance and what a tight zoom already
+     made true of the old code. The storyline's `dropTarget` now returns
+     `.replace` or `.insert`, with matching visual feedback (a highlighted
+     box around the whole slide, or the existing thin insertion line).
+     **G2 itself, in the Edit Slides list** (audit, Med — dropping between
+     slides 3 and 4 used to append to the end regardless): each `SlideRow`
+     now has its own `.onDrop`, fixed pixel bands (top 12pt / middle /
+     bottom 12pt, not measured with a `GeometryReader` — one inside a
+     `List` row measures during layout, a standing crash risk in this app,
+     CLAUDE.md) — the list-level `.onDrop` that used to always append is
+     now only the fallback for a drop in empty space below the last row.
+     Songs dropped on either still have no effect (G2's "could be
+     refused" — left as a silent no-op, not an explicit refusal). Checked
+     with axtool: **a real internal drag** (Library sidebar to a storyline
+     slide) confirmed both directions — dropped on the middle, it replaced
+     the slide's image; dropped near an edge, it inserted a new slide
+     there instead — each its own undo step. **Not checked:** the Edit
+     Slides list's own drop (its browser panel and the Library window
+     overlap in this scratch setup, and a cross-window synthetic drag has
+     a documented history of not reproducing reliably in this app — same
+     limitation noted in earlier sessions); real visual feedback by eye.
 9. **The grid's keyboard** (audit batch 7: B1, B2, B5, B6): arrow keys,
    Quick Look on ⌘Y, Return renames, double-click.
 10. **BGTools batch:** names (W5) → the map view (W9) → the window opening
@@ -506,6 +530,16 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
+- **Drops onto slides and Replace Image…** (built 2026-09-24, plan.md
+  "Replace a slide's image"): Replace Image… from all four menus (only
+  the storyline's was actually clicked through), the storyline's drag
+  Replace-or-Insert (a real internal drag confirmed both, but never
+  watched by eye), and the Edit Slides list's own per-row drop (G2's
+  fix) — not exercised at all, a cross-window synthetic drag wasn't
+  practical to set up. Worth a particular look: whether the storyline's
+  replace-zone highlight (a box around the whole slide) and the list's
+  fixed 12pt insert bands feel right, and whether the pixel bands scale
+  sensibly if a row's height ever changes.
 - **Timeline keys** (built 2026-09-24, `spec/conventions.md` §2): arrow-key
   navigation across all four rows and Go Back/Forward — checked with
   axtool against a scratch library's saved state (times, the enabled/

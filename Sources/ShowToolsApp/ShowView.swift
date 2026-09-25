@@ -189,7 +189,8 @@ struct EditSlidesView: View {
         return List(selection: $selection) {
             ForEach(Array(show.slides.enumerated()), id: \.element.id) { i, slide in
                 SlideRow(number: i + 1, slide: slide, item: model.itemsByID[slide.itemID],
-                         resolved: byID[slide.id], url: model.itemsByID[slide.itemID].flatMap(model.url(for:)))
+                         resolved: byID[slide.id], url: model.itemsByID[slide.itemID].flatMap(model.url(for:)),
+                         handleDrop: { zone, providers in handleRowDrop(slide.id, zone, providers) })
                     .tag(slide.id)
             }
             .onMove { from, to in
@@ -296,14 +297,54 @@ struct EditSlidesView: View {
     private func lastByOrder(_ ids: Set<Int64>) -> Int64? {
         show.slides.lastIndex { ids.contains($0.id) }.map { show.slides[$0].id }
     }
+
+    /// A drop on a row of the list (item 8, work order; G2's own fix —
+    /// this used to always append, wherever it landed). The middle band
+    /// replaces the row's image, one picture only; the edge bands insert
+    /// before or after it, like the timeline's own drop.
+    private func handleRowDrop(_ slideID: Int64, _ zone: SlideRow.DropZone, _ providers: [NSItemProvider]) {
+        let showID = show.id
+        Task {
+            let ids = model.pictures(await model.itemIDs(from: providers))
+            guard !ids.isEmpty, model.bringIntoCollection(ids, forShow: showID) else { return }
+            switch zone {
+            case .replace where ids.count == 1:
+                SlideActions.replaceImage(slideID, with: ids[0], mutate: mutate)
+            case .replace, .insertAfter:
+                guard let i = show.slides.firstIndex(where: { $0.id == slideID }) else { return }
+                mutate(ids.count == 1 ? "Insert Slide" : "Insert Slides") { s in
+                    s.slides.insert(contentsOf: ids.map { Slide(id: 0, itemID: $0) }, at: i + 1)
+                }
+            case .insertBefore:
+                guard let i = show.slides.firstIndex(where: { $0.id == slideID }) else { return }
+                mutate(ids.count == 1 ? "Insert Slide" : "Insert Slides") { s in
+                    s.slides.insert(contentsOf: ids.map { Slide(id: 0, itemID: $0) }, at: i)
+                }
+            }
+        }
+    }
 }
 
 struct SlideRow: View {
+    /// A drop landing on this row (item 8, work order; G2): the top and
+    /// bottom bands insert before or after, like the timeline's own drop
+    /// line; the middle replaces this slide's image, as Final Cut's
+    /// replace edit does — one picture only, since replacing with several
+    /// doesn't mean anything. Fixed pixel bands, not measured against the
+    /// row's own height: a `GeometryReader` inside a `List` row measures
+    /// during layout, which this app has a standing crash risk around
+    /// (`spec/CLAUDE.md`), and every row here is the same height anyway.
+    enum DropZone { case insertBefore, replace, insertAfter }
+
     let number: Int
     let slide: Slide
     let item: MediaItem?
     let resolved: ResolvedSlide?
     let url: URL?
+    /// Nil: no drop handling (used nowhere today, but keeps `SlideRow`
+    /// usable without it).
+    var handleDrop: ((DropZone, [NSItemProvider]) -> Void)? = nil
+    @State private var dropZone: DropZone?
 
     var body: some View {
         HStack(spacing: 10) {
@@ -341,6 +382,21 @@ struct SlideRow: View {
             }
         }
         .padding(.vertical, 2)
+        .overlay {
+            if let dropZone {
+                switch dropZone {
+                case .replace:
+                    RoundedRectangle(cornerRadius: 4).strokeBorder(Color.accentColor, lineWidth: 2)
+                case .insertBefore:
+                    Rectangle().fill(Color.accentColor).frame(height: 2).frame(maxHeight: .infinity, alignment: .top)
+                case .insertAfter:
+                    Rectangle().fill(Color.accentColor).frame(height: 2).frame(maxHeight: .infinity, alignment: .bottom)
+                }
+            }
+        }
+        .onDrop(of: ItemDrag.accepted, delegate: SlideRowDrop(
+            update: { dropZone = $0 },
+            perform: { zone, providers in handleDrop?(zone, providers) }))
     }
 
     /// Values the slide sets itself are shown stronger than inherited ones.
@@ -348,6 +404,33 @@ struct SlideRow: View {
         Text(text)
             .foregroundStyle(custom ? Color.accentColor : .secondary)
             .fontWeight(custom ? .medium : .regular)
+    }
+}
+
+/// A drop's y within a `SlideRow`, fixed pixel bands (see `SlideRow.DropZone`).
+struct SlideRowDrop: DropDelegate {
+    let update: (SlideRow.DropZone?) -> Void
+    let perform: (SlideRow.DropZone, [NSItemProvider]) -> Void
+
+    private func zone(_ info: DropInfo) -> SlideRow.DropZone {
+        let y = info.location.y
+        if y < 12 { return .insertBefore }
+        if y > 44 { return .insertAfter }
+        return .replace
+    }
+
+    func validateDrop(info: DropInfo) -> Bool { info.hasItemsConforming(to: ItemDrag.accepted) }
+    func dropEntered(info: DropInfo) { update(zone(info)) }
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        update(zone(info))
+        return DropProposal(operation: .copy)
+    }
+    func dropExited(info: DropInfo) { update(nil) }
+    func performDrop(info: DropInfo) -> Bool {
+        let z = zone(info)
+        update(nil)
+        perform(z, info.itemProviders(for: ItemDrag.accepted))
+        return true
     }
 }
 

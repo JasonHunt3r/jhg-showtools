@@ -316,12 +316,20 @@ struct StorylineView: View {
                             cutHandles(placed)
                         }
                         if let x = dropX {
-                            let target = dropTarget(x, placed)
-                            RoundedRectangle(cornerRadius: 1.5)
-                                .fill(Color.accentColor)
-                                .frame(width: 3, height: Self.blockHeight + 8)
-                                .offset(x: target.x - 1.5, y: blocksTop - 4)
-                                .allowsHitTesting(false)
+                            switch dropTarget(x, placed) {
+                            case .insert(_, let ix):
+                                RoundedRectangle(cornerRadius: 1.5)
+                                    .fill(Color.accentColor)
+                                    .frame(width: 3, height: Self.blockHeight + 8)
+                                    .offset(x: ix - 1.5, y: blocksTop - 4)
+                                    .allowsHitTesting(false)
+                            case .replace(_, let rx, let rw):
+                                RoundedRectangle(cornerRadius: 4)
+                                    .strokeBorder(Color.accentColor, lineWidth: 3)
+                                    .frame(width: rw, height: Self.blockHeight)
+                                    .offset(x: rx, y: blocksTop)
+                                    .allowsHitTesting(false)
+                            }
                         }
                         // The group being dragged follows the pointer.
                         if let m = moving, let first = group.first {
@@ -1048,18 +1056,36 @@ struct StorylineView: View {
 
     /// The join a drop at `x` lands on: before the block under the pointer
     /// if it's in the block's first half, after it if in the second.
-    private func dropTarget(_ x: CGFloat, _ placed: [Placed]) -> (index: Int, x: CGFloat) {
-        for p in placed where x < p.x + p.width / 2 {
-            return (show.slides.firstIndex { $0.id == p.id } ?? show.slides.count, p.x)
+    /// Where a drop lands: between slides (an insertion point, at `x`), or
+    /// onto the middle of one (item 8, work order; plan.md, "dragging a
+    /// file onto a slide... offers Replace or Insert, as Final Cut's
+    /// replace edit does"). The middle 60% of a block is the replace zone;
+    /// its outer 20% on each side still inserts there, same as before —
+    /// at a small enough zoom that 20% is a sliver of a pixel, everything
+    /// but the very edge reads as the replace zone, which matches Final
+    /// Cut's own feel at a tight zoom.
+    private enum DropTarget {
+        case insert(index: Int, x: CGFloat)
+        case replace(slideID: Int64, x: CGFloat, width: CGFloat)
+    }
+
+    private func dropTarget(_ x: CGFloat, _ placed: [Placed]) -> DropTarget {
+        for p in placed {
+            let margin = p.width * 0.2
+            if x >= p.x + margin, x <= p.x + p.width - margin { return .replace(slideID: p.id, x: p.x, width: p.width) }
+            if x < p.x + p.width / 2 {
+                return .insert(index: show.slides.firstIndex { $0.id == p.id } ?? show.slides.count, x: p.x)
+            }
         }
-        return (show.slides.count, placed.last.map { $0.x + $0.width } ?? Self.inset)
+        return .insert(index: show.slides.count, x: placed.last.map { $0.x + $0.width } ?? Self.inset)
     }
 
     /// Files from the Collection Browser, or from Finder or Photos (imported
-    /// first), inserted as slides at the join, after checking they're in
-    /// the show's collection.
+    /// first): inserted at the join, or — a single picture, onto the
+    /// middle of a slide — swapped in as its new image, keeping its
+    /// settings (`SlideActions.replaceImage`).
     private func drop(_ providers: [NSItemProvider], at x: CGFloat, _ placed: [Placed]) {
-        let index = dropTarget(x, placed).index
+        let target = dropTarget(x, placed)
         let showID = show.id
         Task {
             // Songs go in the music row, at the time they were dropped.
@@ -1069,6 +1095,15 @@ struct StorylineView: View {
                 MusicRow.place(songs, at: max(0, Double(x - Self.inset) / pps), model: model, mutate: mutate)
             }
             guard !ids.isEmpty, model.bringIntoCollection(ids, forShow: showID) else { return }
+            if case .replace(let slideID, _, _) = target, ids.count == 1 {
+                SlideActions.replaceImage(slideID, with: ids[0], mutate: mutate)
+                return
+            }
+            let index: Int
+            switch target {
+            case .replace(let slideID, _, _): index = show.slides.firstIndex { $0.id == slideID } ?? show.slides.count
+            case .insert(let i, _): index = i
+            }
             mutate(ids.count == 1 ? "Insert Slide" : "Insert Slides") { s in
                 s.slides.insert(contentsOf: ids.map { Slide(id: 0, itemID: $0) }, at: min(index, s.slides.count))
             }
