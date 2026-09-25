@@ -18,7 +18,15 @@ struct ScreenKey: Hashable, CustomStringConvertible {
 /// A monitor's Space as the window lists it.
 struct ScreenInfo: Identifiable, Hashable {
     let key: ScreenKey
+    /// macOS's own name for the monitor (e.g. "PA279CRV"), always shown as
+    /// a small tag so the physical screen stays identifiable even once
+    /// it's been given a name of its own (bgtools.md, "Naming screens").
+    let modelName: String
+    /// The monitor's own name, or `modelName` when it has none.
     let displayName: String
+    /// Set only once a Space has been renamed on its own; otherwise it
+    /// defaults to "<displayName> Space N".
+    let customSpaceName: String?
     /// The monitor's frame in screen coordinates, for the arrangement.
     let displayFrame: CGRect
     let isMainDisplay: Bool
@@ -26,7 +34,13 @@ struct ScreenInfo: Identifiable, Hashable {
     let spaceIndex: Int
     var isCurrent: Bool
     var id: String { key.id }
-    var title: String { spaceIndex > 0 ? "\(displayName) · Space \(spaceIndex)" : displayName }
+    /// The full name, monitor included: what the detail pane's header uses.
+    var spaceName: String {
+        customSpaceName ?? (spaceIndex > 0 ? "\(displayName) Space \(spaceIndex)" : displayName)
+    }
+    /// The short form, for a row already under its monitor's own heading.
+    var shortSpaceName: String { customSpaceName ?? (spaceIndex > 0 ? "Space \(spaceIndex)" : "Every Space") }
+    var title: String { spaceIndex > 0 ? spaceName : displayName }
 }
 
 /// One window per monitor and Space at desktop level: above the wallpaper,
@@ -220,6 +234,11 @@ final class DesktopController {
         if settings.on != wasOn { publishForTiles() }
         do { try store.save(settings) } catch { Log.write("can't save settings: \(error)") }
         settingsModified = store.modified
+        // A renamed monitor or Space doesn't change the window layout, so
+        // `rebuild` alone wouldn't refresh `screens`' names (its own guard
+        // bails out early when the layout signature hasn't changed) —
+        // `wanted()` recomputes them as a side effect either way.
+        _ = wanted()
         apply()
     }
 
@@ -265,19 +284,23 @@ final class DesktopController {
         var infos: [ScreenInfo] = []
         for (n, screen) in NSScreen.screens.enumerated() {
             let display = screen.displayUUID
+            let model = screen.localizedName
+            let name = settings.displayNames[display].flatMap { $0.isEmpty ? nil : $0 } ?? model
             if Spaces.available, let spaces = desktops[display], !spaces.isEmpty {
                 for s in spaces {
                     let key = ScreenKey(display: display, space: s.uuid)
                     out.append((key, screen, s.id))
-                    infos.append(ScreenInfo(key: key, displayName: screen.localizedName, displayFrame: screen.frame,
-                                            isMainDisplay: n == 0, spaceIndex: s.index,
+                    infos.append(ScreenInfo(key: key, modelName: model, displayName: name,
+                                            customSpaceName: settings.spaceNames[key.id].flatMap { $0.isEmpty ? nil : $0 },
+                                            displayFrame: screen.frame, isMainDisplay: n == 0, spaceIndex: s.index,
                                             isCurrent: current[display] == s.uuid))
                 }
             } else {
                 let key = ScreenKey(display: display, space: "all")
                 out.append((key, screen, nil))
-                infos.append(ScreenInfo(key: key, displayName: screen.localizedName, displayFrame: screen.frame,
-                                        isMainDisplay: n == 0, spaceIndex: 0, isCurrent: true))
+                infos.append(ScreenInfo(key: key, modelName: model, displayName: name, customSpaceName: nil,
+                                        displayFrame: screen.frame, isMainDisplay: n == 0, spaceIndex: 0,
+                                        isCurrent: true))
             }
         }
         if infos != screens { screens = infos }

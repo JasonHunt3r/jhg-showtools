@@ -10,6 +10,10 @@ import ShowToolsPlayback
 @Observable
 final class WindowState {
     var selection: Selection?
+    /// ⌥-double-click on a screen's box, in the map or the list
+    /// (bgtools.md, "The window opens on your screen"): moves the settings
+    /// window to that monitor. Set by `BGToolsApp`, which owns the window.
+    var moveToDisplay: ((String) -> Void)?
 }
 
 /// The compact panel (spec/bgtools.md, B4b): drops from the top right like

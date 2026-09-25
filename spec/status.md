@@ -13,7 +13,7 @@ Repo: `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 **Everything planned is built**, including Groups inside collections and
 the range package (below). Phases 1–5, Phase 3b, Phase 4 and video
-export. **318 tests** (306 core + 12 BGTools). **Library schema 13.**
+export. **319 tests** (306 core + 13 BGTools). **Library schema 13.**
 
 | Phase | State |
 |---|---|
@@ -27,7 +27,7 @@ export. **318 tests** (306 core + 12 BGTools). **Library schema 13.**
 | Groups inside collections | Built 2026-09-24, Core through UI (`spec/plan.md`) |
 | 4 Setlist export / import | Built, 4a–4d |
 | E Video export | Built, E1–E5. Own spec `spec/video-export.md`. Left: a listen |
-| 5 BGTools | Built, B1–B7. Own spec `spec/bgtools.md`. Left: Jason's hands-on pass; the Pan and Zoom cost; telling BGTools when a library moves |
+| 5 BGTools | Built, B1–B7, plus naming screens/the map view/the window opening on your screen (2026-09-25). Own spec `spec/bgtools.md`. Left: Jason's hands-on pass; the Pan and Zoom cost; telling BGTools when a library moves |
 
 Every schema upgrade is additive and tested by opening a library of the
 version before (7 rows, 8 music, 9 markers, 10 editing state, 11 rhythm
@@ -495,8 +495,16 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
    pre-session export; no stray `runningTestLaunches` after quitting.
    **Not checked:** a real keypress or double-click by hand — every
    check above was axtool's.
-10. **BGTools batch:** names (W5) → the map view (W9) → the window opening
-    on your screen, with ⌥-double-click (W4).
+10. ~~**BGTools batch:**~~ names (W5), the map view (W9), and the window
+    opening on your screen with ⌥-double-click (W4) — all done 2026-09-25.
+    Full story in `spec/bgtools.md`, items 3–5. Checked with axtool
+    against a scratch `BGTOOLS_SETTINGS` file: renamed the one monitor
+    here and a Space, both showing live with no relaunch and persisted to
+    `settings.json`; the Map | List switch works, the bottom section
+    (Synchronize/New screens/Random pictures) stays reachable in both; the
+    window opened positioned and Space-selected correctly, on this Mac's
+    one monitor. **Not checked:** more than one physical monitor, and
+    every real click (menus and text entry only).
 
 Then: the design conversation step 4 itself needed — the library panel, an
 actual detached pane, the Slide Editor (`spec/windows.md`) — now that
@@ -564,6 +572,17 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
+- **BGTools: naming screens, the map view, the window opening on your
+  screen** (built 2026-09-25, `spec/bgtools.md` items 3–5): renaming a
+  monitor or a Space, the Map | List switch, and the window landing on the
+  calling monitor with its Space selected — all confirmed by their actual
+  effect with axtool against a scratch settings file (live updates, no
+  relaunch needed; `settings.json` read back correctly), but this Mac has
+  one monitor, so the parts that are *about* more than one — the map
+  actually laid out to scale, the window really following the pointer
+  from screen to screen, ⌥-double-click actually moving it there — are
+  reasoned through from the code, not seen. Worth a particular look with
+  a second monitor plugged in.
 - **The grid's keyboard** (built 2026-09-25, audit batch 7): arrow keys,
   Return-renames, and Quick Look on ⌘Y or a double-click — all confirmed
   by their actual effect with axtool (selection counts, the rename sheet,
@@ -780,7 +799,7 @@ resets every app's login items, so they are left alone.
 ## Quick start
 
 ```sh
-swift test                                  # 306 core + 12 BGTools tests
+swift test                                  # 306 core + 13 BGTools tests
 ./make-app.sh                               # → build/ShowTools.app
 tools/make-test-library.sh <scratch>/STTest # scratch library + generated media
 open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools.app

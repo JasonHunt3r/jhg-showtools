@@ -153,4 +153,27 @@ final class DesktopSettingsTests: XCTestCase {
     func testTestsCanPointAtTheirOwnFile() {
         XCTAssertEqual(DesktopSettingsStore.standard(environment: ["BGTOOLS_SETTINGS": "/tmp/x.json"]).url.path, "/tmp/x.json")
     }
+
+    /// Naming screens (bgtools.md): a display's and a Space's own names
+    /// round-trip, and a settings file from before they existed (the
+    /// older-version trap) reads as no names at all, not a decode failure.
+    func testDisplayAndSpaceNamesRoundTripAndDefaultEmpty() throws {
+        var s = DesktopSettings()
+        s.displayNames["D"] = "Work Monitor"
+        s.spaceNames["D/desktop1"] = "Rhythm"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("bg-\(UUID().uuidString)/s.json")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let store = DesktopSettingsStore(url: url)
+        try store.save(s)
+        XCTAssertEqual(store.load(), s)
+
+        var json = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as! [String: Any]
+        json["displayNames"] = nil
+        json["spaceNames"] = nil
+        try JSONSerialization.data(withJSONObject: json).write(to: url)
+        let older = store.load()
+        XCTAssertEqual(older.displayNames, [:])
+        XCTAssertEqual(older.spaceNames, [:])
+        XCTAssertTrue(older.allSame == s.allSame, "the rest of the file still reads fine")
+    }
 }

@@ -6,7 +6,8 @@ Space-switch pausing, none re-done against the nested BGTools); the Pan
 and Zoom cost; telling BGTools when a library moves; and **Jason's
 first-test list** (2026-09-24, below): a Quit you can find and All same →
 Synchronize (both **done 2026-09-24**), naming screens, a map view, and
-the window opening on your screen.
+the window opening on your screen (all three **done 2026-09-25**, checked
+with axtool against a scratch settings file — see below).
 
 Phase 5 of ShowTools (renamed 2026-09-22; it was "Live desktop"). This file
 holds BGTools' decisions and measurements; `spec/plan.md` points here. It
@@ -231,39 +232,86 @@ From `spec/history/2026-09-24-work-order.md`. *Decided* is Jason's;
    setting on the next save unless it's migrated. The user-facing words
    changed; the stored key didn't, noted in a comment on the field.
    `swift test` (305 tests) clean.
-3. **Naming screens** (*decided*): each monitor gets a name of its own,
-   like **Work Monitor**, shown with a small tag of macOS's model name
-   (PA279CRV), so the physical screen is always identifiable. Unnamed
-   screens show the model name, as now (`screen.localizedName`). Names
-   are keyed by the display's uuid, as settings already are, and show
-   everywhere a screen appears: the settings window, the panel, the logs.
-   A new field in the settings file, decoded on its own.
+3. ~~**Naming screens**~~ — done 2026-09-25.
+   `DesktopSettings.displayNames`/`spaceNames` ([uuid: name], decoded field
+   by field like every other setting). `ScreenInfo` carries `modelName`
+   (always `screen.localizedName`, for the tag), `displayName` (custom or
+   the model name), and `customSpaceName` (nil until renamed); `spaceName`
+   builds the "<displayName> Space N" default, `shortSpaceName` is what a
+   row under its own monitor heading shows ("Space N", or the custom name
+   plain). Rename… on the sidebar's monitor heading and each Space row (a
+   `.contextMenu`, `MainWindow.swift`), one shared alert. Renaming doesn't
+   change the window layout, so `DesktopController.update` now also calls
+   `wanted()` directly (not just `apply()`) to refresh `screens`' names
+   live — `rebuild`'s own layout-signature guard would otherwise skip it.
+   **Checked with axtool against a scratch settings file:** renamed the
+   only monitor here to "Work Monitor" — the sidebar heading showed it
+   with "Built-in Retina Display" as a small tag, the detail pane's header
+   updated live to "Work Monitor Space 1" with no relaunch, and Space 2's
+   rename alert opened pre-titled "Work Monitor Space 2" (confirming the
+   default), then renamed to "Rhythm" and showed as a plain short row
+   label. `settings.json` had both keys, correctly. **Not checked:** a
+   real click (menu and text entry only, not the physical gesture), and
+   more than one physical monitor (this Mac has one; multi-monitor naming
+   is reasoned through, not seen).
+   - *Original spec (settled, Jason, 2026-09-24):* each monitor gets a
+     name of its own, like **Work Monitor**, shown with a small tag of
+     macOS's model name (PA279CRV), so the physical screen is always
+     identifiable. Unnamed screens show the model name, as now
+     (`screen.localizedName`). Names are keyed by the display's uuid, as
+     settings already are, and show everywhere a screen appears: the
+     settings window, the panel, the logs. A new field in the settings
+     file, decoded on its own.
    - *Settled (Jason, 2026-09-24):* **Spaces can be named too.** Once a
      monitor has its own name, its Spaces default to that name with a
      number, "Work Monitor Space 1", "Work Monitor Space 2", and each can
      be renamed. They're keyed by uuid, so the names have a stable home.
-4. **A map as well as the stack** (*decided*): a **spatial view** of the
-   monitors as they sit on the desk (as System Settings ▸ Displays shows
-   them), each with its Spaces inside it, beside the stacked list, which
-   stays. Two views of the same settings. `NSScreen.frame` gives the
-   arrangement.
-   - *Settled (Jason, 2026-09-24):* a **Map | List** switch above the list,
-     and the choice is **remembered**.
-5. **The window opens on your screen, showing your screen** (*decided*):
-   the full settings window opens on the monitor it was called from, with
-   that monitor's current Space already selected. "Called from" means the
-   screen with the pointer, when opened from the panel or a Control Center
-   tile. Today it calls `center()` (the main screen) with a frame
-   autosave, and nothing is preselected (`BGToolsApp.swift`).
-   - *Settled (Jason, 2026-09-24):* **it always opens on the calling
-     monitor**, with that monitor's Space selected, whether it was open or
-     not. From there any other screen can be selected and set up, all from
-     the one window.
-   - *Settled:* a **modified double-click on a screen's box** (in the map or
-     the list) **moves the window to that monitor**, so you can look at the
-     screen you're setting up without dragging the window across.
-     *Proposal:* ⌥-double-click. A plain double-click stays "go into it"
-     (`spec/conventions.md`), which here just selects the screen.
+4. ~~**A map as well as the stack**~~ — done 2026-09-25. `Arrangement`
+   (the "monitors as they sit on the desk" view) already existed as a
+   small always-on strip above the list; now it's one of two exclusive
+   views, `@AppStorage("bgMonitorsView")`, a segmented `Picker` above
+   (List | Map). Map mode gives `Arrangement` the sidebar's full height
+   (`.frame(maxHeight: .infinity)`); the bottom section (Synchronize/New
+   screens/Random pictures) is a second, always-visible `List` below
+   either mode, since it isn't part of "the monitors" the switch is
+   about. **Checked with axtool:** clicking Map shows the one monitor here
+   as a filled, selected box labeled "Work Monitor"; the bottom section
+   stayed reachable underneath; clicking List returned to the per-Space
+   rows. **Not checked:** the remembered choice surviving a relaunch (not
+   worth a relaunch cycle to confirm something this mechanical), and more
+   than one monitor's actual arrangement (this Mac has one).
+   - *Original spec (settled, Jason, 2026-09-24):* a spatial view of the
+     monitors as they sit on the desk (as System Settings ▸ Displays shows
+     them), each with its Spaces inside it, beside the stacked list, which
+     stays. Two views of the same settings. `NSScreen.frame` gives the
+     arrangement. A **Map | List** switch above the list, and the choice
+     is remembered.
+5. ~~**The window opens on your screen, showing your screen**~~ — done
+   2026-09-25. `showWindow()` finds the screen under `NSEvent.mouseLocation`
+   and repositions the window there (centred, keeping its own size) on
+   *every* call, not just the window's first creation — the frame autosave
+   keeps only the size across launches now, never the position, which the
+   settled decision needs overridden every time. The calling screen's
+   current Space is selected in `WindowState` at the same time. A new
+   `WindowState.moveToDisplay` closure, set by `BGToolsApp` to
+   `moveWindow(toDisplay:)`, backs ⌥-double-click on a screen's box in
+   either the map or the list (`Arrangement`'s and the sidebar header's own
+   `.contextMenu` also getting Rename… from item 3 on the same box) — a
+   plain double-click still just selects, matching "go into it" elsewhere
+   staying a no-op here. **Checked with axtool:** the window opened
+   correctly positioned and with the right Space selected on this Mac's
+   one monitor (`BGTOOLS_OPEN_WINDOW=1`, no pointer to speak of in a
+   sandboxed launch, so only the single-monitor path was really exercised).
+   **Not checked:** the pointer-following behaviour or ⌥-double-click's
+   move with more than one monitor — this Mac has one, so both are
+   reasoned through from the code, not seen working.
+   - *Original spec (settled, Jason, 2026-09-24):* the full settings window
+     opens on the monitor it was called from — the screen with the
+     pointer, when opened from the panel or a Control Center tile — with
+     that monitor's current Space already selected, always, whether the
+     window was already open or not. A modified double-click (⌥, proposed)
+     on a screen's box, in the map or the list, moves the window to that
+     monitor instead of dragging it across by hand.
 
 ## Build steps (proposed 2026-09-22)
 

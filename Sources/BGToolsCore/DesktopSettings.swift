@@ -64,6 +64,12 @@ public struct DesktopSettings: Codable, Hashable, Sendable {
     /// Length, transition, Pan and Zoom and fit for the random modes, whose
     /// pictures aren't slides of any show.
     public var randomDefaults: ShowDefaults = DesktopSettings.startingRandomDefaults
+    /// A monitor's own name ("Work Monitor"), keyed by its display uuid.
+    /// Unnamed monitors show macOS's own model name instead (bgtools.md,
+    /// "Naming screens"). A Space defaults to its monitor's name plus a
+    /// number, but can be renamed on its own, keyed by `screenID`.
+    public var displayNames: [String: String] = [:]
+    public var spaceNames: [String: String] = [:]
 
     public static var startingRandomDefaults: ShowDefaults {
         var d = ShowDefaults()
@@ -86,6 +92,8 @@ public struct DesktopSettings: Codable, Hashable, Sendable {
         allSameSetting = get(.allSameSetting, nil)
         newScreens = get(.newScreens, nil)
         randomDefaults = get(.randomDefaults, Self.startingRandomDefaults)
+        displayNames = get(.displayNames, [:])
+        spaceNames = get(.spaceNames, [:])
     }
 
     public static func screenID(display: String, space: String) -> String {

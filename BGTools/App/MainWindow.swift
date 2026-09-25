@@ -73,34 +73,92 @@ private struct Placeholder: View {
 
 // MARK: Sidebar
 
+/// Map or List (bgtools.md, "A map as well as the stack"): two views of the
+/// same monitors, remembered.
+private enum MonitorsView: String { case list, map }
+
+/// What's being renamed (bgtools.md, "Naming screens"): a monitor, by its
+/// display uuid, or one Space, by its `screenID`. `current` is what the
+/// text field starts on — empty for the default name, never the resolved
+/// fallback, so clearing the field really clears the override.
+private struct RenameTarget: Identifiable {
+    enum Kind { case display(String), space(String) }
+    let id = UUID()
+    let kind: Kind
+    let current: String
+    let title: String
+}
+
 private struct Sidebar: View {
     @Environment(DesktopController.self) private var desktop
     @Binding var selection: Selection?
+    @AppStorage("bgMonitorsView") private var view: MonitorsView = .list
+    @State private var renaming: RenameTarget?
+    @State private var renameText = ""
 
     /// Monitors in the order macOS lists them, each with its Spaces.
-    private var displays: [(name: String, display: String, spaces: [ScreenInfo])] {
+    private var displays: [(name: String, model: String, display: String, spaces: [ScreenInfo])] {
         var order: [String] = []
         var byDisplay: [String: [ScreenInfo]] = [:]
         for s in desktop.screens {
             if byDisplay[s.key.display] == nil { order.append(s.key.display) }
             byDisplay[s.key.display, default: []].append(s)
         }
-        return order.map { d in (byDisplay[d]![0].displayName, d, byDisplay[d]!) }
+        return order.map { d in (byDisplay[d]![0].displayName, byDisplay[d]![0].modelName, d, byDisplay[d]!) }
+    }
+
+    private func startRenamingDisplay(_ display: String) {
+        let d = desktop.screens.first { $0.key.display == display }
+        renameText = desktop.settings.displayNames[display] ?? ""
+        renaming = RenameTarget(kind: .display(display), current: renameText, title: "Rename “\(d?.displayName ?? "Monitor")”")
+    }
+
+    private func startRenamingSpace(_ info: ScreenInfo) {
+        renameText = desktop.settings.spaceNames[info.id] ?? ""
+        renaming = RenameTarget(kind: .space(info.id), current: renameText, title: "Rename “\(info.spaceName)”")
+    }
+
+    private func commitRename() {
+        guard let renaming else { return }
+        let name = renameText.trimmingCharacters(in: .whitespaces)
+        switch renaming.kind {
+        case .display(let uuid): desktop.update { $0.displayNames[uuid] = name.isEmpty ? nil : name }
+        case .space(let id): desktop.update { $0.spaceNames[id] = name.isEmpty ? nil : name }
+        }
+        self.renaming = nil
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            Arrangement(selection: $selection)
-                .frame(height: 110)
-                .padding(12)
-            List(selection: $selection) {
-                ForEach(displays, id: \.display) { d in
-                    Section(d.name) {
-                        ForEach(d.spaces) { s in
-                            SpaceRow(info: s).tag(Selection.screen(s.id))
+            Picker("Monitors shown as", selection: $view) {
+                Text("List").tag(MonitorsView.list)
+                Text("Map").tag(MonitorsView.map)
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .padding(12)
+            switch view {
+            case .map:
+                Arrangement(selection: $selection, onRename: startRenamingDisplay)
+                    .padding(.horizontal, 12)
+                    .frame(maxHeight: .infinity)
+            case .list:
+                List(selection: $selection) {
+                    ForEach(displays, id: \.display) { d in
+                        Section {
+                            ForEach(d.spaces) { s in
+                                SpaceRow(info: s).tag(Selection.screen(s.id))
+                                    .contextMenu { Button("Rename…") { startRenamingSpace(s) } }
+                            }
+                        } header: {
+                            DisplayHeader(name: d.name, model: d.model)
+                                .contextMenu { Button("Rename…") { startRenamingDisplay(d.display) } }
                         }
                     }
                 }
+                .frame(maxHeight: .infinity)
+            }
+            List(selection: $selection) {
                 Section {
                     HStack {
                         Label("Synchronize", systemImage: "rectangle.on.rectangle")
@@ -122,6 +180,26 @@ private struct Sidebar: View {
                     Label("Random pictures", systemImage: "shuffle").tag(Selection.randomPictures)
                 }
             }
+            .frame(height: 130)
+        }
+        .alert(renaming?.title ?? "Rename",
+               isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+            TextField("Name", text: $renameText)
+            Button("Rename") { commitRename() }
+            Button("Cancel", role: .cancel) { renaming = nil }
+        } message: {
+            Text("Leave it empty to use the model name instead.")
+        }
+    }
+}
+
+private struct DisplayHeader: View {
+    let name: String
+    let model: String
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(name)
+            if name != model { Text(model).font(.caption2).foregroundStyle(.tertiary) }
         }
     }
 }
@@ -133,7 +211,7 @@ private struct SpaceRow: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(info.spaceIndex > 0 ? "Space \(info.spaceIndex)" : "Every Space")
+                Text(info.shortSpaceName)
                 Text(desktop.summary(for: info.id)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
@@ -146,10 +224,15 @@ private struct SpaceRow: View {
 }
 
 /// The monitors drawn to scale where they sit, like System Settings ▸
-/// Displays. Clicking one selects the Space it's showing.
+/// Displays. Clicking one selects the Space it's showing; ⌥-double-click
+/// moves the window there (bgtools.md, "Naming screens" and "The window
+/// opens on your screen") — a plain double-click stays "go into it"
+/// (`spec/conventions.md`), which here is just selecting.
 private struct Arrangement: View {
     @Environment(DesktopController.self) private var desktop
+    @Environment(WindowState.self) private var state
     @Binding var selection: Selection?
+    let onRename: (String) -> Void
 
     var body: some View {
         let displays = Dictionary(grouping: desktop.screens, by: \.key.display)
@@ -175,7 +258,12 @@ private struct Arrangement: View {
                         .overlay(Text(d.displayName).font(.caption2).lineLimit(2).multilineTextAlignment(.center).padding(3))
                         .frame(width: rect.width - 3, height: rect.height - 3)
                         .offset(x: rect.minX, y: rect.minY)
+                        .onTapGesture(count: 2) {
+                            if NSEvent.modifierFlags.contains(.option) { state.moveToDisplay?(d.key.display) }
+                            else { select(d.key.display) }
+                        }
                         .onTapGesture { select(d.key.display) }
+                        .contextMenu { Button("Rename…") { onRename(d.key.display) } }
                         .help(d.displayName)
                 }
             }

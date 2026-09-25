@@ -40,6 +40,7 @@ final class BGToolsApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let desktop = DesktopController(store: .standard())
         self.desktop = desktop
         panel = PanelController(desktop: desktop, windowState: windowState) { [weak self] in self?.showWindow() }
+        windowState.moveToDisplay = { [weak self] display in self?.moveWindow(toDisplay: display) }
         let env = ProcessInfo.processInfo.environment
         if env["BGTOOLS_OPEN_WINDOW"] != nil { showWindow() }
         if env["BGTOOLS_OPEN_PANEL"] != nil { panel?.open() }
@@ -62,8 +63,13 @@ final class BGToolsApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
+    /// Opens on the monitor with the pointer, that monitor's current Space
+    /// already selected (bgtools.md, "The window opens on your screen",
+    /// settled: always the calling monitor, whether the window was already
+    /// open or not — so this repositions it every call, not just the first).
     func showWindow() {
         guard let desktop else { return }
+        let callingScreen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) }
         if window == nil {
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 980, height: 680),
                              styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -71,17 +77,41 @@ final class BGToolsApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
             w.title = "BGTools"
             w.isReleasedWhenClosed = false
             w.contentView = NSHostingView(rootView: MainWindow().environment(desktop).environment(windowState))
-            w.center()
+            // The autosave keeps its size across launches; the position is
+            // always overridden below, to the calling monitor.
             w.setFrameAutosaveName("BGToolsMain")
             w.delegate = self
             window = w
         }
+        if let callingScreen, let w = window { center(w, on: callingScreen) }
+        selectCurrentSpace(of: callingScreen, desktop: desktop)
         desktop.keepReaders = true
         // An accessory app has no Dock icon; while its window is open it
         // acts like an ordinary app (Dock, ⌘Tab), and goes back after.
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    /// ⌥-double-click on a screen's box (bgtools.md): moves the window
+    /// there without changing the selection, so the screen being set up
+    /// can be looked at without dragging the window across by hand.
+    func moveWindow(toDisplay display: String) {
+        guard let window, let screen = NSScreen.screens.first(where: { $0.displayUUID == display }) else { return }
+        center(window, on: screen)
+    }
+
+    private func center(_ window: NSWindow, on screen: NSScreen) {
+        let size = window.frame.size
+        let origin = CGPoint(x: screen.frame.midX - size.width / 2, y: screen.frame.midY - size.height / 2)
+        window.setFrameOrigin(origin)
+    }
+
+    private func selectCurrentSpace(of screen: NSScreen?, desktop: DesktopController) {
+        guard let screen else { return }
+        let display = screen.displayUUID
+        let spaces = desktop.screens.filter { $0.key.display == display }
+        if let s = spaces.first(where: \.isCurrent) ?? spaces.first { windowState.selection = .screen(s.id) }
     }
 
     func windowWillClose(_ notification: Notification) {
