@@ -39,11 +39,20 @@ enum EditColumnsLayout {
                .pane("storyline", minSize: storylineMin))
     }
 
+    /// The inspector is the first detachable area (`spec/windows.md`, "A
+    /// possible order", step 4): it pops out as a panel, to prove the
+    /// pattern PaneKit already built — undo sharing (the popped-out
+    /// window's own `undoManager` falls back to the main window, since
+    /// `PaneWindowController` is handed `container.window` as `parent`),
+    /// the main window closing up (`PaneLayout.isEmpty`, already generic),
+    /// and the state surviving a relaunch (`PaneKitState.panes`, already
+    /// codable). Edit Slides' own inspector stays inline for now — this is
+    /// the first case, not a port of both at once.
     static var threeColumns: PaneNode {
         .row("columns", .horizontal, mainFirst: true,
              main: Pane("preview", minSize: mainMin),
              near: Pane("list", minSize: listMin), nearDefault: listDefault, nearMax: listMax,
-             far: Pane("inspector", minSize: inspectorRange.lowerBound),
+             far: Pane("inspector", title: "Inspector", minSize: inspectorRange.lowerBound, popOut: .panel),
              farSize: inspectorDefault, farRange: inspectorRange, nearIsRigid: true)
     }
 

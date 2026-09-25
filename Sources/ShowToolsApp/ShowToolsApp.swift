@@ -140,6 +140,14 @@ struct AppCommands: Commands {
             Toggle("Show Inspector", isOn: $inspectorShown)
                 .keyboardShortcut("i", modifiers: [.command, .option])
                 .disabled(activeShowID == nil)
+            // Step 4, third piece (`spec/windows.md`): the first detachable
+            // area. `editShowCommands` gates it to Edit Show, same as the
+            // zoom and Go Back/Forward items below — Edit Slides' own
+            // inspector doesn't pop out yet.
+            Toggle("Inspector in Its Own Window", isOn: Binding(
+                get: { model.editShowColumns.isPoppedOut("inspector") },
+                set: { _ in model.editShowColumns.togglePopOut("inspector") }))
+                .disabled(editShowCommands == nil)
             Divider()
             Button("Edit Slides") { mode = .slides }
                 .keyboardShortcut("1")

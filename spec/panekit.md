@@ -267,9 +267,33 @@ app gets it.
 - **Remembered between launches:** which panes are out, and where their
   windows sit, at what size (settled: launch restores everything,
   `spec/windows.md`).
-- **Undo follows:** a popped-out pane's window uses the main window's
-  undo manager, so ⌘Z there undoes the same history (the Info panel's
-  pattern, `InfoPanelWindow.sharedUndoManager`).
+- **Undo follows, but ⌘Z doesn't reach it — measured, 2026-09-25, not yet
+  fixed.** `PanePanel`/`PaneWindow`'s `undoManager` override correctly
+  returns the main window's real `UndoManager` (checked by
+  `ObjectIdentifier`: the same instance the edit itself was registered
+  on), and `PanePanel` now also overrides `canBecomeKey` (the Info
+  panel's own fix, `InfoPanel.swift`) — neither was enough. An edit made
+  from the popped-out Inspector (`spec/windows.md`'s first detachable
+  area) saves correctly and is undoable from the **main** window, but
+  `Edit ▸ Undo` reads disabled outright while the popped-out window is
+  key, and a real ⌘Z there does nothing (checked against the saved show's
+  JSON before and after, twice: once by menu validation, once by a real
+  keypress). **Best read of why:** SwiftUI's own automatic Edit ▸ Undo/
+  Redo commands are scoped to its `Scene` graph and resolve
+  `\.undoManager` from whichever `Window` scene SwiftUI itself considers
+  focused — a `PanePanel` is a raw AppKit window built outside that graph
+  (`PaneWindowController`, imperative), so SwiftUI's own commands may
+  simply not know it exists, regardless of what `window.undoManager`
+  itself returns. Not confirmed by reading SwiftUI's source (closed), so
+  call it a strong inference, not a proof. **Not a PaneKit-only fix if
+  true:** the app would need its own `CommandGroup(replacing: .undoRedo)`
+  that asks `NSApp.keyWindow?.undoManager` directly, live-updated as the
+  key window changes — its own design decision (a plain Undo item that
+  works from any window vs. today's one that only works from windows
+  SwiftUI already tracks), worth Jason's steer before building it rather
+  than guessed at. **Until then:** the popped-out Inspector is a real,
+  working view and editor — edits commit and are undoable from the main
+  window — just not undoable from its own window yet.
 - **Keys follow:** the window-level keys an app sets up (ShowTools'
   Space, J, K, L) work in a popped-out pane's window too, since the app
   registers them with PaneKit rather than with one window.
@@ -535,9 +559,22 @@ opening or closing (changes are instant for now).
    panel, the Timeline window. PaneKit already does the moving; the show
    session — its own prerequisite, so the panes have their state to take
    with them — is **done 2026-09-24** (`ShowSession.swift`). The Slide
-   Editor and the library panel are both built (above). What's left is
-   one detachable area (probably the inspector) — `spec/windows.md`'s own
-   open questions, not a port.
+   Editor and the library panel are both built (above). **Edit Show's
+   inspector, the first detachable area proper (`spec/windows.md`, "A
+   possible order," step 4): built 2026-09-25** (`EditColumnsLayout
+   .threeColumns`, `far: Pane("inspector", ..., popOut: .panel)`; View ▸
+   "Inspector in Its Own Window," `ShowToolsApp.swift`). `swift test`
+   (306) and `./make-app.sh` clean. Checked with axtool against a scratch
+   library: pops out to a real `NSPanel` beside the main window (position
+   matches the "beside the main window" formula exactly), the main
+   window's list column grows to fill the vacated space (`PaneLayout
+   .isEmpty`, already generic — no ShowTools-specific code needed),
+   selecting a slide in the main window live-updates the popped-out
+   content (the show session already shared), and an edit made from it
+   (a Position X drag) saves to the library correctly. **What isn't
+   proven: undo** — see "Pane ⇄ panel" above; a real gap, not yet fixed.
+   Edit Slides' own inspector stays inline; this is the first case, not a
+   port of both. Left of step 4: the timeline pane, last.
 
 ## Settled
 

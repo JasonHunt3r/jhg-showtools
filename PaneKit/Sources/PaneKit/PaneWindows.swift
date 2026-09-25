@@ -87,9 +87,16 @@ final class PaneWindowController: NSObject, NSWindowDelegate {
     }
 }
 
-/// A floating pane window whose undo is the main window's.
+/// A floating pane window whose undo is the main window's. `canBecomeKey`
+/// must be overridden true, or AppKit's own default for a `.utilityWindow`
+/// panel can leave it never truly key — the same fix `InfoPanelWindow`
+/// needed (`InfoPanel.swift`), confirmed there by hand: without it, ⌘Z
+/// right after an edit does nothing, silently, because there's no key
+/// window for Edit ▸ Undo to ask at all (measured here: with the override
+/// missing, `Edit ▸ Undo` read disabled outright, not just empty).
 @MainActor
 final class PanePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
     weak var undoSource: NSWindow?
     override var undoManager: UndoManager? { undoSource?.undoManager ?? super.undoManager }
 }

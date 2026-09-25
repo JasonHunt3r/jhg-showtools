@@ -233,7 +233,18 @@ second:**
   (`InfoPanelWindow.sharedUndoManager`). ⌘Z in them undoes the same
   history. Every detached area would need this: a separate window's undo
   manager isn't the main one's, and ⌘Z asks the *key* window's
-  (showtools-gotchas).
+  (showtools-gotchas). **The same override, built into PaneKit's own
+  `PanePanel`/`PaneWindow`, didn't carry over cleanly to a PaneKit
+  pop-out** (measured 2026-09-25, popping out Edit Show's inspector —
+  `spec/panekit.md`, "Pane ⇄ panel"): the override returns the right
+  `UndoManager` object, but `Edit ▸ Undo`/⌘Z still don't reach it from
+  the popped-out window, only from the main one. Best guess: SwiftUI's
+  own automatic Undo/Redo commands are scoped to its `Scene` graph, which
+  a `PaneWindowController`'s raw AppKit window sits outside of — InfoPanel
+  and the Rhythm tool are built the same imperative way, so this may bite
+  them too, untested here. Worth settling before the timeline pane
+  detaches, since it carries the most edits of anything that would pop
+  out.
 - **A view of shared playback in another window:** the pop-out viewer
   shows an engine the main window owns. Closing it leaves playback
   running.
@@ -408,7 +419,14 @@ What's known before trying it:
    (`spec/panekit.md`, "Step 4, second piece"). Show in Library, which
    lands here, still waits on the right-click-menu work — it isn't built
    anywhere yet.
-4. **One detachable area,** probably the inspector, to prove the pattern:
-   undo, keys, and the main window closing up. Then the others.
+4. ~~**One detachable area,** probably the inspector, to prove the
+   pattern: undo, keys, and the main window closing up.~~ — **built
+   2026-09-25** (Edit Show's inspector; `spec/panekit.md`, "The order,"
+   step 4). Proved: the main window closing up, and cross-window state
+   sharing (the popped-out window live-follows the main window's slide
+   selection). **Not proved, and found broken:** undo — see
+   `spec/panekit.md`, "Pane ⇄ panel." Keys weren't exercised either (the
+   Inspector has none of its own; a future detach with keys, like the
+   timeline, is the real test). Then the others.
 5. **The timeline pane, detached,** last: it carries the most keys and
    playback.

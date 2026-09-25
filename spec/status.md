@@ -514,16 +514,32 @@ Show's/Edit Slides' columns), the show session (its own prerequisite),
 and `nearIsRigid` (found watching Jason use it — Edit Show's list column
 now only resizes from its own divider; `spec/panekit.md`, "Building a
 row"). **Step 4 itself: the order is settled** (Slide Editor, library
-panel, one detachable area, timeline pane last), **and both the Slide
-Editor and the library panel are built**, 2026-09-24: the Slide Editor
-(v1: the image, its handles and the full inspector, opened by
+panel, one detachable area, timeline pane last), **and the Slide Editor,
+the library panel, and one detachable area are all built**: the Slide
+Editor (v1: the image, its handles and the full inspector, opened by
 double-click on a slide, settled over the inspector, in Edit Slides'
 list or the storyline, or "Open in Slide Editor" on either's context
-menu — `spec/panekit.md`, "Step 4, first piece"); the library panel (a
-floating window on the whole library grid, opened from "Open Library
-Panel" on the Library item's context menu, previously stubbed in greyed
-out — `spec/panekit.md`, "Step 4, second piece"). Left of step 4: the
-one detachable area. And the New Show panel
+menu — `spec/panekit.md`, "Step 4, first piece", 2026-09-24); the library
+panel (a floating window on the whole library grid, opened from "Open
+Library Panel" on the Library item's context menu, previously stubbed in
+greyed out — `spec/panekit.md`, "Step 4, second piece", 2026-09-24); Edit
+Show's inspector popping out into its own window (View ▸ "Inspector in
+Its Own Window"), the first detachable area, **built 2026-09-25**
+(`spec/panekit.md`, "The order," step 4; "Pane ⇄ panel"). It proves the
+main window closing up and cross-window state sharing (checked with
+axtool against a scratch library: pops out beside the main window, the
+list column grows into the vacated space, selecting a slide in the main
+window live-updates the popped-out inspector, and an edit made there
+saves correctly). **It does not prove undo: a real, measured gap** —
+`Edit ▸ Undo`/⌘Z don't reach the shared history from the popped-out
+window, only from the main one, despite `PanePanel`'s `undoManager`
+override returning the identical `UndoManager` object (checked by
+`ObjectIdentifier`) — best guess is SwiftUI's own automatic Undo/Redo
+commands are scoped to its `Scene` graph, which a PaneKit pop-out sits
+outside of; not yet fixed, and may also affect the Info panel and the
+Rhythm tool, untested. Left of step 4: the timeline pane, last — worth
+settling the undo question before it detaches, since it carries the most
+edits of anything that would pop out. And the New Show panel
 (`spec/simple-things-fast.md`).
 
 ### Also next
@@ -583,6 +599,17 @@ and Flush presets from 2a.
   from screen to screen, ⌥-double-click actually moving it there — are
   reasoned through from the code, not seen. Worth a particular look with
   a second monitor plugged in.
+- **Edit Show's inspector popping out** (built 2026-09-25, View ▸
+  "Inspector in Its Own Window," `spec/panekit.md` "The order" step 4):
+  the window itself, the main window closing up, and the popped-out
+  content following the main window's selection all confirmed with
+  axtool against a scratch library — but **undo from that window is a
+  known, measured gap, not a "not yet checked" one**: `Edit ▸ Undo` and a
+  real ⌘Z both do nothing there, though the same edit undoes fine from
+  the main window. Worth Jason's read before it's called done — see
+  `spec/panekit.md`, "Pane ⇄ panel," for the fix this needs (probably the
+  app's own `CommandGroup(replacing: .undoRedo)`, not a PaneKit change)
+  and why it's a design decision, not just a bug.
 - **The grid's keyboard** (built 2026-09-25, audit batch 7): arrow keys,
   Return-renames, and Quick Look on ⌘Y or a double-click — all confirmed
   by their actual effect with axtool (selection counts, the rename sheet,
