@@ -197,7 +197,16 @@ struct MainView: View {
 
     /// The Library pane's content: PaneKit's "library" pane.
     private var libraryList: some View {
-        List(selection: Binding(get: { model.sidebar }, set: { model.sidebar = $0 })) {
+        // Item 3, `ShowTools Feedback — Worklist for Next CC Session.md`:
+        // clicking the library pane's background shouldn't do anything — a
+        // plain `List(selection:)` clears its selection to nil on a
+        // background click, and `detailView`'s `default` case for a nil
+        // sidebar is the plain Library grid, so a stray background click
+        // was silently switching out of whatever the detail pane was
+        // showing. There's always something to have selected here (the
+        // Library row itself is selectable), so a nil write from that
+        // background click is simply ignored rather than accepted.
+        List(selection: Binding(get: { model.sidebar }, set: { if let s = $0 { model.sidebar = s } })) {
             // An alternate library shows its own name here.
             Label(model.isOnMaster ? "Library" : model.libraryName,
                   systemImage: model.libraryIsPrivate || model.locked != nil
@@ -1193,6 +1202,19 @@ struct LibraryGridView: View {
             Color.clear.onAppear { gridWidth = g.size.width }
                 .onChange(of: g.size.width) { _, w in gridWidth = w }
         })
+        // Item 4, `ShowTools Feedback — Worklist for Next CC Session.md`:
+        // no right-click response anywhere in the main window's background
+        // areas. The near-invisible background above already makes this
+        // whole scroll area hit-testable (it's what the background tap-to-
+        // deselect gesture below uses); a plain `.contextMenu` on it gives
+        // a right-click on empty grid space something to answer with.
+        .contextMenu {
+            Button("Import…") { runImportPanel(model) }
+            Button("New Collection…") { startCreatingCollection(with: []) }
+            if collectionID != nil {
+                Button("Add from Library…") { addingFromLibrary = true }
+            }
+        }
         .onChange(of: cursor) { _, id in
             guard let id else { return }
             withAnimation { proxy.scrollTo(id, anchor: nil) }
