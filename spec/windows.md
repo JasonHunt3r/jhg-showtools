@@ -446,3 +446,19 @@ What's known before trying it:
    trap it had to route around), checked with axtool: Loop Playback and
    Set Range In both work through the menu from the popped-out window,
    and Go Back correctly enables after a real nudge.
+
+   **This first build only ever gave the pane the detail column's width,
+   not the window's — the actual "full-width, under the Library pane
+   too" idea this section has said since before any of it was built.**
+   Found and fixed later the same day (2026-09-25, `spec/panekit.md`,
+   step 2's own entry and step 5's own follow-up): the pane moved off
+   `model.editShowColumns` (nested inside Edit Show's own three columns)
+   onto `AppModel.mainPanes`'s own tree, a new outer split wrapping the
+   library|detail split, rendered by `MainView`
+   (`EditShowTimelinePane.swift`) rather than by `EditShowView`. Two
+   further bugs turned up moving it — a Delete-key race between two
+   separate `SingleKeys` instances on the same window (settled by giving
+   Delete/⌘Delete one handler, not two: `SlideActions.removeSelected`),
+   and a popped-out Timeline window left open and blank after leaving
+   Edit Show (settled by putting the pane back before its split closes)
+   — both `spec/panekit.md`, step 5, has the detail on.

@@ -567,7 +567,34 @@ all from the popped-out Timeline window: Loop Playback toggled through
 the menu and the saved show's JSON flipped, Set Range In through the
 menu wrote `editor.rangeIn`, and Go Back went from disabled to enabled
 after a real arrow-key nudge. `swift test` (306) and `./make-app.sh`
-clean. And the New Show panel (`spec/simple-things-fast.md`).
+clean.
+
+**The timeline pane only spanned the detail column, not the window —
+fixed later the same day (2026-09-25).** Jason's own words: "the
+timeline is supposed to go the whole width under the library column."
+The pane moved off `model.editShowColumns` (nested inside Edit Show's
+own three columns) onto `AppModel.mainPanes`'s own tree — a new outer
+split wrapping the library|detail split — rendered by `MainView`
+(`EditShowTimelinePane.swift`, pulled out of `EditShowView`) rather than
+by `EditShowView` itself, since handing a built view from one view's
+`body` to another for the same update pass risks the same trap SwiftUI's
+"don't mutate state during a view update" rule exists for. Auto-closes
+(`model.mainPanes.setOpen("window", …)`) outside Edit Show, rather than
+showing empty space. Two more bugs found moving it: a Delete-key race
+between two separate `SingleKeys` instances on the same window (a slide
+selected in the storyline, Delete pressed, sometimes deleted the whole
+show instead — settled with one handler, `SlideActions.removeSelected`,
+tried first by `MainView`'s existing sidebar Delete handler), and a
+popped-out Timeline window left open and blank after leaving Edit Show
+(settled by putting it back first). `spec/panekit.md`, "The order," step
+5, has the full story. Checked with axtool against a scratch library:
+the timeline sits at x=0 under the Library pane, library and detail grow
+to fill the window's full height when it's closed, Edit Slides closes it
+and Edit Show restores it docked and full width, the pop-out and its
+Undo/Redo and menu commands still work, and a real slide Delete removes
+just that slide (the removal notice, not "Delete Show?") with ⌘Z putting
+it back. `swift test` (306) and `./make-app.sh` clean. And the New Show
+panel (`spec/simple-things-fast.md`).
 
 ### Also next
 
@@ -636,18 +663,21 @@ and Flush presets from 2a.
   undoes and redoes the edit, checked against the saved show's JSON.
   Never confirmed by a real click, drag or keypress from Jason's own
   hands.
-- **The timeline pane popping out** (built 2026-09-25, View ▸ "Timeline
-  in Its Own Window," `spec/panekit.md` "The order" step 5): the window,
-  the columns growing to fill the vacated height, bare-key shortcuts
-  (Space, J/K/L, M, I, O, N, arrows), Undo/Redo, and — after a same-day
-  fix moving `EditShowCommandsValue` onto `AppModel` — the Show/View
-  menu's Play/Pause, Set Range, Zoom, Loop and Go Back/Forward items, all
-  confirmed with axtool against a scratch library, all from the
-  popped-out window: a real Space keypress toggled playback, a real Set
-  Range In + ⌘Z round-tripped, Loop Playback toggled through the menu and
-  the saved show's JSON flipped, and Go Back went from disabled to
-  enabled after a real arrow-key nudge. Never confirmed by a real click,
-  drag or keypress from Jason's own hands.
+- **The timeline pane, full width under the Library pane, and popping
+  out** (built 2026-09-25, `spec/panekit.md` "The order" step 5): sits
+  at x=0, under the Library pane, not starting at the detail column's
+  left edge; the library and detail panes grow to fill the window's full
+  height when Edit Slides or the plain Library view closes it; View ▸
+  "Timeline in Its Own Window" still pops it out as an ordinary window,
+  now at its own full width; bare-key shortcuts (Space, J/K/L, M, I, O,
+  N, arrows), Undo/Redo, and the Show/View menu's Play/Pause, Set Range,
+  Zoom, Loop and Go Back/Forward items all still work from the
+  popped-out window after the move; a real slide Delete shows the
+  slide-removal notice and removes just that slide (not "Delete Show?" —
+  a real race between two separate Delete-key handlers, found and fixed
+  the same day), with ⌘Z putting it back. All confirmed with axtool
+  against a scratch library. Never confirmed by a real click, drag or
+  keypress from Jason's own hands.
 - **The grid's keyboard** (built 2026-09-25, audit batch 7): arrow keys,
   Return-renames, and Quick Look on ⌘Y or a double-click — all confirmed
   by their actual effect with axtool (selection counts, the rename sheet,

@@ -507,10 +507,15 @@ opening or closing (changes are instant for now).
    Library-pane-and-detail half is **done 2026-09-24**
    (`MainView.layout`, a two-pane split: `.pane("library", …)` and
    `.pane("detail", …)`, `AppModel.mainPanes`). The full-width timeline
-   pane isn't in this tree yet — it needs the show session (state moved
-   out of the views, step 4's own prerequisite), so it stays inside Edit
-   Show's own `VSplitView` for now, untouched, until step 3 or step 4
-   gets to it. Checked, real clicks: divider drag resizes the split;
+   pane came later, once the show session existed to read from —
+   **built 2026-09-25**, when it turned out the first build of step 5
+   (below) had only ever put it under the detail column, not the whole
+   window, missing this step's own goal (found from a plain description
+   of the bug: "the timeline is supposed to go the whole width under the
+   library column"). `AppModel.mainPanes`'s root is now a vertical split
+   wrapping the library|detail split, with `.pane("storyline", …)`
+   sized to it, not inside `model.editShowColumns` any more — see step
+   5's own entry for the move and what it took. Checked, real clicks: divider drag resizes the split;
    drag-to-edge leaves the handle and reopening restores the dragged
    size; ⌘Z through the pane undoes a delete (the AppKit-boundary
    undo-manager question — resolved via the window's own responder
@@ -617,6 +622,76 @@ opening or closing (changes are instant for now).
    the saved show's `editor.loopPlayback` flipped; Set Range In through
    the menu wrote `editor.rangeIn`; Go Back went from disabled to enabled
    after a real arrow-key nudge, matching its history correctly.
+
+   **Moved to the main window's own tree — built later the same day,
+   2026-09-25**, once it was clear this first build only ever gave the
+   timeline pane the detail column's width, not the window's — missing
+   the "full width under the Library pane too" step 2 always meant
+   (`spec/windows.md`, "The idea"; `panekit.md`'s own sketch under "What
+   it is"). `EditColumnsLayout.editShowTree` is gone; `EditColumnsLayout
+   .threeColumns` is Edit Show's whole tree again. `AppModel.mainPanes`'s
+   root wraps the library|detail split in a new outer vertical split
+   (`"window"`, sized `.second`; the library|detail split **keeps the id
+   `"main"`**, so Jason's already-saved sidebar width keeps its meaning),
+   with `.pane("storyline", …, popOut: .window)` as the timeline pane.
+   `MainView` renders it (`timelinePane`), reading the same
+   `ShowSession`/`AppModel.timeline(for:)`/`AppModel.update` that
+   `ShowView`/`EditShowView` already do, rather than either of those
+   handing this view something pre-built — writing `@Observable` state
+   from one view's `body` for another to read in the *same* update pass
+   is the same class of trap the "don't mutate state during a view
+   update" rule exists for, so `EditShowTimelinePane`
+   (`Sources/ShowToolsApp/EditShowTimelinePane.swift`) was pulled out of
+   `EditShowView` into its own file instead, with everything about the
+   transport/storyline that isn't the engine's own lifecycle (range,
+   arrow keys, row navigation, Go Back/Forward, `editShowCommands`) — the
+   engine's creation and shutdown stay in `EditShowView`, which
+   `EditShowTimelinePane` just reads (`session.engine`).
+
+   **Two real bugs found and fixed while moving it, both before this
+   landed:**
+   - **A ⌘Delete/Delete race, not visible until the pane became a true
+     main-window sibling.** `EditShowTimelinePane` had its own
+     `.onDeleteCommand` for the lane's selection (markers, a song, an
+     overlay, a transition, slides); `MainView`'s own `SingleKeys` already
+     had a *different* Delete/⌘Delete handler, for the sidebar (Delete
+     the selected show/collection/group). Once the timeline pane was a
+     real `SingleKeys` instance living directly under `MainView`'s own
+     tree rather than nested two levels inside `EditShowView`, pressing
+     Delete with a slide selected in the storyline sometimes deleted the
+     *entire show* instead — caught by hand with axtool (a "Delete
+     'Test Show'?" alert, not the slide-removal notice), not by reasoning
+     about it first. Two separate `NSEvent.addLocalMonitorForEvents`
+     instances on the same window racing for the same keypress, with no
+     defined winner. **The fix:** one handler, not two —
+     `SlideActions.removeSelected(session:mutate:)` (`ShowView.swift`)
+     carries the lane's own priority order now, called first from
+     `MainView`'s existing sidebar handler; it returns `false` when
+     nothing in the lane is selected, so the sidebar's own Delete/⌘Delete
+     meaning is still the fallback. `EditShowTimelinePane` no longer
+     handles Delete/⌫ at all.
+   - **A popped-out Timeline window left open and blank after leaving
+     Edit Show.** `MainView` closes the pane's *split* when
+     `isEditingShow` goes false, but a popped-out pane's own window isn't
+     part of that split any more — closing a split its pane has already
+     left doesn't close that pane's window. Caught with axtool: popping
+     the Timeline out, then View ▸ Edit Slides, left an empty "Timeline"
+     window on screen. Fixed by putting the pane back first
+     (`model.mainPanes.putBack("storyline")`) whenever `isEditingShow`
+     goes false, ahead of collapsing the split.
+
+   Checked with axtool against a scratch library, the whole path: the
+   timeline pane sits at `(0, y, windowWidth, height)` — under the
+   Library pane too, not starting at the detail column's left edge; the
+   library and detail panes grow to fill the window's full height when
+   Edit Slides or the plain Library view collapses the timeline away;
+   switching back to Edit Show restores it, docked, full width; popping
+   it out still works (an ordinary window, now at the pane's own full
+   width); Undo/Redo and the Show/View menu commands still work from the
+   popped-out window (unchanged fixes, re-confirmed after the move); a
+   real slide Delete from the (now full-width, still-nested) storyline
+   shows the slide-removal notice and removes just that slide, not the
+   whole show; ⌘Z puts it back.
 
 ## Settled
 

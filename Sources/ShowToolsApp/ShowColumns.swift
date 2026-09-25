@@ -29,23 +29,6 @@ enum EditColumnsLayout {
     static let listDefault: CGFloat = 230
     static let listMax: CGFloat = 420
 
-    /// Edit Show's three columns, plus the storyline below them
-    /// (`EditShowView`'s own tree: the outer split is vertical, in place
-    /// of the old `VSplitView`). The storyline is the timeline pane
-    /// (`spec/windows.md`, "The timeline pane"): the last piece of step 4,
-    /// it pops out as an ordinary window (it can go behind, per
-    /// `spec/panekit.md`'s own `PopOutStyle.window` note) — `EditShowView`
-    /// moves its keyboard shortcuts (`shortcuts(engine)`) onto this pane's
-    /// own content, not the outer view, so they follow it there
-    /// (`SingleKeys`' `viewDidMoveToWindow` re-attaches automatically when
-    /// PaneKit reparents the pane's hosting view).
-    static func editShowTree(storylineMin: CGFloat, storylineDefault: CGFloat) -> PaneNode {
-        .split("editShow", .vertical, sized: .second, size: storylineDefault,
-               range: storylineMin...(storylineDefault + 400), collapsible: false,
-               threeColumns,
-               .pane("storyline", title: "Timeline", minSize: storylineMin, popOut: .window))
-    }
-
     /// The inspector is the first detachable area (`spec/windows.md`, "A
     /// possible order", step 4): it pops out as a panel, to prove the
     /// pattern PaneKit already built — undo sharing (the popped-out

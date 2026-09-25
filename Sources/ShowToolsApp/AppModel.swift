@@ -30,22 +30,40 @@ final class AppModel {
     private(set) var rhythmPatterns: [SavedRhythm] = []
 
     var sidebar: SidebarItem? = .library
-    /// The main window's layout (`spec/panekit.md`, step 2): the Library
-    /// pane beside the detail. One controller for the window's lifetime,
-    /// so both `MainView` and the View menu's commands share it. The
-    /// timeline pane joining this tree waits on the show session (step 4).
+    /// The main window's layout (`spec/panekit.md`, step 2, and the
+    /// timeline pane's own move, step 5's follow-up, 2026-09-25): the
+    /// Library pane beside the detail, with the timeline pane full width
+    /// underneath both — `panekit.md`'s own original sketch
+    /// (`split(top/bottom) { split(left|rest) { library, detail }, timeline }`),
+    /// not nested inside Edit Show's own columns as first built (which
+    /// only ever gave it the detail pane's width, not the window's).
+    /// `MainView` renders "storyline" itself, reading the same
+    /// `ShowSession`/`AppModel` state `EditShowView` does, rather than
+    /// `EditShowView` handing it a built view — writing to `@Observable`
+    /// state from one view's `body` for another view to read in the same
+    /// update pass is the same class of trap SwiftUI's "don't mutate
+    /// state during a view update" rule exists for. One controller for
+    /// the window's lifetime, so `MainView` and the View menu's commands
+    /// share it. **The inner split keeps the id `"main"`**, unchanged
+    /// since step 2, so Jason's already-saved sidebar width keeps meaning
+    /// what it always meant; the new outer split is `"window"`, a name
+    /// nothing has used before.
     let mainPanes = PaneController(id: "main", root:
-        .split("main", .horizontal, sized: .first, size: DefaultLayout.sidebarWidth,
-               range: 180...360, title: "Library",
-               .pane("library", title: "Library", minSize: 180),
-               .pane("detail", title: "Detail", minSize: 240)))
+        .split("window", .vertical, sized: .second,
+               size: StorylineView.fullHeight + 56 + 10,
+               range: (StorylineView.fullHeight + 56)...(StorylineView.fullHeight + 456),
+               .split("main", .horizontal, sized: .first, size: DefaultLayout.sidebarWidth,
+                      range: 180...360, title: "Library",
+                      .pane("library", title: "Library", minSize: 180),
+                      .pane("detail", title: "Detail", minSize: 240)),
+               .pane("storyline", title: "Timeline", minSize: StorylineView.fullHeight + 56, popOut: .window)))
     /// Edit Show's and Edit Slides' columns (`spec/panekit.md`, step 3): one
     /// controller each, shared across every show (`ColumnsSplitView`'s own
     /// saved widths were shared the same way), so switching shows doesn't
-    /// churn the layout.
-    let editShowColumns = PaneController(id: "EditShowColumns", root:
-        EditColumnsLayout.editShowTree(storylineMin: StorylineView.fullHeight + 56,
-                                       storylineDefault: StorylineView.fullHeight + 56 + 10))
+    /// churn the layout. The timeline pane isn't part of this tree any
+    /// more (above) — `EditColumnsLayout.threeColumns` is just the three
+    /// columns now.
+    let editShowColumns = PaneController(id: "EditShowColumns", root: EditColumnsLayout.threeColumns)
     let editSlidesColumns = PaneController(id: "EditSlidesColumns", root: EditColumnsLayout.twoColumns)
     /// The open show's editing state (`spec/windows.md`, `ShowSession`).
     /// One at a time: this app edits one show in the main window.

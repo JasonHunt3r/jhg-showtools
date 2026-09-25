@@ -29,6 +29,10 @@ struct MainView: View {
     /// it's made in, and the name being typed.
     @State private var creatingGroup: (collectionID: Int64, parentID: Int64?)?
     @State private var newGroupName = ""
+    /// Same key as `ShowView`'s own — the timeline pane only shows
+    /// something while Edit Show has the open show (`timelinePane`,
+    /// `isEditingShow`, below).
+    @AppStorage("editMode") private var mode: EditMode = .slides
 
     var body: some View {
         // Split from the alerts/dialogs below: one expression this size is
@@ -105,15 +109,49 @@ struct MainView: View {
         PaneLayoutView(controller: model.mainPanes, content: [
             "library": AnyView(libraryList.environment(model)),
             "detail": AnyView(detailView.environment(model)),
+            "storyline": AnyView(timelinePane.environment(model)),
         ])
         // Another library's undo steps mean nothing here (see libraryGeneration).
         .onChange(of: model.libraryGeneration) { undoManager?.removeAllActions() }
         .focusedSceneValue(\.requestNewCollection, startCreatingCollection)
+        // The timeline pane only means something while a show is open in
+        // Edit Show — closed the rest of the time, rather than showing
+        // empty space (`spec/panekit.md`, "The order," step 5's
+        // follow-up, 2026-09-25). `initial: true` closes it on a launch
+        // that opens straight into the Library, and opens it (to its last
+        // remembered size) on a launch that reopens a show mid-edit.
+        // Doesn't fight a manual close/open while `isEditingShow` itself
+        // hasn't changed — this only runs when it does. Leaving Edit Show
+        // while it's popped out puts it back first — closing a split its
+        // pane has already left doesn't close *that* window, which would
+        // otherwise sit open and blank (measured with axtool: switching to
+        // Edit Slides left an empty "Timeline" window on screen).
+        .onChange(of: isEditingShow, initial: true) { _, editing in
+            if !editing, model.mainPanes.isPoppedOut("storyline") { model.mainPanes.putBack("storyline") }
+            model.mainPanes.setOpen("window", editing)
+        }
         // The sidebar's Delete/⌘Delete fallback (D1), for when its List
         // doesn't have the keyboard (see the comment on `onDeleteCommand`
         // above). Attached to the whole layout, not the List itself.
+        // **Tries the timeline pane's own selection first** (found
+        // 2026-09-25, moving the timeline pane to `model.mainPanes`,
+        // `spec/panekit.md` step 5's follow-up): a slide/transition/
+        // overlay/marker selected in the storyline used to be
+        // `EditShowTimelinePane`'s own `.onDeleteCommand`, but that raced
+        // this very handler for the same keypress once they were two
+        // separate `SingleKeys` instances on the same window — which one
+        // ran first was undefined, and "delete the whole show" sometimes
+        // won. One handler, one priority order, settles it.
         .background(SingleKeys { event in
             guard event.keyCode == 51 || event.keyCode == 117 else { return false }
+            if case .show(let id) = model.sidebar, let show = model.show(id), mode == .show,
+               SlideActions.removeSelected(session: model.session(for: id), mutate: { action, change in
+                   var s = show
+                   change(&s)
+                   model.update(s, undo: undoManager, action: action)
+               }) {
+                return true
+            }
             if !(NSApp.keyWindow?.firstResponder is NSTableView), event.plainModifiers == [] {
                 switch model.sidebar {
                 case .show(let id): guard let s = model.show(id) else { return false }; confirmDelete = s
@@ -248,6 +286,39 @@ struct MainView: View {
             }
         }
         .id(model.libraryGeneration)
+    }
+
+    /// The timeline pane's content: PaneKit's "storyline" pane, full width
+    /// under the Library pane too — not just the detail column, which is
+    /// all `EditShowView`'s own three columns could ever give it
+    /// (`EditShowTimelinePane`, `spec/panekit.md`, "The order," step 5's
+    /// follow-up, 2026-09-25). Reads the same `ShowSession`/`AppModel`
+    /// state `ShowView`/`EditShowView` do, rather than either of them
+    /// handing this view something already built: writing to
+    /// `@Observable` state from one view's `body` for another to read in
+    /// the same update pass is the same class of trap SwiftUI's "don't
+    /// mutate state during a view update" rule exists for.
+    private var timelinePane: some View {
+        Group {
+            if case .show(let id) = model.sidebar, let show = model.show(id), mode == .show {
+                EditShowTimelinePane(show: show, timeline: model.timeline(for: show),
+                                     session: model.session(for: id),
+                                     mutate: { action, change in
+                                         var s = show
+                                         change(&s)
+                                         model.update(s, undo: undoManager, action: action)
+                                     })
+            } else {
+                Color.clear
+            }
+        }
+    }
+
+    /// Whether the timeline pane has something to show — `layout` uses
+    /// this to open/close its split.
+    private var isEditingShow: Bool {
+        if case .show(let id) = model.sidebar { return model.show(id) != nil && mode == .show }
+        return false
     }
 
     private func relinkMessage(_ r: RelinkSummary) -> String {

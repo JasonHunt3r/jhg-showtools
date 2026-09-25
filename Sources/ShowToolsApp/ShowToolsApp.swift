@@ -236,11 +236,14 @@ struct AppCommands: Commands {
                 set: { _ in model.editShowColumns.togglePopOut("inspector") }))
                 .disabled(editShowCommands == nil)
             // Step 4's last piece: the timeline pane (`spec/windows.md`,
-            // "The timeline pane"). Pops out as an ordinary window, so it
-            // can go behind — unlike the Inspector's panel, which floats.
+            // "The timeline pane"). Lives in `model.mainPanes` now, full
+            // width under the Library pane too, not `model.editShowColumns`
+            // (`spec/panekit.md`, "The order," step 5's follow-up,
+            // 2026-09-25). Pops out as an ordinary window, so it can go
+            // behind — unlike the Inspector's panel, which floats.
             Toggle("Timeline in Its Own Window", isOn: Binding(
-                get: { model.editShowColumns.isPoppedOut("storyline") },
-                set: { _ in model.editShowColumns.togglePopOut("storyline") }))
+                get: { model.mainPanes.isPoppedOut("storyline") },
+                set: { _ in model.mainPanes.togglePopOut("storyline") }))
                 .disabled(editShowCommands == nil)
             Divider()
             Button("Edit Slides") { mode = .slides }

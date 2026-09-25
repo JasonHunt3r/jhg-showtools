@@ -116,6 +116,43 @@ enum SlideActions {
         selection.wrappedValue.subtract(ids)
     }
 
+    /// Deletes whatever's selected in the lane, in priority order — an
+    /// image is taken out first, a transition leaves a cut. Lives here,
+    /// called from `MainView`'s own Delete/⌘Delete handler, rather than
+    /// `EditShowTimelinePane`'s `.onDeleteCommand` (found 2026-09-25,
+    /// moving the timeline pane to `spec/panekit.md` step 5's own tree):
+    /// two separate `SingleKeys` handlers on the same window raced for
+    /// the same keypress, and the sidebar's "delete the show" one wasn't
+    /// guaranteed to lose. One handler, one priority order, settles it.
+    /// Returns `false` (nothing done) when nothing in the lane is
+    /// selected, so the caller can fall back to its own Delete meaning.
+    @discardableResult
+    static func removeSelected(session: ShowSession, mutate: ShowMutator) -> Bool {
+        if !session.selectedMarkers.isEmpty {
+            let ids = session.selectedMarkers
+            mutate(ids.count == 1 ? "Remove Marker" : "Remove Markers") { $0.removeMarkers(ids) }
+            session.selectedMarkers = []
+        } else if let id = session.selectedSong {
+            mutate("Remove Audio Clip") { $0.music.removeAll { $0.id == id } }
+            session.selectedSong = nil
+        } else if let id = session.selectedOverlay {
+            mutate("Remove Image") { $0.overlays.removeAll { $0.id == id } }
+            session.selectedOverlay = nil
+        } else if let id = session.selectedTransition {
+            mutate("Remove Transition") { s in
+                guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
+                s.slides[i].settings.transition = ShowToolsCore.Transition(style: .cut, duration: 0)
+            }
+            session.selectedTransition = nil
+        } else if !session.selection.isEmpty {
+            remove(session.selection, selection: Binding(get: { session.selection }, set: { session.selection = $0 }),
+                  mutate: mutate)
+        } else {
+            return false
+        }
+        return true
+    }
+
     /// Copies go right after their originals, with their settings, as new uses.
     /// A copy's auto Pan and Zoom comes from its own new id, as it always has,
     /// so an imported slide's seed isn't copied.
