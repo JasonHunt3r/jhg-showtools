@@ -35,11 +35,11 @@ patterns, 12 their note length, 13 groups). Before an upgrade the database is co
 to `Library.sqlite.v<N>.bak`. Video export needed no schema change: a video
 slide's level line is slide settings, which are JSON.
 
-`~/Applications/ShowTools.app` is **one commit behind HEAD** (built
-2026-09-23; the Groups work above isn't installed there yet).
-`build/ShowTools.app` is current. BGTools' desktop extension is running
-from the installed copy, so reinstalling wasn't done without asking —
-say when to swap it in.
+`~/Applications/ShowTools.app` is **well behind HEAD** (built
+2026-09-23, 05:30 — before Groups, PaneKit, the library panel, and every
+menu this session added). `build/ShowTools.app` is current. BGTools'
+desktop extension is running from the installed copy, so reinstalling
+wasn't done without asking — say when to swap it in.
 
 **The real library was set aside 2026-09-24** (Jason's own call, mid this
 session): `~/Pictures/ShowTools Library.noindex` is now
@@ -377,6 +377,27 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
+- **The viewer's menus, Show in Library, and the progress line fix**
+  (built 2026-09-24, `spec/conventions.md` §3, item 4): every menu opens
+  with the right items and every action was confirmed by its actual
+  effect with axtool (Rotation Handles and Slide Progress toggle and
+  report back, Show in Library opens the panel and selects the right
+  file, Hide/Show Frame Strip round-trips, the progress line fills left
+  to right), but none of it has been used by a real click yet. Worth a
+  particular look: the known, accepted limitation that the image vs.
+  pasteboard menu goes by which image was last clicked, not by the
+  right-click's own location.
+- **Edit Slides', the browser's and the inspector's menus** (built
+  2026-09-24, `spec/conventions.md` §3, items 3/5/6): Copy/Paste and
+  Copy/Paste Settings, the quick-settings submenus, Use Defaults for All
+  Slides, the browser's Select in Timeline/Play from Here/Remove from
+  Show, and both inspector section menus — all confirmed by their actual
+  effect with axtool (slide counts and settings genuinely changed, not
+  just the menu opening), never by a real click. Worth a particular
+  look: Copy/Paste Settings are meant to swap in over Copy/Paste only
+  while ⌥ is held, but are built as four always-visible items instead
+  (SwiftUI's `.contextMenu` can't declare AppKit's alternate items) — if
+  that reads as clutter in practice, the ⌥-swap is its own follow-up.
 - **The library panel** (built 2026-09-24, `spec/panekit.md`, "Step 4,
   second piece"): opens and shows the whole library correctly, checked
   with axtool against a scratch library, but a real drag from it (its own
