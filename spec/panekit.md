@@ -195,7 +195,11 @@ future app gets the recipe instead of re-deriving it:
   first, being main; `near` has no cap, only a floor; `far` alone keeps a
   real, independently-remembered range).
 - Closing `far` (only it can) hands its space to `near`, not `main` —
-  `near` is what's adjacent to it.
+  `near` is what's adjacent to it. **Under `nearIsRigid`, this flips: the
+  space goes to `main` instead**, so `near` stays exactly as unmoved by a
+  collapse as it already was by a direct drag (added 2026-09-25, item 1,
+  `ShowTools Feedback — Worklist for Next CC Session.md` — see `PaneModel
+  .row`'s own doc comment).
 - This is one specific, opinionated trade — not the only one a three-pane
   row could make (an app could instead cap both `near` and `far` and give
   `main` the far end of the row, the way Mail's own three columns read;
@@ -552,11 +556,19 @@ opening or closing (changes are instant for now).
      (the reverse of before) — reachable only well below the app's own
      minimum window size. The list column lost its old upper bound
      (420): it's the "main" side of its own split now, which PaneKit
-     only floors, doesn't cap. **Closing the inspector now grows the
-     list, not the preview** — a direct, visible consequence of the same
-     nesting choice (list is the inner split's "main" side, so it
+     only floors, doesn't cap. **Closing the inspector grew the list,
+     not the preview, at first** — a direct, visible consequence of the
+     same nesting choice (list is the inner split's "main" side, so it
      absorbs whatever the inspector frees), confirmed by a real
-     double-click collapse in the demo show.
+     double-click collapse in the demo show 2026-09-24. **Reversed
+     2026-09-25** (item 1, `ShowTools Feedback — Worklist for Next CC
+     Session.md`): Jason's own feedback the next day called this
+     wrong — the list column should stay put and the preview should
+     grow, matching what `nearIsRigid` already did for a direct near|far
+     drag. `PaneController.setOpen` now applies the same
+     `linkedAncestor` delta on a collapse/reopen that `trackResize`
+     applies on a drag (`spec/panekit.md`'s own "Building a row" section
+     has the current, corrected description).
    - **The vertical split** (columns row above the storyline, in place
      of `VSplitView`) has one known, minor mismatch: `Pane.minSize` is
      one number for both axes, so the preview's width-floor (420) also
