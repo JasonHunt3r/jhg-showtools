@@ -149,6 +149,11 @@ struct PreviewStage: View {
     @AppStorage("frameStripShown") private var frameStripShown = true
     @AppStorage("frameStripHeight") private var stripHeight: Double = 90
     @State private var stripDragStart: Double?
+    /// The drag's own live value, drawn but not saved until release —
+    /// matches PaneKit's own dividers, which only draw live and commit
+    /// once, on release, rather than writing `stripHeight` (`@AppStorage`,
+    /// straight to UserDefaults) on every pixel of the drag.
+    @State private var liveStripHeight: Double?
     @State private var hovering = false
     /// The slide whose image is selected in the picture, for its handles.
     @State private var imageSlideID: Int64?
@@ -182,7 +187,7 @@ struct PreviewStage: View {
             GeometryReader { g in
                 // The picture keeps at least 120 points; the strip at least 20.
                 let most = max(Double(g.size.height) - 120 - Double(Self.barHeight), Double(FrameStrip.minHeight))
-                let h = CGFloat(min(max(stripHeight, Double(FrameStrip.minHeight)), most))
+                let h = CGFloat(min(max(liveStripHeight ?? stripHeight, Double(FrameStrip.minHeight)), most))
                 VStack(spacing: 0) {
                     picture
                     stripBar(most: most)
@@ -190,6 +195,20 @@ struct PreviewStage: View {
                                scrollOffset: storylineOffset, inset: StorylineView.inset)
                         .frame(height: h)
                 }
+                // Item 8's real cause: the bar sits between two views whose
+                // sizes the drag itself changes, so the bar's own on-screen
+                // position moves mid-drag. A plain (`.local`) DragGesture's
+                // translation is measured against the bar's own frame, so
+                // each `onChanged` partly "catches up" to the cursor before
+                // the next one reads its delta — a feedback loop, measured
+                // to converge on roughly half the real distance (a probe
+                // showed the gesture's own final translation topping out at
+                // half the actual mouse travel, confirmed at two different
+                // drag lengths). Anchoring to this column, which doesn't
+                // move, fixes it — the same reason `StorylineView`'s own
+                // drags (range ends, markers, row handles) are all named
+                // coordinate spaces, never `.local`.
+                .coordinateSpace(name: "previewColumn")
             }
         } else {
             picture
@@ -216,13 +235,17 @@ struct PreviewStage: View {
             // Set, not pushed: a push without its pop leaves the cursor stuck.
             if inside { NSCursor.resizeUpDown.set() } else { NSCursor.arrow.set() }
         }
-        .gesture(DragGesture(minimumDistance: 0)
+        .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .named("previewColumn"))
             .onChanged { g in
                 let start = stripDragStart ?? stripHeight
                 stripDragStart = start
-                stripHeight = min(max(start - Double(g.translation.height), Double(FrameStrip.minHeight)), most)
+                liveStripHeight = min(max(start - Double(g.translation.height), Double(FrameStrip.minHeight)), most)
             }
-            .onEnded { _ in stripDragStart = nil })
+            .onEnded { g in
+                stripDragStart = nil
+                if let live = liveStripHeight { stripHeight = live }
+                liveStripHeight = nil
+            })
         .help("Drag to size the frame strip")
     }
 
