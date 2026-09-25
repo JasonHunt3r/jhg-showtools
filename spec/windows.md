@@ -1,8 +1,8 @@
 # Windows of their own — the edit suite inside the edit suite
 
-**Status:** Planned: a vision, not yet designed. Six of Jason's seven
-answers are in (below). **Left:** what comes first, then a design with
-Jason; much of it is settled by trying it.
+**Status:** Mostly built. Six of Jason's seven answers are in (below).
+**Left:** the seventh answer (what comes first among the areas nothing's
+asked for yet), and the open questions under "Jason's answers."
 
 **Superseded by PaneKit, 2026-09-24** (`spec/panekit.md`): this doc's own
 "suggested approach" below — a standalone harness proving `ColumnsSplitView`
@@ -14,11 +14,15 @@ splits already work," read PaneKit: it's what those sections' outcome
 was. PaneKit already does the pane-moving this doc calls for — pop out,
 put back, remembered frames, the main window closing up. **The show
 session is done too** (2026-09-24, "What stands in the way" below), and
-so is the order question: Slide Editor, then the library panel, then one
-detachable area (`spec/panekit.md`, "The order"). **The Slide Editor's
-v1 and the library panel are both built** (`spec/panekit.md`, "Step 4,
-first piece" and "second piece"); what's left of this doc is the
-detachable area and the open questions under "Jason's answers" below.
+so is the order question: Slide Editor, then the library panel, then
+every other area, then the timeline pane, last (`spec/panekit.md`, "The
+order"). **All of it is built**, 2026-09-24–25: the Slide Editor, the
+library panel, the Inspector popping out, and the timeline pane — both
+popping out **and**, found missing and fixed 2026-09-25, actually full
+width under the Library pane, which this doc's own "The idea" and "What
+it is" always meant. What's left of this doc is the open questions under
+"Jason's answers" below, and the areas nothing's specifically asked for
+yet (the Library pane, the browser).
 
 Names follow `spec/anatomy.md`.
 

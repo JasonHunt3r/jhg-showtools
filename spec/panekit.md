@@ -1,6 +1,9 @@
 # PaneKit — a reusable pane system for Mac apps
 
-**Status:** Building. **Steps 1–3 done 2026-09-24.** Step 1: compiled and
+**Status:** Building. **Steps 1–3 done 2026-09-24; step 4 (every pane
+popping out — the Slide Editor, the library panel, the Inspector, the
+Timeline pane) and step 5 (the timeline pane full width under the
+Library pane too) both done 2026-09-25.** Step 1: compiled and
 tested clean on the Mac, and the harness's hands-on checks all passed,
 Jason's own hands. Step 2: ShowTools' main window is on PaneKit —
 `NavigationSplitView` is gone; the Library pane and the detail are a real

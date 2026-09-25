@@ -15,8 +15,8 @@ A macOS slideshow composer and player for Jason's own Mac.
 | `spec/xcode-port.md` | current | Why one Xcode project builds both bundles, and how. |
 | `spec/edit-slides-inspector-port.md` | current | The fix for the layout-loop crash: ported Edit Slides' inspector off SwiftUI's `.inspector()`. |
 | `spec/simple-things-fast.md` | current | Planned: making simple things fast — the first run, playing without building a show, and Basic / Advanced / "Bring it on!" levels. |
-| `spec/panekit.md` | current | Planned: our own reusable pane system (two panes and one divider, nested), with edge handles and pane ⇄ panel pop-out built in. Replaces the built-in split views; meant to be reused in other Mac apps. |
-| `spec/windows.md` | current | Planned: areas of the main window in windows of their own, and editors for one thing (the Slide Editor, a row opened up). A vision with open questions, not a build plan. |
+| `spec/panekit.md` | current | Our own reusable pane system (two panes and one divider, nested), with edge handles and pane ⇄ panel pop-out — built and in use throughout the app (the main window, Edit Show's and Edit Slides' columns, every pop-out), meant to be reused in other Mac apps too. |
+| `spec/windows.md` | current | Areas of the main window in windows of their own (the Slide Editor, the library panel, the Inspector, the Timeline pane — all built) and editors for one thing. What's left: the open questions under "Jason's answers," and the areas nothing's asked for yet (the Library pane, the browser). |
 | `spec/conventions.md` | current | What each gesture, key, right-click, drop and Edit-menu item means everywhere: Built / Settled / Proposed / Open, plus a log of conventions found by use. Fixes build toward it. |
 | `spec/hig-audit.md` | current | Expected Mac behaviour that was never built: the Edit menu, context menus, keyboard selection, Edit Slides vs Edit Show. Findings and fix batches. |
 | `spec/anatomy.md` | reference | The screen's map: one name for each area, how areas nest, the picture's layers, and what selecting or changing one area does to the others. Use its names. |
@@ -74,11 +74,14 @@ before moving code between targets or adding a file to one.
   (reorder, trim, Pan and Zoom) commit once, on release, so each is one undo step.
 - Modifiers on a SwiftUI `Group` apply to every child. Use a `ZStack` when
   a container needs its own onAppear/onDisappear/task.
-- Edit Show's columns are `ColumnsSplitView`, a manual NSSplitView layout.
-  Don't switch back to NSSplitViewController or holding priorities: the
-  lowest-priority column absorbs every divider drag (measured). Its dividers
-  draw clear on purpose, because with a manual layout NSSplitView's divider
-  layers go stale. Check AppKit layout in a standalone harness or with a
+- The main window, Edit Show's and Edit Slides' columns, and every pane
+  that pops out are all **PaneKit** (`PaneKit/`, `spec/panekit.md`) —
+  ours, not `NavigationSplitView`/`VSplitView`/`NSSplitViewController`.
+  Don't switch back to a holding-priority `NSSplitView`: the
+  lowest-priority column absorbs every divider drag (measured, the
+  reason PaneKit exists). Its dividers draw clear on purpose, since a
+  manual layout's own `NSSplitView` divider layers go stale. Check
+  AppKit layout in a standalone harness (`PaneKit/Harness`) or with a
   layer-tree dump before changing it.
 - Accessibility is granted to the Claude app (2026-09-21), so the app can
   be clicked, dragged and typed into with `tools/axtool.swift`, always on a

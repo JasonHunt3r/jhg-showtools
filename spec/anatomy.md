@@ -50,7 +50,7 @@ thing.
 | **Viewer** | Edit Show's top-left column: the picture, and the frame strip under it | preview, work area, stage |
 | **Frame strip** | Under the viewer: rendered frames of the finished show | |
 | **Browser** | Edit Show's middle column: the show's collection, uses first | Collection Browser |
-| **Timeline pane** | The bottom of Edit Show: the unit that holds the rows, meaning the transport, ruler and rows together. "The timeline" for short. Detached, it would be the **Timeline window** (`spec/windows.md`) | edit zone (Jason's first word), storyline (`StorylineView` draws it) |
+| **Timeline pane** | The bottom of the main window, full width under the Library pane too — not nested inside Edit Show's own columns: the unit that holds the rows, meaning the transport, ruler and rows together. "The timeline" for short. Shows real content only while a show is open in Edit Show; closed the rest of the time. Pops out into the **Timeline window** (`spec/windows.md`, `spec/panekit.md`) | edit zone (Jason's first word), storyline (`StorylineView` draws it) |
 | **Transport** | Top of the timeline pane: play, clock, toggles, zoom | transport row |
 | **Storyline** | The slides row alone, as in Final Cut's primary storyline | |
 | **Ruler** | Top of the timeline: time, the range, markers, the playhead | |
@@ -93,32 +93,35 @@ Main window
 │   ├─ Library
 │   └─ Collections
 │       └─ Collection  ▸  its Shows
-└─ Detail  — one of:
-    ├─ Library grid              (Library or a collection selected)
-    │   ├─ Filter bar
-    │   └─ Tiles                 (or, with Group Similar, groups of tiles)
-    └─ Show                      (a show selected) — one of two modes, one selection shared:
-        ├─ Edit Slides
-        │   ├─ Main column
-        │   │   ├─ Defaults bar
-        │   │   └─ Slide list
-        │   └─ Inspector
-        └─ Edit Show
-            ├─ Columns
-            │   ├─ Viewer
-            │   │   ├─ Picture   (with its layers, §4)
-            │   │   └─ Frame strip
-            │   ├─ Browser
-            │   └─ Inspector
-            └─ Timeline pane
-                ├─ Transport
-                └─ Timeline
-                    ├─ Ruler     (time, range, markers, playhead)
-                    └─ Rows      (the show's own order; default below)
-                        ├─ Images row        ┐ the lane
-                        ├─ Transitions row   ┘
-                        ├─ Slides row        (the blocks)
-                        └─ Audio row
+├─ Detail  — one of:
+│   ├─ Library grid              (Library or a collection selected)
+│   │   ├─ Filter bar
+│   │   └─ Tiles                 (or, with Group Similar, groups of tiles)
+│   └─ Show                      (a show selected) — one of two modes, one selection shared:
+│       ├─ Edit Slides
+│       │   ├─ Main column
+│       │   │   ├─ Defaults bar
+│       │   │   └─ Slide list
+│       │   └─ Inspector
+│       └─ Edit Show
+│           └─ Columns
+│               ├─ Viewer
+│               │   ├─ Picture   (with its layers, §4)
+│               │   └─ Frame strip
+│               ├─ Browser
+│               └─ Inspector
+└─ Timeline pane                 (full width, under the Library pane too — not nested
+    │                             inside Detail; shown while a show is open in Edit Show,
+    │                             closed the rest of the time — `spec/panekit.md`,
+    │                             "The order," steps 4–5, 2026-09-25)
+    ├─ Transport
+    └─ Timeline
+        ├─ Ruler     (time, range, markers, playhead)
+        └─ Rows      (the show's own order; default below)
+            ├─ Images row        ┐ the lane
+            ├─ Transitions row   ┘
+            ├─ Slides row        (the blocks)
+            └─ Audio row
 ```
 
 **Around the main window:**
@@ -127,6 +130,19 @@ Main window
   own keys (Space, ←/→, J/K/L, Home/End, a typed number then Return).
 - **Pop-out viewer:** the viewer's picture in its own window, sharing the
   viewer's playback (for a second screen).
+- **Slide Editor:** one slide alone, large, with its full inspector beside
+  it — opened by double-click on a slide, or "Open in Slide Editor" on
+  its context menu (`spec/panekit.md`, "Step 4, first piece").
+- **Library panel:** the whole library grid, floating, opened from "Open
+  Library Panel" on the Library item's context menu — meant to float over
+  a new, empty collection as a drop target (`spec/panekit.md`, "Step 4,
+  second piece").
+- **Inspector, popped out:** the same Inspector as Edit Show's own third
+  column, in a floating panel of its own — View ▸ "Inspector in Its Own
+  Window" (`spec/panekit.md`, "The order," step 4).
+- **Timeline window:** the Timeline pane, popped out into an ordinary
+  window (it can go behind, unlike the panels above) — View ▸ "Timeline
+  in Its Own Window" (`spec/panekit.md`, "The order," step 5).
 - **Info panel:** a floating panel, Get Info on files, following the
   grid's selection. It shares the main window's undo.
 - **Rhythm tool:** a floating panel for the show on screen. It follows the

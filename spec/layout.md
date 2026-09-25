@@ -24,9 +24,13 @@ what, and the few structural rules that go with each. Rules live in
 - `PaneKit/` (top level): our own pane system, **for any Mac app**, as
   its own Swift package, depending on nothing in ShowTools
   (`spec/panekit.md`). `cd PaneKit && swift test` runs its tests;
-  `swift run PaneHarness` runs its test app. Not yet used by the app:
-  it's outside the root package and the Xcode project, until the main
-  window is moved onto it on purpose.
+  `swift run PaneHarness` runs its test app. **In active use by the app**
+  since `spec/panekit.md` steps 2–3 (2026-09-24): a local package
+  dependency in both `Package.swift` and `project.yml`. It's the main
+  window's own split (library | detail | the timeline pane, full width
+  under both), Edit Show's and Edit Slides' columns, and every pane's
+  pop-out (the Slide Editor, the library panel, the Inspector, the
+  Timeline window).
 - `Sources/ShowToolsApp/`: the SwiftUI/AppKit app. `PlaybackEngine` owns a
   show's clock, media and drawing, and any number of `ShowCanvas` views
   show it (the Edit Show preview and its pop-out share one engine). A paused
