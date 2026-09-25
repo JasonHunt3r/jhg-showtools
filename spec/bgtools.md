@@ -1,13 +1,17 @@
 # BGTools — the desktop companion app
 
-**Status:** Built 2026-09-22 (B1–B7). **Left:** Jason's hands-on pass
-(private unlock with Touch ID, the panel closing on a click elsewhere,
-Space-switch pausing, none re-done against the nested BGTools); the Pan
-and Zoom cost; telling BGTools when a library moves; and **Jason's
-first-test list** (2026-09-24, below): a Quit you can find and All same →
-Synchronize (both **done 2026-09-24**), naming screens, a map view, and
-the window opening on your screen (all three **done 2026-09-25**, checked
-with axtool against a scratch settings file — see below).
+**Status:** Built 2026-09-22 (B1–B7). **Jason's first-test list**
+(2026-09-24, below) is done: a Quit you can find and All same →
+Synchronize (**done 2026-09-24**), naming screens, a map view, and the
+window opening on your screen (**done 2026-09-25**, checked with axtool
+against a scratch settings file — see below). **Left, queued as its own
+list for after the ShowTools fixes** ("Next up," below): the Control
+Center launch icon (one click, better art), per-screen stop, and pan/
+zoom/length/transition parity with Quick Show (feedback items 23–25) —
+plus the still-outstanding hands-on pass (private unlock with Touch ID,
+the panel closing on a click elsewhere, Space-switch pausing, none
+re-done against the nested BGTools), the Pan and Zoom cost, and telling
+BGTools when a library moves.
 
 Phase 5 of ShowTools (renamed 2026-09-22; it was "Live desktop"). This file
 holds BGTools' decisions and measurements; `spec/plan.md` points here. It
@@ -312,6 +316,44 @@ From `spec/history/2026-09-24-work-order.md`. *Decided* is Jason's;
      window was already open or not. A modified double-click (⌥, proposed)
      on a screen's box, in the map or the list, moves the window to that
      monitor instead of dragging it across by hand.
+
+## Next up — queued 2026-09-25, after the ShowTools fixes
+
+From the 2026-09-25 feedback worklist (items 23–25); items 10, 21 and 22
+from the same list are already done (batch 4, `spec/status.md`). Jason's
+own call: this is its own list, picked up once the ShowTools side of that
+worklist is finished, not before.
+
+1. **Control Center launch icon: one click, not two, and a better icon**
+   (item 23). Today's tile opens the quick panel on a second click; needs
+   real hands on a Control Center tile to see why the first click doesn't
+   (`spec/status.md`'s reinstall note applies — the installed
+   `~/Applications/ShowTools.app` is what Control Center actually sees,
+   not `build/`). The icon itself is art, not code — pairs with item 29
+   (app icons) below.
+2. **Per-screen stop, not just the master switch** (item 24). Jason's
+   framing: keep the master switch at the top; add *either* a per-monitor
+   on/off toggle in each monitor's title bar (colour-coded green when on),
+   *or* a "Plays Nothing" entry in the per-Space list — two mechanisms,
+   his own call which one before building either. Sits next to the
+   naming/map work above (`MainWindow.swift`, `Arrangement`), same area
+   of the sidebar.
+3. **BGTools pan & zoom, length and transition options** (item 25) — a
+   feature port. BGTools' desktop defaults
+   (`Sources/BGToolsCore/DesktopSettings.swift`, `randomDefaults`) already
+   carry length, transition and Pan and Zoom for its random modes; this is
+   giving them the same options and controls Quick Show/New Show's own
+   settings have (`spec/simple-things-fast.md`'s "essentials" table lists
+   BGTools alongside them), not new plumbing. Worth doing after Quick Show
+   itself firms up the shared field list, since the two are meant to
+   converge.
+
+**Standing, from BGTools' own "Left" (above), still not re-done against
+the nested BGTools:** private-library unlock with Touch ID, the panel
+closing on a click elsewhere, and Space-switch pausing. Worth folding into
+the same hands-on pass as 23–25, since all of it needs Jason's actual
+Control Center and actual Spaces, not axtool against a scratch settings
+file.
 
 ## Build steps (proposed 2026-09-22)
 

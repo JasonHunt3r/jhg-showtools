@@ -27,7 +27,7 @@ export. **319 tests** (306 core + 13 BGTools). **Library schema 13.**
 | Groups inside collections | Built 2026-09-24, Core through UI (`spec/plan.md`) |
 | 4 Setlist export / import | Built, 4a–4d |
 | E Video export | Built, E1–E5. Own spec `spec/video-export.md`. Left: a listen |
-| 5 BGTools | Built, B1–B7, plus naming screens/the map view/the window opening on your screen (2026-09-25). Own spec `spec/bgtools.md`. Left: Jason's hands-on pass; the Pan and Zoom cost; telling BGTools when a library moves |
+| 5 BGTools | Built, B1–B7, plus naming screens/the map view/the window opening on your screen (2026-09-25). Own spec `spec/bgtools.md`. Left: its own "Next up" list (items 23–25, after the ShowTools fixes), Jason's hands-on pass, the Pan and Zoom cost, telling BGTools when a library moves |
 
 Every schema upgrade is additive and tested by opening a library of the
 version before (7 rows, 8 music, 9 markers, 10 editing state, 11 rhythm
@@ -105,9 +105,9 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   The interaction pattern from thelivery's web-app reordering tool is the
   reference (a different codebase/language, referenced for the pattern
   only). Not yet designed: plain integer sort vs. a gap-based order key.
-- **Items 23–25** (BGTools: Control Center tile clicks/icon, per-screen
-  stop, pan/zoom/length/transition parity) — Jason wants these queued as
-  their own BGTools work list, after the ShowTools fixes are done.
+- **Items 23–25** — queued as their own BGTools work list, to pick up
+  once the ShowTools fixes above are done: `spec/bgtools.md`, "Next up —
+  queued 2026-09-25, after the ShowTools fixes."
 - **Items 26, 27, 29** (header-bar restyling, corner-radius override, app
   icons) — Jason's counter-proposal: a small **live value-changer
   panel** (corner radius, text size, control size, container-border
