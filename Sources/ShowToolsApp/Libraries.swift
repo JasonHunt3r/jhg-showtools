@@ -121,7 +121,10 @@ final class LibraryPanel: NSObject, NSWindowDelegate {
         // environment — the same fix InfoPanel's own content needed (see
         // its note): a separate window's undoManager isn't the main
         // window's, and `\.undoManager` isn't a writable environment key.
-        let content = LibraryGridView(undoManagerOverride: undoManager).environment(model)
+        // Its own tile-size key, so its slider (list, say) doesn't move
+        // the main window's grid along with it (Jason, 2026-09-24).
+        let content = LibraryGridView(undoManagerOverride: undoManager, tileSizeKey: "gridTileSize.panel")
+            .environment(model)
         window.contentView = NSHostingView(rootView: content)
         window.setFrameAutosaveName("libraryPanel")
     }

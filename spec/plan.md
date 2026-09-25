@@ -1137,6 +1137,17 @@ another) still wants Jason's hands — this was built and reasoned about,
 not clicked.
 
 ### Later
+- **The library grid's right side as an info drawer, not a floating
+  panel** (Jason, 2026-09-24, while building the library panel:
+  `spec/panekit.md`, "Step 4, second piece"). Today `InfoPanel` is a
+  separate floating window (⌘I or Get Info) that follows
+  `model.infoPanelSelection`. The idea: instead (or as well), a column on
+  the grid's own right edge — a drawer pane, PaneKit's own primitive
+  (`spec/panekit.md`) — showing the same metadata and tags inline,
+  without a second window to manage. Worth trying once PaneKit's
+  detachable-area piece (item 4, `spec/panekit.md`, "The order") is
+  built, since it's the same "a pane on an edge, closable" shape;
+  `InfoPanelContent`'s view could likely be reused as-is inside it.
 - ~~Video export~~ — **BUILT 2026-09-22**, E1–E5, through the hook above
   exactly as promised: a new menu item, not a rewrite. Own spec
   `spec/video-export.md`

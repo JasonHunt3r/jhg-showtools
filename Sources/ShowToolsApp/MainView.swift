@@ -640,6 +640,20 @@ struct LibraryGridView: View {
     static let tileSizeRange: ClosedRange<Double> = 90...320
     private var isListMode: Bool { tileSize <= Self.tileSizeRange.lowerBound }
 
+    /// A custom init only to give `tileSize` its own storage key per
+    /// caller — every other property keeps the default it's declared
+    /// with. Without this, the library panel's slider and the main
+    /// window's grid shared one `@AppStorage` key, so dragging either
+    /// moved both windows together; Jason wanted them independent
+    /// (2026-09-24), e.g. list in the panel, medium in the main window.
+    init(collectionID: Int64? = nil, groupID: Int64? = nil, undoManagerOverride: UndoManager? = nil,
+         tileSizeKey: String = "gridTileSize") {
+        self.collectionID = collectionID
+        self.groupID = groupID
+        self.undoManagerOverride = undoManagerOverride
+        _tileSize = AppStorage(wrappedValue: 150, tileSizeKey)
+    }
+
     private var collection: MediaCollection? { collectionID.flatMap(model.collection) }
     private var group: MediaGroup? { groupID.flatMap(model.group) }
     /// `collectionID`/`groupID` together, as one `onChange` identity — two

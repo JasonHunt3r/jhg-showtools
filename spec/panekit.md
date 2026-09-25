@@ -279,6 +279,32 @@ app gets it.
   out of the views) is that app-side prerequisite. PaneKit moves the
   view; the app keeps the state.
 
+**A control shared between a pane and its pop-out, considered and set
+aside (Jason, 2026-09-24):** the library panel's own tile-size slider was
+built sharing one `@AppStorage` key with the main window's grid, so
+dragging either slider moved both windows' thumbnails together. Fixed in
+the app, not PaneKit (`LibraryGridView.tileSizeKey`, `Libraries.swift`) —
+each window gets its own key, so the panel can sit in list view while the
+main window stays at its own size. Jason's instinct: since this is the
+kind of thing that could recur in a *real* pop-out (an inspector's own
+control, once item 4 builds it), should PaneKit grow a
+`controlLinked: Bool`-style declaration for it? **Set aside, and worth
+re-reading if this comes up again:** a true pop-out (`spec/windows.md`'s
+"1. Areas that can leave the main window") moves the *same* view instance
+out of the main window — the pane's slot in the main window sits empty
+while it's out (above), so there's only ever one instance of its
+controls, and no linked-or-not question to ask. The library panel isn't
+that: it's a *second*, independent window on the same content, opened
+from a menu, that the main window keeps showing too — the case where the
+question can even arise is narrower than it first looks, since it needs
+both copies on screen at once, which today only the library panel does.
+If a second real case turns up — some future window that, like the
+library panel, duplicates a pane's content rather than relocating it —
+it's still probably an app-level convention (a keyed `@AppStorage`
+parameter, as here) rather than a PaneKit feature: PaneKit's own line
+above is that it moves views, not the state inside them, and a
+linked/independent flag would mean it starts knowing about that state.
+
 ## What's known, and how sure (checked 2026-09-24)
 
 These are things to know while building it, each at the strength it was
