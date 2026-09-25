@@ -128,6 +128,28 @@ final class RangeFillTests: XCTestCase {
         XCTAssertEqual(ot.slides.map(\.length), [2, 2, 2])
     }
 
+    /// Found by hand (a range set to "the whole view" from 0, in a scratch
+    /// show): the start slide's own trim rounds to nothing, but it was
+    /// still being kept as a 1 ms stub.
+    func testARangeStartingAtASlidesOwnStartDropsItInstead() {
+        let (s, items) = show([4, 4])  // 0-4, 4-8
+        let t = ShowTimeline(show: s, items: items)
+        let plan = RangeFillPlan(itemIDs: [10], timing: .even, transition: nil, mode: .replace)
+        let out = RangeFill.apply(plan, to: s, timeline: t, rhythms: [:], in: 0...4)
+        // Slide 1 is gone outright, not a near-zero remainder.
+        XCTAssertEqual(out.slides.map(\.itemID), [10, 2])
+    }
+
+    /// The mirror case at the far end: the range's end lands exactly on a
+    /// slide's own end, so there's nothing left of it to keep either.
+    func testARangeEndingAtASlidesOwnEndDropsItInstead() {
+        let (s, items) = show([4, 4])  // 0-4, 4-8
+        let t = ShowTimeline(show: s, items: items)
+        let plan = RangeFillPlan(itemIDs: [10], timing: .even, transition: nil, mode: .replace)
+        let out = RangeFill.apply(plan, to: s, timeline: t, rhythms: [:], in: 2...8)
+        XCTAssertEqual(out.slides.map(\.itemID), [1, 10])
+    }
+
     // MARK: Displace
 
     func testDisplaceKeepsEverythingAndLengthensTheShow() {

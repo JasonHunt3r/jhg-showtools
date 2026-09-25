@@ -80,6 +80,10 @@ struct StorylineView: View {
 
     /// The beat detection sheet, open for this stretch of the show.
     @State private var beatSheet: BeatSheet.Request?
+    /// W10, work order item 6: the range's own right-click, opened with the
+    /// editor's current bounds (not the drag preview — a menu only opens
+    /// once a drag has ended).
+    @State private var fillRangeSheet: FillRangeSheet.Request?
     /// The markers the open sheet would place, drawn faintly on the ruler.
     @State private var beatPreview: [Double] = []
 
@@ -371,6 +375,9 @@ struct StorylineView: View {
         .sheet(item: $beatSheet) { req in
             BeatSheet(request: req, show: show, timeline: timeline, preview: $beatPreview, mutate: mutate)
         }
+        .sheet(item: $fillRangeSheet) { req in
+            FillRangeSheet(request: req, show: show, timeline: timeline, mutate: mutate)
+        }
         .onKeyPress(.escape) {
             if !openDrawers.isEmpty {
                 openDrawers = []
@@ -463,17 +470,20 @@ struct StorylineView: View {
               + "⌥-double-click for both ends; right-click for the lock and more.")
     }
 
-    /// Shared by either end and the shaded span itself. Fill Range with
-    /// Images… is its own step, still to come — greyed out until then,
-    /// same convention as Play on Desktop (`spec/plan.md`, "Fill the range
-    /// with images").
+    /// Shared by either end and the shaded span itself.
     @ViewBuilder private var rangeMenu: some View {
         Toggle("Lock Range", isOn: Binding(get: { editor.rangeLocked },
                                             set: { _ in engine.updateEditor { $0.rangeLocked.toggle() } }))
         Divider()
         Button("Clear Range") { mutate("Clear Range") { $0.editor.rangeIn = nil; $0.editor.rangeOut = nil } }
         Divider()
-        Button("Fill Range with Images…") {}.disabled(true)
+        // A locked range can still be filled, since its ends don't move
+        // (plan, "Fill the range with images").
+        Button("Fill Range with Images…") {
+            if let lo = editor.rangeIn, let hi = editor.rangeOut, hi > lo {
+                fillRangeSheet = FillRangeSheet.Request(range: lo...hi)
+            }
+        }
     }
 
     /// One lock for the whole range (Jason, 2026-09-24): a drag does

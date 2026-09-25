@@ -11,9 +11,9 @@ Repo: `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 ## Where it stands
 
-**Everything planned is built**, including Groups inside collections
-(below). Phases 1–5, Phase 3b, Phase 4 and video export. **305 tests**
-(293 core + 12 BGTools). **Library schema 13.**
+**Everything planned is built**, including Groups inside collections and
+the range package (below). Phases 1–5, Phase 3b, Phase 4 and video
+export. **318 tests** (306 core + 12 BGTools). **Library schema 13.**
 
 | Phase | State |
 |---|---|
@@ -297,9 +297,9 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
    menus, the header bar's Play from Here/Show in Library, and Use
    Defaults for All Slides (every slide's transition/length reverted to
    the show default) — all confirmed working, not just present.
-6. **The range package:** ~~W6 (undoable, draggable, lock)~~ → ~~W7 (the
-   range button)~~ → ~~the ruler's and the range's right-click menu~~ —
-   done 2026-09-24 — → W10 (Fill Range with Images…), still to come.
+6. **The range package — all of it done 2026-09-24:** W6 (undoable,
+   draggable, lock) → W7 (the range button) → the ruler's and the range's
+   right-click menu → W10 (Fill Range with Images…).
    - **W6:** the range's own points (`rangeIn`/`rangeOut`) are undoable
      now, unlike the rest of the editing state (`AppModel.update`'s undo
      restore keeps them from `before` instead of clobbering them with
@@ -331,8 +331,8 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
      would beep — `NSSound.beep()`, unheard by axtool).
    - **The right-click menu:** right-clicking either end (already had
      Lock Range) or the shaded span itself now shows the same menu — Lock
-     Range, Clear Range, and Fill Range with Images… greyed out until W10
-     builds it (same convention as Play on Desktop). Making the span
+     Range, Clear Range, and Fill Range with Images…, now built (below;
+     the greyed-out stub is gone). Making the span
      hit-testable for its own right-click at first ate `scrubGesture` for
      its whole stretch — a real regression, caught by trying a left-click
      seek there after — so it carries its own copy of the same seek logic
@@ -345,7 +345,38 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
      ends — now `mutate`, undoable, and refuses a locked range like the
      button's modifier-clicks. Checked with axtool against a scratch
      library. **Not checked:** a real right-click (only screenshots
-     confirm the menu opens with the right items; W10 itself is next).
+     confirm the menu opens with the right items).
+   - **W10, Fill Range with Images…** (`FillRangeSheet.swift`,
+     `RangeFill.swift` in Core): a Collection/Library toggle over a grid of
+     thumbnails, picked in order (a numbered badge on each), a Transition
+     picker (Show Default plus every style), a Rhythm picker — Even (the
+     default) plus the apply sheet's own Beats/Bars/Seconds/Pattern modes,
+     reusing `BeatPlan` and `BeatDetection.preview` to quantize onto
+     detected beats under the range — and Replace/Displace. Nothing is
+     greyed out (settled): a rhythm mode with no song under the range just
+     behaves like Even, and the dialog shows the fill's own numbers
+     instead — image count, each length, and how many of the needed
+     interior cuts actually landed on a beat. `RangeFill.apply` (Core,
+     unit-tested, 13 tests) does the trims and inserts described in the
+     plan, plus one gap the plan didn't spell out and one found by hand:
+     a range wholly inside one slide needs a second use of that file for
+     what continues past the range's end, to keep Replace's "show length
+     doesn't change" rule (not a split of the fill's own slides — the
+     ordinary way a file appears twice); and a trim that rounds to nothing
+     (the range starts or ends exactly on an existing slide's own edge)
+     drops that slide outright instead of leaving a sub-50ms stub behind —
+     caught by hand against a scratch library on the very first try, fixed,
+     and pinned down with two more tests. Picking from the Library adds
+     those pictures to the show's collection first (`bringIntoCollection`,
+     the same confirmation as any other add), as its own step before the
+     fill's undo entry. Checked end to end with axtool against a scratch
+     library: opened the dialog, picked pictures from the Collection tab,
+     watched the feedback update live, filled, and confirmed with
+     `sqlite3` that the slides table matched what the dialog promised, the
+     fix for the stub included, and that ⌘Z removes it in one step.
+     **Not checked:** the Library tab, a song under the range (so a
+     non-Even rhythm has something real to quantize onto), Displace, and a
+     real click — only axtool's.
 7. **Timeline keys:** the arrow keys (E2; **decided** in
    `spec/conventions.md` §2: ← → through a row's items, ↑ ↓ between rows,
    ← → in the ruler nudge the playhead; batch 4 left them unwired as
@@ -423,22 +454,26 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
-- **The range package, W6, W7 and its right-click menu** (built
-  2026-09-24, `spec/plan.md` "The range and the ruler"): dragging an end,
-  the lock (right-click of either end, the shaded span or the button),
-  I/O/⌥X still landing while locked, the range button's
+- **The whole range package, W6–W10** (built 2026-09-24, `spec/plan.md`
+  "The range and the ruler" and "Fill the range with images"): dragging
+  an end, the lock (right-click of either end, the shaded span or the
+  button), I/O/⌥X still landing while locked, the range button's
   plain-click/⌥⌘-click/⇧⌥⌘-click/right-click, the shaded span's own
-  right-click menu (Lock Range, Clear Range, Fill Range with Images…
-  greyed out), and double-clicking a song section to set the range — all
-  reasoned through and checked with axtool against a saved show's
-  `editor` JSON and screenshots, never by a real drag or a real
-  modifier-click (axtool's `click` can't hold two modifiers at once, so
-  ⌥⌘ and ⇧⌥⌘ themselves are unverified beyond their Show-menu
-  equivalents). Worth a particular look: whether a real drag feels right
-  — the synthetic one moved further than its own on-screen distance
-  implied, which may just be a tool artifact; and whether scrubbing still
-  feels normal across the whole ruler now that the range's shaded span
-  carries its own copy of the seek gesture alongside `RulerView`'s.
+  right-click menu, double-clicking a song section to set the range, and
+  the Fill Range with Images dialog itself — all reasoned through and
+  checked with axtool against a saved show's `editor` and `slides` tables
+  and screenshots, never by a real drag or a real modifier-click (axtool's
+  `click` can't hold two modifiers at once, so ⌥⌘ and ⇧⌥⌘ themselves are
+  unverified beyond their Show-menu equivalents). Worth a particular look:
+  whether a real drag feels right — the synthetic one moved further than
+  its own on-screen distance implied, which may just be a tool artifact;
+  whether scrubbing still feels normal across the whole ruler now that the
+  range's shaded span carries its own copy of the seek gesture alongside
+  `RulerView`'s; the Fill dialog's Library tab and a Displace fill (only
+  Collection and Replace were clicked through); and the one-slide-inside-
+  the-range edge case in `RangeFill` (a second use of the same file for
+  what continues past the range's end) — reasoned through and tested, but
+  not something the plan itself spelled out, so worth Jason's own read.
 - **The viewer's menus, Show in Library, and the progress line fix**
   (built 2026-09-24, `spec/conventions.md` §3, item 4): every menu opens
   with the right items and every action was confirmed by its actual
@@ -609,7 +644,7 @@ resets every app's login items, so they are left alone.
 ## Quick start
 
 ```sh
-swift test                                  # 293 core + 12 BGTools tests
+swift test                                  # 306 core + 12 BGTools tests
 ./make-app.sh                               # → build/ShowTools.app
 tools/make-test-library.sh <scratch>/STTest # scratch library + generated media
 open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools.app
