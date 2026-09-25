@@ -93,6 +93,10 @@ final class BGToolsApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
                              backing: .buffered, defer: false)
             w.title = "BGTools"
             w.isReleasedWhenClosed = false
+            // Item 22, `ShowTools Feedback — Worklist for Next CC
+            // Session.md`: stays visible across a Space switch, the same
+            // treatment the Control Center panel already gets (Panel.swift).
+            w.collectionBehavior.insert(.canJoinAllSpaces)
             w.contentView = NSHostingView(rootView: MainWindow().environment(desktop).environment(windowState))
             // The autosave keeps its size across launches; the position is
             // always overridden below, to the calling monitor.
