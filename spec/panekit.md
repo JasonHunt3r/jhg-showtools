@@ -153,6 +153,42 @@ future app gets the recipe instead of re-deriving it:
   case both build from it now, replacing hand-nested splits that said the
   same thing three separate times.
 
+### `nearIsRigid`: a relationship between two panes, not just a shape
+
+Found the same day, watching Jason use Edit Show: `near` (the list
+column) had no divider of its own that left it alone. Dragging the
+main|near divider correctly resized `near`; dragging near|far also
+resized `near`, which felt wrong to him — a divider on the *inspector's*
+edge changing the *list's* width. What he wanted: **`near` only ever
+changes size from its own (main|near) divider.** Dragging near|far should
+reach past it to resize `main` and `far`, with `near` sliding to stay
+adjacent to `far`, unchanged.
+
+This is a relationship between `near` and `far`'s divider, not a new
+shape, so it's a flag on `.row` — `nearIsRigid: Bool` — not a new tree
+shape. **How it works:** `Split` gained `linkedAncestor: String?`. When a
+split's own divider is dragged and it names a `linkedAncestor`, the same
+delta lands on that split's stored size too (`trackResize`,
+`PaneContainerView.swift`) — so if `far` grows by 12, the near+far combo
+(the outer `.row` split's own sized side) also grows by 12, and `near`,
+computed as the combo's total minus `far`, comes out unchanged. Only
+`trackResize` — the AppKit-side drag handler — knows this option exists;
+`PaneLayout`'s pure arithmetic doesn't, and didn't need to change.
+
+**Where the two panes still meet reality:** if `main` doesn't have enough
+slack left to absorb the whole delta before hitting its own floor, `near`
+absorbs the shortfall rather than the drag simply refusing to move —
+measured in the app (dragging inspector wider than preview's remaining
+slack allowed put some of the growth on list after all). This isn't a
+bug: a rigid pane can only stay rigid while there's somewhere else for
+the change to go.
+
+Wired into `EditColumnsLayout.threeColumns` (`nearIsRigid: true`) and
+checked with real drags against a demo show: near|far now moves preview
+and the inspector, list only slides; main|near still resizes list
+directly, unaffected. `PaneKitTests.testRowNearIsRigid*` pin the
+arithmetic the same way the rest of `.row` is pinned.
+
 ## Pane ⇄ panel: popping out, built in
 
 Any pane can leave the window for a window of its own, and go back. This

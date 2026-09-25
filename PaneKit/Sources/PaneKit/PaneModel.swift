@@ -68,12 +68,19 @@ public struct Split: Sendable, Identifiable, Equatable {
     /// What the menus call the sized side ("Inspector"). Nil: its first
     /// pane's title.
     public var title: String?
+    /// Another split whose stored size moves by the same amount whenever
+    /// this one's divider is dragged (never on a collapse or a window
+    /// resize — just a direct drag) — so a pane sandwiched between this
+    /// split's own boundary and that ancestor's doesn't change size, only
+    /// position. `.row`'s `nearIsRigid` is what sets this
+    /// (`spec/panekit.md`, "Building a row").
+    public var linkedAncestor: String?
     public var first: PaneNode
     public var second: PaneNode
 
     public init(_ id: String, _ axis: PaneAxis, sized: PaneSide, size: CGFloat,
                 range: ClosedRange<CGFloat>, collapsible: Bool = true, title: String? = nil,
-                first: PaneNode, second: PaneNode) {
+                linkedAncestor: String? = nil, first: PaneNode, second: PaneNode) {
         self.id = id
         self.axis = axis
         self.sized = sized
@@ -81,6 +88,7 @@ public struct Split: Sendable, Identifiable, Equatable {
         self.range = range
         self.collapsible = collapsible
         self.title = title
+        self.linkedAncestor = linkedAncestor
         self.first = first
         self.second = second
     }
@@ -116,9 +124,9 @@ public indirect enum PaneNode: Sendable, Equatable {
     /// A split (see `Split.init`).
     public static func split(_ id: String, _ axis: PaneAxis, sized: PaneSide, size: CGFloat,
                              range: ClosedRange<CGFloat>, collapsible: Bool = true, title: String? = nil,
-                             _ first: PaneNode, _ second: PaneNode) -> PaneNode {
+                             linkedAncestor: String? = nil, _ first: PaneNode, _ second: PaneNode) -> PaneNode {
         .branch(Split(id, axis, sized: sized, size: size, range: range, collapsible: collapsible,
-                      title: title, first: first, second: second))
+                      title: title, linkedAncestor: linkedAncestor, first: first, second: second))
     }
 
     /// A row of three: `main`, which absorbs a window resize, and two more
@@ -132,14 +140,16 @@ public indirect enum PaneNode: Sendable, Equatable {
     /// "Building a row"; found building Edit Show's preview/list/inspector,
     /// which is what this generalizes).
     ///
-    /// The trade-off that forces a choice: `near` gives way before `far`
-    /// as the window narrows (`near`'s own floor is `near.minSize`, no
-    /// upper bound — it's the inner split's "main" side); the reverse
-    /// (`far` giving way first) is reachable only by breaking divider
-    /// isolation, moving `far` when the main|near divider drags. `far` is
-    /// the only one of the three that keeps a real upper bound. Closing
-    /// `far` (it can, `near` and `main` can't) hands its space to `near`,
-    /// not to `main` — `near` is what's adjacent to it.
+    /// The trade-off that forces a choice: by default, `near` gives way
+    /// before `far` as the window narrows (`near`'s own floor is
+    /// `near.minSize`, no upper bound — it's the inner split's "main"
+    /// side); the reverse (`far` giving way first) is reachable only by
+    /// breaking divider isolation, moving `far` when the main|near divider
+    /// drags. `far` is the only one of the three that keeps a real upper
+    /// bound by default. Closing `far` (it can, `near` and `main` can't)
+    /// hands its space to `near`, not to `main` — `near` is what's
+    /// adjacent to it, and this doesn't change under `nearIsRigid` below
+    /// (that only governs a direct drag, not a collapse).
     ///
     /// - Parameters:
     ///   - mainFirst: `main` reads first (left/top) when true, matching
@@ -148,19 +158,31 @@ public indirect enum PaneNode: Sendable, Equatable {
     ///   - nearDefault/nearMax: `near` has no split of its own to carry a
     ///     stored range, so these only seed the combined near+far region's
     ///     starting size and how wide a drag can make it; `near` itself is
-    ///     floored at `near.minSize`, never capped.
+    ///     floored at `near.minSize`, and — unless `nearIsRigid` — never
+    ///     capped.
+    ///   - nearIsRigid: **`near` only ever changes size from the main|near
+    ///     divider.** Dragging the near|far divider instead resizes `main`
+    ///     and `far`, with `near` sliding to stay adjacent to `far` —
+    ///     found on a real case (Edit Show's list column, which Jason
+    ///     wanted fixed-width and unmoved by the inspector's own divider,
+    ///     2026-09-24). Implemented as one split's divider drag also
+    ///     moving an ancestor split's stored size by the same amount
+    ///     (`Split.linkedAncestor`), not a special case in the layout
+    ///     arithmetic itself — `PaneLayout` doesn't know this option
+    ///     exists, only `trackResize` (`PaneContainerView.swift`) does.
     public static func row(_ id: String, _ axis: PaneAxis, mainFirst: Bool, main: Pane,
                            near: Pane, nearDefault: CGFloat, nearMax: CGFloat,
                            far: Pane, farSize: CGFloat, farRange: ClosedRange<CGFloat>,
-                           farCollapsible: Bool = true) -> PaneNode {
+                           farCollapsible: Bool = true, nearIsRigid: Bool = false) -> PaneNode {
         let d = PaneLayout.dividerThickness
         let comboDefault = nearDefault + d + farSize
         let comboRange = (near.minSize + d + farRange.lowerBound)...(nearMax + d + farRange.upperBound)
+        let linkedAncestor = nearIsRigid ? id : nil
         let inner: PaneNode = mainFirst
             ? .split("\(id).near", axis, sized: .second, size: farSize, range: farRange,
-                     collapsible: farCollapsible, .leaf(near), .leaf(far))
+                     collapsible: farCollapsible, linkedAncestor: linkedAncestor, .leaf(near), .leaf(far))
             : .split("\(id).near", axis, sized: .first, size: farSize, range: farRange,
-                     collapsible: farCollapsible, .leaf(far), .leaf(near))
+                     collapsible: farCollapsible, linkedAncestor: linkedAncestor, .leaf(far), .leaf(near))
         return mainFirst
             ? .split(id, axis, sized: .second, size: comboDefault, range: comboRange, collapsible: false,
                      .leaf(main), inner)

@@ -12,6 +12,12 @@ import PaneKit
 /// before the inspector in too narrow a window (the reverse of before, and
 /// only reachable well below the app's own minimum window size), and list
 /// loses its old upper bound (420) — it's `.row`'s uncapped "near" side.
+///
+/// **`nearIsRigid` (Jason, 2026-09-24, watching over a shoulder):** list
+/// only changes size from its own (left) divider. Dragging the
+/// list|inspector divider resizes preview and the inspector; list just
+/// slides over, same width. Built into `.row` itself, not a ShowTools
+/// one-off — `spec/panekit.md`, "Building a row".
 enum EditColumnsLayout {
     static let mainMin: CGFloat = 420
     static let listMin: CGFloat = 180
@@ -38,7 +44,7 @@ enum EditColumnsLayout {
              main: Pane("preview", minSize: mainMin),
              near: Pane("list", minSize: listMin), nearDefault: listDefault, nearMax: listMax,
              far: Pane("inspector", minSize: inspectorRange.lowerBound),
-             farSize: inspectorDefault, farRange: inspectorRange)
+             farSize: inspectorDefault, farRange: inspectorRange, nearIsRigid: true)
     }
 
     /// Edit Slides' two columns: no list, so it's one split, not `.row`.

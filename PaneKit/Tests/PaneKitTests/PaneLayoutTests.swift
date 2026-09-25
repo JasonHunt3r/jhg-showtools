@@ -249,4 +249,47 @@ final class PaneLayoutTests: XCTestCase {
         XCTAssertEqual(r.panes["main"]?.width, 1000 - 1 - 200 - 1 - 150)
         XCTAssertEqual(r.panes["near"]?.width, 200 + 1 + 150 - 12)
     }
+
+    // MARK: `nearIsRigid` — near only changes size from its own divider
+
+    static let rigidRow: PaneNode = .row("row", .horizontal, mainFirst: true,
+                                         main: Pane("main", minSize: 400),
+                                         near: Pane("near", minSize: 100), nearDefault: 150, nearMax: 300,
+                                         far: Pane("far", minSize: 150), farSize: 200, farRange: 150...250,
+                                         nearIsRigid: true)
+
+    func testRowNearIsRigidBuildsTheLink() {
+        XCTAssertEqual(Self.rigidRow.split("row.near")?.linkedAncestor, "row")
+        XCTAssertNil(Self.row.split("row.near")?.linkedAncestor)
+    }
+
+    /// What dragging near|far does under `nearIsRigid`: exactly what
+    /// `trackResize` (`PaneContainerView.swift`) does on a real drag, not
+    /// the AppKit event loop itself, which isn't unit-testable — the same
+    /// delta lands on the linked ancestor's own stored size as lands on
+    /// the dragged split's. `near`'s width — never stored directly, always
+    /// the combo's total minus `far`'s — comes out unchanged.
+    func testRowNearIsRigidKeepsNearsWidthOnAFarDrag() {
+        let rect = CGRect(x: 0, y: 0, width: 1000, height: 500)
+        let startFar: CGFloat = 200, startCombo: CGFloat = 150 + 1 + 200
+        let newFar: CGFloat = 230
+        var s = PaneKitState()
+        s.splits["row.near"] = SplitState(size: newFar)
+        s.splits["row"] = SplitState(size: startCombo + (newFar - startFar))
+        let r = PaneLayout.layout(Self.rigidRow, in: rect, state: s)
+        XCTAssertEqual(r.panes["near"]?.width, 150)   // unchanged
+        XCTAssertEqual(r.panes["far"]?.width, 230)
+        XCTAssertEqual(r.panes["main"]?.width, 1000 - 1 - (150 + 1 + 230))
+    }
+
+    /// The main|near divider still resizes `near` directly — `nearIsRigid`
+    /// only changes what near|far does.
+    func testRowNearIsRigidStillLetsMainNearDividerResizeNear() {
+        let rect = CGRect(x: 0, y: 0, width: 1000, height: 500)
+        var s = PaneKitState()
+        s.splits["row"] = SplitState(size: 260 + 1 + 200)
+        let r = PaneLayout.layout(Self.rigidRow, in: rect, state: s)
+        XCTAssertEqual(r.panes["near"]?.width, 260)
+        XCTAssertEqual(r.panes["far"]?.width, 200)
+    }
 }

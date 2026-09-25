@@ -269,6 +269,16 @@ private func trackResize(_ split: Split, in container: PaneContainerView, from e
     guard let window = container.window, let rect = container.lastLayout.splits[split.id] else { return }
     let start = container.convert(event.locationInWindow, from: nil)
     var moved = false
+    // `linkedAncestor`: this drag also moves that split's own stored size
+    // by the same amount it moves this one's (`PaneNode.row`'s
+    // `nearIsRigid`) — captured once, at the sizes they had before this
+    // drag touched anything, so applying the running delta to each stays
+    // correct however many times the mouse has moved.
+    let startOwn = container.controller.state.splits[split.id]?.size ?? split.defaultSize
+    let linked = split.linkedAncestor.flatMap { id -> (id: String, range: ClosedRange<CGFloat>, start: CGFloat)? in
+        guard let ancestor = container.controller.root.split(id) else { return nil }
+        return (id, ancestor.range, container.controller.state.splits[id]?.size ?? ancestor.defaultSize)
+    }
     while let e = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
         if e.type == .leftMouseUp { break }
         let p = container.convert(e.locationInWindow, from: nil)
@@ -287,7 +297,14 @@ private func trackResize(_ split: Split, in container: PaneContainerView, from e
                 st.collapsed = true
             } else {
                 st.collapsed = false
-                st.size = min(max(fromEdge, split.range.lowerBound), split.range.upperBound)
+                let newSize = min(max(fromEdge, split.range.lowerBound), split.range.upperBound)
+                if let linked {
+                    var ancestorState = s.splits[linked.id] ?? SplitState()
+                    ancestorState.size = min(max(linked.start + (newSize - startOwn), linked.range.lowerBound),
+                                             linked.range.upperBound)
+                    s.splits[linked.id] = ancestorState
+                }
+                st.size = newSize
             }
             s.splits[split.id] = st
         }
