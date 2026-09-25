@@ -98,22 +98,40 @@ half, still open — a documentation task, not a bug):**
   fixed for the Library grid's own background (Import…/New Collection…/
   Add from Library…). Checked with axtool. The sidebar's own background
   right-click wasn't separately checked — worth a look.
-- **Item 5**, "New Group from Selected" ignoring the entered name and
-  creating "Untitled Show": **not reproduced.** The actual menu path
-  (right-click a selection ▸ Add to Group ▸ New Group…) was driven with
-  axtool end to end — typed "My Test Group," clicked Create, and the
-  library's `groups` table shows exactly that name, not "Untitled Show."
-  Every `newGroup`/`newShow` call site was also read; none conflates the
-  two. Needs Jason's own steps to pin down what he actually clicked —
-  possibly a different path than the grid's own "New Group…", since that
-  string doesn't appear verbatim anywhere in the app's menus.
-- Not yet started: collections list min-width (15), delete-from-library
-  checkbox (16), reordering drag (17), groups→library item (12),
-  "Change Library" right-click entry (28), modified-click rename (32).
+- **Item 5** was Jason's own mislabel, cleared up 2026-09-25: what he
+  meant is item 12 (below), not a naming bug. No code change.
+- **Item 15**, the Library pane's minimum width (180) read too wide:
+  lowered to 140, both the split's range floor and the pane's own
+  `minSize`.
+- **Item 16**, deleting a collection or group always left the files
+  behind: both now offer a real "Also delete the files/images from the
+  library" checkbox. The collection-delete flow moved off SwiftUI's
+  `.confirmationDialog` (can't carry a checkbox) onto an `NSAlert`, the
+  same synchronous shape `GroupDeleteNotice` already used for groups —
+  new `CollectionDeleteNotice` in `SlideInspector.swift`. Checked with
+  axtool: the alert shows the checkbox with its own label, not the
+  suppression button's default text.
+- **Item 28**, "Change Library…" added to the library header's
+  right-click menu (same action as File ▸ Open Library…).
+- **Item 32**, ⌥-click a sidebar name (collection/group/show) jumps
+  straight into its rename alert, skipping the right-click menu —
+  `.simultaneousGesture`, not `.onTapGesture`, so the `List`'s own
+  selection click still works. Checked with axtool: ⌥-click opened
+  Rename Group directly.
+- **Item 17** (reordering isn't implemented in collections/groups
+  views) and **item 12** (groups don't create a library item) are
+  **not started, on purpose.** Item 17 needs a real ordering column —
+  `collection_items`/`group_items` today only order by `added_at`, so
+  dragging to reorder needs a schema migration (schema 13 → 14), not
+  just a UI change. Item 12 is explicitly flagged in the feedback doc's
+  own Open Questions as needing a design pass before CC builds it (the
+  catalog pane's own list item per group, and where group selection
+  hangs off the collections list column dropdown) — Jason confirmed
+  this 2026-09-25. Both are real next steps, just not one-sitting fixes.
 
-Batches 3–5 (frames row/transport, BGTools P1s, P2 polish) not started.
-Five items need Jason's own decision first (Open Questions in the
-feedback doc) before CC can build them.
+Batch 2 is otherwise done. Batches 3–5 (frames row/transport, BGTools
+P1s, P2 polish) not started. Five items need Jason's own decision first
+(Open Questions in the feedback doc) before CC can build them.
 
 **A preferences leak, caught and fixed mid-session:** testing item 1's
 pop-out interactively wrote a scratch pop-out state into the *shared*
