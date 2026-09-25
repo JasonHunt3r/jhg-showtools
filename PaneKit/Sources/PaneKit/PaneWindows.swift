@@ -13,6 +13,7 @@ final class PaneWindowController: NSObject, NSWindowDelegate {
     /// True while PaneKit itself closes the window, so the close isn't
     /// taken as the user asking to put the pane back.
     private var closingQuietly = false
+    nonisolated(unsafe) private var activationObservers: [NSObjectProtocol] = []
 
     init(pane: Pane, host: PaneHostView, frame: CGRect?, near parent: NSWindow?, controller: PaneController) {
         paneID = pane.id
@@ -32,6 +33,14 @@ final class PaneWindowController: NSObject, NSWindowDelegate {
             panel.becomesKeyOnlyIfNeeded = false
             panel.undoSource = undo
             window = panel
+            // `.floating` is a window LEVEL, and levels order windows across
+            // every app on screen, not just this one — so a plain
+            // `isFloatingPanel` panel floats over other apps too (measured:
+            // it sat on top of a text editor). "Floats above the app's own
+            // other windows" isn't a level AppKit offers directly; drop to
+            // `.normal` whenever ShowTools isn't the active app, and back to
+            // `.floating` when it is, so it only out-ranks its own siblings.
+            panel.level = NSApp.isActive ? .floating : .normal
         case .window, .none:
             let w = PaneWindow(contentRect: start,
                                styleMask: [.titled, .closable, .resizable, .miniaturizable],
@@ -56,6 +65,22 @@ final class PaneWindowController: NSObject, NSWindowDelegate {
         }
         window.delegate = self
         window.orderFront(nil)
+        if pane.popOut == .panel, let panel = window as? PanePanel {
+            activationObservers = [
+                NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification,
+                                                        object: nil, queue: .main) { _ in
+                    MainActor.assumeIsolated { panel.level = .floating }
+                },
+                NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification,
+                                                        object: nil, queue: .main) { _ in
+                    MainActor.assumeIsolated { panel.level = .normal }
+                },
+            ]
+        }
+    }
+
+    deinit {
+        activationObservers.forEach(NotificationCenter.default.removeObserver)
     }
 
     /// Gives the pane's host back for its slot.
