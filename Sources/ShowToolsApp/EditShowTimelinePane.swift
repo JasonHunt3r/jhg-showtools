@@ -25,6 +25,14 @@ struct EditShowTimelinePane: View {
     let show: Show
     let timeline: ShowTimeline
     let session: ShowSession
+    /// Whether Edit Show is the current mode. False while Edit Slides has
+    /// the show open: the bar still occupies its place (item 19, feedback
+    /// worklist), greyed out rather than gone, since the engine that drives
+    /// it only exists while Edit Show is on screen (`EditShowView`'s own
+    /// `.task`/`.onDisappear`). The drag-and-drop question a greyed bar
+    /// raises (item 33) is still open — Jason wants a working copy to play
+    /// with before deciding, so this stays a plain visual state for now.
+    let active: Bool
     let mutate: ShowMutator
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
@@ -35,7 +43,7 @@ struct EditShowTimelinePane: View {
     var body: some View {
         @Bindable var session = session
         Group {
-            if let engine = session.engine, engine.showID == show.id {
+            if active, let engine = session.engine, engine.showID == show.id {
                 VStack(spacing: 0) {
                     TransportRow(engine: engine, show: show, pps: $pps, fit: fitStoryline,
                                  setRangeToView: setRangeToView, setRangeToWholeShow: setRangeToWholeShow,
@@ -53,7 +61,7 @@ struct EditShowTimelinePane: View {
                 }
                 .background(shortcuts(engine))
             } else {
-                Color.clear
+                TimelinePanePlaceholder()
             }
         }
         .onDisappear {
@@ -377,5 +385,38 @@ struct EditShowTimelinePane: View {
                 canGoBack: t.canGoBack,
                 canGoForward: t.canGoForward)
         }
+    }
+}
+
+/// Item 19, feedback worklist: the timeline pane's stand-in while Edit
+/// Slides has the show open. Same chrome as the real transport bar
+/// (`TransportRow`) so switching modes doesn't reflow the window, but
+/// dimmed and inert — there's no live `PlaybackEngine` to show real state,
+/// since one only exists while Edit Show is on screen. What a drop onto
+/// this bar should do (item 33) is still an open question for Jason.
+private struct TimelinePanePlaceholder: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "backward.end.fill")
+                Image(systemName: "play.fill").frame(width: 14)
+                Image(systemName: "forward.end.fill")
+                Slider(value: .constant(0), in: 0...1).disabled(true)
+                Text("--:-- / --:--")
+                    .font(.system(size: 11, design: .monospaced))
+                    .frame(width: 110, alignment: .trailing)
+            }
+            .foregroundStyle(.tertiary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(.bar)
+            Divider()
+            Text("Switch to Edit Show to use the timeline")
+                .font(.callout)
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(.background.secondary)
+        }
+        .allowsHitTesting(false)
     }
 }

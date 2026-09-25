@@ -28,9 +28,8 @@ struct MainView: View {
     /// it's made in, and the name being typed.
     @State private var creatingGroup: (collectionID: Int64, parentID: Int64?)?
     @State private var newGroupName = ""
-    /// Same key as `ShowView`'s own — the timeline pane only shows
-    /// something while Edit Show has the open show (`timelinePane`,
-    /// `isEditingShow`, below).
+    /// Same key as `ShowView`'s own — governs the mode picker and which
+    /// content `timelinePane` shows (real or greyed placeholder).
     @AppStorage("editMode") private var mode: EditMode = .slides
 
     var body: some View {
@@ -103,21 +102,25 @@ struct MainView: View {
         // Another library's undo steps mean nothing here (see libraryGeneration).
         .onChange(of: model.libraryGeneration) { undoManager?.removeAllActions() }
         .focusedSceneValue(\.requestNewCollection, startCreatingCollection)
-        // The timeline pane only means something while a show is open in
-        // Edit Show — closed the rest of the time, rather than showing
-        // empty space (`spec/panekit.md`, "The order," step 5's
-        // follow-up, 2026-09-25). `initial: true` closes it on a launch
-        // that opens straight into the Library, and opens it (to its last
-        // remembered size) on a launch that reopens a show mid-edit.
-        // Doesn't fight a manual close/open while `isEditingShow` itself
-        // hasn't changed — this only runs when it does. Leaving Edit Show
-        // while it's popped out puts it back first — closing a split its
-        // pane has already left doesn't close *that* window, which would
-        // otherwise sit open and blank (measured with axtool: switching to
-        // Edit Slides left an empty "Timeline" window on screen).
-        .onChange(of: isEditingShow, initial: true) { _, editing in
-            if !editing, model.mainPanes.isPoppedOut("storyline") { model.mainPanes.putBack("storyline") }
-            model.mainPanes.setOpen("window", editing)
+        // The timeline pane only means something while a show is open —
+        // closed the rest of the time, rather than showing empty space
+        // (`spec/panekit.md`, "The order," step 5's follow-up,
+        // 2026-09-25). `initial: true` closes it on a launch that opens
+        // straight into the Library, and opens it (to its last remembered
+        // size) on a launch that reopens a show mid-edit. Doesn't fight a
+        // manual close/open while `isShowOpen` itself hasn't changed —
+        // this only runs when it does. Open in both edit modes now (item
+        // 19, feedback worklist): Edit Slides shows the same bar, greyed
+        // out (`EditShowTimelinePane.active`), instead of the split
+        // closing and reopening every time the mode picker is clicked.
+        // Leaving the show entirely while it's popped out puts it back
+        // first — closing a split its pane has already left doesn't close
+        // *that* window, which would otherwise sit open and blank
+        // (measured with axtool: switching to Edit Slides left an empty
+        // "Timeline" window on screen).
+        .onChange(of: isShowOpen, initial: true) { _, open in
+            if !open, model.mainPanes.isPoppedOut("storyline") { model.mainPanes.putBack("storyline") }
+            model.mainPanes.setOpen("window", open)
         }
         // The sidebar's Delete/⌘Delete fallback (D1), for when its List
         // doesn't have the keyboard (see the comment on `onDeleteCommand`
@@ -304,9 +307,12 @@ struct MainView: View {
     /// mutate state during a view update" rule exists for.
     private var timelinePane: some View {
         Group {
-            if case .show(let id) = model.sidebar, let show = model.show(id), mode == .show {
+            if case .show(let id) = model.sidebar, let show = model.show(id) {
+                // Rendered in both modes now (feedback item 19): Edit Slides
+                // shows the same bar, greyed out, rather than the pane
+                // vanishing and the window reflowing under it.
                 EditShowTimelinePane(show: show, timeline: model.timeline(for: show),
-                                     session: model.session(for: id),
+                                     session: model.session(for: id), active: mode == .show,
                                      mutate: { action, change in
                                          var s = show
                                          change(&s)
@@ -318,10 +324,15 @@ struct MainView: View {
         }
     }
 
-    /// Whether the timeline pane has something to show — `layout` uses
-    /// this to open/close its split.
-    private var isEditingShow: Bool {
-        if case .show(let id) = model.sidebar { return model.show(id) != nil && mode == .show }
+    /// Whether a show is open at all — `layout` uses this to open/close
+    /// the timeline pane's split. Open for both edit modes now (item 19,
+    /// feedback worklist): Edit Slides shows the same bar, greyed out
+    /// (`timelinePane`, `EditShowTimelinePane.active`), rather than the
+    /// split closing and reopening as the mode picker is clicked. Only
+    /// leaving the show entirely — back to the Library or a collection —
+    /// closes it.
+    private var isShowOpen: Bool {
+        if case .show(let id) = model.sidebar { return model.show(id) != nil }
         return false
     }
 
@@ -422,7 +433,9 @@ extension MainView {
     }
 
     func collectionRow(_ c: MediaCollection) -> some View {
-        Label(c.name, systemImage: "rectangle.stack")
+        // Solid folder for a collection, outline for a group inside it
+        // (`groupRow`, below) — settled 2026-09-25, feedback item 12.
+        Label(c.name, systemImage: "folder.fill")
             .badge(c.itemIDs.count)
             .tag(SidebarItem.collection(c.id))
             .contextMenu {
