@@ -227,6 +227,19 @@ struct AppCommands: Commands {
             Toggle("Show Inspector", isOn: $inspectorShown)
                 .keyboardShortcut("i", modifiers: [.command, .option])
                 .disabled(activeShowID == nil)
+            // Item 30, `ShowTools Feedback — Worklist for Next CC
+            // Session.md`: the timeline pane could already collapse to its
+            // own edge handle (every PaneKit split is collapsible by
+            // default) — dragging its divider past half its floor, or
+            // double-clicking it, already did it — but nothing discoverable
+            // offered it, unlike Library/Frame Strip/Inspector just above,
+            // which all get a View menu toggle. This is that toggle; the
+            // handle it collapses to is PaneKit's own standard one, already
+            // built (`PaneEdgeHandleView`).
+            Toggle("Show Timeline", isOn: Binding(get: { model.mainPanes.isOpen("window") },
+                                                  set: { model.mainPanes.setOpen("window", $0) }))
+                .keyboardShortcut("t", modifiers: [.command, .option])
+                .disabled(activeShowID == nil)
             // Step 4, third piece (`spec/windows.md`): the first detachable
             // area. `editShowCommands` gates it to Edit Show, same as the
             // zoom and Go Back/Forward items below — Edit Slides' own
