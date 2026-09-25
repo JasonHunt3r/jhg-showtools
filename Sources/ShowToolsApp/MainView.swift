@@ -847,9 +847,14 @@ struct LibraryGridView: View {
         var items = visible
         let draggedItems = items.filter { draggingIDs.contains($0.id) }
         guard !draggedItems.isEmpty else { return visible }
+        // Dropping on the very last tile is the only way to reach "the very
+        // end" — inserting before it, like every other tile, would always
+        // leave whatever was already last still last (Jason: "the last
+        // tile ... doesn't flow").
+        let isLastTile = items.last?.id == target
         items.removeAll { draggingIDs.contains($0.id) }
         guard let targetIndex = items.firstIndex(where: { $0.id == target }) else { return visible }
-        items.insert(contentsOf: draggedItems, at: targetIndex)
+        items.insert(contentsOf: draggedItems, at: isLastTile ? targetIndex + 1 : targetIndex)
         return items
     }
 
@@ -1361,10 +1366,11 @@ struct LibraryGridView: View {
             guard let dragged = await ItemDrag.ids(from: providers), !dragged.isEmpty,
                   !dragged.contains(targetID) else { return }
             var order = all.map(\.id)
+            let isLastTile = order.last == targetID
             let draggedSet = Set(dragged)
             order.removeAll { draggedSet.contains($0) }
             guard let targetIndex = order.firstIndex(of: targetID) else { return }
-            order.insert(contentsOf: dragged, at: targetIndex)
+            order.insert(contentsOf: dragged, at: isLastTile ? targetIndex + 1 : targetIndex)
             if sort != .custom { sort = .custom }
             if let gid = groupID {
                 model.setOrder(order, inGroup: gid, undo: undoManager)
@@ -1423,14 +1429,36 @@ struct LibraryGridView: View {
         .onDrag {
             let ids = selection.contains(item.id) ? orderedSelection : [item.id]
             draggingIDs = ids
+            // Switched here, not just on drop (Jason: "when a file is
+            // reordered it auto switches to custom order"): the live
+            // preview reflows `visible`, which is whatever sort is active,
+            // but a drop always writes the collection's/group's *whole*
+            // membership order (`all`) — so previewing under any other
+            // sort was showing one order while about to commit a
+            // different one. Switching the moment the drag starts keeps
+            // them the same order throughout, in a collection or group;
+            // the plain Library has no custom order to switch to.
+            if (collectionID != nil || groupID != nil) && sort != .custom { sort = .custom }
             return ItemDrag.provider(ids)
         }
         // Dropping onto another tile reorders — Custom Order, only
         // meaningful inside a collection or group (the plain Library has
         // no membership to carry a `sort_key`, `spec/plan.md`).
+        // The reflow itself is what was causing the rapid back-and-forth
+        // swap Jason saw: once a dragged tile's own live-reflowed position
+        // slid under the cursor, this fired `true` for *it*, `displayed`
+        // rightly refused to make one of the dragged tiles its own target
+        // and fell back to the un-reflowed order, which moved the real
+        // target tile back under the cursor, re-triggering `true` on it,
+        // reflowing again, and so on — every drag near any tile, not just
+        // the last one. A dragged tile can never become the target now, so
+        // the loop has nothing left to oscillate between.
         .onDrop(of: [ItemDrag.type], isTargeted: Binding(
             get: { dropTargetID == item.id },
-            set: { over in dropTargetID = over ? item.id : (dropTargetID == item.id ? nil : dropTargetID) }
+            set: { over in
+                guard !draggingIDs.contains(item.id) else { return }
+                dropTargetID = over ? item.id : (dropTargetID == item.id ? nil : dropTargetID)
+            }
         )) { providers in reorderDrop(providers, onto: item.id) }
         .contextMenu {
             let ids = selection.contains(item.id) ? orderedSelection : [item.id]

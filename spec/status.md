@@ -101,20 +101,30 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   collection** — is still a design question (`spec/plan.md`, "Groups
   inside collections," "Promotion"): what happens to the original group,
   and whether nested sub-groups come along.
-- **Item 17 / 38** (drag-to-reorder) — **fully built**, 2026-09-25:
-  migration 14's `sort_key` (`spec/plan.md`, "Reordering"), the grid's
-  **Custom Order** sort option, the drag itself, and — Jason's own ask,
-  same session — **live reflow while dragging**: the other tiles slide
-  out of the way to show where the dragged file would land if released,
-  animated, in both grid and list mode. Dropping one tile onto another
-  reorders the whole membership, switches the sort to Custom Order
-  automatically, and is one "Reorder" undo step. 310 core tests.
-  Confirmed with axtool: a real synthetic drag moved a tile to the front,
-  the Sort menu's check jumped to Custom Order, `Edit ▸ Undo Reorder` put
-  it back exactly, and a held mid-drag screenshot caught the live reflow
-  actually happening (a tile vacating its slot, the target ring, the
-  drag ghost mid-flight). **Never tried by a real drag from Jason's own
-  hand.**
+- **Item 17 / 38** (drag-to-reorder) — **built, with one known gap**,
+  2026-09-25: migration 14's `sort_key` (`spec/plan.md`, "Reordering"),
+  the grid's **Custom Order** sort option, the drag itself, and live
+  reflow while dragging in both grid and list mode. Jason found three
+  bugs by hand the same session: a general rapid back-and-forth swap on
+  any drag (**root cause found and fixed** — a dragged tile's own
+  reflowed position could end up targeting itself, whipsawing the
+  preview), the last tile not flowing (**partly fixed** — dropping on the
+  true last tile now inserts after it, the only way to reach "the very
+  end"), and list view not working (the swap fix covers it too, since
+  it's the same code as the grid). Also switched Custom Order on the
+  moment a drag starts, not just on drop (Jason's own suggestion), so the
+  preview and the eventual commit always read the same order. **Still
+  open:** a long-distance drag (dropping the first tile onto the last,
+  several rows away) still doesn't land correctly even slowed down —
+  `spec/plan.md`, "Reordering," has the diagnosis (per-tile `isTargeted`
+  hit-testing is tied to where tiles are currently drawn, which the very
+  reflow it's driving keeps moving) and what the real fix looks like
+  (geometry-based hit-testing, not built). 310 core tests. Confirmed with
+  axtool: short drags commit and reflow correctly in both modes, undo
+  works, the sort switches on its own; a long drag was where the
+  remaining bug showed up. **Never tried by a real drag from Jason's own
+  hand** — worth trying before investing in the geometry rewrite, since a
+  real hand's drag may not hit this the way synthetic testing did.
 - **Items 23–25** — queued as their own BGTools work list, to pick up
   once the ShowTools fixes above are done: `spec/bgtools.md`, "Next up —
   queued 2026-09-25, after the ShowTools fixes."
@@ -193,16 +203,21 @@ and Flush presets from 2a.
 - **The grid's drag-to-reorder, including live reflow** (built 2026-09-25,
   item 17, `spec/plan.md` "Reordering"): dropping a tile onto another
   reorders a collection's or group's whole membership, switches the sort
-  to Custom Order, and undoes as one step; the other tiles now slide out
-  of the way live, mid-drag, to preview where it would land — confirmed
-  with axtool's synthetic `drag` and a held mid-drag screenshot, never
-  with a real trackpad/mouse drag. Worth a particular look: whether the
-  live reflow's 0.2s animation feels responsive enough under a real
-  hand's drag speed (an axtool drag moves in 20 fixed steps, not
-  continuously); whether the drop target's ring reads clearly enough
-  alongside the reflow; and whether landing a multi-file drag (a
-  selection, not just one tile) feels right — only a single-tile drag
-  was tried.
+  to Custom Order the moment the drag starts, and undoes as one step; the
+  other tiles slide out of the way live, mid-drag, to preview where it
+  would land. Two bugs Jason found by hand are fixed (the general rapid
+  swap on any drag; short list-mode drags), confirmed with axtool. **One
+  isn't:** a long-distance drag (dropping the first tile onto the last,
+  several rows away) still doesn't land correctly, even slowed down — the
+  diagnosis is in `spec/plan.md`, "Reordering," but the real fix
+  (geometry-based hit-testing) isn't built. **Worth trying by a real hand
+  before anything else**: synthetic dragging can't fully stand in for how
+  a real drag actually moves, and it's possible this doesn't reproduce
+  the same way outside axtool. If it does: whether it's specifically
+  long-distance drags, or something else; whether the drop target's ring
+  reads clearly enough alongside the reflow; and whether landing a
+  multi-file drag (a selection, not just one tile) feels right — only a
+  single-tile drag was tried either way.
 - **BGTools: naming screens, the map view, the window opening on your
   screen** (built 2026-09-25, `spec/bgtools.md` items 3–5): renaming a
   monitor or a Space, the Map | List switch, and the window landing on the

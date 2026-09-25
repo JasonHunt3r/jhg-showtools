@@ -1197,6 +1197,57 @@ visibly vacated its slot with the target ring showing and the OS's own
 drag ghost following the cursor; releasing landed the same correct final
 order as before. Never watched by eye from a real drag.
 
+**Three bugs Jason found by hand, 2026-09-25, and where that stands:**
+
+1. **The general rapid back-and-forth swap** ("in general when a tile is
+   moved," not just the last one) — **root cause found and fixed.** The
+   reflow itself caused it: once a dragged tile's own live-reflowed
+   position slid under the cursor, its `isTargeted` fired `true` *for
+   itself*; `displayed` rightly refuses to make a dragged tile its own
+   target and fell back to the un-reflowed order, which put the real
+   target back under the cursor, re-triggering `true` on it, reflowing
+   again — every drag near any tile. Fixed by never letting a dragged
+   tile's own `isTargeted` update `dropTargetID` at all. Confirmed fixed
+   on ordinary short drags, both grid and list mode (below).
+2. **The last tile not flowing** — **partly fixed, partly still open.**
+   `displayed` and `reorderDrop` both special-case dropping on the actual
+   last tile to insert *after* it instead of before, the only way to
+   reach "the very end" (before this, nothing could ever become last
+   unless it was already adjacent). Confirmed on a short drag onto an
+   adjacent last tile. **Still reproduces on a long drag** (first tile
+   dropped onto the last, several rows away) — see 3.
+3. **Not working in list view** — the fix for 1 applies in list mode too
+   (it's the same code, `ForEach(displayed)` at one column); a short
+   list-mode drag was confirmed committing and reflowing correctly after
+   the fix. **A long list-mode drag (row 1 onto the last row) still
+   didn't reorder at all**, even slowed down (40 steps over ~2.5s, well
+   past the reflow's own 0.2s animation) — a held-drag screenshot right
+   before release showed the drop-target ring sitting on the
+   *second-to-last* tile, not the last one the cursor was actually
+   resting over, with the dragged tile's own row seemingly absent from
+   its expected reflowed position. **Also switched sort to Custom Order
+   the moment a drag starts, not just on drop** (Jason's own suggestion):
+   the live preview reflows whatever's currently `visible`, but a drop
+   always writes the collection's/group's whole membership order
+   (`all`) — previewing under a different sort was showing one order
+   while about to commit a different one. This didn't turn out to
+   explain the long-drag failure (custom order was already active in
+   that test), but it's a real fix in its own right and worth having
+   regardless.
+
+**Diagnosis, not yet a fix:** the per-tile `isTargeted` approach ties
+"which tile is the target" to *where tiles are currently drawn*, which
+the drag itself keeps changing (that's the whole point of the reflow) —
+a moving target for hit-testing, fine for a short move, increasingly
+unreliable the further the cursor has to travel while everything between
+its start and end point is reflowing underneath it. The robust fix is
+computing the target from the cursor's raw position against fixed grid
+geometry (tile size, spacing, column count) via a `DropDelegate`, never
+from which reflowed view happens to be under the pointer — not built
+yet. Worth confirming first whether a real hand's drag (slower, more
+continuous, than any synthetic approximation this session could produce)
+hits this at all before taking that on.
+
 **Built 2026-09-24 (nesting by drag, and dragging into another
 collection):** `Library.moveGroup(id:toParent:)` — nests a group inside
 another, or (nil) back to the top; both stay in the same collection (a
