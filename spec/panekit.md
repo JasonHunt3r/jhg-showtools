@@ -267,33 +267,35 @@ app gets it.
 - **Remembered between launches:** which panes are out, and where their
   windows sit, at what size (settled: launch restores everything,
   `spec/windows.md`).
-- **Undo follows, but ⌘Z doesn't reach it — measured, 2026-09-25, not yet
-  fixed.** `PanePanel`/`PaneWindow`'s `undoManager` override correctly
-  returns the main window's real `UndoManager` (checked by
-  `ObjectIdentifier`: the same instance the edit itself was registered
-  on), and `PanePanel` now also overrides `canBecomeKey` (the Info
-  panel's own fix, `InfoPanel.swift`) — neither was enough. An edit made
-  from the popped-out Inspector (`spec/windows.md`'s first detachable
-  area) saves correctly and is undoable from the **main** window, but
-  `Edit ▸ Undo` reads disabled outright while the popped-out window is
-  key, and a real ⌘Z there does nothing (checked against the saved show's
-  JSON before and after, twice: once by menu validation, once by a real
-  keypress). **Best read of why:** SwiftUI's own automatic Edit ▸ Undo/
-  Redo commands are scoped to its `Scene` graph and resolve
-  `\.undoManager` from whichever `Window` scene SwiftUI itself considers
-  focused — a `PanePanel` is a raw AppKit window built outside that graph
-  (`PaneWindowController`, imperative), so SwiftUI's own commands may
-  simply not know it exists, regardless of what `window.undoManager`
-  itself returns. Not confirmed by reading SwiftUI's source (closed), so
-  call it a strong inference, not a proof. **Not a PaneKit-only fix if
-  true:** the app would need its own `CommandGroup(replacing: .undoRedo)`
-  that asks `NSApp.keyWindow?.undoManager` directly, live-updated as the
-  key window changes — its own design decision (a plain Undo item that
-  works from any window vs. today's one that only works from windows
-  SwiftUI already tracks), worth Jason's steer before building it rather
-  than guessed at. **Until then:** the popped-out Inspector is a real,
-  working view and editor — edits commit and are undoable from the main
-  window — just not undoable from its own window yet.
+- **Undo follows — fixed 2026-09-25, in the app, not PaneKit.** First
+  measured broken: an edit made from the popped-out Inspector saved
+  correctly and was undoable from the **main** window, but `Edit ▸ Undo`
+  read disabled outright while the popped-out window was key, and a real
+  ⌘Z there did nothing — even though `PanePanel.undoManager` provably
+  returned the identical `UndoManager` object (`ObjectIdentifier`), and
+  even with `canBecomeKey` also overridden (the Info panel's own fix,
+  `InfoPanel.swift`) — neither was enough. **Cause, confirmed by the
+  fix working:** SwiftUI's own automatic Edit ▸ Undo/Redo commands are
+  scoped to its `Scene` graph; a `PanePanel` is a raw AppKit window built
+  outside that graph (`PaneWindowController`, imperative), so those
+  commands never see it, regardless of what `window.undoManager` itself
+  returns. **The fix:** `ShowToolsApp.swift`'s `UndoMenuState` replaces
+  SwiftUI's automatic commands with `CommandGroup(replacing: .undoRedo)`,
+  asking `NSApp.keyWindow?.undoManager` directly and refreshing on
+  `NSWindow.didBecomeKeyNotification` plus `NSUndoManager`'s own
+  checkpoint/did-undo/did-redo notifications (Foundation's overlay
+  doesn't vend these as `NSUndoManager` statics, so they're constructed
+  by their ObjC string names). Checked with axtool against a scratch
+  library: `Edit ▸ Undo` now reads "Undo Move" (the real action name,
+  live) while the popped-out window is key, and a real ⌘Z there reverts
+  the edit (confirmed against the saved show's JSON), ⇧⌘Z redoes it. This
+  is an app-level fix, not a PaneKit one — PaneKit's job stops at making
+  `window.undoManager` correct, which it already did; an app that still
+  uses SwiftUI's own automatic Undo/Redo would need the same
+  `CommandGroup` replacement to get a pop-out's ⌘Z working. Untested:
+  whether the Info panel or the Rhythm tool (built the same imperative
+  way, before this fix existed) had the same gap — they now share this
+  app-wide fix regardless, so it doesn't matter going forward.
 - **Keys follow:** the window-level keys an app sets up (ShowTools'
   Space, J, K, L) work in a popped-out pane's window too, since the app
   registers them with PaneKit rather than with one window.

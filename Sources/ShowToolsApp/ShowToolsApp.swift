@@ -5,6 +5,7 @@ import ShowToolsPlayback
 @main
 struct ShowToolsApp: App {
     @State private var model = AppModel()
+    @State private var undoState = UndoMenuState()
 
     // Catches the reason string of the crash the app has been having
     // (ExceptionProbe). Remove with the probe.
@@ -18,7 +19,7 @@ struct ShowToolsApp: App {
                 .task { DevHooks.run(model) }
         }
         .defaultSize(width: 1320, height: 820)
-        .commands { AppCommands(model: model) }
+        .commands { AppCommands(model: model, undoState: undoState) }
 
         Settings {
             SettingsView()
@@ -35,8 +36,77 @@ struct ShowToolsApp: App {
     }
 }
 
+/// Tracks the key window's own `UndoManager`, so Edit ▸ Undo/Redo work
+/// from any window a pane can pop out into. SwiftUI's own automatic
+/// Undo/Redo commands are scoped to its `Scene` graph, which a PaneKit
+/// pop-out sits outside of — found 2026-09-25 (`spec/panekit.md`, "Pane
+/// ⇄ panel"): the popped-out Inspector's own edits weren't undoable from
+/// its own window with SwiftUI's automatic commands, even though
+/// `PanePanel.undoManager` correctly returned the same shared
+/// `UndoManager` (checked by `ObjectIdentifier`). This replaces those
+/// commands with ones that ask `NSApp.keyWindow?.undoManager` directly,
+/// so it works the same in the main window, the Slide Editor, the
+/// library panel and any future pop-out — they already share one
+/// `UndoManager` per `spec/windows.md`'s "undo follows."
+@MainActor @Observable
+final class UndoMenuState {
+    private(set) var canUndo = false
+    private(set) var canRedo = false
+    private(set) var undoName: String?
+    private(set) var redoName: String?
+    private weak var manager: UndoManager?
+    private var tokens: [NSObjectProtocol] = []
+
+    init() {
+        // NotificationCenter hands these to a non-isolated closure even
+        // though they always land on the main queue (matches the same
+        // pattern EditShowView's KeyView uses for NSEvent monitors).
+        let nc = NotificationCenter.default
+        let onNotify: (Notification) -> Void = { [weak self] _ in
+            MainActor.assumeIsolated { self?.refresh() }
+        }
+        tokens = [
+            // Reads `NSApp.keyWindow` rather than the notification's own
+            // `.object`, which Swift 6 won't let a non-isolated closure
+            // send across into `MainActor.assumeIsolated` here.
+            nc.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.manager = NSApp.keyWindow?.undoManager
+                    self?.refresh()
+                }
+            },
+            // The ObjC constant names, unmangled: Swift's Foundation
+            // overlay doesn't vend these as `NSUndoManager` statics.
+            nc.addObserver(forName: Notification.Name("NSUndoManagerCheckpointNotification"),
+                           object: nil, queue: .main, using: onNotify),
+            nc.addObserver(forName: Notification.Name("NSUndoManagerDidUndoChangeNotification"),
+                           object: nil, queue: .main, using: onNotify),
+            nc.addObserver(forName: Notification.Name("NSUndoManagerDidRedoChangeNotification"),
+                           object: nil, queue: .main, using: onNotify),
+        ]
+        manager = NSApp.keyWindow?.undoManager
+        refresh()
+    }
+
+    private func refresh() {
+        canUndo = manager?.canUndo ?? false
+        canRedo = manager?.canRedo ?? false
+        undoName = canUndo ? manager?.undoActionName : nil
+        redoName = canRedo ? manager?.redoActionName : nil
+    }
+
+    func undo() { manager?.undo() }
+    func redo() { manager?.redo() }
+
+    isolated deinit {
+        let nc = NotificationCenter.default
+        for t in tokens { nc.removeObserver(t) }
+    }
+}
+
 struct AppCommands: Commands {
     let model: AppModel
+    let undoState: UndoMenuState
     @FocusedValue(\.activeShowID) private var activeShowID
     @FocusedValue(\.librarySelectionCount) private var librarySelectionCount
     @FocusedValue(\.requestLibraryRename) private var requestLibraryRename
@@ -58,6 +128,18 @@ struct AppCommands: Commands {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
+        // Replaces SwiftUI's automatic Undo/Redo (`UndoMenuState`, above):
+        // theirs is scoped to SwiftUI's own Scene graph, so a PaneKit
+        // pop-out's window never registered with it.
+        CommandGroup(replacing: .undoRedo) {
+            Button(undoState.undoName.map { "Undo \($0)" } ?? "Undo") { undoState.undo() }
+                .keyboardShortcut("z", modifiers: .command)
+                .disabled(!undoState.canUndo)
+            Button(undoState.redoName.map { "Redo \($0)" } ?? "Redo") { undoState.redo() }
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+                .disabled(!undoState.canRedo)
+        }
+
         CommandGroup(replacing: .newItem) {
             Button("New Show") { model.newShow() }
                 .keyboardShortcut("n")

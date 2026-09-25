@@ -530,16 +530,20 @@ main window closing up and cross-window state sharing (checked with
 axtool against a scratch library: pops out beside the main window, the
 list column grows into the vacated space, selecting a slide in the main
 window live-updates the popped-out inspector, and an edit made there
-saves correctly). **It does not prove undo: a real, measured gap** —
-`Edit ▸ Undo`/⌘Z don't reach the shared history from the popped-out
-window, only from the main one, despite `PanePanel`'s `undoManager`
-override returning the identical `UndoManager` object (checked by
-`ObjectIdentifier`) — best guess is SwiftUI's own automatic Undo/Redo
-commands are scoped to its `Scene` graph, which a PaneKit pop-out sits
-outside of; not yet fixed, and may also affect the Info panel and the
-Rhythm tool, untested. Left of step 4: the timeline pane, last — worth
-settling the undo question before it detaches, since it carries the most
-edits of anything that would pop out. And the New Show panel
+saves correctly). **Undo was a real, measured gap, fixed the same
+session:** `Edit ▸ Undo`/⌘Z didn't reach the shared history from the
+popped-out window, only from the main one, despite `PanePanel`'s
+`undoManager` override returning the identical `UndoManager` object
+(checked by `ObjectIdentifier`) — the cause was SwiftUI's own automatic
+Undo/Redo commands being scoped to its `Scene` graph, which a PaneKit
+pop-out sits outside of, so they never asked the override at all.
+`ShowToolsApp.swift`'s new `UndoMenuState` replaces those commands with
+ones that ask `NSApp.keyWindow?.undoManager` directly, app-wide — checked
+with axtool against a scratch library: `Edit ▸ Undo` reads "Undo Move"
+(the real action name) and a real ⌘Z from the popped-out window reverts
+the edit (confirmed against the saved show's JSON), ⇧⌘Z redoes it.
+`swift test` (306) and `./make-app.sh` clean. Left of step 4: the
+timeline pane, last. And the New Show panel
 (`spec/simple-things-fast.md`).
 
 ### Also next
@@ -601,15 +605,14 @@ and Flush presets from 2a.
   a second monitor plugged in.
 - **Edit Show's inspector popping out** (built 2026-09-25, View ▸
   "Inspector in Its Own Window," `spec/panekit.md` "The order" step 4):
-  the window itself, the main window closing up, and the popped-out
-  content following the main window's selection all confirmed with
-  axtool against a scratch library — but **undo from that window is a
-  known, measured gap, not a "not yet checked" one**: `Edit ▸ Undo` and a
-  real ⌘Z both do nothing there, though the same edit undoes fine from
-  the main window. Worth Jason's read before it's called done — see
-  `spec/panekit.md`, "Pane ⇄ panel," for the fix this needs (probably the
-  app's own `CommandGroup(replacing: .undoRedo)`, not a PaneKit change)
-  and why it's a design decision, not just a bug.
+  the window itself, the main window closing up, the popped-out content
+  following the main window's selection, and — after a same-session fix,
+  `UndoMenuState` (`spec/panekit.md`, "Pane ⇄ panel") — undo, all
+  confirmed with axtool against a scratch library: `Edit ▸ Undo` reads
+  the real action name and a real ⌘Z/⇧⌘Z from the popped-out window
+  undoes and redoes the edit, checked against the saved show's JSON.
+  Never confirmed by a real click, drag or keypress from Jason's own
+  hands.
 - **The grid's keyboard** (built 2026-09-25, audit batch 7): arrow keys,
   Return-renames, and Quick Look on ⌘Y or a double-click — all confirmed
   by their actual effect with axtool (selection counts, the rename sheet,
