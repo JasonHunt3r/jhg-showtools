@@ -48,7 +48,9 @@ struct EditShowView: View {
                                                         mutate: mutate, close: { inspectorShown = false },
                                                         engine: engine).environment(model)),
                     "storyline": AnyView(VStack(spacing: 0) {
-                        TransportRow(engine: engine, show: show, pps: $pps, fit: fitStoryline)
+                        TransportRow(engine: engine, show: show, pps: $pps, fit: fitStoryline,
+                                     setRangeToView: setRangeToView, setRangeToWholeShow: setRangeToWholeShow,
+                                     clearRange: clearRange, toggleRangeLock: { toggleRangeLock(engine) })
                         Divider()
                         StorylineView(show: show, timeline: timeline, engine: engine,
                                       selection: $session.selection, selectedTransition: $session.selectedTransition,
@@ -172,6 +174,70 @@ struct EditShowView: View {
         pps = min(max(Double(visibleWidth - StorylineView.inset * 2 - 40) / timeline.duration, 2), 400)
     }
 
+    // MARK: Range (W6/W7, work order item 6)
+
+    /// I: the range's start at the playhead. O: its end. Both undoable now
+    /// — a deliberate edit, like any other — so they go through `mutate`,
+    /// not `engine.updateEditor`. Locked ends still take the keys (a key
+    /// is a deliberate act; only a drag or a modifier-click is refused).
+    private func setRangeIn(_ engine: PlaybackEngine) {
+        let t = engine.roundedNow
+        mutate("Set Range In") { s in
+            s.editor.rangeIn = t
+            if let o = s.editor.rangeOut, o <= t { s.editor.rangeOut = nil }
+            s.editor.rangeOn = true
+        }
+    }
+
+    private func setRangeOut(_ engine: PlaybackEngine) {
+        let t = engine.roundedNow
+        mutate("Set Range Out") { s in
+            s.editor.rangeOut = t
+            if let i = s.editor.rangeIn, i >= t { s.editor.rangeIn = nil }
+            s.editor.rangeOn = true
+        }
+    }
+
+    /// ⌥X: also takes a locked range, like I and O.
+    private func clearRange() {
+        guard show.editor.rangeIn != nil || show.editor.rangeOut != nil else { return }
+        mutate("Clear Range") { $0.editor.rangeIn = nil; $0.editor.rangeOut = nil }
+    }
+
+    /// A plain click on the range button with no range set, ⌥⌘-click, and
+    /// the Show menu's "Set Range to View": the range becomes the stretch
+    /// of the timeline in view. Refuses a locked range, with a beep.
+    private func setRangeToView() {
+        guard !show.editor.rangeLocked else { NSSound.beep(); return }
+        guard timeline.duration > 0 else { return }
+        let lo = max((Double(session.storylineOffset) - StorylineView.inset) / pps, 0)
+        let hi = min(lo + Double(visibleWidth) / pps, timeline.duration)
+        guard hi > lo + 0.05 else { return }
+        mutate("Set Range") { s in
+            s.editor.rangeIn = (lo * 100).rounded() / 100
+            s.editor.rangeOut = (hi * 100).rounded() / 100
+            s.editor.rangeOn = true
+        }
+    }
+
+    /// ⇧⌥⌘-click and the Show menu's "Set Range to Whole Show": the range
+    /// becomes the whole show, even where it's out of view. Refuses a
+    /// locked range, with a beep.
+    private func setRangeToWholeShow() {
+        guard !show.editor.rangeLocked else { NSSound.beep(); return }
+        guard timeline.duration > 0 else { return }
+        mutate("Set Range") { s in
+            s.editor.rangeIn = 0
+            s.editor.rangeOut = (timeline.duration * 100).rounded() / 100
+            s.editor.rangeOn = true
+        }
+    }
+
+    /// The lock itself is a mode, like `rangeOn`, not an edit: not undone.
+    private func toggleRangeLock(_ engine: PlaybackEngine) {
+        engine.updateEditor { $0.rangeLocked.toggle() }
+    }
+
     /// Keyboard shortcuts: Final Cut's J/K/L, space, and its M (marker), I
     /// and O (range), N (snapping) — bare keys, so `SingleKeys` handles
     /// them (never `.keyboardShortcut`, which would become a window key
@@ -189,8 +255,8 @@ struct EditShowView: View {
                 case (_, "k", []): engine.shuttle(0)
                 case (_, "l", []): engine.shuttle(1)
                 case (_, "m", []): addMarker(engine)
-                case (_, "i", []): engine.setRangeIn()
-                case (_, "o", []): engine.setRangeOut()
+                case (_, "i", []): setRangeIn(engine)
+                case (_, "o", []): setRangeOut(engine)
                 case (_, "n", []): snapping.toggle()
                 default: return false
                 }
@@ -206,9 +272,13 @@ struct EditShowView: View {
         .focusedSceneValue(\.editShowCommands, EditShowCommandsValue(
             togglePlay: { engine.togglePlay() },
             addMarker: { addMarker(engine) },
-            setRangeIn: { engine.setRangeIn() },
-            setRangeOut: { engine.setRangeOut() },
-            clearRange: { engine.clearRange() },
+            setRangeIn: { setRangeIn(engine) },
+            setRangeOut: { setRangeOut(engine) },
+            clearRange: clearRange,
+            setRangeToView: setRangeToView,
+            setRangeToWholeShow: setRangeToWholeShow,
+            toggleRangeLock: { toggleRangeLock(engine) },
+            rangeLocked: show.editor.rangeLocked,
             toggleLoop: { engine.updateEditor { $0.loopPlayback.toggle() } },
             loopOn: show.editor.loopPlayback,
             zoomToFit: fitStoryline))
@@ -648,6 +718,12 @@ struct TransportRow: View {
     let show: Show
     @Binding var pps: Double
     let fit: () -> Void
+    /// W7: the range button's plain click (with no range, acts like
+    /// ⌥⌘-click), ⌥⌘-click and ⇧⌥⌘-click.
+    let setRangeToView: () -> Void
+    let setRangeToWholeShow: () -> Void
+    let clearRange: () -> Void
+    let toggleRangeLock: () -> Void
     @AppStorage("snapping") private var snapping = true
 
     /// A switch in the show's editing state, saved with no undo step.
@@ -694,9 +770,7 @@ struct TransportRow: View {
 Group {
                 Toggle(isOn: $snapping) { Image(systemName: "arrow.left.and.line.vertical.and.arrow.right") }
                     .help(snapping ? "Snapping is on: edges land on markers (N)" : "Snapping is off (N)")
-                Toggle(isOn: editor(\.rangeOn)) { Image(systemName: "timeline.selection") }
-                    .disabled(show.editor.rangeIn == nil && show.editor.rangeOut == nil)
-                    .help("Use the range (set it with I and O; ⌥X clears it)")
+                rangeButton
                 Toggle(isOn: editor(\.rangeLines)) { Image(systemName: "arrow.down.to.line.compact") }
                     .help("The range's ends as lines through every row (double-click an end for its own)")
                 Toggle(isOn: editor(\.markerLines)) { Image(systemName: "flag") }
@@ -718,6 +792,40 @@ Group {
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
         .background(.bar)
+    }
+
+    /// W7: a plain click shows or hides the range as before, except with no
+    /// range set, where it acts like ⌥⌘-click (Jason, 2026-09-24) and makes
+    /// one from the view. ⌥⌘-click always sets it to the view; ⇧⌥⌘-click to
+    /// the whole show. Both modifier clicks also sit on the right-click,
+    /// since a modifier click can't be seen, alongside the lock — set from
+    /// here or from either end on the ruler (one lock for the whole range).
+    private var rangeButton: some View {
+        let hasRange = show.editor.rangeIn != nil || show.editor.rangeOut != nil
+        let on = hasRange && show.editor.rangeOn
+        return Button {
+            let mods = NSEvent.modifierFlags
+            if mods.isSuperset(of: [.command, .option, .shift]) { setRangeToWholeShow() }
+            else if mods.isSuperset(of: [.command, .option]) { setRangeToView() }
+            else if !hasRange { setRangeToView() }
+            else { engine.updateEditor { $0.rangeOn.toggle() } }
+        } label: {
+            Image(systemName: "timeline.selection")
+                .symbolVariant(on ? .fill : .none)
+                .foregroundStyle(on ? Color.accentColor : Color.primary)
+        }
+        .contextMenu {
+            Button("Set Range to View") { setRangeToView() }
+            Button("Set Range to Whole Show") { setRangeToWholeShow() }
+            Toggle("Lock Range", isOn: Binding(get: { show.editor.rangeLocked },
+                                                set: { _ in toggleRangeLock() }))
+            if hasRange {
+                Divider()
+                Button("Clear Range") { clearRange() }
+            }
+        }
+        .help(hasRange ? "Show or hide the range (⌥⌘-click: set to view; ⇧⌥⌘-click: set to whole show; ⌥X clears it)"
+                       : "Set the range to the view (⌥⌘-click), or to the whole show (⇧⌥⌘-click)")
     }
 }
 

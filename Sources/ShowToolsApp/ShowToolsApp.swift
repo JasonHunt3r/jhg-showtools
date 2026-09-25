@@ -209,6 +209,16 @@ struct AppCommands: Commands {
             Button("Clear Range") { editShowCommands?.clearRange() }
                 .keyboardShortcut("x", modifiers: .option)
                 .disabled(editShowCommands == nil)
+            // W7: modifier-clicks on the range button, restated here since a
+            // modifier-click can't be seen (F1).
+            Button("Set Range to View") { editShowCommands?.setRangeToView() }
+                .disabled(editShowCommands == nil)
+            Button("Set Range to Whole Show") { editShowCommands?.setRangeToWholeShow() }
+                .disabled(editShowCommands == nil)
+            Toggle("Lock Range", isOn: Binding(
+                get: { editShowCommands?.rangeLocked ?? false },
+                set: { _ in editShowCommands?.toggleRangeLock() }))
+                .disabled(editShowCommands == nil)
             Toggle("Loop Playback", isOn: Binding(
                 get: { editShowCommands?.loopOn ?? false },
                 set: { _ in editShowCommands?.toggleLoop() }))

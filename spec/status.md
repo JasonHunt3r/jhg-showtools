@@ -297,9 +297,38 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
    menus, the header bar's Play from Here/Show in Library, and Use
    Defaults for All Slides (every slide's transition/length reverted to
    the show default) — all confirmed working, not just present.
-6. **The range package:** W6 (undoable, draggable, lock) → W7 (the range
-   button) → the ruler's and the range's menus (stop 7) → W10 (Fill Range
-   with Images…).
+6. **The range package:** ~~W6 (undoable, draggable, lock)~~ → ~~W7 (the
+   range button)~~ — done 2026-09-24 — → the ruler's and the range's menus
+   (stop 7) → W10 (Fill Range with Images…).
+   - **W6:** the range's own points (`rangeIn`/`rangeOut`) are undoable
+     now, unlike the rest of the editing state (`AppModel.update`'s undo
+     restore keeps them from `before` instead of clobbering them with
+     `now.editor` like everything else — a targeted exception, not a
+     rule change). Dragging an end on the ruler (snaps like a trim,
+     commits once on release), I, O and ⌥X all go through `mutate`
+     instead of `engine.updateEditor`. A new `rangeLocked` field (schema
+     unchanged — it's `ShowEditorState`, not a migration): one lock for
+     the whole range, right-click of either end or the range button,
+     locked ends fade (no icon, per Jason's call) and refuse a drag or a
+     modifier-click, but still take I/O/⌥X since a key is a deliberate
+     act. Checked with axtool against a scratch library: drag moves the
+     right end and is undoable (confirmed via the saved show's `editor`
+     JSON before/after ⌘Z), locked blocks the drag and the button's
+     modifier-set-range commands while I/O still land, unlocking restores
+     them. **Not checked:** the actual feel of a real drag (axtool's
+     synthetic drag moved the end by more than its own translation
+     implied — a tool artifact worth another look, not chased down this
+     session) and the true ⌥⌘/⇧⌥⌘ chords (axtool's `click` only holds one
+     modifier at a time, so only the button's plain-click and the Show
+     menu's equivalents were exercised).
+   - **W7:** the range button now acts like ⌥⌘-click when there's no
+     range yet (Jason's settled call), otherwise shows/hides as before;
+     ⌥⌘-click sets it to the view, ⇧⌥⌘-click to the whole show, both also
+     on the Show menu (`Set Range to View`, `Set Range to Whole Show`,
+     `hig-audit.md` F1) and the button's own right-click, alongside
+     `Lock Range`. A locked range refuses either set-range command,
+     checked through the Show menu (silent no-op there; the real button
+     would beep — `NSSound.beep()`, unheard by axtool).
 7. **Timeline keys:** the arrow keys (E2; **decided** in
    `spec/conventions.md` §2: ← → through a row's items, ↑ ↓ between rows,
    ← → in the ruler nudge the playhead; batch 4 left them unwired as
@@ -377,6 +406,16 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
+- **The range package, W6 and W7** (built 2026-09-24, `spec/plan.md`
+  "The range and the ruler"): dragging an end, the lock (right-click of
+  either end or the button), I/O/⌥X still landing while locked, and the
+  range button's plain-click/⌥⌘-click/⇧⌥⌘-click/right-click — all reasoned
+  through and checked with axtool against a saved show's `editor` JSON,
+  never by a real drag or a real modifier-click (axtool's `click` can't
+  hold two modifiers at once, so ⌥⌘ and ⇧⌥⌘ themselves are unverified
+  beyond their Show-menu equivalents). Worth a particular look: whether a
+  real drag feels right — the synthetic one moved further than its own
+  on-screen distance implied, which may just be a tool artifact.
 - **The viewer's menus, Show in Library, and the progress line fix**
   (built 2026-09-24, `spec/conventions.md` §3, item 4): every menu opens
   with the right items and every action was confirmed by its actual

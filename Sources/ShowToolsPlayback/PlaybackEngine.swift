@@ -296,27 +296,11 @@ public final class PlaybackEngine {
         touch()
     }
 
-    public func setRangeIn() {
-        let t = (timeline.wrap(clock.now) * 100).rounded() / 100
-        updateEditor { e in
-            e.rangeIn = t
-            if let o = e.rangeOut, o <= t { e.rangeOut = nil }
-            e.rangeOn = true
-        }
-    }
-
-    public func setRangeOut() {
-        let t = (timeline.wrap(clock.now) * 100).rounded() / 100
-        updateEditor { e in
-            e.rangeOut = t
-            if let i = e.rangeIn, i >= t { e.rangeIn = nil }
-            e.rangeOn = true
-        }
-    }
-
-    public func clearRange() {
-        updateEditor { $0.rangeIn = nil; $0.rangeOut = nil }
-    }
+    /// The playhead's current time, rounded the way the range's own points
+    /// are — for `EditShowView` to build an I/O or Clear Range edit with
+    /// (W6, work order item 6): the range's points are undoable now, so
+    /// they go through `mutate`, not `updateEditor`.
+    public var roundedNow: Double { (timeline.wrap(clock.now) * 100).rounded() / 100 }
 
     /// With loop playback on, reaching the range's end (or the show's, with
     /// no range) goes back to its start. Checked every frame drawn and every

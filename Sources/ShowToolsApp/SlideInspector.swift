@@ -880,6 +880,12 @@ struct EditShowCommandsValue {
     var setRangeIn: () -> Void
     var setRangeOut: () -> Void
     var clearRange: () -> Void
+    /// W7: the range button's ⌥⌘-click and ⇧⌥⌘-click, also from the Show
+    /// menu since a modifier-click can't be seen (F1).
+    var setRangeToView: () -> Void
+    var setRangeToWholeShow: () -> Void
+    var toggleRangeLock: () -> Void
+    var rangeLocked: Bool
     var toggleLoop: () -> Void
     var loopOn: Bool
     var zoomToFit: () -> Void

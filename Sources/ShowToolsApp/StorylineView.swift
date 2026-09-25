@@ -52,6 +52,14 @@ struct StorylineView: View {
     }
     @State private var markerDrag: MarkerDrag?
 
+    /// A range end being dragged (W6, work order item 6): which one, and its
+    /// time while the drag is in progress.
+    private struct RangeEndDrag {
+        let isIn: Bool
+        var t: Double
+    }
+    @State private var rangeEndDrag: RangeEndDrag?
+
     /// Every marker where it's drawn, a drag in progress applied: the hand
     /// markers (no song), and each song's detected ones that are showing.
     private var markerTimes: [(marker: Marker, time: Double, song: UUID?)] {
@@ -376,27 +384,34 @@ struct StorylineView: View {
     /// SwiftUI observes.
     private var editor: ShowEditorState { show.editor }
 
+    /// The range's ends, the drag in progress (if any) applied — like
+    /// `markerTimes` for markers (W6, work order item 6).
+    private var displayRangeIn: Double? { (rangeEndDrag?.isIn ?? false) ? rangeEndDrag?.t : editor.rangeIn }
+    private var displayRangeOut: Double? { (rangeEndDrag.map { !$0.isIn } ?? false) ? rangeEndDrag?.t : editor.rangeOut }
+
     /// Blue, like Final Cut's range: the span shaded on the ruler, a
-    /// triangle at each end. Faded while the range is switched off.
-    /// Double-click a triangle for its line through the rows; ⌥-double-
-    /// click for both ends' lines.
+    /// triangle at each end. Faded while the range is switched off, or
+    /// while it's locked (Jason, 2026-09-24: no lock icon, the fade says
+    /// it). Double-click a triangle for its line through the rows;
+    /// ⌥-double-click for both ends' lines; drag to move it (locked
+    /// refuses); right-click for the lock, shared with the range button.
     @ViewBuilder private var rangeOnRuler: some View {
         let e = editor
-        let lo = e.rangeIn ?? 0, hi = e.rangeOut ?? timeline.duration
-        if e.rangeIn != nil || e.rangeOut != nil, hi > lo {
+        let lo = displayRangeIn ?? 0, hi = displayRangeOut ?? timeline.duration
+        if editor.rangeIn != nil || editor.rangeOut != nil, hi > lo {
             let x0 = Self.inset + CGFloat(lo * pps), x1 = Self.inset + CGFloat(hi * pps)
             ZStack(alignment: .topLeading) {
                 Rectangle().fill(Color.blue.opacity(e.rangeOn ? 0.28 : 0.1))
                     .frame(width: x1 - x0, height: Self.rulerHeight)
                     .offset(x: x0)
                     .allowsHitTesting(false)
-                if e.rangeIn != nil { rangeEnd(x0, isIn: true, on: e.rangeOn) }
-                if e.rangeOut != nil { rangeEnd(x1, isIn: false, on: e.rangeOn) }
+                if editor.rangeIn != nil { rangeEnd(x0, isIn: true, on: e.rangeOn, locked: e.rangeLocked) }
+                if editor.rangeOut != nil { rangeEnd(x1, isIn: false, on: e.rangeOn, locked: e.rangeLocked) }
             }
         }
     }
 
-    private func rangeEnd(_ x: CGFloat, isIn: Bool, on: Bool) -> some View {
+    private func rangeEnd(_ x: CGFloat, isIn: Bool, on: Bool, locked: Bool) -> some View {
         let w: CGFloat = 7, h = Self.rulerHeight
         return Path { p in
             p.move(to: CGPoint(x: 0, y: 0))
@@ -404,7 +419,7 @@ struct StorylineView: View {
             p.addLine(to: CGPoint(x: isIn ? w : -w, y: 10))
             p.closeSubpath()
         }
-        .fill(Color.blue.opacity(on ? 1 : 0.4))
+        .fill(Color.blue.opacity(on ? (locked ? 0.55 : 1) : 0.4))
         .frame(width: w, height: 10)
         .padding(.horizontal, 2)
         .contentShape(Rectangle())
@@ -423,8 +438,42 @@ struct StorylineView: View {
                 }
             }
         }
+        .gesture(rangeEndDragGesture(isIn: isIn))
+        .contextMenu {
+            Toggle("Lock Range", isOn: Binding(get: { editor.rangeLocked },
+                                                set: { _ in engine.updateEditor { $0.rangeLocked.toggle() } }))
+        }
         .help((isIn ? "Range start" : "Range end")
-              + ". Double-click to show or hide its line; ⌥-double-click for both ends.")
+              + ". Drag to move it" + (locked ? " (locked)" : "") + "; double-click to show or hide its line; "
+              + "⌥-double-click for both ends; right-click to lock.")
+    }
+
+    /// One lock for the whole range (Jason, 2026-09-24): a drag does
+    /// nothing while it's on. Commits once, on release, like a slide trim
+    /// (CLAUDE.md) — one undo step (W6, work order item 6).
+    private func rangeEndDragGesture(isIn: Bool) -> some Gesture {
+        DragGesture(minimumDistance: 2, coordinateSpace: .named("storyline"))
+            .onChanged { g in
+                guard !editor.rangeLocked else { return }
+                let base = rangeEndDrag?.isIn == isIn ? rangeEndDrag!.t : (isIn ? editor.rangeIn : editor.rangeOut) ?? 0
+                let raw = base + Double(g.translation.width) / pps
+                let snappedTime = snap.flatMap { Snap.nearest(raw, in: $0.targets, within: $0.tolerance) } ?? raw
+                let otherBound = isIn ? (editor.rangeOut ?? timeline.duration) : (editor.rangeIn ?? 0)
+                let clamped = isIn ? min(max(snappedTime, 0), otherBound - 0.1)
+                                   : max(min(snappedTime, timeline.duration), otherBound + 0.1)
+                rangeEndDrag = RangeEndDrag(isIn: isIn, t: (clamped * 100).rounded() / 100)
+                focused = true
+            }
+            .onEnded { _ in
+                guard let d = rangeEndDrag else { return }
+                rangeEndDrag = nil
+                guard !editor.rangeLocked else { return }
+                let before = isIn ? editor.rangeIn : editor.rangeOut
+                guard before != d.t else { return }
+                mutate(isIn ? "Move Range Start" : "Move Range End") { s in
+                    if isIn { s.editor.rangeIn = d.t } else { s.editor.rangeOut = d.t }
+                }
+            }
     }
 
     /// Markers on the ruler: click to select (⌘ or ⇧ adds), drag to move
@@ -552,7 +601,7 @@ struct StorylineView: View {
                 }
             }
             if e.rangeOn, e.rangeLines {
-                let ends = [e.rangeInLine ? e.rangeIn : nil, e.rangeOutLine ? e.rangeOut : nil].compactMap { $0 }
+                let ends = [e.rangeInLine ? displayRangeIn : nil, e.rangeOutLine ? displayRangeOut : nil].compactMap { $0 }
                 ForEach(ends, id: \.self) { t in
                     Rectangle().fill(Color.blue.opacity(0.8)).frame(width: 1.5)
                         .offset(x: Self.inset + CGFloat(t * pps))

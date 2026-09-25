@@ -397,6 +397,12 @@ public struct ShowEditorState: Codable, Hashable, Sendable {
     public var rangeOut: Double?
     /// Off keeps the points but ignores them.
     public var rangeOn = true
+    /// One lock for the whole range (Jason, 2026-09-24): set from the
+    /// right-click of either end or the range button. A locked end still
+    /// takes I, O and ⌥X (keys are a deliberate act) but refuses a drag or
+    /// a modifier-click that would move it. Editing state, not undone —
+    /// like `rangeOn`, a mode rather than a value.
+    public var rangeLocked = false
     /// ⌘L: playback loops inside the range, or the whole show without one.
     public var loopPlayback = false
     /// The markers' lines down through the rows, all together. Each marker
@@ -422,6 +428,7 @@ public struct ShowEditorState: Codable, Hashable, Sendable {
         rangeIn = (try? c.decodeIfPresent(Double.self, forKey: .rangeIn)) ?? nil
         rangeOut = (try? c.decodeIfPresent(Double.self, forKey: .rangeOut)) ?? nil
         rangeOn = get(.rangeOn, true)
+        rangeLocked = get(.rangeLocked, false)
         loopPlayback = get(.loopPlayback, false)
         markerLines = get(.markerLines, true)
         rangeLines = get(.rangeLines, true)

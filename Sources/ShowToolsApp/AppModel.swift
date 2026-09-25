@@ -866,10 +866,19 @@ final class AppModel {
             undo.registerUndo(withTarget: self) { model in
                 MainActor.assumeIsolated {
                     guard model.libraryGeneration == generation else { return }
-                    // The editing state (range, loop, lines) isn't an edit:
-                    // undo keeps it as it is now.
+                    // Most of the editing state (loop, lines, which lock,
+                    // the browser filter) isn't an edit: undo keeps it as it
+                    // is now. The range's own points are the exception
+                    // (W6, work order item 6): a drag, I/O or the range
+                    // button is a deliberate edit, so ⌘Z should put them
+                    // back like any other change.
                     var restore = before
-                    if let now = model.show(before.id) { restore.editor = now.editor }
+                    if let now = model.show(before.id) {
+                        var editor = now.editor
+                        editor.rangeIn = restore.editor.rangeIn
+                        editor.rangeOut = restore.editor.rangeOut
+                        restore.editor = editor
+                    }
                     model.update(restore, undo: undo, action: action)
                 }
             }
