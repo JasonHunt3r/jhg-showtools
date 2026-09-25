@@ -35,12 +35,14 @@ patterns, 12 their note length, 13 groups). Before an upgrade the database is co
 to `Library.sqlite.v<N>.bak`. Video export needed no schema change: a video
 slide's level line is slide settings, which are JSON.
 
-`~/Applications/ShowTools.app` is **current again, reinstalled
-2026-09-25** off HEAD, so Jason can start building a show from his own
-photos and music by hand (`spec/status.md`, "Also next" #2). BGTools'
-desktop extension (`BGToolsControls.appex`) was killed before the swap,
-on Jason's own call, rather than relaunched — it needs re-enabling by
-hand before BGTools' desktop features work again.
+`~/Applications/ShowTools.app` was last reinstalled 2026-09-25 morning,
+**before** the feedback-worklist batches below — it's now 26 fixes
+behind `main`. Not reinstalled since, on purpose: none of this session's
+fixes needed a look at the real library, and reinstalling stops the real
+BGTools instance mid-session (`install.sh`'s own quit sequence). BGTools'
+desktop extension (`BGToolsControls.appex`) was also killed before that
+morning's swap, on Jason's own call, rather than relaunched — it still
+needs re-enabling by hand before BGTools' desktop features work again.
 
 **The real library was set aside 2026-09-24** (Jason's own call, mid this
 session): `~/Pictures/ShowTools Library.noindex` is now
@@ -60,182 +62,40 @@ axtool check actually covered:
 
 ### The 2026-09-25 feedback worklist
 
-Jason's own build feedback, 37 items, triaged into `spec/history/` — see
-`ShowTools Feedback — Worklist for Next CC Session.md` in the repo root for
-the full grouped list. **Batch 1 (PaneKit/window-layer P0s) done, except
-the window-layer hierarchy write-up and pop-out audit (item 2's other
-half, still open — a documentation task, not a bug):**
-- **Item 9**, Settings panel off the bottom of the screen: fixed,
-  scrollable and capped to the screen's visible height, checked with
-  axtool (opens at 520x450).
-- **Item 2**, a popped-out pane panel floating over other apps' windows:
-  fixed (`.floating` is a system-wide window level, dropped to `.normal`
-  while ShowTools isn't active) — build-clean, not yet seen by eye
-  against a real other-app window.
-- **Item 11**, BGTools' window stranded on a monitor that gets unplugged
-  while already open: fixed (recenters on `didChangeScreenParameters
-  Notification` if its own screen is gone) — reasoned through, untestable
-  here with one monitor.
-- **Item 1**, the collections column (Edit Show's list pane) growing when
-  the inspector closes instead of staying put: fixed —
-  `nearIsRigid` (`spec/panekit.md`, "Building a row") now also governs a
-  collapse, not just a direct drag, so the freed width goes to the
-  preview, matching what a drag already did. Two new `PaneControllerTests`
-  pin it (each fails on the old code first). Reverses the
-  "divider isolation" trade `panekit.md` documented and confirmed by hand
-  on 2026-09-24 — Jason's own feedback the next day reversed it.
+Jason's own build feedback, `ShowTools Feedback — Worklist for Next CC
+Session.md` (repo root), 37 items, worked through in five batches grouped
+by shared code. **26 of 37 done** (batches 1–5 below); each fix checked
+with axtool against a scratch library, not just compiled. Full dated
+story — root causes, what each check actually covered, the commit for
+each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
 
-**Batch 2 (library/collections interactions) mostly done:**
-- **Item 6**, clicking a use in Edit Show's list moved the playhead:
-  fixed — a plain click now only selects; ⌥-click keeps the old jump.
-  Checked with axtool: selecting a later slide leaves the preview and
-  timeline at 0:00.
-- **Item 3**, clicking the library pane's background switched the detail
-  pane to the plain Library grid: fixed — the sidebar `List`'s selection
-  binding now ignores a background click's nil write. Checked with
-  axtool.
-- **Item 4**, no right-click response in the main window's background:
-  fixed for the Library grid's own background (Import…/New Collection…/
-  Add from Library…). Checked with axtool. The sidebar's own background
-  right-click wasn't separately checked — worth a look.
-- **Item 5** was Jason's own mislabel, cleared up 2026-09-25: what he
-  meant is item 12 (below), not a naming bug. No code change.
-- **Item 15**, the Library pane's minimum width (180) read too wide:
-  lowered to 140, both the split's range floor and the pane's own
-  `minSize`.
-- **Item 16**, deleting a collection or group always left the files
-  behind: both now offer a real "Also delete the files/images from the
-  library" checkbox. The collection-delete flow moved off SwiftUI's
-  `.confirmationDialog` (can't carry a checkbox) onto an `NSAlert`, the
-  same synchronous shape `GroupDeleteNotice` already used for groups —
-  new `CollectionDeleteNotice` in `SlideInspector.swift`. Checked with
-  axtool: the alert shows the checkbox with its own label, not the
-  suppression button's default text.
-- **Item 28**, "Change Library…" added to the library header's
-  right-click menu (same action as File ▸ Open Library…).
-- **Item 32**, ⌥-click a sidebar name (collection/group/show) jumps
-  straight into its rename alert, skipping the right-click menu —
-  `.simultaneousGesture`, not `.onTapGesture`, so the `List`'s own
-  selection click still works. Checked with axtool: ⌥-click opened
-  Rename Group directly.
-- **Item 17** (reordering isn't implemented in collections/groups
-  views) and **item 12** (groups don't create a library item) are
-  **not started, on purpose.** Item 17 needs a real ordering column —
-  `collection_items`/`group_items` today only order by `added_at`, so
-  dragging to reorder needs a schema migration (schema 13 → 14), not
-  just a UI change. Item 12 is explicitly flagged in the feedback doc's
-  own Open Questions as needing a design pass before CC builds it (the
-  catalog pane's own list item per group, and where group selection
-  hangs off the collections list column dropdown) — Jason confirmed
-  this 2026-09-25. Both are real next steps, just not one-sitting fixes.
+| Batch | Done |
+|---|---|
+| 1 — PaneKit/window-layer | Items 1, 2, 9, 11 |
+| 2 — library/collections | Items 3, 4, 6, 15, 16, 28, 32 (item 5 was a mislabel, no code needed) |
+| 3 — frames row/transport | Items 7, 8, 18 (18 was already built) |
+| 4 — BGTools | Items 10, 21, 22 |
+| 5 — P2 polish | Items 30, 31 (31 was already built) |
 
-Batch 2 is otherwise done.
-
-**Batch 3 (frames row/transport) done, except item 19:**
-- **Item 7**, the range Out marker sitting slightly left of its true
-  position: fixed — `Path`'s own drawing coordinates for a `.frame()`'d
-  shape aren't clipped or rescaled to that frame, so the out-marker's
-  triangle (drawn pointing into negative x) bled outside its frame's
-  nominal origin while the `.offset()` placement math still only cared
-  about that origin — the in-marker's formula was already right, the
-  out-marker's had an extra, wrong `- w`.
-- **Item 8**, the frame strip's resize bar tracking the mouse at half
-  speed: fixed. Root cause, found with a temporary probe logging the
-  gesture's own translation: the bar sits between two views (the
-  picture, the strip) whose sizes the drag itself changes, so the bar's
-  own on-screen position moves mid-drag — its plain (`.local`)
-  `DragGesture` was anchored to that moving frame, a feedback loop that
-  measured out to almost exactly half the real drag distance at two
-  different drag lengths. Anchored to the outer column instead (which
-  doesn't move), matching why `StorylineView`'s own drags are already
-  named coordinate spaces. Also stopped writing `frameStripHeight`
-  (`@AppStorage`) on every pixel of the drag, matching PaneKit's own
-  "draw live, commit on release" dividers. Checked with axtool: a 100pt
-  drag now moves the bar exactly 100pt, both directions.
-- **Item 18** (the frames-row position marker should be draggable with
-  live scrub): **already built, no change needed.** `scrubGesture` on
-  `RulerView` is a `DragGesture` computing an absolute seek from
-  `location.x` on every `onChanged`, not a click-only affordance.
-  Checked with axtool: dragging from 0:00 toward the 0:20 tick landed
-  the playhead at 0:20.5, live.
-- **Item 19** (transport pane greyed-out state) is **not started, on
-  purpose** — it's literally the feedback doc's own Open Question 1
-  ("what should happen when a file is dragged onto a greyed-out
-  transport with no show loaded"), which the doc itself says needs a
-  concrete interaction spec before CC can build it.
-
-**Batch 4 (BGTools) partly done:**
-- **Item 10**, BGTools couldn't be self-quit during the last rebuild:
-  fixed in `install.sh` — it asked BGTools.app to quit only via
-  `pkill` (no graceful `osascript` quit, unlike ShowTools right above
-  it) and never touched `BGToolsControls.appex` at all. A Control
-  Center extension runs as its own process, hosted by the system, not
-  by BGTools.app — reinstalling over it while it's still running is
-  exactly this symptom. Now quits BGTools.app gracefully first, and
-  `pkill`s the extension by its own path too.
-- **Item 21** (launch + install from a ShowTools menu, plus a setting):
-  fixed — "Desktop Show…" moved out of the View menu's toolbar group
-  into its own top-level "BGTools" menu; a new Settings ▸ BGTools
-  toggle, "Launch BGTools when ShowTools launches," starts it silently
-  (no window) at ShowTools' own launch, separate from the existing
-  "Open at Login" switch (which stays in BGTools' own window, where it
-  already was). Checked with axtool.
-- **Item 22**, BGTools' window not staying visible across a Space
-  switch: fixed — `canJoinAllSpaces`, the same treatment the Control
-  Center panel already had.
-- **Items 23–25 not started, on purpose:**
-  - **23** (Control Center tile: two clicks instead of one, and a
-    better icon) needs real hands and real Control Center registration
-    to even reproduce — this environment can't drive Control Center's
-    own UI, and the repo's own notes call this area cache-heavy and
-    fragile (`CLAUDE.md`'s install.sh comment). The icon half also
-    needs Jason's own direction on what "better" means.
-  - **24** (per-screen stop) is a real feature, not a bug fix — a new
-    per-monitor toggle or a "Plays Nothing" list entry, model changes
-    plus a UI decision the feedback doc itself frames as "two possible
-    mechanisms, pick one."
-  - **25** (BGT pan & zoom, length, transition options, matching
-    ShowTools' own slides) is a sizable feature port, not a fix.
-  All three are real next steps, just not one-sitting fixes, same as
-  items 12/17/19 above.
-
-**Batch 5 (P2 polish): the two real code items done, three deferred —
-Jason chose this scope 2026-09-25 over doing all five or waiting for
-design direction:**
-- **Item 30** (frames row collapses to a stacked handle): the "collapse"
-  half was already built (every PaneKit split collapses to its own
-  edge handle by default) — just not discoverable. Added View ▸
-  "Show Timeline" (⌘⌥T), matching Show Library/Frame Strip/Inspector's
-  own toggles right above it. The "stacked" half depends on item 13
-  (Collections' own closed-drawer state stacking against the closed
-  inspector), which was never built either — a real, open-ended
-  pattern to design, not touched here.
-- **Item 31** (scale-to-fill, as a ShowTools effect and a BGT setting):
-  **already fully built, both halves, no change needed.** `Fit.fill`
-  has existed in the core model all along; ShowTools' own
-  `SlideInspector`'s Fit picker already iterates every `Fit` case, and
-  BGTools' Random Pictures settings (`MainWindow.swift`,
-  `RandomPicturesDetail`) already has the identical picker. Same
-  pattern as item 18 — feedback describing something the codebase had
-  already caught up to.
-- **Items 26, 27, 29 not started, on purpose:** 26 (kill the rounded
-  header-bar controls for a tighter "Pro" look) and 27 (app-wide
-  corner-radius override) are visual redesigns with no existing token
-  to hang off, not fixes — guessing risks producing something that
-  just looks wrong. 29 (an icon for each app) needs actual icon
-  artwork, not code. All three need Jason's own direction first.
-
-Five items still need Jason's own decision first (Open Questions in
-the feedback doc) before CC can build them.
-
-**A preferences leak, caught and fixed mid-session:** testing item 1's
-pop-out interactively wrote a scratch pop-out state into the *shared*
-`com.jhg.showtools` preferences domain (`PaneKit.EditShowColumns`
-changed from 141 to 140 bytes) — the exact trap `showtools-testing`
-warns about. Caught by comparing against the pre-session `defaults
-export` backup and restored before this note was written. Jason's real
-app was running throughout and unaffected (its window never reopened
-mid-session).
+**Left, going into the next discussion:**
+- **Item 12** (groups → a library item / catalog folder) needs a design
+  pass — the feedback doc's own Open Questions say so, Jason confirmed.
+- **Item 17** (drag-to-reorder in collections/groups) needs a schema
+  migration first (`collection_items`/`group_items` only order by
+  `added_at` today; no position column to drag against).
+- **Item 19** (transport greyed-out state) is the feedback doc's own
+  Open Question 1 — needs a concrete interaction spec.
+- **Items 23–25** (BGTools: Control Center tile clicks/icon, per-screen
+  stop, pan/zoom/length/transition parity) need real hands, a mechanism
+  choice, and a feature port, respectively.
+- **Items 26, 27, 29** (header-bar restyling, corner-radius override, app
+  icons) need Jason's own design or artwork direction.
+- Item 2's other half: a written window-layer hierarchy, and an audit of
+  the other pop-outs against it.
+- **Five Open Questions** in the feedback doc itself (greyed-transport
+  drag target, glass/vibrancy in light mode, Show Similar's engine,
+  large-library DB/indexing, the collections list column dropdown) —
+  none buildable without Jason's call first.
 
 ### Also next
 

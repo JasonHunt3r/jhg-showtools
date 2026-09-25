@@ -24,6 +24,8 @@ are `spec/plan.md`.
 | `2026-09-24-cloud-planning-aar.md` | After-action review of the cloud planning session, in two parts. Part one: the audit, the anatomy, the renames, windows, simple things fast, conventions, the design manual. Part two: the right-click conversation, groups, the work order, PaneKit's first cut. What went well and what didn't | `spec/status.md`'s work queue |
 | `2026-09-23-docs-restructure-brief.md` | The brief this folder was made from: why the docs had drifted, and the layout Jason approved | Carried out the same day; the result is the current docs |
 | `2026-09-23-pan-and-zoom-rename.md` | Ken Burns → Pan and Zoom carried out (168 refs, three shell scripts missed by the first pass), the stale installed app rebuilt, and the confirmed breakage: an export from before this date loses Pan and Zoom silently on re-import | `spec/status.md` carries the short version and points here |
+| `2026-09-25-work-queue-narrative.md` | The 2026-09-24 cloud-planning work queue, built out: the audit batches, Groups inside collections, the range package, the grid's keyboard, PaneKit steps 4–5, the popped-out Inspector and Timeline panes | `spec/status.md`'s "Where it stands" table |
+| `2026-09-25-feedback-worklist-batches.md` | Jason's 37-item build feedback, worked through in five batches: what was fixed, how, and what each fix was checked against | `spec/status.md`'s feedback-worklist summary |
 
 ## Where this came from
 
