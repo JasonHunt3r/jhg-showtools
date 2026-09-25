@@ -274,8 +274,14 @@ struct StorylineView: View {
                         MusicRow(show: show, timeline: timeline, pps: pps, inset: Self.inset,
                                  width: contentWidth, height: Self.musicRowHeight,
                                  selectedSong: $selectedSong, mutate: mutate,
+                                 // A deliberate set-range action, like the button's
+                                 // modifier-clicks (W6/W7): undoable, refuses locked.
                                  setRange: { r in
-                                     engine.updateEditor { $0.rangeIn = r.lowerBound; $0.rangeOut = r.upperBound; $0.rangeOn = true }
+                                     guard !editor.rangeLocked else { NSSound.beep(); return }
+                                     mutate("Set Range") { s in
+                                         s.editor.rangeIn = r.lowerBound; s.editor.rangeOut = r.upperBound
+                                         s.editor.rangeOn = true
+                                     }
                                  },
                                  detectBeats: { clip in openBeatSheet(for: clip) },
                                  didSelect: { selection = []; selectedTransition = nil; selectedOverlay = nil; focused = true })
@@ -394,7 +400,12 @@ struct StorylineView: View {
     /// while it's locked (Jason, 2026-09-24: no lock icon, the fade says
     /// it). Double-click a triangle for its line through the rows;
     /// ⌥-double-click for both ends' lines; drag to move it (locked
-    /// refuses); right-click for the lock, shared with the range button.
+    /// refuses); right-click the span itself, or either end, for the
+    /// lock, Clear Range and Fill Range with Images… (plan, "Fill the
+    /// range with images"; the dialog is its own step — stubbed here,
+    /// greyed out, until it's built, same convention as Play on Desktop).
+    /// A right-click only answers to `.contextMenu`'s own recognizer, so
+    /// left-drags still reach `scrubGesture` on the `RulerView` beneath.
     @ViewBuilder private var rangeOnRuler: some View {
         let e = editor
         let lo = displayRangeIn ?? 0, hi = displayRangeOut ?? timeline.duration
@@ -404,7 +415,14 @@ struct StorylineView: View {
                 Rectangle().fill(Color.blue.opacity(e.rangeOn ? 0.28 : 0.1))
                     .frame(width: x1 - x0, height: Self.rulerHeight)
                     .offset(x: x0)
-                    .allowsHitTesting(false)
+                    .contentShape(Rectangle())
+                    // Being hit-testable now (for the context menu) would
+                    // otherwise steal `scrubGesture` from the RulerView
+                    // underneath for its whole span, so it gets its own
+                    // copy of the same seek logic instead of just refusing
+                    // hit-testing.
+                    .gesture(rangeScrubGesture)
+                    .contextMenu { rangeMenu }
                 if editor.rangeIn != nil { rangeEnd(x0, isIn: true, on: e.rangeOn, locked: e.rangeLocked) }
                 if editor.rangeOut != nil { rangeEnd(x1, isIn: false, on: e.rangeOn, locked: e.rangeLocked) }
             }
@@ -439,13 +457,23 @@ struct StorylineView: View {
             }
         }
         .gesture(rangeEndDragGesture(isIn: isIn))
-        .contextMenu {
-            Toggle("Lock Range", isOn: Binding(get: { editor.rangeLocked },
-                                                set: { _ in engine.updateEditor { $0.rangeLocked.toggle() } }))
-        }
+        .contextMenu { rangeMenu }
         .help((isIn ? "Range start" : "Range end")
               + ". Drag to move it" + (locked ? " (locked)" : "") + "; double-click to show or hide its line; "
-              + "⌥-double-click for both ends; right-click to lock.")
+              + "⌥-double-click for both ends; right-click for the lock and more.")
+    }
+
+    /// Shared by either end and the shaded span itself. Fill Range with
+    /// Images… is its own step, still to come — greyed out until then,
+    /// same convention as Play on Desktop (`spec/plan.md`, "Fill the range
+    /// with images").
+    @ViewBuilder private var rangeMenu: some View {
+        Toggle("Lock Range", isOn: Binding(get: { editor.rangeLocked },
+                                            set: { _ in engine.updateEditor { $0.rangeLocked.toggle() } }))
+        Divider()
+        Button("Clear Range") { mutate("Clear Range") { $0.editor.rangeIn = nil; $0.editor.rangeOut = nil } }
+        Divider()
+        Button("Fill Range with Images…") {}.disabled(true)
     }
 
     /// One lock for the whole range (Jason, 2026-09-24): a drag does
@@ -1182,6 +1210,19 @@ struct StorylineView: View {
 
     private var scrubGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .local)
+            .onChanged { g in
+                if engine.isPlaying { engine.pause() }
+                let t = max(0, Double(g.location.x - Self.inset) / pps)
+                engine.seek(min(t, max(timeline.duration - 0.001, 0)))
+            }
+    }
+
+    /// The same seek as `scrubGesture`, in the "storyline" named space
+    /// instead of local, for the range's own hit-testable overlay (W6/W7,
+    /// its right-click menu) to share without losing the offset its
+    /// `.offset(x:)` gives it in `RulerView`'s local space.
+    private var rangeScrubGesture: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("storyline"))
             .onChanged { g in
                 if engine.isPlaying { engine.pause() }
                 let t = max(0, Double(g.location.x - Self.inset) / pps)

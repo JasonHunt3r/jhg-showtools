@@ -298,8 +298,8 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
    Defaults for All Slides (every slide's transition/length reverted to
    the show default) — all confirmed working, not just present.
 6. **The range package:** ~~W6 (undoable, draggable, lock)~~ → ~~W7 (the
-   range button)~~ — done 2026-09-24 — → the ruler's and the range's menus
-   (stop 7) → W10 (Fill Range with Images…).
+   range button)~~ → ~~the ruler's and the range's right-click menu~~ —
+   done 2026-09-24 — → W10 (Fill Range with Images…), still to come.
    - **W6:** the range's own points (`rangeIn`/`rangeOut`) are undoable
      now, unlike the rest of the editing state (`AppModel.update`'s undo
      restore keeps them from `before` instead of clobbering them with
@@ -329,6 +329,23 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
      `Lock Range`. A locked range refuses either set-range command,
      checked through the Show menu (silent no-op there; the real button
      would beep — `NSSound.beep()`, unheard by axtool).
+   - **The right-click menu:** right-clicking either end (already had
+     Lock Range) or the shaded span itself now shows the same menu — Lock
+     Range, Clear Range, and Fill Range with Images… greyed out until W10
+     builds it (same convention as Play on Desktop). Making the span
+     hit-testable for its own right-click at first ate `scrubGesture` for
+     its whole stretch — a real regression, caught by trying a left-click
+     seek there after — so it carries its own copy of the same seek logic
+     in the "storyline" named coordinate space instead of refusing hit
+     testing; both the click-to-seek and the right-click menu were
+     rechecked together afterward. Also folded in here: the music row's
+     "double-click a song section sets the range" (`setRange` in
+     `StorylineView`) was still going through `engine.updateEditor`, missed
+     by W6 since it doesn't sit under the range button or the ruler's own
+     ends — now `mutate`, undoable, and refuses a locked range like the
+     button's modifier-clicks. Checked with axtool against a scratch
+     library. **Not checked:** a real right-click (only screenshots
+     confirm the menu opens with the right items; W10 itself is next).
 7. **Timeline keys:** the arrow keys (E2; **decided** in
    `spec/conventions.md` §2: ← → through a row's items, ↑ ↓ between rows,
    ← → in the ruler nudge the playhead; batch 4 left them unwired as
@@ -406,16 +423,22 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
-- **The range package, W6 and W7** (built 2026-09-24, `spec/plan.md`
-  "The range and the ruler"): dragging an end, the lock (right-click of
-  either end or the button), I/O/⌥X still landing while locked, and the
-  range button's plain-click/⌥⌘-click/⇧⌥⌘-click/right-click — all reasoned
-  through and checked with axtool against a saved show's `editor` JSON,
-  never by a real drag or a real modifier-click (axtool's `click` can't
-  hold two modifiers at once, so ⌥⌘ and ⇧⌥⌘ themselves are unverified
-  beyond their Show-menu equivalents). Worth a particular look: whether a
-  real drag feels right — the synthetic one moved further than its own
-  on-screen distance implied, which may just be a tool artifact.
+- **The range package, W6, W7 and its right-click menu** (built
+  2026-09-24, `spec/plan.md` "The range and the ruler"): dragging an end,
+  the lock (right-click of either end, the shaded span or the button),
+  I/O/⌥X still landing while locked, the range button's
+  plain-click/⌥⌘-click/⇧⌥⌘-click/right-click, the shaded span's own
+  right-click menu (Lock Range, Clear Range, Fill Range with Images…
+  greyed out), and double-clicking a song section to set the range — all
+  reasoned through and checked with axtool against a saved show's
+  `editor` JSON and screenshots, never by a real drag or a real
+  modifier-click (axtool's `click` can't hold two modifiers at once, so
+  ⌥⌘ and ⇧⌥⌘ themselves are unverified beyond their Show-menu
+  equivalents). Worth a particular look: whether a real drag feels right
+  — the synthetic one moved further than its own on-screen distance
+  implied, which may just be a tool artifact; and whether scrubbing still
+  feels normal across the whole ruler now that the range's shaded span
+  carries its own copy of the seek gesture alongside `RulerView`'s.
 - **The viewer's menus, Show in Library, and the progress line fix**
   (built 2026-09-24, `spec/conventions.md` §3, item 4): every menu opens
   with the right items and every action was confirmed by its actual
