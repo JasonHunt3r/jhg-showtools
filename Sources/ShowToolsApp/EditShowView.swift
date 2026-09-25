@@ -41,7 +41,8 @@ struct EditShowView: View {
                     "list": AnyView(CollectionBrowser(show: show, timeline: timeline, engine: engine,
                                                       mutate: mutate, inspectorShown: $inspectorShown,
                                                       selection: $session.selection,
-                                                      selectedOverlay: $session.selectedOverlay)
+                                                      selectedOverlay: $session.selectedOverlay,
+                                                      selectedSong: $session.selectedSong)
                         .environment(model)),
                     "inspector": AnyView(SlideInspector(show: show, timeline: timeline, selection: session.selection,
                                                         mutate: mutate, close: { inspectorShown = false },
@@ -423,9 +424,9 @@ struct PreviewStage: View {
             showInLibrary(itemID, model: model, undoManager: undoManager)
         }
         Divider()
-        lengthMenu(id)
-        transitionMenu(id)
-        panAndZoomMenu(id)
+        QuickSettingsMenu.length([id], mutate: mutate) { selection = [id]; inspectorShown = true }
+        QuickSettingsMenu.transition([id], mutate: mutate)
+        QuickSettingsMenu.panAndZoom([id], mutate: mutate)
         Divider()
         Button("Reset Transform") {
             mutate("Reset Transform") { s in
@@ -463,73 +464,6 @@ struct PreviewStage: View {
         }
     }
 
-    /// Length ▸ (3 s, 3.5 s, 5 s, 8 s, Show Default, Custom…). Custom…
-    /// opens the inspector on this slide rather than a value picker here.
-    @ViewBuilder private func lengthMenu(_ id: Int64) -> some View {
-        Menu("Length") {
-            ForEach([3.0, 3.5, 5.0, 8.0], id: \.self) { secs in
-                Button(formatSeconds(secs)) {
-                    mutate("Change Length") { s in
-                        guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
-                        s.slides[i].settings.length = .seconds(secs)
-                    }
-                }
-            }
-            Divider()
-            Button("Show Default") {
-                mutate("Change Length") { s in
-                    guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
-                    s.slides[i].settings.length = nil
-                }
-            }
-            Button("Custom…") {
-                selection = [id]
-                inspectorShown = true
-            }
-        }
-    }
-
-    /// Transition ▸ (the styles, Show Default): each keeps the slide's
-    /// current duration, direction and lead — only the style changes,
-    /// exactly as `TransitionPicker`'s own style picker does.
-    @ViewBuilder private func transitionMenu(_ id: Int64) -> some View {
-        Menu("Transition") {
-            ForEach(TransitionStyle.allCases, id: \.self) { style in
-                Button(style.title) {
-                    mutate("Change Transition") { s in
-                        guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
-                        let base = s.slides[i].settings.transition ?? s.defaults.transition
-                        s.slides[i].settings.transition = ShowToolsCore.Transition(
-                            style: style, duration: base.duration, direction: base.direction, lead: base.lead)
-                    }
-                }
-            }
-            Divider()
-            Button("Show Default") {
-                mutate("Change Transition") { s in
-                    guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
-                    s.slides[i].settings.transition = nil
-                }
-            }
-        }
-    }
-
-    /// Pan and Zoom ▸ (Off, Auto, Show Default).
-    @ViewBuilder private func panAndZoomMenu(_ id: Int64) -> some View {
-        Menu("Pan and Zoom") {
-            Button("Off") { setPanAndZoom(id, .off) }
-            Button("Auto") { setPanAndZoom(id, .auto) }
-            Divider()
-            Button("Show Default") { setPanAndZoom(id, nil) }
-        }
-    }
-
-    private func setPanAndZoom(_ id: Int64, _ v: PanAndZoomSetting?) {
-        mutate("Change Pan and Zoom") { s in
-            guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
-            s.slides[i].settings.panAndZoom = v
-        }
-    }
 
     /// The selected transition's settings, over the picture. Its timing is
     /// set by dragging it in the lane; this sets the rest.

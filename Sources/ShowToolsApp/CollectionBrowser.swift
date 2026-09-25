@@ -26,9 +26,10 @@ struct CollectionBrowser: View {
     let engine: PlaybackEngine
     let mutate: ShowMutator
     @Binding var inspectorShown: Bool
-    /// The show's own selections: slides (storyline) and lane images.
+    /// The show's own selections: slides (storyline), lane images and songs.
     @Binding var selection: Set<Int64>
     @Binding var selectedOverlay: UUID?
+    @Binding var selectedSong: UUID?
     @Environment(AppModel.self) private var model
 
     /// What's picked in the list: uses in the show, or files not in it.
@@ -37,6 +38,9 @@ struct CollectionBrowser: View {
         case overlay(UUID)
         case song(UUID)
         case file(Int64)
+
+        /// A use of a file in the show, versus a file not (yet) in it.
+        var isUse: Bool { if case .file = self { false } else { true } }
     }
     @State private var picked: Set<Pick> = []
     @Environment(\.undoManager) private var undoManager
@@ -259,18 +263,34 @@ struct CollectionBrowser: View {
         }
         .contextMenu(forSelectionType: Pick.self) { picks in
             let chosen = ordered(picks)
-            Button("Append to Show  (E)") { append(chosen) }
-            Button("Insert at Playhead  (W)") { insertAtPlayhead(chosen) }
-            Button("Place in Images Row at Playhead  (Q)") { placeAtPlayhead(chosen) }
+            let pictureIDs = model.pictures(chosen)
+            let audioIDs = chosen.filter { model.itemsByID[$0]?.kind == .audio }
+            // The add items first (settled, spec/conventions.md §3, item 5).
+            if !pictureIDs.isEmpty {
+                Button("Append to Show  (E)") { append(chosen) }
+                Button("Insert at Playhead  (W)") { insertAtPlayhead(chosen) }
+                Button("Place in Images Row at Playhead  (Q)") { placeAtPlayhead(chosen) }
+            }
+            if !audioIDs.isEmpty {
+                Button("Place at Playhead") {
+                    MusicRow.place(audioIDs, at: timeline.wrap(engine.now), model: model, mutate: mutate)
+                }
+            }
+            // A single use gets its own actions, distinct from the file
+            // picker actions above.
+            if picks.count == 1, let pick = picks.first, pick.isUse {
+                Divider()
+                Button("Select in Timeline") { selectInTimeline(pick) }
+                Button("Play from Here") { playFromHere(pick) }
+                Button("Remove from Show") { removeUse(pick) }
+            }
             Divider()
+            if let id = chosen.first { Button("Show in Library") { showInLibrary(id, model: model, undoManager: undoManager) } }
             if let cid = collection?.id {
                 Button("Remove from Collection") { model.removeFromCollection(chosen, cid, undo: undoManager) }
             }
-            Button("Delete from Library…") { confirmDelete = chosen }
-            Divider()
-            Button("Show in Finder") {
-                NSWorkspace.shared.activateFileViewerSelecting(
-                    chosen.compactMap { model.itemsByID[$0] }.compactMap(model.url(for:)))
+            Button(chosen.count == 1 ? "Move to Trash…" : "Move \(chosen.count) Items to Trash…") {
+                confirmDelete = chosen
             }
         } primaryAction: { picks in
             // Double-clicking a use toggles the inspector, as the order list
@@ -405,6 +425,35 @@ struct CollectionBrowser: View {
         case .slide(let id): show.slides.first { $0.id == id }?.itemID
         case .overlay(let id): show.overlays.first { $0.id == id }?.itemID
         case .song(let id): show.music.first { $0.id == id }?.itemID
+        }
+    }
+
+    /// A use's own actions (`spec/conventions.md` §3, item 5): selecting it
+    /// here also drives the storyline and lane, via the same bindings
+    /// `onChange(of: picked)` already keeps in step.
+    private func selectInTimeline(_ pick: Pick) {
+        switch pick {
+        case .slide(let id): selection = [id]
+        case .overlay(let id): selectedOverlay = id
+        case .song(let id): selectedSong = id
+        case .file: break
+        }
+    }
+
+    private func playFromHere(_ pick: Pick) {
+        guard let use = uses.first(where: { $0.pick == pick }) else { return }
+        engine.seek(use.time)
+        engine.play()
+    }
+
+    /// Removes just this one use, not every use of the file (Delete's own
+    /// broader meaning elsewhere in this list is unaffected).
+    private func removeUse(_ pick: Pick) {
+        switch pick {
+        case .slide(let id): SlideActions.remove([id], selection: $selection, mutate: mutate)
+        case .overlay(let id): mutate("Remove Image") { $0.overlays.removeAll { $0.id == id } }
+        case .song(let id): mutate("Remove Audio Clip") { $0.music.removeAll { $0.id == id } }
+        case .file: break
         }
     }
 

@@ -90,6 +90,26 @@ struct SlideInspector: View {
         }
         .font(.callout)
         .padding(.horizontal, 10).padding(.vertical, 8)
+        // Settled 2026-09-24 (`spec/conventions.md` §3, item 6). Replace
+        // Image… is deferred (`spec/plan.md`, Later) so left off for now.
+        .contextMenu {
+            Button("Play from Here") { playFromHere() }
+            if let itemID = selected.first?.itemID {
+                Button("Show in Library") { showInLibrary(itemID, model: model, undoManager: undoManager) }
+            }
+        }
+    }
+
+    /// Uses the live engine if there is one (Edit Show); otherwise opens a
+    /// player window at the slide, as Edit Slides' own Play from Here does.
+    private func playFromHere() {
+        guard let id = selected.first?.id else { return }
+        if let engine {
+            engine.seek(timeline.slides.first { $0.slide.id == id }?.start ?? 0)
+            engine.play()
+        } else {
+            Player.open(show: show, model: model, fullScreen: false, startAt: show.slides.firstIndex { $0.id == id })
+        }
     }
 
     private var barTitle: String {
@@ -263,13 +283,26 @@ struct SlideInspector: View {
                     }
                 }
             } header: {
-                header("Sound")
+                header("Sound").contextMenu { soundSectionMenu(first) }
             } footer: {
                 if selected.count > 1 {
                     Text("Showing the first selected slide.").padding(.horizontal, 16)
                 }
             }
         }
+    }
+
+    @ViewBuilder private func soundSectionMenu(_ first: Slide) -> some View {
+        Button("Reset Section to Show Default") { edit("Reset Section to Show Default") { $0.audio = nil } }
+        Divider()
+        Button("Copy Section Settings") {
+            SectionClipboard.copy(first.settings.audio ?? LevelCurve(), key: "sound")
+        }
+        Button("Paste Section Settings") {
+            guard let v = SectionClipboard.paste(LevelCurve.self, key: "sound") else { return }
+            edit("Paste Section Settings") { $0.audio = v.isEmpty ? nil : v }
+        }
+        .disabled(!SectionClipboard.canPaste(key: "sound"))
     }
 
     private func pointRow(_ point: LevelPoint, curve: LevelCurve, length: Double) -> some View {
@@ -539,10 +572,36 @@ struct SlideInspector: View {
             }
             }
         } header: {
-            header("Transform")
+            header("Transform").contextMenu { transformSectionMenu(first) }
         } footer: {
             mixedNote(mixed { $0.fit } || mixed { $0.transform } || mixed { $0.background }).padding(.horizontal, 16)
         }
+    }
+
+    /// A section header's own menu (`spec/conventions.md` §3, item 6):
+    /// Reset Section to Show Default, Copy/Paste this section's settings.
+    /// Transform's section is Fit, the transform itself and the background.
+    private struct TransformCopy: Codable { var fit: Fit?; var transform: Transform?; var background: SRGBColor? }
+
+    @ViewBuilder private func transformSectionMenu(_ first: Slide) -> some View {
+        Button("Reset Section to Show Default") {
+            edit("Reset Section to Show Default") { s in
+                s.fit = nil; s.transform = nil; s.background = nil
+            }
+        }
+        Divider()
+        Button("Copy Section Settings") {
+            let s = first.settings
+            SectionClipboard.copy(TransformCopy(fit: s.fit, transform: s.transform, background: s.background),
+                                   key: "transform")
+        }
+        Button("Paste Section Settings") {
+            guard let v = SectionClipboard.paste(TransformCopy.self, key: "transform") else { return }
+            edit("Paste Section Settings") { s in
+                s.fit = v.fit; s.transform = v.transform; s.background = v.background
+            }
+        }
+        .disabled(!SectionClipboard.canPaste(key: "transform"))
     }
 
     /// Rotation's own section: a checkbox, then Angles or Speed, acceleration,

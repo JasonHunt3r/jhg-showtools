@@ -277,9 +277,26 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
    right-clicking empty space right after selecting an image still shows
    the image's menu. Real click-location plumbing — and Select ▸, which
    needs the same thing — is its own later pass.
-5. **Edit Slides', the browser's and the inspector's menus** (stops 3, 5,
-   6): quick-settings submenus, Copy/Paste with the ⌥ Copy/Paste Settings
-   alternates, Move to Trash….
+5. ~~**Edit Slides', the browser's and the inspector's menus**~~ (stops 3,
+   5, 6) — done 2026-09-24, `spec/conventions.md` §3, items 3/5/6, except:
+   Save as Preset… (no design for where presets live), the E/W/Q shortcut
+   labels, the browser's own empty-space menu, the ⌥-swap for Copy/Paste
+   Settings (built as four always-visible items instead), Replace
+   Image… (deferred, `spec/plan.md` Later), a single control's own Reset
+   to Default, and Length/Transition/Pan and Zoom/Rotation's section
+   menus (they have no header to hang one on yet). New reusable pieces:
+   `QuickSettingsMenu.swift` (Length/Transition/Pan and Zoom, shared with
+   the viewer's own menu from item 4), `SlideClipboard.swift` (Copy/Paste
+   and Copy/Paste Settings, pasteboard-backed), `SectionClipboard.swift`
+   (per-section copy/paste, keyed by section name). `swift test` (305)
+   and `./make-app.sh` clean; checked with axtool against a scratch
+   library — the browser's use-only actions (Select in Timeline, Play
+   from Here, Remove from Show, confirmed past its removal alert), Copy/
+   Paste and Copy/Paste Settings in Edit Slides (slide count and settings
+   actually changed, not just the menu opening), both inspector section
+   menus, the header bar's Play from Here/Show in Library, and Use
+   Defaults for All Slides (every slide's transition/length reverted to
+   the show default) — all confirmed working, not just present.
 6. **The range package:** W6 (undoable, draggable, lock) → W7 (the range
    button) → the ruler's and the range's menus (stop 7) → W10 (Fill Range
    with Images…).

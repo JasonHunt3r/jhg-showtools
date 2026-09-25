@@ -351,29 +351,41 @@ universals first.
     `spec/simple-things-fast.md`.
 - **Groups inside collections** (Jason, 2026-09-24): raised here, to be
   built right away: `spec/plan.md`, "Groups".
-- **3. Edit Slides: done 2026-09-24.** Jason's answers:
+- **3. Edit Slides: settled 2026-09-24, built 2026-09-24** (except Save as
+  Preset…, and the empty-list-space menu for a non-empty list). Jason's
+  answers:
   - **Play:** Play from Here, and **Play Full Screen** (from the selected
-    slide).
+    slide) — built.
   - **Copy and Paste** of slides on the menu; **Copy Settings and Paste
-    Settings** appear **only while ⌥ is held**. They swap in and out live
-    as ⌥ is pressed and let go with the menu open. That's AppKit's
-    *alternate* menu items (as Finder's File menu does with Close and
-    Close All): an `NSMenuItem` marked alternate, with the ⌥ modifier.
-    SwiftUI's context menus may not offer it, so the build may need an
-    AppKit menu here.
-  - **Show in Library** yes. **Show in Finder** no: the file was copied
-    into the library, and where the original went is unknown, so there's
-    nothing useful to reveal.
+    Settings** appear **only while ⌥ is held**. That's AppKit's
+    *alternate* menu items, which SwiftUI's `.contextMenu` has no way to
+    declare. **Built as a simplification:** four always-visible items
+    (`SlideClipboard.swift`) instead of the ⌥-swap — the functions exist
+    and work; the live-swap interaction is its own later pass (needs a
+    real AppKit menu, not a `.contextMenu`), noted in `SlideClipboard`'s
+    own doc comment.
+  - **Show in Library** yes — built, via the shared `showInLibrary`.
+    **Show in Finder** no: the file was copied into the library, and
+    where the original went is unknown, so there's nothing useful to
+    reveal.
   - **Empty list space:** Add from Collection…, Import…, Paste, Select
-    All. Try it.
-  - **The defaults bar:** Use Defaults for All Slides, Save as Preset…,
-    Reset to App Defaults. Sounds good; to be tried by hand.
+    All. **Built for a truly empty show** (the `ContentUnavailableView`
+    gained Paste; Select All has nothing to select there, left off). A
+    non-empty list's empty space below the last row isn't its own
+    context-menu target in SwiftUI's `List` without more work — not
+    built, low priority (the spec itself only said "Try it").
+  - **The defaults bar:** built as a small "…" menu: Use Defaults for All
+    Slides, Reset to App Defaults. **Save as Preset… left out** — it
+    needs somewhere to keep named presets (per-library? global? how are
+    they applied elsewhere?), which isn't designed, so it isn't guessed
+    at here.
   - **Anything missing:** nothing yet.
   - **Quick settings as submenus** ("that'll be nice"): Length ▸ (3 s,
     3.5 s, 5 s, 8 s, Show Default, Custom…), Transition ▸ (the styles, Show
     Default), Pan and Zoom ▸ (Off, Auto, Show Default). Each applies to
     every selected slide in one undo step. Custom… opens the inspector on
-    that setting.
+    that setting. **Built** (`QuickSettingsMenu.swift`, shared with the
+    viewer's own slide-image menu, item 4).
 - **4. Edit Show, the viewer: settled 2026-09-24, built 2026-09-24**
   (except Select ▸, below). Jason said yes to all:
   - **A slide's image:** Open in Slide Editor, Show in Library, the
@@ -408,27 +420,61 @@ universals first.
     inspector/timeline-pane menus (items 5–8) can call the same function
     once they're built.
   - **Anything missing:** nothing yet.
-- **5. Edit Show, the browser: done 2026-09-24.** Jason's answers:
+- **5. Edit Show, the browser: settled 2026-09-24, built 2026-09-24**
+  (except the E/W/Q shortcut labels and the empty-space items). Jason's
+  answers:
   - **Tidied by the rules:** the add items first, Show in Library, then
-    Remove from Collection and **Move to Trash…** last. No Show in Finder.
-  - **The letters (E, W, Q)** show as shortcuts at the right edge, if that
-    can be done without them taking typing from Search.
+    Remove from Collection and **Move to Trash…** last. No Show in
+    Finder — built (`CollectionBrowser.swift`; "Delete from Library…"
+    renamed to "Move to Trash…" and Show in Finder removed in the same
+    pass).
+  - **The letters (E, W, Q)** show as shortcuts at the right edge, if
+    that can be done without them taking typing from Search. **Not
+    built:** still spelled out in the titles ("Append to Show  (E)"),
+    unchanged from before this pass.
   - **A use** gets Select in Timeline, Play from Here, and Remove from
-    Show (that use only).
+    Show (that use only) — built, for a single selected use
+    (`Pick.isUse`); checked with axtool, including that Select in
+    Timeline drives the storyline and Play from Here seeks the live
+    engine (not a new player window, since the browser shares the show's
+    own engine).
   - **An audio file** gets **Place at Playhead**. It doesn't need to say
-    "audio row"; people know where audio goes.
-  - **Empty space:** Import…, Add from Library….
+    "audio row"; people know where audio goes — built
+    (`MusicRow.place`).
+  - **Empty space:** Import…, Add from Library…. **Not built** this
+    pass — the list already has an empty-collection state elsewhere in
+    the app; this specific menu wasn't reached.
 - **Replace Image…** (Jason, 2026-09-24, raised here): on a slide and a
   lane image, to swap which picture it uses and keep its settings
   (`spec/plan.md`, Later).
-- **6. The inspector: done 2026-09-24.**
+- **6. The inspector: settled 2026-09-24, built 2026-09-24** (Transform
+  and Sound sections only; Replace Image… and "a single control" left
+  out).
   - **A section header** (Transform, Effects, Sound…): **Reset Section to
     Show Default**, and **Copy / Paste this section's settings** (for
-    example one slide's Transform onto others). Settled.
-  - **Replace Image…** on the inspector's right-click menu. Settled.
-  - **A single control:** Reset to Default. Settled.
+    example one slide's Transform onto others). **Built for Transform and
+    Sound** (`SlideInspector.swift`, `SectionClipboard.swift`), the two
+    sections that already had a visible header — `header("Transform")`,
+    `header("Sound")`. Length, Transition, Pan and Zoom and Rotation
+    don't show a header today (an existing gap, not something this pass
+    changed), so they have nowhere to hang this menu yet; adding those
+    headers is a small layout change, not a menu, so it's left for
+    whoever designs that rather than added as a side effect here. Effects
+    (the timeline widget) is genuinely ambiguous — "reset" and "copy"
+    would need to mean something for a whole timeline, not one field —
+    so it's left out rather than guessed at.
+  - **Replace Image…** on the inspector's right-click menu. Settled, but
+    deferred with the rest of Replace Image… (`spec/plan.md`, Later) —
+    not built.
+  - **A single control:** Reset to Default. **Not built**: every control
+    already has an equivalent through its own "Show default" picker
+    option or its section's Reset, so a right-click on each individual
+    slider is a mechanical pass touching every control, not core
+    function — left for later rather than done partially.
   - **The header bar:** Play from Here, Replace Image…, Show in Library.
-    Settled.
+    **Built**, minus Replace Image… (deferred, as above). Play from Here
+    uses the live engine when there is one (Edit Show), or opens a player
+    window at the slide otherwise (Edit Slides, which has no engine).
   - **Anything missing:** "I'm sure we'll find something, but this will
     do for a start." It goes in §8 when it's found.
 - **7. The timeline pane: first half done 2026-09-24** (Jason: yes to

@@ -43,7 +43,8 @@ struct ShowView: View {
                 // layout-loop crash. See spec/edit-slides-inspector-port.md.
                 TwoColumns(
                     inspectorShown: $inspectorShown, model: model, panes: model.editSlidesColumns,
-                    main: EditSlidesView(show: show, timeline: timeline, selection: selection, mutate: mutate),
+                    main: EditSlidesView(show: show, timeline: timeline, selection: selection, mutate: mutate,
+                                         inspectorShown: $inspectorShown),
                     inspector: SlideInspector(show: show, timeline: timeline, selection: session.selection,
                                               mutate: mutate, close: { inspectorShown = false }))
             case .show:
@@ -152,6 +153,8 @@ struct EditSlidesView: View {
     let timeline: ShowTimeline
     @Binding var selection: Set<Int64>
     let mutate: ShowMutator
+    /// So the quick-settings menu's Custom… can open it.
+    @Binding var inspectorShown: Bool
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
     @State private var dropTargeted = false
@@ -182,14 +185,39 @@ struct EditSlidesView: View {
         .contextMenu(forSelectionType: Int64.self) { ids in
             if let id = ids.first {
                 Button("Open in Slide Editor") { openSlideEditor(id) }
+                Button("Show in Library") {
+                    guard let itemID = show.slides.first(where: { $0.id == id })?.itemID else { return }
+                    showInLibrary(itemID, model: model, undoManager: undoManager)
+                }
             }
-            Button("Duplicate") { SlideActions.duplicate(ids, mutate: mutate) }
-            Button("Remove from Show") { SlideActions.remove(ids, selection: $selection, mutate: mutate) }
             Divider()
             Button("Play from Here") {
                 let i = show.slides.firstIndex { ids.contains($0.id) }
                 Player.open(show: show, model: model, fullScreen: false, startAt: i)
             }
+            Button("Play Full Screen") {
+                let i = show.slides.firstIndex { ids.contains($0.id) }
+                Player.open(show: show, model: model, fullScreen: true, startAt: i)
+            }
+            Divider()
+            // Copy Settings/Paste Settings are meant to appear only while ⌥
+            // is held (settled design) — simplified to always-visible items
+            // here; see SlideClipboard's own note on why.
+            Button("Copy") { SlideClipboard.copy(ids, from: show) }
+            Button("Paste") { SlideClipboard.paste(after: lastByOrder(ids), mutate: mutate) }
+                .disabled(!SlideClipboard.canPaste)
+            if ids.count == 1, let id = ids.first {
+                Button("Copy Settings") { SlideClipboard.copySettings(id, from: show) }
+            }
+            Button("Paste Settings") { SlideClipboard.pasteSettings(onto: ids, mutate: mutate) }
+                .disabled(!SlideClipboard.canPasteSettings)
+            Divider()
+            QuickSettingsMenu.length(Array(ids), mutate: mutate) { selection = ids; inspectorShown = true }
+            QuickSettingsMenu.transition(Array(ids), mutate: mutate)
+            QuickSettingsMenu.panAndZoom(Array(ids), mutate: mutate)
+            Divider()
+            Button("Duplicate") { SlideActions.duplicate(ids, mutate: mutate) }
+            Button("Remove from Show") { SlideActions.remove(ids, selection: $selection, mutate: mutate) }
         } primaryAction: { ids in
             // Double-click: "go into it" (conventions.md, settled
             // 2026-09-24) — the Slide Editor, not the inspector.
@@ -205,6 +233,8 @@ struct EditSlidesView: View {
                     Button("Add from Collection…") { addingFromCollection = true }
                         .disabled(collectionItems.isEmpty)
                     Button("Import…") { runImportIntoShowPanel(model, showID: show.id, undo: undoManager) }
+                    Button("Paste") { SlideClipboard.paste(after: nil, mutate: mutate) }
+                        .disabled(!SlideClipboard.canPaste)
                 }
             }
         }
@@ -235,6 +265,13 @@ struct EditSlidesView: View {
 
     private func openSlideEditor(_ id: Int64) {
         SlideEditorWindow.show(slideID: id, show: show, model: model, mutate: mutate, undoManager: undoManager)
+    }
+
+    /// Paste lands after the last (by show order) of the ids the menu was
+    /// opened on, so pasting onto a selection reads as "after what I had
+    /// selected," not wherever the id set happens to iterate to.
+    private func lastByOrder(_ ids: Set<Int64>) -> Int64? {
+        show.slides.lastIndex { ids.contains($0.id) }.map { show.slides[$0].id }
     }
 }
 
@@ -382,8 +419,31 @@ struct DefaultsBar: View {
             Toggle("Videos play in full", isOn: Binding(get: { d.videoUsesClipLength },
                                                         set: { v in mutate("Change Video Length") { $0.defaults.videoUsesClipLength = v } }))
                 .help("Video slides use their clip's length unless given their own")
+            defaultsMenu
         }
         .fixedSize()
+    }
+
+    /// Settled 2026-09-24 (`spec/conventions.md` §3, item 3), except Save as
+    /// Preset…, which needs somewhere to keep presets — not designed yet,
+    /// so left out rather than guessed at.
+    private var defaultsMenu: some View {
+        Menu {
+            Button("Use Defaults for All Slides") {
+                mutate("Use Show Defaults for All Slides") { s in
+                    for i in s.slides.indices { s.slides[i].settings = SlideSettings() }
+                }
+            }
+            Divider()
+            Button("Reset to App Defaults") {
+                mutate("Reset Show Defaults") { $0.defaults = ShowDefaults() }
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help("Show defaults")
     }
 
     private func labelled<C: View>(_ title: String, @ViewBuilder _ content: () -> C) -> some View {
