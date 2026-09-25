@@ -31,6 +31,9 @@ struct FrameStrip: View {
         var icon: String { self == .storyline ? "link" : "arrow.left.and.right" }
     }
     @AppStorage("frameStripSpan") private var span: Span = .storyline
+    /// Read here too (shared with `PreviewStage`), for Hide Frame Strip on
+    /// the strip's own right-click menu (`spec/conventions.md` §3, item 4).
+    @AppStorage("frameStripShown") private var shown = true
     @State private var frames = FrameCache()
 
     /// The smallest it gets: the divider can't squeeze it below this. Small:
@@ -110,6 +113,20 @@ struct FrameStrip: View {
                 .onTapGesture {
                     engine.pause()
                     engine.seek(slot.time)
+                }
+                // Settled 2026-09-24: Play from Here, Follow Timeline /
+                // Whole Show, Hide Frame Strip.
+                .contextMenu {
+                    Button("Play from Here") {
+                        engine.seek(slot.time)
+                        engine.play()
+                    }
+                    Divider()
+                    Picker("Frames", selection: $span) {
+                        ForEach(Span.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
+                    Divider()
+                    Button("Hide Frame Strip") { shown = false }
                 }
             }
             playheadLine(width: width, frameW: frameW)

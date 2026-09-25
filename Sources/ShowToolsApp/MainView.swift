@@ -545,6 +545,12 @@ struct LibraryGridView: View {
     /// `InfoPanel`'s content works around), so the panel passes the shared
     /// one in directly instead.
     var undoManagerOverride: UndoManager? = nil
+    /// Set only for the library panel's own instance (`LibraryPanel`): it
+    /// shows the whole, unfiltered library, so it's the one place Show in
+    /// Library's target is always visible. The main window's grid ignores
+    /// `model.libraryFocusRequest` — it might be filtered to a collection
+    /// that doesn't contain the file.
+    var respondsToLibraryFocus: Bool = false
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var envUndoManager
     private var undoManager: UndoManager? { undoManagerOverride ?? envUndoManager }
@@ -647,10 +653,11 @@ struct LibraryGridView: View {
     /// moved both windows together; Jason wanted them independent
     /// (2026-09-24), e.g. list in the panel, medium in the main window.
     init(collectionID: Int64? = nil, groupID: Int64? = nil, undoManagerOverride: UndoManager? = nil,
-         tileSizeKey: String = "gridTileSize") {
+         tileSizeKey: String = "gridTileSize", respondsToLibraryFocus: Bool = false) {
         self.collectionID = collectionID
         self.groupID = groupID
         self.undoManagerOverride = undoManagerOverride
+        self.respondsToLibraryFocus = respondsToLibraryFocus
         _tileSize = AppStorage(wrappedValue: 150, tileSizeKey)
     }
 
@@ -1028,7 +1035,11 @@ struct LibraryGridView: View {
         let columns = isListMode
             ? [GridItem(.flexible())]
             : [GridItem(.adaptive(minimum: tileSize, maximum: tileSize * 1.4), spacing: 10)]
-        return ScrollView {
+        return ScrollViewReader { proxy in scrollingGrid(columns: columns, proxy: proxy) }
+    }
+
+    private func scrollingGrid(columns: [GridItem], proxy: ScrollViewProxy) -> some View {
+        ScrollView {
             if grouping && similarTo == nil {
                 let groups = similarGroups
                 if groups.isEmpty {
@@ -1100,6 +1111,21 @@ struct LibraryGridView: View {
                 requestDelete(orderedSelection, confirm: true)
             }
         }
+        // Show in Library (spec/conventions.md §3): only the library
+        // panel's own instance answers — see `respondsToLibraryFocus`.
+        // `onAppear` too: the request is set, then the panel is opened
+        // (`showInLibrary`), so this view often mounts *after* the value
+        // it needs to react to has already changed — `onChange` alone
+        // never fires for a change that happened before the view existed.
+        .onAppear { respondToLibraryFocus(model.libraryFocusRequest, proxy: proxy) }
+        .onChange(of: model.libraryFocusRequest) { _, request in respondToLibraryFocus(request, proxy: proxy) }
+    }
+
+    private func respondToLibraryFocus(_ request: LibraryFocusRequest?, proxy: ScrollViewProxy) {
+        guard respondsToLibraryFocus, let id = request?.itemID else { return }
+        selection = [id]
+        focused = true
+        withAnimation { proxy.scrollTo(id, anchor: .center) }
     }
 
     /// Nothing alike at this setting (or not worked out yet).

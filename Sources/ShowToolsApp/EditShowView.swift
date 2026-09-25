@@ -36,7 +36,8 @@ struct EditShowView: View {
                                                     selectedTransition: $session.selectedTransition,
                                                     selectedOverlay: $session.selectedOverlay, mutate: mutate,
                                                     show: show, timeline: timeline, pps: pps,
-                                                    storylineOffset: session.storylineOffset).environment(model)),
+                                                    storylineOffset: session.storylineOffset,
+                                                    inspectorShown: $inspectorShown).environment(model)),
                     "list": AnyView(CollectionBrowser(show: show, timeline: timeline, engine: engine,
                                                       mutate: mutate, inspectorShown: $inspectorShown,
                                                       selection: $session.selection,
@@ -230,6 +231,11 @@ struct PreviewStage: View {
     let timeline: ShowTimeline
     let pps: Double
     let storylineOffset: CGFloat
+    /// So the quick-settings menu's Custom… can open it (`spec/conventions.md`
+    /// §3, item 4): "Custom… opens the inspector on that setting."
+    @Binding var inspectorShown: Bool
+    @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
     @AppStorage("frameStripShown") private var frameStripShown = true
     @AppStorage("frameStripHeight") private var stripHeight: Double = 90
     @State private var stripDragStart: Double?
@@ -245,6 +251,8 @@ struct PreviewStage: View {
     @AppStorage("onionOpacity") private var onionOpacity: Double = 0.5
     /// What the handles edit, when the slide has Rotation on.
     @State private var editTarget: TransformOverlay.Target = .transform
+    /// Shared with `SlideProgress` and the Settings window: one key.
+    @AppStorage("showSlideProgress") private var showSlideProgress = true
 
     /// Rotation mode is only offered for a slide with Rotation on.
     private var rotationAvailable: Bool {
@@ -373,6 +381,15 @@ struct PreviewStage: View {
                         .animation(.easeInOut(duration: 0.25), value: hovering)
                 }
         }
+        // Which menu depends on `imageSlideID`, set only by clicking the
+        // image itself (`TransformOverlay`) — an approximation of "where
+        // you right-clicked" rather than the real thing (settled,
+        // 2026-09-24: right-clicking empty space right after selecting an
+        // image can still show the image's menu; real click-location
+        // plumbing is a later pass if this bites in practice).
+        .contextMenu {
+            if let id = imageSlideID { slideImageMenu(id) } else { pasteboardMenu }
+        }
         .onHover { hovering = $0 }
         .simultaneousGesture(MagnifyGesture()
             .onChanged { v in
@@ -389,6 +406,128 @@ struct PreviewStage: View {
             imageSlideID = selection.first
             // SHOWTOOLS_DEV_IMAGE=rotation opens it in Rotation mode.
             if ProcessInfo.processInfo.environment["SHOWTOOLS_DEV_IMAGE"] == "rotation" { editTarget = .rotation }
+        }
+    }
+
+    // MARK: - Right-click menus (spec/conventions.md §3, item 4)
+
+    /// "A slide's image," settled 2026-09-24: Open in Slide Editor, Show in
+    /// Library, the quick-settings submenus, Reset Transform, Rotation
+    /// Handles on/off, Slide Progress on/off.
+    @ViewBuilder private func slideImageMenu(_ id: Int64) -> some View {
+        Button("Open in Slide Editor") {
+            SlideEditorWindow.show(slideID: id, show: show, model: model, mutate: mutate, undoManager: undoManager)
+        }
+        Button("Show in Library") {
+            guard let itemID = show.slides.first(where: { $0.id == id })?.itemID else { return }
+            showInLibrary(itemID, model: model, undoManager: undoManager)
+        }
+        Divider()
+        lengthMenu(id)
+        transitionMenu(id)
+        panAndZoomMenu(id)
+        Divider()
+        Button("Reset Transform") {
+            mutate("Reset Transform") { s in
+                guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
+                s.slides[i].settings.transform = nil
+            }
+        }
+        Button(rotationEnabled(id) ? "Rotation Handles Off" : "Rotation Handles On") { toggleRotation(id) }
+        Divider()
+        Toggle("Slide Progress", isOn: $showSlideProgress)
+    }
+
+    /// "The pasteboard (the grey round the picture)," settled 2026-09-24.
+    @ViewBuilder private var pasteboardMenu: some View {
+        Menu("Work Zoom") {
+            Button("Fit") { workZoom = 1 }
+            Button("75%") { workZoom = 0.75 }
+            Button("50%") { workZoom = 0.5 }
+        }
+        Toggle("Onion Skin", isOn: $onionOn)
+        Divider()
+        Button("Pop Out Viewer") { Player.popOut(engine, title: title) }
+    }
+
+    private func rotationEnabled(_ id: Int64) -> Bool {
+        show.slides.first(where: { $0.id == id })?.settings.rotation?.enabled == true
+    }
+
+    private func toggleRotation(_ id: Int64) {
+        mutate(rotationEnabled(id) ? "Turn Off Rotation" : "Turn On Rotation") { s in
+            guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
+            var r = s.slides[i].settings.rotation ?? Rotation()
+            r.enabled.toggle()
+            s.slides[i].settings.rotation = r
+        }
+    }
+
+    /// Length ▸ (3 s, 3.5 s, 5 s, 8 s, Show Default, Custom…). Custom…
+    /// opens the inspector on this slide rather than a value picker here.
+    @ViewBuilder private func lengthMenu(_ id: Int64) -> some View {
+        Menu("Length") {
+            ForEach([3.0, 3.5, 5.0, 8.0], id: \.self) { secs in
+                Button(formatSeconds(secs)) {
+                    mutate("Change Length") { s in
+                        guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
+                        s.slides[i].settings.length = .seconds(secs)
+                    }
+                }
+            }
+            Divider()
+            Button("Show Default") {
+                mutate("Change Length") { s in
+                    guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
+                    s.slides[i].settings.length = nil
+                }
+            }
+            Button("Custom…") {
+                selection = [id]
+                inspectorShown = true
+            }
+        }
+    }
+
+    /// Transition ▸ (the styles, Show Default): each keeps the slide's
+    /// current duration, direction and lead — only the style changes,
+    /// exactly as `TransitionPicker`'s own style picker does.
+    @ViewBuilder private func transitionMenu(_ id: Int64) -> some View {
+        Menu("Transition") {
+            ForEach(TransitionStyle.allCases, id: \.self) { style in
+                Button(style.title) {
+                    mutate("Change Transition") { s in
+                        guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
+                        let base = s.slides[i].settings.transition ?? s.defaults.transition
+                        s.slides[i].settings.transition = ShowToolsCore.Transition(
+                            style: style, duration: base.duration, direction: base.direction, lead: base.lead)
+                    }
+                }
+            }
+            Divider()
+            Button("Show Default") {
+                mutate("Change Transition") { s in
+                    guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
+                    s.slides[i].settings.transition = nil
+                }
+            }
+        }
+    }
+
+    /// Pan and Zoom ▸ (Off, Auto, Show Default).
+    @ViewBuilder private func panAndZoomMenu(_ id: Int64) -> some View {
+        Menu("Pan and Zoom") {
+            Button("Off") { setPanAndZoom(id, .off) }
+            Button("Auto") { setPanAndZoom(id, .auto) }
+            Divider()
+            Button("Show Default") { setPanAndZoom(id, nil) }
+        }
+    }
+
+    private func setPanAndZoom(_ id: Int64, _ v: PanAndZoomSetting?) {
+        mutate("Change Pan and Zoom") { s in
+            guard let i = s.slides.firstIndex(where: { $0.id == id }) else { return }
+            s.slides[i].settings.panAndZoom = v
         }
     }
 
@@ -536,28 +675,33 @@ struct PreviewStage: View {
     }
 }
 
-/// A thin line along the bottom of the picture: full at the start of each
-/// slide, draining to nothing at its end, bright then dimming — the livery
-/// gallery's progress bar.
+/// A thin line along the bottom of the picture: empty at the start of each
+/// slide, filling left to right through it, bright then dimming when paused
+/// (Jason, work order 2026-09-24, reversed from an earlier drain-to-nothing
+/// version). `showSlideProgress` hides it app-wide — the setting and the
+/// viewer's own Slide Progress menu item share the one key.
 struct SlideProgress: View {
     let engine: PlaybackEngine
+    @AppStorage("showSlideProgress") private var shown = true
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30, paused: !engine.isPlaying)) { _ in
-            let _ = engine.seekCount
-            let tl = engine.timeline
-            let t = tl.wrap(engine.now)
-            let i = tl.index(at: engine.now)
-            let remaining: Double = tl.slides.indices.contains(i)
-                ? 1 - min(max((t - tl.slides[i].start) / tl.slides[i].length, 0), 1) : 0
-            GeometryReader { g in
-                Rectangle()
-                    .fill(.white.opacity(engine.isPlaying ? 0.35 + 0.5 * remaining : 0.25))
-                    .frame(width: g.size.width * remaining, height: 3)
-                    .frame(maxHeight: .infinity, alignment: .bottom)
+        if shown {
+            TimelineView(.animation(minimumInterval: 1 / 30, paused: !engine.isPlaying)) { _ in
+                let _ = engine.seekCount
+                let tl = engine.timeline
+                let t = tl.wrap(engine.now)
+                let i = tl.index(at: engine.now)
+                let progress: Double = tl.slides.indices.contains(i)
+                    ? min(max((t - tl.slides[i].start) / tl.slides[i].length, 0), 1) : 0
+                GeometryReader { g in
+                    Rectangle()
+                        .fill(.white.opacity(engine.isPlaying ? 0.35 + 0.5 * progress : 0.25))
+                        .frame(width: g.size.width * progress, height: 3)
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                }
             }
+            .allowsHitTesting(false)
         }
-        .allowsHitTesting(false)
     }
 }
 

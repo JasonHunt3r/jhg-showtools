@@ -260,6 +260,7 @@ struct SettingsView: View {
     @AppStorage(CollectionAddNotice.autoAddKey) private var autoAddToCollection = false
     @AppStorage(FinderTagsSetting.key) private var writeFinderTags = false
     @AppStorage(ExportSettings.stripKey) private var stripOnExport = true
+    @AppStorage("showSlideProgress") private var showSlideProgress = true
 
     var body: some View {
         Form {
@@ -310,6 +311,12 @@ struct SettingsView: View {
                 Text(stripOnExport
                      ? "File ▸ Export Show… removes location, camera, dates and other details from the copies it makes. Audio files keep their title, artist and album; only the buyer's details come off. The files in the library are never changed."
                      : "Exported copies are exact copies of the library's files, with their location, camera and date still in them.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Playback") {
+                Toggle("Show the slide progress line", isOn: $showSlideProgress)
+                Text("The thin white line along the bottom of the picture that fills through each slide. Also in the viewer's own right-click menu.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

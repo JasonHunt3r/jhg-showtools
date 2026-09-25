@@ -123,7 +123,8 @@ final class LibraryPanel: NSObject, NSWindowDelegate {
         // window's, and `\.undoManager` isn't a writable environment key.
         // Its own tile-size key, so its slider (list, say) doesn't move
         // the main window's grid along with it (Jason, 2026-09-24).
-        let content = LibraryGridView(undoManagerOverride: undoManager, tileSizeKey: "gridTileSize.panel")
+        let content = LibraryGridView(undoManagerOverride: undoManager, tileSizeKey: "gridTileSize.panel",
+                                       respondsToLibraryFocus: true)
             .environment(model)
         window.contentView = NSHostingView(rootView: content)
         window.setFrameAutosaveName("libraryPanel")
@@ -145,4 +146,21 @@ final class LibraryPanelWindow: NSPanel {
     override var canBecomeKey: Bool { true }
     var sharedUndoManager: UndoManager?
     override var undoManager: UndoManager? { sharedUndoManager }
+}
+
+/// **Show in Library** (`spec/conventions.md` §3, "the right-click
+/// conversation"; `spec/windows.md`, "Jason's answers" 2): "anything that
+/// uses a file can take you to it, on request." Opens the library panel
+/// and asks it to select and scroll to that file.
+struct LibraryFocusRequest: Equatable {
+    let itemID: Int64
+    /// Own identity per request, not just per item — so asking again for
+    /// the same file still changes the value SwiftUI's `onChange` sees.
+    private let token = UUID()
+}
+
+@MainActor
+func showInLibrary(_ itemID: Int64, model: AppModel, undoManager: UndoManager?) {
+    model.libraryFocusRequest = LibraryFocusRequest(itemID: itemID)
+    LibraryPanel.show(model: model, undoManager: undoManager)
 }

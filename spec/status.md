@@ -165,10 +165,17 @@ preferences-domain rules).
    2. **BGTools: a Quit you can find.** "Quit BGTools (stops desktop
       shows)" on the panel; ⌘Q with the settings window open. *Check:*
       both quit, and the desktop shows stop.
-   3. **The slide progress line fills left to right,** with a setting
-      to hide it and Slide Progress on/off in the viewer's right-click.
-      *Check:* the line grows through each slide; the setting and the menu
-      item hide and show it; it still dims when paused.
+   3. ~~**The slide progress line fills left to right,** with a setting
+      to hide it and Slide Progress on/off in the viewer's right-click.~~
+      — done 2026-09-24 (`SlideProgress`, `EditShowView.swift`; the
+      `showSlideProgress` key, shared by the Settings window's new
+      Playback section and the slide-image context menu's toggle).
+      *Check:* checked with axtool against a scratch library — the line
+      now grows left to right through a slide (watched at 2.6s into a 4s
+      clip, ~65% filled); the Settings toggle and the menu toggle both
+      flip the same value; still dims when paused (unchanged code path).
+      Not re-confirmed by ear/eye together over a whole show — that's
+      folded into "A listen, twice over" below.
    4. **BGTools: the settings window opens on your screen**, with that
       screen's current Space selected. *Check:* with two monitors, open it
       from the panel on each; it lands there, selected.
@@ -245,7 +252,31 @@ The work-order items keep their numbers (W1–W10 = item 9's 1–10).
    session (a known limitation, see `showtools-testing`/AAR history), so
    only the File menu's Export submenu was confirmed by axtool, not the
    context menus themselves.
-4. **The viewer's menus + the progress line** (stop 4 + W3).
+4. ~~**The viewer's menus + the progress line**~~ (stop 4 + W3) — done
+   2026-09-24, except Select ▸ (`spec/conventions.md` §3, item 4): the
+   slide-image menu (Open in Slide Editor, Show in Library, the
+   quick-settings submenus, Reset Transform, Rotation Handles, Slide
+   Progress), the pasteboard menu (Work Zoom, Onion Skin, Pop Out
+   Viewer) and the frame strip's menu (Play from Here, Follow Storyline/
+   Whole Show, Hide Frame Strip) are all built. Also built along the way:
+   **Show in Library**, generally — `showInLibrary(_:model:undoManager:)`
+   (`Libraries.swift`) opens the library panel and selects/scrolls to any
+   file, reusable by every future menu that needs it (items 5–8 below).
+   `swift test` (305) and `./make-app.sh` clean. **Checked with axtool
+   against a scratch library, right-clicks worked reliably this time**
+   (contra the Library-pane/grid session's note above) — every menu
+   opened, every item fired: Rotation Handles toggled and reported back
+   correctly on reopening, Show in Library opened the panel and selected
+   the right file (confirmed by screenshot), Hide Frame Strip removed the
+   strip and View ▸ Show Frame Strip brought it back, the progress line's
+   new fill direction was watched mid-slide. **Left for Jason's hands:**
+   all of it, still — axtool confirms the wiring, not the feel. **Known
+   limitation, accepted on purpose** (not a bug to fix later without
+   thought): the image vs. pasteboard menu is chosen from which image was
+   last *clicked*, not from the right-click's own location, so
+   right-clicking empty space right after selecting an image still shows
+   the image's menu. Real click-location plumbing — and Select ▸, which
+   needs the same thing — is its own later pass.
 5. **Edit Slides', the browser's and the inspector's menus** (stops 3, 5,
    6): quick-settings submenus, Copy/Paste with the ⌥ Copy/Paste Settings
    alternates, Move to Trash….

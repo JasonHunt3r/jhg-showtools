@@ -374,16 +374,39 @@ universals first.
     Default), Pan and Zoom ▸ (Off, Auto, Show Default). Each applies to
     every selected slide in one undo step. Custom… opens the inspector on
     that setting.
-- **4. Edit Show, the viewer: done 2026-09-24.** Jason said yes to all:
-  - **A slide's image:** Open in Slide Editor (greyed out until built),
-    Show in Library, the quick-settings submenus, Reset Transform,
-    Rotation Handles on/off.
+- **4. Edit Show, the viewer: settled 2026-09-24, built 2026-09-24**
+  (except Select ▸, below). Jason said yes to all:
+  - **A slide's image:** Open in Slide Editor, Show in Library, the
+    quick-settings submenus, Reset Transform, Rotation Handles on/off,
+    Slide Progress on/off (work order 2026-09-24) — all built
+    (`PreviewStage.slideImageMenu`, `EditShowView.swift`). Which menu
+    shows is decided by `imageSlideID` (set only by clicking the image),
+    not by where the right-click itself landed — see the note below.
   - **Select ▸** lists everything under the pointer (a lane image, the
     slide beneath). It does the "select what's behind" job, so ⌥-click
-    stays free (§1).
-  - **The pasteboard:** Work Zoom ▸, Onion Skin, Pop Out Viewer.
-  - **The frame strip:** Play from Here, Follow Timeline / Whole Show,
-    Hide Frame Strip.
+    stays free (§1). **Not built:** needs its own click-location
+    plumbing (nothing today captures where a right-click landed, only
+    which image was last left-clicked) — a later pass, not this one.
+  - **The pasteboard:** Work Zoom ▸ (Fit, 75%, 50%), Onion Skin, Pop Out
+    Viewer — built (`PreviewStage.pasteboardMenu`). Shows whenever
+    `imageSlideID` is nil, which is the same approximation as above.
+  - **The frame strip:** Play from Here, Follow Storyline / Whole Show,
+    Hide Frame Strip — built (`FrameStrip.swift`, attached per frame so
+    "Play from Here" knows which time was clicked).
+  - **Known limitation, accepted 2026-09-24:** the image/pasteboard menu
+    is chosen from `imageSlideID` (whichever image was last *clicked*,
+    for the transform handles), not the right-click's own location.
+    Right-clicking empty pasteboard space right after selecting an image
+    still shows the image's menu. Real click-location tracking is the
+    fix, if this turns out to bite in practice — not built here, on
+    purpose, to keep this pass to what's unambiguous.
+  - **Show in Library, generally:** built (`showInLibrary`,
+    `Libraries.swift`): opens the library panel and selects/scrolls to
+    the file, via `AppModel.libraryFocusRequest`, which only the library
+    panel's own `LibraryGridView` instance answers (`respondsToLibraryFocus`).
+    Reused by anything with a file to show — the viewer today, browser/
+    inspector/timeline-pane menus (items 5–8) can call the same function
+    once they're built.
   - **Anything missing:** nothing yet.
 - **5. Edit Show, the browser: done 2026-09-24.** Jason's answers:
   - **Tidied by the rules:** the add items first, Show in Library, then

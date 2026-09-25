@@ -56,6 +56,11 @@ final class AppModel {
     /// because the panel is a separate window and needs to live-update as
     /// the grid's selection changes while it's open.
     var infoPanelSelection: [Int64] = []
+    /// Show in Library's target (`spec/windows.md`, "Jason's answers" 2):
+    /// the library panel watches this and selects/scrolls to it. A fresh
+    /// `LibraryFocusRequest` each time, even for the same item, so asking
+    /// twice in a row still fires `onChange`.
+    var libraryFocusRequest: LibraryFocusRequest?
     /// Set after File ▸ Relink Missing Files… runs, for MainView's alert.
     var relinkResult: RelinkSummary?
 
