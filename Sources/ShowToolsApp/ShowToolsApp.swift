@@ -393,6 +393,23 @@ struct SettingsView: View {
     @AppStorage("showSlideProgress") private var showSlideProgress = true
 
     var body: some View {
+        ScrollView {
+            form
+        }
+        .frame(width: 520)
+        .frame(maxHeight: Self.maxHeight)
+    }
+
+    /// Caps the window to fit under the screen's menu bar and dock rather
+    /// than letting the Form grow past the bottom edge (item 9,
+    /// `ShowTools Feedback — Worklist for Next CC Session.md`). A fixed
+    /// margin below the visible frame, not the whole screen height, so it
+    /// never touches the menu bar or dock even centered.
+    private static var maxHeight: CGFloat {
+        (NSScreen.main?.visibleFrame.height ?? 800) - 80
+    }
+
+    private var form: some View {
         Form {
             Section("Library") {
                 LabeledContent("Name", value: model.libraryName)
@@ -460,8 +477,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 520)
-        .fixedSize(horizontal: false, vertical: true)
+        .padding(.bottom, 8)
     }
 }
 
