@@ -129,9 +129,44 @@ half, still open — a documentation task, not a bug):**
   hangs off the collections list column dropdown) — Jason confirmed
   this 2026-09-25. Both are real next steps, just not one-sitting fixes.
 
-Batch 2 is otherwise done. Batches 3–5 (frames row/transport, BGTools
-P1s, P2 polish) not started. Five items need Jason's own decision first
-(Open Questions in the feedback doc) before CC can build them.
+Batch 2 is otherwise done.
+
+**Batch 3 (frames row/transport) done, except item 19:**
+- **Item 7**, the range Out marker sitting slightly left of its true
+  position: fixed — `Path`'s own drawing coordinates for a `.frame()`'d
+  shape aren't clipped or rescaled to that frame, so the out-marker's
+  triangle (drawn pointing into negative x) bled outside its frame's
+  nominal origin while the `.offset()` placement math still only cared
+  about that origin — the in-marker's formula was already right, the
+  out-marker's had an extra, wrong `- w`.
+- **Item 8**, the frame strip's resize bar tracking the mouse at half
+  speed: fixed. Root cause, found with a temporary probe logging the
+  gesture's own translation: the bar sits between two views (the
+  picture, the strip) whose sizes the drag itself changes, so the bar's
+  own on-screen position moves mid-drag — its plain (`.local`)
+  `DragGesture` was anchored to that moving frame, a feedback loop that
+  measured out to almost exactly half the real drag distance at two
+  different drag lengths. Anchored to the outer column instead (which
+  doesn't move), matching why `StorylineView`'s own drags are already
+  named coordinate spaces. Also stopped writing `frameStripHeight`
+  (`@AppStorage`) on every pixel of the drag, matching PaneKit's own
+  "draw live, commit on release" dividers. Checked with axtool: a 100pt
+  drag now moves the bar exactly 100pt, both directions.
+- **Item 18** (the frames-row position marker should be draggable with
+  live scrub): **already built, no change needed.** `scrubGesture` on
+  `RulerView` is a `DragGesture` computing an absolute seek from
+  `location.x` on every `onChanged`, not a click-only affordance.
+  Checked with axtool: dragging from 0:00 toward the 0:20 tick landed
+  the playhead at 0:20.5, live.
+- **Item 19** (transport pane greyed-out state) is **not started, on
+  purpose** — it's literally the feedback doc's own Open Question 1
+  ("what should happen when a file is dragged onto a greyed-out
+  transport with no show loaded"), which the doc itself says needs a
+  concrete interaction spec before CC can build it.
+
+Batches 4–5 (BGTools P1s, P2 polish) not started. Five items need
+Jason's own decision first (Open Questions in the feedback doc) before
+CC can build them.
 
 **A preferences leak, caught and fixed mid-session:** testing item 1's
 pop-out interactively wrote a scratch pop-out state into the *shared*
