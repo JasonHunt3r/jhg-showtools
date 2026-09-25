@@ -16,10 +16,20 @@ cd "$(dirname "$0")"
 DEST="$HOME/Applications/ShowTools.app"
 mkdir -p "$HOME/Applications"
 
-# A copy over a running app would leave it half-written, so both it and the
-# nested BGTools are quit first, then the app is replaced whole.
+# A copy over a running app would leave it half-written, so both it, the
+# nested BGTools, and its Control Center extension are quit first, then the
+# app is replaced whole. Item 10, `ShowTools Feedback — Worklist for Next
+# CC Session.md`: BGTools couldn't be self-quit during the last rebuild —
+# this only ever asked BGTools.app to quit gracefully via `osascript` for
+# nothing (that line was missing outright) and pkill'd its own process by
+# path, but never touched BGToolsControls.appex at all. A Control Center
+# extension runs as its own process, hosted by the system, not by
+# BGTools.app — reinstalling over it while it's still running is exactly
+# the "couldn't be self-quit" symptom.
 osascript -e 'tell application id "com.jhg.showtools" to quit' >/dev/null 2>&1 || true
+osascript -e 'tell application id "com.jhg.showtools.bgtools" to quit' >/dev/null 2>&1 || true
 pkill -f "ShowTools.app/Contents/Library/LoginItems/BGTools.app" >/dev/null 2>&1 || true
+pkill -f "ShowTools.app/Contents/PlugIns/BGToolsControls.appex" >/dev/null 2>&1 || true
 sleep 1
 
 rm -rf "$DEST"
