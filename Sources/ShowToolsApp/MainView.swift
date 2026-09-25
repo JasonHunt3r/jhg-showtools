@@ -681,6 +681,13 @@ struct LibraryGridView: View {
     /// nil the rest of the time. One piece of state for the whole grid,
     /// since `tile(_:)` is a function, not its own view with state of its own.
     @State private var dropTargetID: Int64?
+    /// The file(s) a drag-to-reorder picked up — set the moment the drag
+    /// starts (`tile(_:)`'s own `.onDrag`), so `displayed` can shift the
+    /// other tiles live to show where they'd land. Left set after a drag
+    /// ends without a drop (there's no reliable "drag cancelled" callback
+    /// in SwiftUI on macOS); harmless, since `displayed` only reads it
+    /// together with `dropTargetID`, which does always clear.
+    @State private var draggingIDs: [Int64] = []
     /// The grid takes the keyboard on a click, so Delete and ⌘Delete reach
     /// it even before anything's been clicked in this session.
     @FocusState private var focused: Bool
@@ -826,6 +833,24 @@ struct LibraryGridView: View {
         }
         if grouping { return similarGroups.flatMap { $0 } }
         return filtered
+    }
+
+    /// `visible`, live-reordered while a drag-to-reorder is hovering a
+    /// tile: the dragged file(s) shown right where they'd land, so the
+    /// tiles between their old and new spots visibly shift out of the way
+    /// (Jason: "shows the tile where it would be if you release the
+    /// click") — a preview only, nothing is written until `reorderDrop`'s
+    /// actual drop. Falls back to `visible` untouched outside a drag, or
+    /// if the drag is hovering nothing, or hovering one of its own tiles.
+    private var displayed: [MediaItem] {
+        guard !draggingIDs.isEmpty, let target = dropTargetID, !draggingIDs.contains(target) else { return visible }
+        var items = visible
+        let draggedItems = items.filter { draggingIDs.contains($0.id) }
+        guard !draggedItems.isEmpty else { return visible }
+        items.removeAll { draggingIDs.contains($0.id) }
+        guard let targetIndex = items.firstIndex(where: { $0.id == target }) else { return visible }
+        items.insert(contentsOf: draggedItems, at: targetIndex)
+        return items
     }
 
     /// The pictures Find Similar compares: the stills and animations in view.
@@ -1246,10 +1271,11 @@ struct LibraryGridView: View {
                 }
             } else {
                 LazyVGrid(columns: columns, spacing: 10) {
-                    ForEach(visible) { item in
+                    ForEach(displayed) { item in
                         tile(item)
                     }
                 }
+                .animation(.easeInOut(duration: 0.2), value: displayed.map(\.id))
                 .padding(12)
                 if similarTo != nil, visible.count <= 1 { similarEmpty }
             }
@@ -1331,6 +1357,7 @@ struct LibraryGridView: View {
     private func reorderDrop(_ providers: [NSItemProvider], onto targetID: Int64) -> Bool {
         guard collectionID != nil || groupID != nil else { return false }
         Task {
+            defer { draggingIDs = []; dropTargetID = nil }
             guard let dragged = await ItemDrag.ids(from: providers), !dragged.isEmpty,
                   !dragged.contains(targetID) else { return }
             var order = all.map(\.id)
@@ -1392,7 +1419,12 @@ struct LibraryGridView: View {
         .onTapGesture(count: 2) { click(item.id); quickLook(startingAt: item.id) }
         .onTapGesture { click(item.id) }
         // A selected tile drags the whole selection; any other, just itself.
-        .onDrag { ItemDrag.provider(selection.contains(item.id) ? orderedSelection : [item.id]) }
+        // `draggingIDs` records it too, for `displayed`'s live reflow.
+        .onDrag {
+            let ids = selection.contains(item.id) ? orderedSelection : [item.id]
+            draggingIDs = ids
+            return ItemDrag.provider(ids)
+        }
         // Dropping onto another tile reorders — Custom Order, only
         // meaningful inside a collection or group (the plain Library has
         // no membership to carry a `sort_key`, `spec/plan.md`).

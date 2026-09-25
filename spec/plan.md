@@ -1172,6 +1172,31 @@ reading correctly, and firing it put the exact original order back —
 screenshotted at each step. Never tried by a real drag from Jason's own
 hand.
 
+**Live reflow while dragging, built 2026-09-25** (Jason: "shows the tile
+where it would be if you release the click"). A new `displayed` computed
+property — `visible` with the dragged file(s) pulled out and reinserted
+right before whichever tile `dropTargetID` currently names — feeds the
+grid's `ForEach` instead of `visible` directly, and a new `draggingIDs`
+state (set the moment `.onDrag` fires) is what tells it a drag, not a
+drop, is under way. This is a preview only: nothing is written until an
+actual drop calls `reorderDrop`/`setOrder`, at which point `draggingIDs`
+and `dropTargetID` both reset. `.animation(.easeInOut(duration: 0.2))` on
+the `LazyVGrid` is what makes the other tiles visibly slide out of the
+way rather than jump. Applies to both the tile grid and the single-column
+list mode, since list mode is the same `LazyVGrid`/`ForEach` at one
+column, not a separate view (Jason's own "tiles or list items" covered by
+one change). **No reset for a drag cancelled outside any drop target** —
+SwiftUI/AppKit has no reliable "drag session ended" callback short of the
+per-tile `isTargeted` binding going false, which it does on its own the
+moment the drag leaves a tile, so the risk is only cosmetic and only in
+the gap between tiles, never a wrong persisted order. **Confirmed with a
+held synthetic drag** (a one-off probe, `leftMouseDown` → dragged →
+holds 2s before `leftMouseUp`, so a screenshot mid-hold catches the
+preview): mid-drag, the tile between the dragged file's old and new spots
+visibly vacated its slot with the target ring showing and the OS's own
+drag ghost following the cursor; releasing landed the same correct final
+order as before. Never watched by eye from a real drag.
+
 **Built 2026-09-24 (nesting by drag, and dragging into another
 collection):** `Library.moveGroup(id:toParent:)` — nests a group inside
 another, or (nil) back to the top; both stay in the same collection (a
