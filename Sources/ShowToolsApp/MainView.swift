@@ -12,7 +12,6 @@ struct MainView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
     @State private var confirmDelete: Show?
-    @State private var confirmDeleteCollection: MediaCollection?
     /// Collections folded shut in the sidebar (open by default).
     @State private var folded: Set<Int64> = []
     /// Groups folded shut (their own id space, so a collection and a group
@@ -38,16 +37,6 @@ struct MainView: View {
         // Split from the alerts/dialogs below: one expression this size is
         // over the type checker's budget (measured, 2026-09-24).
         layout
-        .confirmationDialog("Delete “\(confirmDeleteCollection?.name ?? "")”?",
-                            isPresented: Binding(get: { confirmDeleteCollection != nil },
-                                                 set: { if !$0 { confirmDeleteCollection = nil } }),
-                            presenting: confirmDeleteCollection) { c in
-            Button("Delete Collection", role: .destructive) { model.deleteCollection(c.id, undo: undoManager) }
-        } message: { c in
-            let n = model.shows.filter { $0.collectionID == c.id }.count
-            Text(n == 0 ? "The images stay in the library. You can undo this."
-                 : "Its \(n == 1 ? "show" : "\(n) shows") will be deleted too. The images stay in the library. You can undo this.")
-        }
         .alert(renamingTitle, isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField("Name", text: $draftName)
             Button("Rename") {
@@ -155,7 +144,7 @@ struct MainView: View {
             if !(NSApp.keyWindow?.firstResponder is NSTableView), event.plainModifiers == [] {
                 switch model.sidebar {
                 case .show(let id): guard let s = model.show(id) else { return false }; confirmDelete = s
-                case .collection(let id): guard let c = model.collection(id) else { return false }; confirmDeleteCollection = c
+                case .collection(let id): guard let c = model.collection(id) else { return false }; deleteCollectionAsking(c)
                 case .group(let id): guard let g = model.group(id) else { return false }; deleteGroupAsking(g)
                 default: return false
                 }
@@ -223,6 +212,12 @@ struct MainView: View {
                             NSWorkspace.shared.activateFileViewerSelecting([root])
                         }
                     }
+                    Divider()
+                    // Item 28, `ShowTools Feedback — Worklist for Next CC
+                    // Session.md`: the library header's own right-click had
+                    // no way to switch libraries. Same action as File ▸
+                    // Open Library….
+                    Button("Change Library…") { runOpenLibraryPanel(model) }
                 }
 
             // Library → Collection → Show, as Final Cut's Library → Event → Project.
@@ -254,7 +249,7 @@ struct MainView: View {
         .onDeleteCommand {
             switch model.sidebar {
             case .show(let id): if let s = model.show(id) { confirmDelete = s }
-            case .collection(let id): if let c = model.collection(id) { confirmDeleteCollection = c }
+            case .collection(let id): if let c = model.collection(id) { deleteCollectionAsking(c) }
             case .group(let id): if let g = model.group(id) { deleteGroupAsking(g) }
             default: break
             }
@@ -355,6 +350,18 @@ extension MainView {
         renaming = item
     }
 
+    /// Item 32, `ShowTools Feedback — Worklist for Next CC Session.md`:
+    /// ⌥-click a sidebar name to jump straight into its rename alert,
+    /// skipping the right-click menu. A `.simultaneousGesture`, not
+    /// `.onTapGesture` — the latter would steal the plain click a
+    /// `List(selection:)` row needs for its own selection (the same class
+    /// of trap `.onDrag` on a List row is, `showtools-gotchas`).
+    private func renameOnOptionClick(_ item: SidebarItem, current: String) -> some Gesture {
+        TapGesture().onEnded {
+            if NSEvent.modifierFlags.contains(.option) { startRenaming(item, current: current) }
+        }
+    }
+
     private func startCreatingCollection() {
         newCollectionName = model.nextName("Untitled Collection", taken: model.collections.map(\.name))
         creatingCollection = true
@@ -373,8 +380,22 @@ extension MainView {
     }
 
     private func deleteGroupAsking(_ g: MediaGroup) {
-        guard GroupDeleteNotice.confirm(name: g.name, subgroupCount: subgroupCount(of: g.id)) else { return }
+        let (ok, alsoFromLibrary) = GroupDeleteNotice.confirm(name: g.name, subgroupCount: subgroupCount(of: g.id))
+        guard ok else { return }
+        if alsoFromLibrary { model.deleteItems(g.itemIDs, undo: undoManager) }
         model.deleteGroup(g.id, undo: undoManager)
+    }
+
+    /// Item 16, `ShowTools Feedback — Worklist for Next CC Session.md`:
+    /// replaces the old `.confirmationDialog` (which can't carry a
+    /// checkbox) with `CollectionDeleteNotice`'s NSAlert, the same
+    /// synchronous shape `deleteGroupAsking` already uses.
+    private func deleteCollectionAsking(_ c: MediaCollection) {
+        let showCount = model.shows.filter { $0.collectionID == c.id }.count
+        let (ok, alsoFromLibrary) = CollectionDeleteNotice.confirm(name: c.name, showCount: showCount)
+        guard ok else { return }
+        if alsoFromLibrary { model.deleteItems(c.itemIDs, undo: undoManager) }
+        model.deleteCollection(c.id, undo: undoManager)
     }
 
     /// A disclosure's open/closed state, kept in a `Set` of folded ids
@@ -409,8 +430,9 @@ extension MainView {
                 Button("New Group in “\(c.name)”…") { startCreatingGroup(collectionID: c.id) }
                 Divider()
                 Button("Rename…") { startRenaming(.collection(c.id), current: c.name) }
-                Button("Delete Collection…") { confirmDeleteCollection = c }
+                Button("Delete Collection…") { deleteCollectionAsking(c) }
             }
+            .simultaneousGesture(renameOnOptionClick(.collection(c.id), current: c.name))
             // Dropping files on a collection puts them in it (imported first
             // if they come from Finder or Photos): no question, that's the
             // ask. Dropping a group here can't move it (a group's
@@ -453,6 +475,7 @@ extension MainView {
                 Button("Rename…") { startRenaming(.group(g.id), current: g.name) }
                 Button("Delete Group…") { deleteGroupAsking(g) }
             }
+            .simultaneousGesture(renameOnOptionClick(.group(g.id), current: g.name))
             // Draggable, so it can be dropped on another group to nest it
             // (plan, "groups hold groups, like folders") or on a collection
             // (see `collectionRow`).
@@ -511,6 +534,7 @@ extension MainView {
                 Button("Rename…") { startRenaming(.show(show.id), current: show.name) }
                 Button("Delete Show…") { confirmDelete = show }
             }
+            .simultaneousGesture(renameOnOptionClick(.show(show.id), current: show.name))
             // Dropping files on a show appends them to it (asking first about
             // any not in its collection).
             .onDrop(of: ItemDrag.accepted, isTargeted: nil) { providers in

@@ -788,28 +788,48 @@ enum SlideRemovalNotice {
 
 /// The notice before a group is deleted (plan, "Groups inside collections",
 /// Jason 2026-09-24): its sub-groups go with it, as in Finder, but the
-/// files always stay in the collection. Same suppression convention as
-/// `SlideRemovalNotice`.
+/// files always stay in the collection unless the checkbox below is on.
 @MainActor
 enum GroupDeleteNotice {
     static let suppressKey = "suppressGroupDeleteNotice"
 
-    /// True to go ahead.
-    static func confirm(name: String, subgroupCount: Int) -> Bool {
-        if UserDefaults.standard.bool(forKey: suppressKey) { return true }
+    /// True to go ahead; `alsoFromLibrary` is the checkbox's state — item
+    /// 16, `ShowTools Feedback — Worklist for Next CC Session.md`. Not a
+    /// suppression: it's asked fresh, unchecked, every time, since it
+    /// changes what the delete itself does, not whether to ask again.
+    static func confirm(name: String, subgroupCount: Int) -> (delete: Bool, alsoFromLibrary: Bool) {
+        if UserDefaults.standard.bool(forKey: suppressKey) { return (true, false) }
         let alert = NSAlert()
         alert.messageText = "Delete “\(name)”?"
         alert.informativeText = (subgroupCount > 0
             ? "This also deletes \(subgroupCount) group\(subgroupCount == 1 ? "" : "s") inside it. "
-            : "") + "The files stay in the collection. You can undo this."
+            : "") + "The files stay in the collection unless you check the box below. You can undo this."
         alert.addButton(withTitle: "Delete Group")
         alert.addButton(withTitle: "Cancel")
         alert.showsSuppressionButton = true
+        alert.suppressionButton?.title = "Also delete the files from the library"
         let ok = alert.runModal() == .alertFirstButtonReturn
-        if ok, alert.suppressionButton?.state == .on {
-            UserDefaults.standard.set(true, forKey: suppressKey)
-        }
-        return ok
+        return (ok, ok && alert.suppressionButton?.state == .on)
+    }
+}
+
+/// The notice before a collection is deleted. Same shape as
+/// `GroupDeleteNotice`, and the same "also delete from the library"
+/// checkbox (item 16).
+@MainActor
+enum CollectionDeleteNotice {
+    static func confirm(name: String, showCount: Int) -> (delete: Bool, alsoFromLibrary: Bool) {
+        let alert = NSAlert()
+        alert.messageText = "Delete “\(name)”?"
+        alert.informativeText = (showCount > 0
+            ? "Its \(showCount == 1 ? "show" : "\(showCount) shows") will be deleted too. "
+            : "") + "The images stay in the library unless you check the box below. You can undo this."
+        alert.addButton(withTitle: "Delete Collection")
+        alert.addButton(withTitle: "Cancel")
+        alert.showsSuppressionButton = true
+        alert.suppressionButton?.title = "Also delete the images from the library"
+        let ok = alert.runModal() == .alertFirstButtonReturn
+        return (ok, ok && alert.suppressionButton?.state == .on)
     }
 }
 
