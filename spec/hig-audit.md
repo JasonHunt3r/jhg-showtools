@@ -1,9 +1,8 @@
 # Expected-behaviour audit — menus, context menus, keyboard and selection
 
-**Status:** Audited 2026-09-24 against `43b1111`. **Fixed:** G1, in
-code only: written in a cloud session, **not yet built or checked**.
-**Left:** everything else below. The fix batches are at the end, in the
-order proposed.
+**Status:** Audited 2026-09-24 against `43b1111`. **Done** — confirmed
+by Jason 2026-09-25, G1 included. Kept as the record of what was found;
+the rules it built toward are in `spec/conventions.md`.
 
 ## What this is
 

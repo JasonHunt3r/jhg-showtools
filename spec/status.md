@@ -26,7 +26,7 @@ export. **330 tests** (317 core + 13 BGTools). **Library schema 14.**
 | 3b Find Similar | Built: Delete by context, Find/Show Similar, Keep One, Keep as Group |
 | Groups inside collections | Built 2026-09-24, Core through UI (`spec/plan.md`) |
 | 4 Setlist export / import | Built, 4a–4d |
-| E Video export | Built, E1–E5. Own spec `spec/video-export.md`. Left: a listen |
+| E Video export | Built, E1–E5. Own spec `spec/video-export.md`. Listened to by Jason (2026-09-25) |
 | 5 BGTools | Built, B1–B7, plus naming screens/the map view/the window opening on your screen (2026-09-25). Own spec `spec/bgtools.md`. Left: its own "Next up" list (items 23–25, after the ShowTools fixes), Jason's hands-on pass, the Pan and Zoom cost, telling BGTools when a library moves |
 
 Every schema upgrade is additive and tested by opening a library of the
@@ -244,25 +244,17 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
 
 ### Also next
 
-1. **A listen, twice over.** (1) An exported movie against the same show
-   playing: timing, crossfades, a video slide's sound against a song.
-   (2) A video slide's sound in the app (V6): a clip with its middle
-   dropped, a video against a song (they should just mix, no ducking),
-   and whether the level glides or steps audibly — live it is set once
-   per drawn frame, in an export per sample, so the export may be the
-   smoother of the two.
-2. **A show made from Jason's own photos and music**, imported by hand.
-   This is what v1 end-to-end still needs. The demo show was seeded by a
-   script, so ingest-by-drag, building a show by hand and editing it are
-   untested by a person.
-3. **Telling BGTools when a library moves** (B7 left it open).
-4. **Expected Mac behaviour** — `spec/hig-audit.md` (audited from code
-   2026-09-24; G1 fixed, unbuilt; the rest is the work queue above). Missing conventions: ⌘A, ⌘D, arrow keys
-   and Quick Look in the grid; context menus on lane images, transitions
-   and markers; Edit Show's commands in no menu; Edit Slides and Edit
-   Show disagreeing. One real bug: **adding slides by a drop onto Edit
-   Slides, a show in the Library pane or Add to Show can't be undone** (G1). Eight fix
-   batches, least risky first; three decisions for Jason.
+**Telling BGTools when a library moves** (B7 left it open). BGTools
+reads the library at the path in its own settings, so if ShowTools'
+library is moved or switched (Change Library), BGTools isn't told and
+keeps looking at the old path. Jason isn't sure it's needed (2026-09-25)
+— a question, not a task yet.
+
+**Done, confirmed by Jason 2026-09-25:** the two listens (an exported
+movie against the same show playing; a video slide's sound in the app),
+a show built by hand from his own photos and music (v1 end-to-end), the
+Mac-conventions audit (`spec/hig-audit.md`, G1 included), and right-click
+menus area by area.
 
 **Ken Burns → "Pan and Zoom" — done 2026-09-23** (`8db7ffc`, `a0be113`),
 in the UI, the code, the slide-settings JSON keys (`panAndZoom`,
@@ -281,10 +273,6 @@ Later.
 
 Parked: image stickiness, a guided first run (`spec/first-run-brief.md`),
 and Flush presets from 2a.
-
-**Next conversation: right-click menus,** area by area, with
-`spec/anatomy.md` as the guide. The plan is at the end of
-`spec/conventions.md`. Finish the other universals first.
 
 ## Still needs Jason's hands
 
