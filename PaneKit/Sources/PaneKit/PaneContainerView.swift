@@ -269,16 +269,7 @@ private func trackResize(_ split: Split, in container: PaneContainerView, from e
     guard let window = container.window, let rect = container.lastLayout.splits[split.id] else { return }
     let start = container.convert(event.locationInWindow, from: nil)
     var moved = false
-    // `linkedAncestor`: this drag also moves that split's own stored size
-    // by the same amount it moves this one's (`PaneNode.row`'s
-    // `nearIsRigid`) — captured once, at the sizes they had before this
-    // drag touched anything, so applying the running delta to each stays
-    // correct however many times the mouse has moved.
-    let startOwn = container.controller.state.splits[split.id]?.size ?? split.defaultSize
-    let linked = split.linkedAncestor.flatMap { id -> (id: String, range: ClosedRange<CGFloat>, start: CGFloat)? in
-        guard let ancestor = container.controller.root.split(id) else { return nil }
-        return (id, ancestor.range, container.controller.state.splits[id]?.size ?? ancestor.defaultSize)
-    }
+    let dragStart = container.controller.state
     while let e = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
         if e.type == .leftMouseUp { break }
         let p = container.convert(e.locationInWindow, from: nil)
@@ -292,22 +283,46 @@ private func trackResize(_ split: Split, in container: PaneContainerView, from e
         case .bottom: fromEdge = rect.maxY - p.y
         }
         container.controller.liveChange { s in
-            var st = s.splits[split.id] ?? SplitState()
-            if split.collapsible && fromEdge < split.range.lowerBound / 2 {
-                st.collapsed = true
-            } else {
-                st.collapsed = false
-                let newSize = min(max(fromEdge, split.range.lowerBound), split.range.upperBound)
-                if let linked {
-                    var ancestorState = s.splits[linked.id] ?? SplitState()
-                    ancestorState.size = min(max(linked.start + (newSize - startOwn), linked.range.lowerBound),
-                                             linked.range.upperBound)
-                    s.splits[linked.id] = ancestorState
-                }
-                st.size = newSize
-            }
-            s.splits[split.id] = st
+            dragResize(split, root: container.controller.root, fromEdge: fromEdge, start: dragStart, into: &s)
         }
     }
     if moved { container.controller.endLive() }
+}
+
+/// One step of a drag: the sized side follows the pointer (`fromEdge`,
+/// its distance from the side's own edge), closing past half its minimum
+/// if it can. Worked out from the state the drag **started** with, never
+/// the previous step, so it stays right however many steps there are.
+///
+/// `linkedAncestor` (`PaneNode.row`'s `nearIsRigid`): the ancestor's stored
+/// size moves by the same amount. The amount is the change in the space
+/// the sized side *occupies* — its size plus the divider when open, just
+/// the handle when closed — so a drag that crosses into or out of closed
+/// moves the ancestor exactly as `PaneController.setOpen` does. Before, a
+/// drag shut left the ancestor at the open size and the neighbour grew by
+/// the whole closed width (Edit Show's Browser, measured on Jason's own
+/// copy, 2026-09-25: 236 → 545 pt), and a drag open from the handle shrank
+/// it by the same.
+func dragResize(_ split: Split, root: PaneNode, fromEdge: CGFloat, start: PaneKitState,
+                into s: inout PaneKitState) {
+    func occupied(_ st: SplitState?) -> CGFloat {
+        (st?.collapsed ?? false) && split.collapsible
+            ? PaneLayout.handleThickness
+            : (st?.size ?? split.defaultSize) + PaneLayout.dividerThickness
+    }
+    var st = start.splits[split.id] ?? SplitState()
+    if split.collapsible && fromEdge < split.range.lowerBound / 2 {
+        st.collapsed = true
+    } else {
+        st.collapsed = false
+        st.size = min(max(fromEdge, split.range.lowerBound), split.range.upperBound)
+    }
+    if let id = split.linkedAncestor, let ancestor = root.split(id) {
+        var ancestorState = start.splits[id] ?? SplitState()
+        let from = ancestorState.size ?? ancestor.defaultSize
+        let delta = occupied(st) - occupied(start.splits[split.id])
+        ancestorState.size = min(max(from + delta, ancestor.range.lowerBound), ancestor.range.upperBound)
+        s.splits[id] = ancestorState
+    }
+    s.splits[split.id] = st
 }

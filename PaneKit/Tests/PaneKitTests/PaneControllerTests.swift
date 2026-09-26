@@ -42,4 +42,33 @@ final class PaneControllerTests: XCTestCase {
         XCTAssertEqual(r.panes["far"]?.width, 200)
         XCTAssertEqual(r.panes["main"]?.width, 1000 - 1 - 150 - 1 - 200)
     }
+
+    /// Dragging `far` shut must leave `near` exactly as closing it by
+    /// double-click does — measured wrong on Jason's own copy, 2026-09-25:
+    /// Edit Show's Browser went 236 → 545 pt on a drag shut, because the
+    /// drag set "closed" without taking far's width off the ancestor.
+    func testDraggingFarShutUnderNearIsRigidLeavesNear() {
+        let split = Self.rigidRow.split("row.near")!
+        let start = PaneKitState()
+        var s = start
+        dragResize(split, root: Self.rigidRow, fromEdge: 180, start: start, into: &s)   // resize on the way
+        dragResize(split, root: Self.rigidRow, fromEdge: 20, start: start, into: &s)    // then past half its floor
+        XCTAssertTrue(s.isCollapsed("row.near"))
+        let r = PaneLayout.layout(Self.rigidRow, in: rect, state: s)
+        XCTAssertEqual(r.panes["near"]?.width, 150)
+        XCTAssertEqual(r.panes["main"]?.width, 1000 - 12 - 1 - 150)
+    }
+
+    /// And the reverse: dragging `far` open from its handle doesn't shrink `near`.
+    func testDraggingFarOpenFromHandleUnderNearIsRigidLeavesNear() {
+        let c = makeController()
+        c.setOpen("row.near", false)
+        let split = Self.rigidRow.split("row.near")!
+        var s = c.state
+        dragResize(split, root: Self.rigidRow, fromEdge: 220, start: c.state, into: &s)
+        let r = PaneLayout.layout(Self.rigidRow, in: rect, state: s)
+        XCTAssertEqual(r.panes["near"]?.width, 150)
+        XCTAssertEqual(r.panes["far"]?.width, 220)
+        XCTAssertEqual(r.panes["main"]?.width, 1000 - 1 - 150 - 1 - 220)
+    }
 }

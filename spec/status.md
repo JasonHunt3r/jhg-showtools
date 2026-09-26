@@ -142,6 +142,18 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   a drag nothing takes, or Escape, puts the files back (no message for
   Escape); the plain Library's sort strip names the sort in use.
   Left: the parked list under "What's next".
+- **Item 13** (the Browser's own closed-drawer state, stacking with the
+  Inspector's handle) — **step 1 built**: a fix it needed first.
+  Dragging the Inspector shut (or open from its handle) changed the
+  Browser's width, though a double-click didn't — measured on Jason's own
+  copy, 236 → 545 pt. PaneKit's drag now moves the linked split by the
+  space the side occupies, the same arithmetic as `setOpen`
+  (`dragResize`, `PaneContainerView.swift`; two new `PaneControllerTests`
+  that fail on the old code). Checked on a test copy: 236 through open,
+  drag shut, drag open, drag shut. **Next step:** the Browser's own
+  handle. **Jason's idea, not designed yet:** the Browser has a max width
+  while nested, and dragging past it swaps its anchor to the left side,
+  beside whatever is there (the catalog pane).
 - **Items 23–25** — queued as their own BGTools work list, to pick up
   once the ShowTools fixes above are done: `spec/bgtools.md`, "Next up —
   queued 2026-09-25, after the ShowTools fixes."
