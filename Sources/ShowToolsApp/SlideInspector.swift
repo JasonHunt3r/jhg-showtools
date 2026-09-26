@@ -154,7 +154,7 @@ struct SlideInspector: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16, pinnedViews: [.sectionHeaders]) {
                     Section {
-                        card {
+                        card("File") {
                             if selected.count == 1, let item = model.itemsByID[first.itemID] {
                                 ThumbnailView(item: item, url: model.url(for: item))
                                     .aspectRatio(16 / 10, contentMode: .fit)
@@ -187,7 +187,7 @@ struct SlideInspector: View {
                     soundSection(first)
                     if let r = timeline.slides.first(where: { $0.slide.id == first.id }) {
                         Section {
-                            card {
+                            card("Effects") {
                                 EffectsTimeline(slide: r, timeline: timeline,
                                                 commitAudio: r.item.kind == .video
                                                     ? { curve, action in editAudio(action) { _ in curve } }
@@ -195,6 +195,8 @@ struct SlideInspector: View {
                             }
                         } header: {
                             header("Effects")
+                                .noMenuYet("Show › Inspector › Effects section header",
+                                           planned: "Reset Section to Show Default, Copy/Paste Section Settings")
                         } footer: {
                             if selected.count > 1 {
                                 Text("Showing the first selected slide.").padding(.horizontal, 16)
@@ -215,6 +217,7 @@ struct SlideInspector: View {
     private var emptyMessage: some View {
         ContentUnavailableView("No slide selected", systemImage: "cursorarrow.click",
                                description: Text("Select a slide to set its length, transition and Pan and Zoom."))
+            .noMenuYet("Show › Inspector › empty (no slide selected)")
     }
 
     /// A pinned section header: darker than the column, the same "sunken"
@@ -232,14 +235,16 @@ struct SlideInspector: View {
     }
 
     /// A section's fields, in the rounded card a Form's `.grouped` style
-    /// used to give them for free.
-    private func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+    /// used to give them for free. Right-clicked, it names itself
+    /// (`noMenuYet`): the settled per-control Reset to Default isn't built.
+    private func card<Content: View>(_ section: String, @ViewBuilder _ content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             content()
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
+        .noMenuYet("Show › Inspector › \(section) section", planned: "a single control: Reset to Default")
         .padding(.horizontal, 16)
     }
 
@@ -281,7 +286,7 @@ struct SlideInspector: View {
             let levels = Set(curve.points.map { Int(($0.level * 100).rounded()) })
             let shaped = levels.count > 1
             Section {
-                card {
+                card("Sound") {
                     VStack(alignment: .leading, spacing: 8) {
                         if shaped {
                             ForEach(curve.points) { point in
@@ -391,7 +396,7 @@ struct SlideInspector: View {
         }
         let hasClip = selected.allSatisfy { model.itemsByID[$0.itemID]?.kind != .image }
         return Section {
-            card {
+            card("Length") {
             Picker("Length", selection: Binding(get: { mode }, set: { m in
                 edit("Change Length") {
                     switch m {
@@ -417,7 +422,7 @@ struct SlideInspector: View {
     private func transitionSection(_ first: Slide) -> some View {
         let t = first.settings.transition
         return Section {
-            card {
+            card("Transition") {
             Picker("Transition in", selection: Binding(get: { t != nil }, set: { custom in
                 edit("Change Transition") { $0.transition = custom ? show.defaults.transition : nil }
             })) {
@@ -452,7 +457,7 @@ struct SlideInspector: View {
         }
         let defaultTitle = show.defaults.panAndZoom == .auto ? "Auto" : "Off"
         return Section {
-            card {
+            card("Pan and Zoom") {
             Picker("Pan and Zoom", selection: Binding(get: { mode }, set: { m in
                 let seed = customStart(for: first)
                 edit("Change Pan and Zoom") {
@@ -537,7 +542,7 @@ struct SlideInspector: View {
             }
         }
         return Section {
-            card {
+            card("Transform") {
             Picker("Fit", selection: Binding(get: { first.settings.fit }, set: { f in edit("Change Fit") { $0.fit = f } })) {
                 Text("Show default (\(show.defaults.fit.title))").tag(Fit?.none)
                 ForEach(Fit.allCases, id: \.self) { Text($0.title).tag(Fit?.some($0)) }
@@ -647,7 +652,7 @@ struct SlideInspector: View {
             }
         }
         return Section {
-            card {
+            card("Rotation") {
             Toggle("Rotation", isOn: Binding(get: { on }, set: { v in
                 editRotation(v ? "Turn On Rotation" : "Turn Off Rotation") { $0.enabled = v }
             }))

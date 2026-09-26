@@ -148,6 +148,18 @@ little global (Jason, 2026-09-24), so it gets its own conversation, area
 by area. The plan for it is at the end of this file. What follows is
 Claude's starting draft for that conversation, not a decision.
 
+**A place with no menu yet shows a note, not nothing** (Jason,
+2026-09-26): right-clicked, it opens a greyed menu, "No menu yet —
+*place* › *area*", in `spec/anatomy.md`'s names, and "Agreed, not built:
+…" when this table settled one. Built with `.noMenuYet(…)`
+(`NoMenuYet.swift`); a list's empty space is `ListEmptySpace`, named by
+its PaneKit pane. **Search the code for `noMenuYet` and `ListEmptySpace`
+to list every gap**; a designed menu replaces its note. Covered so far:
+the Library pane (Collections heading, empty space), the browser (header,
+empty space, no collection), the inspector (empty, each section's card,
+the Effects header), Edit Slides' slide list (empty space). Not yet: the
+timeline, the transport, the filter bar and sort strip, the defaults bar.
+
 **A starting order,** proposed for every menu. Groups are separated by a
 divider, and empty groups are skipped:
 

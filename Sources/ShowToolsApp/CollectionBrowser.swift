@@ -147,6 +147,7 @@ struct CollectionBrowser: View {
             if collection == nil {
                 ContentUnavailableView("Not in a collection", systemImage: "rectangle.stack",
                                        description: Text("This show doesn't belong to a collection."))
+                    .noMenuYet("Edit Show › Browser › empty (no collection)")
             } else {
                 list
             }
@@ -172,6 +173,8 @@ struct CollectionBrowser: View {
                 .buttonStyle(.borderless)
                 .help(inspectorShown ? "Close the inspector (⌥⌘I)" : "Open the inspector (⌥⌘I)")
             }
+            // Not the search row: its field keeps the text menu.
+            .noMenuYet("Edit Show › Browser › header (the collection's name)")
             HStack(spacing: 6) {
                 HStack(spacing: 4) {
                     Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
@@ -261,35 +264,42 @@ struct CollectionBrowser: View {
             }
         }
         .contextMenu(forSelectionType: Pick.self) { picks in
-            let chosen = ordered(picks)
-            let pictureIDs = model.pictures(chosen)
-            let audioIDs = chosen.filter { model.itemsByID[$0]?.kind == .audio }
-            // The add items first (settled, spec/conventions.md §3, item 5).
-            if !pictureIDs.isEmpty {
-                Button("Append to Show  (E)") { append(chosen) }
-                Button("Insert at Playhead  (W)") { insertAtPlayhead(chosen) }
-                Button("Place in Images Row at Playhead  (Q)") { placeAtPlayhead(chosen) }
-            }
-            if !audioIDs.isEmpty {
-                Button("Place at Playhead") {
-                    MusicRow.place(audioIDs, at: timeline.wrap(engine.now), model: model, mutate: mutate)
+            if picks.isEmpty {
+                // Below the rows, `ListEmptySpace` answers first (SwiftUI
+                // throws there); this is for anywhere else it's asked empty.
+                NoMenuYetItems(place: "Edit Show › Browser › empty space",
+                               planned: "Import…, Add from Library…")
+            } else {
+                let chosen = ordered(picks)
+                let pictureIDs = model.pictures(chosen)
+                let audioIDs = chosen.filter { model.itemsByID[$0]?.kind == .audio }
+                // The add items first (settled, spec/conventions.md §3, item 5).
+                if !pictureIDs.isEmpty {
+                    Button("Append to Show  (E)") { append(chosen) }
+                    Button("Insert at Playhead  (W)") { insertAtPlayhead(chosen) }
+                    Button("Place in Images Row at Playhead  (Q)") { placeAtPlayhead(chosen) }
                 }
-            }
-            // A single use gets its own actions, distinct from the file
-            // picker actions above.
-            if picks.count == 1, let pick = picks.first, pick.isUse {
+                if !audioIDs.isEmpty {
+                    Button("Place at Playhead") {
+                        MusicRow.place(audioIDs, at: timeline.wrap(engine.now), model: model, mutate: mutate)
+                    }
+                }
+                // A single use gets its own actions, distinct from the file
+                // picker actions above.
+                if picks.count == 1, let pick = picks.first, pick.isUse {
+                    Divider()
+                    Button("Select in Timeline") { selectInTimeline(pick) }
+                    Button("Play from Here") { playFromHere(pick) }
+                    Button("Remove from Show") { removeUse(pick) }
+                }
                 Divider()
-                Button("Select in Timeline") { selectInTimeline(pick) }
-                Button("Play from Here") { playFromHere(pick) }
-                Button("Remove from Show") { removeUse(pick) }
-            }
-            Divider()
-            if let id = chosen.first { Button("Show in Library") { showInLibrary(id, model: model, undoManager: undoManager) } }
-            if let cid = collection?.id {
-                Button("Remove from Collection") { model.removeFromCollection(chosen, cid, undo: undoManager) }
-            }
-            Button(chosen.count == 1 ? "Move to Trash…" : "Move \(chosen.count) Items to Trash…") {
-                confirmDelete = chosen
+                if let id = chosen.first { Button("Show in Library") { showInLibrary(id, model: model, undoManager: undoManager) } }
+                if let cid = collection?.id {
+                    Button("Remove from Collection") { model.removeFromCollection(chosen, cid, undo: undoManager) }
+                }
+                Button(chosen.count == 1 ? "Move to Trash…" : "Move \(chosen.count) Items to Trash…") {
+                    confirmDelete = chosen
+                }
             }
         } primaryAction: { picks in
             // Double-clicking a use toggles the inspector, as the order list

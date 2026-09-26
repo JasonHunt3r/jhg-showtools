@@ -235,7 +235,7 @@ struct MainView: View {
             // Library → Collection → Show, as Final Cut's Library → Event → Project.
             // A collection's groups and its shows sit side by side, as
             // siblings (Jason, 2026-09-24, "Groups inside collections").
-            Section("Collections") {
+            Section {
                 ForEach(model.collections) { c in
                     DisclosureGroup(isExpanded: foldBinding(c.id, in: $folded)) {
                         collectionChildren(c)
@@ -246,6 +246,9 @@ struct MainView: View {
                 // Shows in no collection shouldn't exist after the
                 // upgrade, but if one does, it still has a place.
                 ForEach(orphanShows) { show in showRow(show) }
+            } header: {
+                Text("Collections")
+                    .noMenuYet("Library pane › Collections heading")
             }
         }
         // Delete asks first (D1); ⌘Delete skips the question, as the
