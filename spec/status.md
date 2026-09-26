@@ -44,7 +44,8 @@ strip), and at 23:04 at `71aa2a1` (items 13 and 30). **Reinstalled
 timeline), the inspector bar's right-click, and the "No menu yet" notes. **Reinstalled
 2026-09-26 02:49 at `e283204`**: grid pinch, timeline ⌘A, the Icon
 Composer app icon. **Reinstalled at `f22a58f`**: the viewer drawer (all three
-places), the second app icon, and the grids' tools in the bar.
+places), the second app icon, and the grids' tools in the bar. **Reinstalled at
+`f2175dd`**: the sort strip as the drawer's second handle, with its pill.
 Reinstalling stops the real BGTools instance (`install.sh`'s own quit
 sequence); BGTools wasn't restarted after the 20:28 install. BGTools'
 desktop extension (`BGToolsControls.appex`) was also killed before that
