@@ -1097,13 +1097,23 @@ struct LibraryGridView: View {
                 && item.rating >= minRating
                 && !(onlyUncollected && collection == nil && collected.contains(item.id))
         }
-        switch sort {
+        switch effectiveSort {
         case .custom: return shown
         case .added: return shown.sorted { addedAt($0.id) < addedAt($1.id) }
         case .addedNewest: return shown.sorted { addedAt($0.id) > addedAt($1.id) }
         case .name: return shown.sorted { $0.fileName.localizedStandardCompare($1.fileName) == .orderedAscending }
         case .rating: return shown.sorted { $0.rating > $1.rating }
         }
+    }
+
+    /// The sort actually in use. `sort` is shared by every grid, and Custom
+    /// Order is only a collection's or group's own (schema 14): the plain
+    /// Library has no order of its own and shows its files in the order
+    /// they were added, so there Custom Order reads as Date Added — in the
+    /// strip and the Sort menu's checkmark alike (it read "Custom Order"
+    /// before, 2026-09-25).
+    private var effectiveSort: SortOrder {
+        sort == .custom && collection == nil && group == nil ? .added : sort
     }
 
     /// When a file joined the group or collection in view — a group's or
@@ -1163,7 +1173,7 @@ struct LibraryGridView: View {
             Menu {
                 // Custom Order is a group's or collection's own drag order
                 // (schema 14) — the plain Library has no such thing to show.
-                Picker("Sort", selection: $sort) {
+                Picker("Sort", selection: Binding(get: { effectiveSort }, set: { sort = $0 })) {
                     ForEach(SortOrder.allCases.filter { $0 != .custom || group != nil || collection != nil },
                             id: \.self) { Text($0.title).tag($0) }
                 }
@@ -1200,7 +1210,7 @@ struct LibraryGridView: View {
     private var sortStatusBar: some View {
         HStack(spacing: 4) {
             Image(systemName: "arrow.up.arrow.down").imageScale(.small)
-            Text(sort.title)
+            Text(effectiveSort.title)
             Spacer()
         }
         .font(.caption)
