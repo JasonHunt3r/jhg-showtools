@@ -55,10 +55,9 @@ morning's swap, on Jason's own call, rather than relaunched — it still
 needs re-enabling by hand before BGTools' desktop features work again.
 
 **The real library was set aside 2026-09-24** (Jason's own call, mid this
-session): `~/Pictures/ShowTools Library.noindex` is now
-`~/Pictures/ShowTools Library (2026-09-24).noindex`, untouched. The next
-plain launch of the real app creates a fresh, empty library at the
-default path.
+session): the old one is `~/Pictures/ShowTools Library (2026-09-24).noindex`,
+untouched. A fresh one at the default path, `~/Pictures/ShowTools
+Library.noindex`, is in use (12 files and one collection on 2026-09-26).
 
 ## What's next
 
@@ -527,6 +526,15 @@ and Flush presets from 2a.
 
 ## Open questions
 
+- **The selection viewer's name** (2026-09-26): the new drawer over the
+  grids is called the viewer in the menus (View ▸ Viewer, Show Viewer)
+  and "the viewer drawer" in the plan, but `spec/anatomy.md` already has
+  **Viewer** (Edit Show's picture column) and **Drawer** (a timeline row's
+  settings). The anatomy calls it the **selection viewer** for now.
+- **Map 1 (`spec/maps/1-library-grid.png`) is stale** (2026-09-26): its
+  source, `maps.html`, has the selection viewer, the filter bar's tools
+  and the sort strip, but the PNG wasn't re-rendered — `render.js` needs
+  Playwright, which isn't installed on this Mac.
 - **Image stickiness (2c)**, at the end of Phase 3: should a lane image
   stay at its time on the clock, or move with the slide it starts over
   when slides are trimmed or reordered? For now it stays on the clock.

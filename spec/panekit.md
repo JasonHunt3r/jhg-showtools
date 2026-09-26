@@ -193,7 +193,9 @@ Assistant). Not needed for our fix.
   don't switch (their linked arithmetic assumes fixed sides); no menu
   command yet, and no animation — it jumps.
 - **The app's own view as the handle — built 2026-09-26** (Jason, for
-  ShowTools' viewer drawer: "we can just use the existing header bar as
+  ShowTools' viewer drawer — which in the end uses the dark strip under
+  its bar, not the bar, since the bar is full of controls; any view can
+  be the handle: "we can just use the existing header bar as
   the handle box"). A split with `handle: .external` takes no room when
   closed — no edge handle, no divider — and the app puts a
   `PaneHandleView` behind its own view (AppKit), or marks it with

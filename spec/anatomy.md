@@ -41,7 +41,9 @@ thing.
 | **Library pane** | Left column: the Library row, then Collections with their Shows. Called **the Library** for short | sidebar (the old name), source list |
 | **Detail** | Everything right of the Library pane. Shows one of: the grid, or a show in one of two modes | |
 | **Library grid** | Detail, when the Library or a collection is selected: tiles of files | the grid |
-| **Filter bar** | Top of the grid: Search, Filter, Sort, Similar | the bar |
+| **Filter bar** | Top of the grid: Search, Filter, Sort, Similar, and at its right the tools (Import, Add to Show, Get Info) and the tile-size slider — moved down from the toolbar 2026-09-26. Two rows where one doesn't fit (the library panel) | the bar |
+| **Sort strip** | The dark strip under the filter bar: which sort is in use. Also the selection viewer's **handle**, with a pill in its middle: drag to open or size it, double-click to open or close. The browser, which has no sort strip, has a plain **grip strip** in its place | sort status bar (`sortStatusBar`), `DrawerGripStrip` |
+| **Selection viewer** (working name) | Above the filter bar of the Library grid, the library panel's grid and the browser: the selected files big, Side by Side or Stack. Y opens and closes it, ⇧Y switches the view; closed, it takes no room. `spec/plan.md`, "The viewer drawer". **The name is open:** the plan and the menus call it the viewer (View ▸ Viewer, Show Viewer) and "the viewer drawer", which clash with **Viewer** and **Drawer** here — Jason to settle | the viewer drawer, `SelectionViewer` |
 | **Edit Slides** | A show's list mode | |
 | **Edit Show** | A show's timeline mode | |
 | **Defaults bar** | Top of Edit Slides: the show's name and defaults | |
@@ -88,14 +90,16 @@ Slide Editor).
 
 ```
 Main window
-├─ Toolbar                       (changes with the detail: grid tools, or show tools)
+├─ Toolbar                       (show tools; the grid's tools are in its filter bar since 2026-09-26)
 ├─ Library pane
 │   ├─ Library
 │   └─ Collections
 │       └─ Collection  ▸  its Shows
 ├─ Detail  — one of:
 │   ├─ Library grid              (Library or a collection selected)
+│   │   ├─ Selection viewer      (closed until opened; Y)
 │   │   ├─ Filter bar
+│   │   ├─ Sort strip            (the selection viewer's handle)
 │   │   └─ Tiles                 (or, with Group Similar, groups of tiles)
 │   └─ Show                      (a show selected) — one of two modes, one selection shared:
 │       ├─ Edit Slides
@@ -109,6 +113,10 @@ Main window
 │               │   ├─ Picture   (with its layers, §4)
 │               │   └─ Frame strip
 │               ├─ Browser
+│               │   ├─ Selection viewer  (closed until opened; Y)
+│               │   ├─ Its bar
+│               │   ├─ Grip strip       (the selection viewer's handle)
+│               │   └─ Uses and files
 │               └─ Inspector
 └─ Timeline pane                 (full width, under the Library pane too — not nested
     │                             inside Detail; shown while a show is open in Edit Show,
@@ -172,7 +180,9 @@ Main window
 - **Holds:** the files of the Library or of one collection, filtered by
   the filter bar. Group Similar or Show Similar rearranges them.
 - **Selection:** its own set of files. It isn't shared with any show. The
-  Info panel follows it.
+  Info panel follows it, and so does the **selection viewer** above the
+  filter bar, when open: ← / → then move its outline within the selection
+  instead of changing it.
 - **Delete:** in the Library, asks, then moves files to the Trash. In a
   collection, takes them out of the collection. ⌘Delete in either moves
   them to the Trash.

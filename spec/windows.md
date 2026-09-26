@@ -363,7 +363,9 @@ Today, making a collection and filling it goes like this:
    There's no naming step (see `spec/hig-audit.md` §H).
 2. The collection is empty. Its message says to drag photos in, or to
    use Add to Collection from the Library, but there's no button.
-3. So you either hunt for the small Import button in the toolbar, or
+3. So you either hunt for the small Import button in the toolbar (in the
+   grid's filter bar since 2026-09-26; an empty collection's own message
+   has an Import… button now too), or
    select the Library, pick files, and drag them onto the collection's
    small row in the Library pane.
 
