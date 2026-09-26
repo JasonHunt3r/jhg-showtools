@@ -1,6 +1,6 @@
 {
   "fill": {
-    "solid": "srgb:0.66275,0.23529,0.14118,1.00000"
+    "solid": "srgb:0.68627,0.34902,0.15686,1.00000"
   },
   "groups": [
     {
@@ -14,20 +14,47 @@
           "name": "line-shadow"
         },
         {
-          "image-name": "card-front.svg",
-          "name": "card-front"
+          "image-name": "fan-4.svg",
+          "name": "fan-4"
         },
         {
-          "image-name": "card-middle.svg",
-          "name": "card-middle"
+          "image-name": "fan-3.svg",
+          "name": "fan-3"
         },
         {
-          "image-name": "card-back.svg",
-          "name": "card-back"
+          "image-name": "fan-2.svg",
+          "name": "fan-2"
+        },
+        {
+          "image-name": "fan-1.svg",
+          "name": "fan-1"
+        },
+        {
+          "image-name": "blue-3.svg",
+          "name": "blue-3",
+          "hidden": true
+        },
+        {
+          "image-name": "blue-2.svg",
+          "name": "blue-2",
+          "hidden": true
+        },
+        {
+          "image-name": "blue-1.svg",
+          "name": "blue-1",
+          "hidden": true
+        },
+        {
+          "image-name": "navy-panel.svg",
+          "name": "navy-panel"
         },
         {
           "image-name": "navy.svg",
           "name": "navy"
+        },
+        {
+          "image-name": "background.svg",
+          "name": "background"
         }
       ]
     }

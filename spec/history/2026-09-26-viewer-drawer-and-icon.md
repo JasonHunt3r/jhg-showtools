@@ -45,6 +45,13 @@ png") had a rust square of its own. The rust became the icon's **fill**,
 so the whole mask is rust and the backing never shows; the other six
 shapes are layers. It replaced `Resources/AppIcon.svg` (`4268b96`).
 
+His third drawing (`ShowTools-icon 3.svg`, "v3") made the square a
+gradient, which a solid fill can't carry: it became a `background` layer
+stretched over the whole canvas, with a solid fill from the gradient's
+middle under it. Its three blue cards were hidden in Illustrator
+(`display="none"`); Icon Composer's renderer drew them anyway, visible in
+the first build's system icon, so they're layers marked `hidden`.
+
 ## The viewer drawer
 
 Asked 2026-09-25; planned by Q&A (`d35a580`, `dc7c5dc`): all three grids,

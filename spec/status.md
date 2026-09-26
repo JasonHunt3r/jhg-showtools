@@ -286,15 +286,19 @@ beeping (audit A1's storyline half, the timeline's `SingleKeys`); and the
 app icon, "a good start."
 
 **The app icon** is an Icon Composer document, `Resources/AppIcon.icon`
-(open it in Icon Composer to edit), made from Jason's second drawing
-(2026-09-26, `Resources/AppIcon.svg`: a rust square, three teal cards, the
-navy shape, the cream line and its shadow). The rust is the icon's **fill**
-(#a93c24), so the whole mask is rust; the other six shapes are layers
-(line, line-shadow, card-front/middle/back, navy), scaled so the line's
-points touch the mask's edges. Why a fill: behind the layers macOS 27 puts
-an opaque backing whatever the fill (measured: `none` gives white, fully
-transparent a light glass grey, both alpha 1) — the first drawing, with no
-background of its own, showed that grey. Icon Composer's glass lighting
+(open it in Icon Composer to edit), made from Jason's third drawing
+(2026-09-26, `Resources/AppIcon.svg`: a rust-to-dark-red gradient square,
+the navy panel, a fan of four teal cards, the cream line and its shadow).
+A **background** layer is his gradient stretched over the whole canvas, so
+it fills the mask edge to edge; under it the fill is a solid from the
+gradient's middle (#af5928) as a floor. The other eleven shapes are layers
+in his drawing order, scaled so the line's points touch the mask's edges;
+three blue cards hidden in his drawing (`display="none"`, which Icon
+Composer's renderer ignores) are layers marked `hidden`. Why the
+background: behind the layers macOS 27 puts an opaque backing whatever
+the fill (measured: `none` gives white, fully transparent a light glass
+grey, both alpha 1) — the first drawing, with no background of its own,
+showed that grey. Icon Composer's glass lighting
 lightens the colours a little; his to tune there. A plain icon set, tried
 first, was shrunk onto a grey rounded square by macOS 27. Story, with how
 the mask and the backing were measured:
