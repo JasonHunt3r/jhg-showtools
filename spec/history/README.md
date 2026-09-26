@@ -26,6 +26,7 @@ are `spec/plan.md`.
 | `2026-09-23-pan-and-zoom-rename.md` | Ken Burns → Pan and Zoom carried out (168 refs, three shell scripts missed by the first pass), the stale installed app rebuilt, and the confirmed breakage: an export from before this date loses Pan and Zoom silently on re-import | `spec/status.md` carries the short version and points here |
 | `2026-09-25-work-queue-narrative.md` | The 2026-09-24 cloud-planning work queue, built out: the audit batches, Groups inside collections, the range package, the grid's keyboard, PaneKit steps 4–5, the popped-out Inspector and Timeline panes | `spec/status.md`'s "Where it stands" table |
 | `2026-09-25-feedback-worklist-batches.md` | Jason's 37-item build feedback, worked through in five batches: what was fixed, how, and what each fix was checked against | `spec/status.md`'s feedback-worklist summary |
+| `2026-09-25-drag-reorder-session.md` | Item 17 start to near-finish: the reorder schema, live reflow, three bugs found by hand, a self-inflicted regression and its correction (the Custom Order notice + header strip), and the still-unsolved long-distance drag with its diagnosis | `spec/status.md`'s Item 17 entry, `spec/plan.md`'s "Reordering" |
 
 ## Where this came from
 

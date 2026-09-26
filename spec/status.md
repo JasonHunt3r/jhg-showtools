@@ -53,6 +53,22 @@ default path.
 
 ## What's next
 
+**NEXT TASK: the drag-to-reorder geometry rewrite** (item 17,
+`spec/plan.md` "Reordering," last entry; full session story
+`spec/history/2026-09-25-drag-reorder-session.md`). Short reorder drags
+work and are confirmed correct; a long-distance drag (first tile onto
+the last, several rows away) still doesn't land right, even slowed down.
+The cause: hit-testing is done per-tile via `isTargeted`, which is tied
+to *where tiles are currently drawn* — and the drag's own live reflow
+keeps moving that, so the target drifts the further the cursor travels.
+The fix is computing the drop target from the cursor's raw position
+against fixed grid/list geometry (tile size, spacing, column count) via
+a `DropDelegate`, never from which reflowed tile happens to sit under
+the pointer. Not built yet. **Try an everyday-distance real drag by hand
+first** (not end-to-end) — several of the previous session's apparent
+failures turned out to be synthetic-test mistakes, not real bugs, so
+confirm this one still reproduces before starting the rewrite.
+
 **The 2026-09-24 cloud-planning work queue is done** — every item in it
 (the audit batches, Groups inside collections, the range package, the
 grid's keyboard, PaneKit steps 4–5, the popped-out Inspector and Timeline
