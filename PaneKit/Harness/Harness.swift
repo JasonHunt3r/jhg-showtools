@@ -25,6 +25,11 @@
 //   step, with nothing half-moved drawn.
 // - Test ▸ Stress: sixty rapid layout changes. No layout-loop exception
 //   (it would print below and crash).
+// - Layout ▸ "A header bar as the handle" (2026-09-26): closed, the bar sits
+//   at the top with no edge handle. Drag the bar's empty space down to open
+//   the drawer above it (it follows the pointer, no jump), up to close it;
+//   double-click the empty space to open or close. The bar's text field and
+//   button keep their own clicks.
 import AppKit
 import PaneKit
 
@@ -50,13 +55,14 @@ enum Keep {
 
 /// The three shapes: one primitive, nested three ways.
 enum Shape: String, CaseIterable {
-    case finder, mail, showTools
+    case finder, mail, showTools, headerHandle
 
     var title: String {
         switch self {
         case .finder: "Finder: two panes"
         case .mail: "Mail: three columns"
         case .showTools: "ShowTools: timeline under everything"
+        case .headerHandle: "A header bar as the handle"
         }
     }
 
@@ -93,6 +99,13 @@ enum Shape: String, CaseIterable {
                                far: Pane("inspector", title: "Inspector", popOut: .panel),
                                farSize: 320, farRange: 260...480)),
                    .pane("timeline", title: "Timeline", popOut: .window))
+        case .headerHandle:
+            // ShowTools' viewer drawer over a grid: the grid's own header
+            // bar is the drawer's handle (`PaneHandleStyle.external`).
+            .split("drawer", .vertical, sized: .first, size: 220, range: 80...500, title: "Viewer",
+                   handle: .external,
+                   .pane("viewer", title: "Viewer"),
+                   .pane("grid", title: "Grid", minSize: 150))
         }
     }
 }
@@ -131,6 +144,9 @@ final class HarnessDelegate: NSObject, NSApplicationDelegate {
         var content: [String: NSView] = [:]
         for (n, pane) in shape.tree.panes.enumerated() {
             content[pane.id] = DemoPane(title: pane.title, hue: CGFloat(n) / CGFloat(shape.tree.panes.count))
+        }
+        if shape == .headerHandle, let grid = content["grid"] {
+            content["grid"] = HeaderBarPane(controller: c, splitID: "drawer", below: grid)
         }
         controller = c
         window.contentView = PaneContainerView(controller: c, content: content)
@@ -277,4 +293,51 @@ final class DemoPane: NSView {
         }
         window?.undoManager?.setActionName("Change")
     }
+}
+
+/// A pane with a header bar across its top, the bar being a split's handle:
+/// a `PaneHandleView` behind a text field and a button, which keep their
+/// own clicks.
+@MainActor
+final class HeaderBarPane: NSView {
+    init(controller: PaneController, splitID: String, below: NSView) {
+        super.init(frame: .zero)
+        let bar = NSView()
+        bar.wantsLayer = true
+        bar.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        let handle = PaneHandleView(controller: controller, splitID: splitID)
+        let field = NSTextField(string: "")
+        field.placeholderString = "Search"
+        let button = NSButton(title: "A button", target: nil, action: nil)
+        for v in [handle, field, button, below] { v.translatesAutoresizingMaskIntoConstraints = false }
+        bar.addSubview(handle)
+        bar.addSubview(field)
+        bar.addSubview(button)
+        addSubview(bar)
+        addSubview(below)
+        bar.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            bar.topAnchor.constraint(equalTo: topAnchor),
+            bar.leadingAnchor.constraint(equalTo: leadingAnchor),
+            bar.trailingAnchor.constraint(equalTo: trailingAnchor),
+            bar.heightAnchor.constraint(equalToConstant: 32),
+            handle.topAnchor.constraint(equalTo: bar.topAnchor),
+            handle.bottomAnchor.constraint(equalTo: bar.bottomAnchor),
+            handle.leadingAnchor.constraint(equalTo: bar.leadingAnchor),
+            handle.trailingAnchor.constraint(equalTo: bar.trailingAnchor),
+            field.leadingAnchor.constraint(equalTo: bar.leadingAnchor, constant: 10),
+            field.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
+            field.widthAnchor.constraint(equalToConstant: 180),
+            button.leadingAnchor.constraint(equalTo: field.trailingAnchor, constant: 10),
+            button.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
+            below.topAnchor.constraint(equalTo: bar.bottomAnchor),
+            below.leadingAnchor.constraint(equalTo: leadingAnchor),
+            below.trailingAnchor.constraint(equalTo: trailingAnchor),
+            below.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("HeaderBarPane is made in code") }
+
+    override var isFlipped: Bool { true }
 }

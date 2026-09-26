@@ -9,7 +9,8 @@ public struct PaneLayoutResult: Sendable, Equatable {
     public var panes: [String: CGRect] = [:]
     /// Each split's divider: the thin line between its children.
     public var dividers: [String: CGRect] = [:]
-    /// Each closed split's edge handle.
+    /// Each closed split's edge handle (never an `.external` one's: it
+    /// has none).
     public var handles: [String: CGRect] = [:]
     /// Each split's whole rectangle, for drags to measure against.
     public var splits: [String: CGRect] = [:]
@@ -21,6 +22,12 @@ public enum PaneLayout {
     /// A closed pane's handle on the window edge (the frame strip's bar is
     /// the model: slim, but big enough to grab).
     public static let handleThickness: CGFloat = 12
+
+    /// What a closed split occupies: its edge handle, or nothing when the
+    /// app's own view is the handle (`PaneHandleStyle.external`).
+    public static func closedThickness(_ split: Split) -> CGFloat {
+        split.handle == .external ? 0 : handleThickness
+    }
 
     public static func layout(_ node: PaneNode, in rect: CGRect, state: PaneKitState) -> PaneLayoutResult {
         var result = PaneLayoutResult()
@@ -46,9 +53,10 @@ public enum PaneLayout {
             let total = extent(of: rect, along: split.axis)
             let extentSized: CGFloat
             let gap: CGFloat
-            if state.isCollapsed(split.id) && split.collapsible {
+            let closed = state.isCollapsed(split.id) && split.collapsible
+            if closed {
                 extentSized = 0
-                gap = min(handleThickness, total)
+                gap = min(closedThickness(split), total)
             } else {
                 extentSized = sizedExtent(for: split, available: total, state: state)
                 gap = dividerThickness
@@ -58,7 +66,7 @@ public enum PaneLayout {
             if extentSized > 0 {
                 place(split.sizedNode, in: sizedRect, state: state, into: &result)
                 result.dividers[split.id] = gapRect
-            } else {
+            } else if !(closed && split.handle == .external) {
                 result.handles[split.id] = gapRect
             }
             place(split.mainNode, in: mainRect, state: state, into: &result)
@@ -89,7 +97,7 @@ public enum PaneLayout {
             if mainEmpty { return minExtent(split.sizedNode, along: axis, state: state) }
             let collapsed = state.isCollapsed(split.id) && split.collapsible
             if split.axis == axis {
-                let sized = collapsed ? handleThickness : split.range.lowerBound + dividerThickness
+                let sized = collapsed ? closedThickness(split) : split.range.lowerBound + dividerThickness
                 return sized + minExtent(split.mainNode, along: axis, state: state)
             }
             let sizedMin = collapsed ? 0 : minExtent(split.sizedNode, along: axis, state: state)

@@ -192,6 +192,22 @@ Assistant). Not needed for our fix.
   the preview's far side, not past the inspector); `.row`'s two splits
   don't switch (their linked arithmetic assumes fixed sides); no menu
   command yet, and no animation — it jumps.
+- **The app's own view as the handle — built 2026-09-26** (Jason, for
+  ShowTools' viewer drawer: "we can just use the existing header bar as
+  the handle box"). A split with `handle: .external` takes no room when
+  closed — no edge handle, no divider — and the app puts a
+  `PaneHandleView` behind its own view (AppKit), or marks it with
+  `.paneHandle(controller, split:)` (SwiftUI), so the view's empty space
+  drags the split and a double-click opens or closes it; its controls keep
+  their own clicks. A drag follows the pointer from wherever it grabbed
+  (`handleDragExtent`), rather than jumping to it as an edge line does.
+  Such a split can't switch sides (`canSwitchSides` is forced off).
+  `PaneHandle.swift`; `PaneHandleTests` (8); the harness's "A header bar
+  as the handle" layout. Checked by Jason's hands in the harness, and
+  with axtool: closed leaves the bar at the very top; a 200-pt drag gave
+  a 200-pt drawer (±1, no jump); dragging up closes it; double-clicks
+  toggle; the search field types and the button's double-click doesn't
+  toggle.
 
 ## Building a row (added 2026-09-24)
 

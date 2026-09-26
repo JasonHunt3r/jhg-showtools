@@ -34,6 +34,20 @@ public enum PopOutStyle: String, Sendable {
     case window
 }
 
+/// What a closed split leaves on its edge, and what drags it.
+public enum PaneHandleStyle: String, Sendable {
+    /// PaneKit's own edge handle: a 12-point grip on the edge, always
+    /// visible (the frame strip's bar was the model).
+    case edge
+    /// **The app's own view is the handle** (Jason, 2026-09-26: a grid's
+    /// header bar, with the viewer drawer above it). Closed, the split
+    /// takes no room at all; the app marks the view with `.paneHandle`
+    /// (SwiftUI) or puts a `PaneHandleView` behind it (AppKit), and a drag
+    /// on it resizes the split, a double-click opens or closes it. Such a
+    /// split can't switch sides: the app's view stays where the app put it.
+    case external
+}
+
 /// A leaf: one pane of content.
 public struct Pane: Sendable, Identifiable, Equatable {
     public let id: String
@@ -81,13 +95,15 @@ public struct Split: Sendable, Identifiable, Equatable {
     /// state (`SplitState.onOtherSide`), remembered like its size. Jason,
     /// 2026-09-25: "basically we're reordering the columns."
     public var canSwitchSides: Bool
+    /// What it leaves when closed, and what drags it (`PaneHandleStyle`).
+    public var handle: PaneHandleStyle
     public var first: PaneNode
     public var second: PaneNode
 
     public init(_ id: String, _ axis: PaneAxis, sized: PaneSide, size: CGFloat,
                 range: ClosedRange<CGFloat>, collapsible: Bool = true, title: String? = nil,
                 linkedAncestor: String? = nil, canSwitchSides: Bool = true,
-                first: PaneNode, second: PaneNode) {
+                handle: PaneHandleStyle = .edge, first: PaneNode, second: PaneNode) {
         self.id = id
         self.axis = axis
         self.sized = sized
@@ -96,7 +112,8 @@ public struct Split: Sendable, Identifiable, Equatable {
         self.collapsible = collapsible
         self.title = title
         self.linkedAncestor = linkedAncestor
-        self.canSwitchSides = canSwitchSides
+        self.canSwitchSides = canSwitchSides && handle == .edge
+        self.handle = handle
         self.first = first
         self.second = second
     }
@@ -148,10 +165,11 @@ public indirect enum PaneNode: Sendable, Equatable {
     public static func split(_ id: String, _ axis: PaneAxis, sized: PaneSide, size: CGFloat,
                              range: ClosedRange<CGFloat>, collapsible: Bool = true, title: String? = nil,
                              linkedAncestor: String? = nil, canSwitchSides: Bool = true,
+                             handle: PaneHandleStyle = .edge,
                              _ first: PaneNode, _ second: PaneNode) -> PaneNode {
         .branch(Split(id, axis, sized: sized, size: size, range: range, collapsible: collapsible,
                       title: title, linkedAncestor: linkedAncestor, canSwitchSides: canSwitchSides,
-                      first: first, second: second))
+                      handle: handle, first: first, second: second))
     }
 
     /// A row of three: `main`, which absorbs a window resize, and two more

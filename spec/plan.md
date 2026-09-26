@@ -1299,6 +1299,8 @@ double-click toggles); a harness check with a header-bar-shaped view.
 
 **Steps:**
 1. PaneKit: `handle: .external` and `.paneHandle` — tests and harness.
+   **Built 2026-09-26**, checked by Jason in the harness
+   (`spec/panekit.md`, "The app's own view as the handle").
 2. The viewer itself, `SelectionViewer`: Side by Side (the multi-up
    layout, pure, tested in Core: N aspect ratios into a W×H box → tile
    frames) and Stack, the switch, ⇧Y and the View menu, images decoded at

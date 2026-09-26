@@ -87,7 +87,7 @@ public final class PaneController {
             guard open != wasOpen, let split = root.split(splitID), let ancestorID = split.linkedAncestor,
                   let ancestor = root.split(ancestorID) else { return }
             let ownSize = s.splits[splitID]?.size ?? split.defaultSize
-            let delta = ownSize + PaneLayout.dividerThickness - PaneLayout.handleThickness
+            let delta = ownSize + PaneLayout.dividerThickness - PaneLayout.closedThickness(split)
             var ancestorState = s.splits[ancestorID] ?? SplitState()
             let current = ancestorState.size ?? ancestor.defaultSize
             let next = current + (open ? delta : -delta)

@@ -32,7 +32,7 @@ public final class PaneContainerView: NSView {
             let d = PaneDividerView(split: split, container: self)
             dividers[split.id] = d
             addSubview(d)
-            if split.collapsible {
+            if split.collapsible && split.handle == .edge {
                 let h = PaneEdgeHandleView(split: split, container: self)
                 handles[split.id] = h
                 addSubview(h)
@@ -266,32 +266,51 @@ final class PaneEdgeHandleView: NSView {
 /// The size follows the pointer and is drawn live; past half the sized
 /// side's minimum it closes (if it can); on release it's one transaction.
 /// A drag that never moves changes nothing.
+///
+/// `keepGrabOffset`: for an `.external` handle, grabbed anywhere on the
+/// app's own view rather than on the edge line — the sized side changes
+/// by how far the pointer moves, so it doesn't jump to the pointer on the
+/// first step (`handleDragExtent`).
 @MainActor
-private func trackResize(_ split: Split, in container: PaneContainerView, from event: NSEvent) {
+func trackResize(_ split: Split, in container: PaneContainerView, from event: NSEvent,
+                 keepGrabOffset: Bool = false) {
     guard let window = container.window, let rect = container.lastLayout.splits[split.id] else { return }
     let start = container.convert(event.locationInWindow, from: nil)
     var moved = false
     let dragStart = container.controller.state
     let edge = split.edge(in: dragStart)
     let total = split.axis == .horizontal ? rect.width : rect.height
+    func distance(_ p: CGPoint) -> CGFloat {
+        switch edge {
+        case .leading: p.x - rect.minX
+        case .trailing: rect.maxX - p.x
+        case .top: p.y - rect.minY
+        case .bottom: rect.maxY - p.y
+        }
+    }
+    let startExtent = dragStart.isCollapsed(split.id) && split.collapsible
+        ? 0 : PaneLayout.sizedExtent(for: split, available: total, state: dragStart)
     while let e = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
         if e.type == .leftMouseUp { break }
         let p = container.convert(e.locationInWindow, from: nil)
         if !moved, hypot(p.x - start.x, p.y - start.y) < 3 { continue }
         moved = true
-        let fromEdge: CGFloat
-        switch edge {
-        case .leading: fromEdge = p.x - rect.minX
-        case .trailing: fromEdge = rect.maxX - p.x
-        case .top: fromEdge = p.y - rect.minY
-        case .bottom: fromEdge = rect.maxY - p.y
-        }
+        let fromEdge = keepGrabOffset
+            ? handleDragExtent(startExtent: startExtent, grabbedAt: distance(start), pointerAt: distance(p))
+            : distance(p)
         container.controller.liveChange { s in
             dragResize(split, root: container.controller.root, fromEdge: fromEdge, total: total,
                        start: dragStart, into: &s)
         }
     }
     if moved { container.controller.endLive() }
+}
+
+/// Where a drag on an app's own handle puts the sized side: its size when
+/// the drag began, plus how far the pointer has moved since (both measured
+/// from the edge the side sits on). Pure, so it's tested.
+func handleDragExtent(startExtent: CGFloat, grabbedAt: CGFloat, pointerAt: CGFloat) -> CGFloat {
+    startExtent + (pointerAt - grabbedAt)
 }
 
 /// One step of a drag: the sized side follows the pointer (`fromEdge`,
@@ -319,7 +338,7 @@ func dragResize(_ split: Split, root: PaneNode, fromEdge: CGFloat, total: CGFloa
                 start: PaneKitState, into s: inout PaneKitState) {
     func occupied(_ st: SplitState?) -> CGFloat {
         (st?.collapsed ?? false) && split.collapsible
-            ? PaneLayout.handleThickness
+            ? PaneLayout.closedThickness(split)
             : (st?.size ?? split.defaultSize) + PaneLayout.dividerThickness
     }
     var st = start.splits[split.id] ?? SplitState()
