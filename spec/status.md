@@ -36,12 +36,12 @@ collection's/group's files). Before an upgrade the database is copied
 to `Library.sqlite.v<N>.bak`. Video export needed no schema change: a video
 slide's level line is slide settings, which are JSON.
 
-`~/Applications/ShowTools.app` was last reinstalled 2026-09-25 17:30,
-at `9bccebe` (Item 17's first attempt, the one that didn't work by hand).
-It doesn't have the rebuilt drag-to-reorder, the pile or the Undo fix
-from the evening (`d3b25a2` onwards) — reinstall with `install.sh` to
-get them. Reinstalling stops the real BGTools instance
-(`install.sh`'s own quit sequence). BGTools'
+`~/Applications/ShowTools.app` was last reinstalled 2026-09-25 20:28,
+at `c7d657e`: the rebuilt drag-to-reorder, the pile, edge scrolling and
+the Undo fix. It doesn't have `f54d961` (the plain Library's
+`LibraryOrderNotice`) — reinstall with `install.sh` to get it.
+Reinstalling stops the real BGTools instance (`install.sh`'s own quit
+sequence); BGTools wasn't restarted after the 20:28 install. BGTools'
 desktop extension (`BGToolsControls.appex`) was also killed before that
 morning's swap, on Jason's own call, rather than relaunched — it still
 needs re-enabling by hand before BGTools' desktop features work again.
@@ -54,14 +54,42 @@ default path.
 
 ## What's next
 
-**NEXT TASK: lift drag-to-reorder into its own package** (ReorderKit,
-like PaneKit: a local package in the repo, its own tests and harness), so
-other apps can use it — agreed with Jason 2026-09-25, once the behaviour
-was settled. What moves: `ShowToolsCore/Reorder.swift` (and
-`ReorderTests`) and `ShowToolsApp/ReorderDrag.swift`; the grid's wiring in
-`LibraryGridView` (`startDrag`, `commitReorder`, `slot(at:)`, the fly-in and
-landing) is the part to turn into the package's API. The design, its
-terms and every dial: `spec/plan.md`, "Reordering".
+**Drag-to-reorder (item 17) is done**, tried by Jason's hand and
+installed. No next task is set; the feedback worklist's remaining items
+and the parked list below are what's open.
+
+### Parked for later (Jason, 2026-09-25)
+
+Not pressing; each wants a discussion or a plan before any code.
+
+- **Plan the ReorderKit lift.** Drag-to-reorder into its own package,
+  like PaneKit (a local package in the repo, its own tests and harness),
+  for other apps. **No plan written yet** — only what would move:
+  `ShowToolsCore/Reorder.swift` (+ `ReorderTests`) and
+  `ShowToolsApp/ReorderDrag.swift`, with the grid's wiring in
+  `LibraryGridView` (`startDrag`, `commitReorder`, `slot(at:)`, the
+  fly-in and landing) as the part to turn into the package's API. App
+  wording (`LibraryOrderNotice`) stays in ShowTools; the package only
+  reports that a drag was refused where it was let go. Design, terms and
+  dials: `spec/plan.md`, "Reordering".
+- **Escape during a drag should put the files back, with no message.**
+  Today a cancelled drag slides the pile back to the pressed tile only,
+  and in the plain Library, Escape over the grid shows
+  `LibraryOrderNotice` as if the drag had been let go there — "an unclear
+  message". Wanted: Escape lets go of the files *and* puts each one back
+  where it was ("you realize you didn't mean to drag these"), no notice.
+  A sketch, untested: tell Escape apart in `StackDragSource`'s
+  `draggingSession(_:endedAt:operation:)` (probably `NSApp.currentEvent`
+  is the Escape key-down — measure first), and draw the return ourselves
+  (each card from the pile to its own tile) instead of AppKit's slide-back.
+- **A shared type for "explainer" notices.** Two now: `CustomOrderNotice`
+  and `LibraryOrderNotice` (`CollectionAdd.swift`) — after-the-fact
+  explanations, one OK button, "Don't show this again". Worth one type
+  with the defaults, and a line in `spec/conventions.md` §6. Jason also
+  wanted their text centred; macOS 27's `NSAlert` left-aligns by default
+  and has no setting for it (centring would mean restyling after
+  layout, or our own panel) — parked with this.
+- **The plain Library's sort strip** reads "Custom Order" (Known issues).
 
 **The 2026-09-24 cloud-planning work queue is done** — every item in it
 (the audit batches, Groups inside collections, the range package, the
@@ -118,7 +146,8 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   and spring into place on drop; the grid scrolls near its edges, faster
   and with the pile shrinking as it nears them. Design, terms and dials:
   `spec/plan.md`, "Reordering". Story: `spec/history/2026-09-25-drag-reorder-rebuild.md`.
-  Left: the plain Library's sort strip (Known issues).
+  A drag let go over the plain Library says why (`LibraryOrderNotice`).
+  Left: the parked list under "What's next".
 - **Items 23–25** — queued as their own BGTools work list, to pick up
   once the ShowTools fixes above are done: `spec/bgtools.md`, "Next up —
   queued 2026-09-25, after the ShowTools fixes."
