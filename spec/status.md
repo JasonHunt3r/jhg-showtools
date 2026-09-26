@@ -39,9 +39,9 @@ slide's level line is slide settings, which are JSON.
 `~/Applications/ShowTools.app` was last reinstalled 2026-09-25 20:28,
 at `c7d657e`: the rebuilt drag-to-reorder, the pile, edge scrolling and
 the Undo fix. Reinstalled again after `79ca4e0` (Escape put-back, the Library's sort
-strip), and at 23:04 at `71aa2a1` (items 13 and 30). **Not installed yet:**
-`be0d740` (frames stay visible while the strip resizes) and item 14
-(`9bacef8`, `fcb72b9`).
+strip), and at 23:04 at `71aa2a1` (items 13 and 30). **Reinstalled
+2026-09-26 00:13 at `b672c17`**: everything up to and including item 20
+(star ratings) is in it.
 Reinstalling stops the real BGTools instance (`install.sh`'s own quit
 sequence); BGTools wasn't restarted after the 20:28 install. BGTools'
 desktop extension (`BGToolsControls.appex`) was also killed before that
