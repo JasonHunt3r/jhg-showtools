@@ -66,9 +66,8 @@ below are what's open.
 
 ### New asks (Jason, 2026-09-25)
 
-Not designed yet. (Pinch to resize the grid's tiles: built 2026-09-26,
-both grids, `MainView.swift`; needs Jason's real pinch — axtool can't
-send one.)
+Not designed yet. (The first of them, pinch to resize the grid's tiles,
+is built and confirmed — see "Done, confirmed by Jason 2026-09-26".)
 
 - **A drawer at the top of the grids with a viewer of the selected
   image(s)** — a PaneKit drawer over the grid, so it closes to its
@@ -276,6 +275,24 @@ library is moved or switched (Change Library), BGTools isn't told and
 keeps looking at the old path. Jason isn't sure it's needed (2026-09-25)
 — a question, not a task yet.
 
+**Done, confirmed by Jason 2026-09-26:** pinch in the Library grid and
+the library panel changes the tile size like the slider, down to the list
+view (`MainView.swift`); ⌘A in the timeline selects every slide instead of
+beeping (audit A1's storyline half, the timeline's `SingleKeys`); and the
+app icon, "a good start."
+
+**The app icon** is an Icon Composer document, `Resources/AppIcon.icon`
+(open it in Icon Composer to edit). Its three layers — line, teal, navy —
+were cut from Jason's drawing, `Resources/AppIcon.svg`, and scaled so the
+line's points touch the mask's edges. Behind his shape is macOS's own
+backing: in the default appearance it's opaque whatever the fill
+(measured: a `none` fill gives white, a fully transparent one a light
+glass grey, both alpha 1), so the fill is left transparent, for the glass
+grey — Jason's choice of three. Icon Composer's glass lighting lightens
+his colours a little; the backing colour and the lighting are his to
+tune there. A plain icon set, tried first, was shrunk onto a grey
+rounded square by macOS 27.
+
 **Done, confirmed by Jason 2026-09-25:** the two listens (an exported
 movie against the same show playing; a video slide's sound in the app),
 a show built by hand from his own photos and music (v1 end-to-end), the
@@ -302,19 +319,6 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
-- **The app icon** (2026-09-26): Jason's prototype as an Icon Composer
-  document, `Resources/AppIcon.icon` (edit it in Icon Composer). Three
-  layers — line, teal, navy — cut from his drawing, `Resources/AppIcon.svg`,
-  scaled so the line's points touch the mask's edges. Behind his shape is
-  macOS's own backing: in the default appearance it's opaque whatever the
-  fill (measured: a `none` fill gives white, a fully transparent fill a
-  light glass grey, both alpha 1), so the fill is left transparent (the
-  glass grey), Jason's choice. Icon Composer's glass lighting lightens his
-  colours a little. Worth a look in the Dock.
-- **⌘A in the timeline** (2026-09-26): selects every slide instead of
-  beeping. Checked with a synthetic ⌘A after a slide click; one real
-  press is worth it. If the sidebar still has the keyboard (no timeline
-  click yet), ⌘A goes to the sidebar, as in the grid.
 - **BGTools: naming screens, the map view, the window opening on your
   screen** (built 2026-09-25, `spec/bgtools.md` items 3–5): renaming a
   monitor or a Space, the Map | List switch, and the window landing on the

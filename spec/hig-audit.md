@@ -62,7 +62,7 @@ text fields and `List`s, and nowhere else.
   slide and clearing the other rows' selections (Jason: it beeped). A
   list with the keyboard (the browser, the sidebar) keeps its own ⌘A.
   Checked with axtool on a scratch library: a slide click, then ⌘A, gave
-  "11 slides selected" — synthetic, not yet a real keypress.
+  "11 slides selected", and Jason confirmed it by hand the same day.
 - **A2 (Med) — No Duplicate (⌘D).** **Fixed 2026-09-24 (batch 5), for
   slides.** Edit ▸ Duplicate (⌘D) calls `SlideActions.duplicate` through
   a new focused value (`requestDuplicateSlides`, `activeSlideSelection`)
