@@ -1264,16 +1264,26 @@ stays on top.
 **What it shows** (Jason):
 - **Several selected: all of them, side by side** (Aperture's multi-up,
   Lightroom's Survey), tiled as large as the drawer allows, the one last
-  clicked outlined. Arrow keys keep moving the grid's selection, and the
-  outline follows. Proposed cap: 12 at once, with a "+N more" note past
+  clicked outlined. Proposed cap: 12 at once, with a "+N more" note past
   that — ⌘A on thousands of files shouldn't try to draw them all.
+- **Or a stack** (Jason, added the same day): the outlined file big, as
+  if one were selected, with the rest as cards stacked behind it and a
+  count — keeps the image big while showing it's a group. The two are
+  **Side by Side** and **Stack**, switched three ways (Jason): a small
+  two-way switch in the drawer's corner, **⇧Y**, and View ▸ Viewer ▸
+  Side by Side / Stack. Each place remembers its choice.
+- **← / → step within the selection** (Jason, Aperture's multi-up) while
+  the viewer is open with several selected: the selection stays, and the
+  outlined file — the stack's top card — moves to the next or previous
+  selected one, wrapping. With the viewer closed, or one file selected,
+  arrows work as today (↑ ↓ too: they still move the grid).
 - **Video and animated GIFs play, muted, looping**, as they'll move in a
   show without surprising anyone with sound.
 - **Nothing selected: a quiet "No selection" note**, centred, like the
   empty inspector's.
 - Audio files: their name and a speaker symbol (they aren't pictures).
 
-**The grid keeps the keyboard** while the viewer is open: arrows, rating
+**The grid keeps the keyboard** while the viewer is open: rating
 keys, ⌘A, Delete, Return all still work on the grid, and the viewer
 follows. The viewer takes no clicks of its own in v1 (a click could later
 make a tile the outlined one, or double-click to the Slide Editor).
@@ -1289,12 +1299,13 @@ double-click toggles); a harness check with a header-bar-shaped view.
 
 **Steps:**
 1. PaneKit: `handle: .external` and `.paneHandle` — tests and harness.
-2. The viewer itself, `SelectionViewer`: multi-up layout (pure, tested in
-   Core: N aspect ratios into a W×H box → tile frames), images decoded at
+2. The viewer itself, `SelectionViewer`: Side by Side (the multi-up
+   layout, pure, tested in Core: N aspect ratios into a W×H box → tile
+   frames) and Stack, the switch, ⇧Y and the View menu, images decoded at
    the tile's pixel size off the main thread and cached, GIFs and video
    playing muted and looping, the "No selection" note, the cap.
 3. The Library grid (main window and panel): the split, the bar as
-   handle, Y and the View menu item.
+   handle, Y and the View menu item, ← / → within the selection.
 4. Edit Show's browser: the same, following its picked files and uses.
 
 **Open:** the cap of 12 (proposed); whether a click in the viewer should
