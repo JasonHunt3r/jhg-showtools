@@ -143,6 +143,12 @@ viewer over the grids** (new asks, below) — build it with that. A reject
 is **−1 in the existing `rating` column** (no schema change); the rating
 filter is Show All / Unrated or Better (the default, hides rejects, and
 what every saved filter's 0 already meant) / ★…★★★★★ / Rejected Only.
+**U is window-wide on purpose** (Jason's fix the same night: U jumped
+the sidebar to "Untitled Collection" by type-select, since a tile click
+leaves it the keyboard): `MainView`'s own `SingleKeys` takes U in every
+mode, and the grid's rating digits run ahead of its sidebar check — see
+`showtools-gotchas`. Re-checked with the sidebar holding the keyboard: U
+both ways, no jump, a digit rates, the search box still types "u".
 Checked with axtool on a scratch library: 3, 5 on two files at once, −,
 9 (the file leaves the grid), Show All (its red ✕), U both ways (the
 default flips), =, ⌘Z/Redo Rate, and a screenshot of level rows.

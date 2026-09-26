@@ -31,6 +31,7 @@ struct MainView: View {
     /// Same key as `ShowView`'s own — governs the mode picker and which
     /// content `timelinePane` shows (real or greyed placeholder).
     @AppStorage("editMode") private var mode: EditMode = .slides
+    @AppStorage("showRatings") private var showRatings = true
 
     var body: some View {
         // Split from the alerts/dialogs below: one expression this size is
@@ -135,6 +136,14 @@ struct MainView: View {
         // ran first was undefined, and "delete the whole show" sometimes
         // won. One handler, one priority order, settles it.
         .background(SingleKeys { event in
+            // Item 20: U shows and hides the ratings, wherever the keyboard
+            // is. Taken here, window-wide, so the sidebar never sees it:
+            // its type-select jumped to "Untitled Collection" (Jason,
+            // 2026-09-26: "it's not supposed to jump at all").
+            if event.charactersIgnoringModifiers?.lowercased() == "u", event.plainModifiers == [] {
+                showRatings.toggle()
+                return true
+            }
             guard event.keyCode == 51 || event.keyCode == 117 else { return false }
             if case .show(let id) = model.sidebar, let show = model.show(id), mode == .show,
                SlideActions.removeSelected(session: model.session(for: id), mutate: { action, change in
@@ -1398,6 +1407,14 @@ struct LibraryGridView: View {
         // Not while text is edited (SingleKeys), not while a list (the
         // sidebar) has the keyboard.
         .background(SingleKeys { event in
+            // Item 20: the rating keys rate the selected tiles even while
+            // the sidebar has the keyboard (a tile click doesn't take it),
+            // rather than going to the sidebar's type-select.
+            if event.plainModifiers == [], let c = event.charactersIgnoringModifiers,
+               let key = Rating.Key(c), !orderedSelection.isEmpty {
+                model.applyRatingKey(key, to: orderedSelection, undo: undoManager)
+                return true
+            }
             guard !(NSApp.keyWindow?.firstResponder is NSTableView) else { return false }
             if event.keyCode == 0, event.plainModifiers == [.command] {
                 guard !visible.isEmpty else { return false }
@@ -1425,13 +1442,11 @@ struct LibraryGridView: View {
             case (36, _, []):
                 guard !orderedSelection.isEmpty else { return false }
                 renameIDs = orderedSelection
-            // Item 20, Aperture's keys: U shows and hides the ratings;
-            // 1–5, 0, 9, − and = rate the selected files (`Rating.Key`).
+            // Item 20: U, for the library panel's own window (the main
+            // window's is MainView's, window-wide). The rating keys are
+            // above, ahead of the sidebar check.
             case (_, "u"?, []):
                 showRatings.toggle()
-            case (_, let c?, []) where Rating.Key(c) != nil:
-                guard !orderedSelection.isEmpty, let key = Rating.Key(c) else { return false }
-                model.applyRatingKey(key, to: orderedSelection, undo: undoManager)
             default:
                 return false
             }

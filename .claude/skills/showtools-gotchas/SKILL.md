@@ -1,6 +1,6 @@
 ---
 name: showtools-gotchas
-description: Traps in this codebase found by measurement — AVFoundation failing quietly, measuring the right quantity, @ObservationIgnored on PlaybackEngine.show, undo restoring whole-show snapshots, the older-version test trap, synthetic events not being proof, per-window undo managers, AppKit layout that measures during layout. Load before debugging unexpected behaviour or touching export, playback, undo or migrations.
+description: Traps in this codebase found by measurement — AVFoundation failing quietly, measuring the right quantity, @ObservationIgnored on PlaybackEngine.show, undo restoring whole-show snapshots, the older-version test trap, synthetic events not being proof, per-window undo managers, AppKit layout that measures during layout, U being taken window-wide (why a U does "nothing"). Load before debugging unexpected behaviour or touching export, playback, undo or migrations.
 ---
 
 # Traps, each found by measuring
@@ -93,6 +93,19 @@ never have guessed it. `VideoSlideTiming` now holds it for both — asked by
   its frame — or content wider than its column steals the next column's
   clicks and scrolling.
 - **Harnesses first for AppKit questions.**
+- **U is taken window-wide, on purpose, and never reaches anything
+  else** (item 20, Jason, 2026-09-26). `MainView`'s own `SingleKeys`
+  swallows a plain U in every mode to toggle Show Ratings, ahead of the
+  grid, the browser, the timeline and the sidebar. So a U that "does
+  nothing" in some view — no type-select to a sidebar item starting
+  with U, no onKeyPress("u") firing — is this, not a bug. Why: a click on
+  a tile leaves the keyboard on the sidebar, whose type-select jumped to
+  "Untitled Collection" on U; Jason: "it's not supposed to jump at all."
+  Only a text field gets U (`SingleKeys` stands aside for `NSText`). For
+  the same reason the grid's rating digits run *ahead of* its
+  sidebar-has-the-keyboard check. A new bare-key command wanting U, or
+  any key that should work while the sidebar has the keyboard, has to
+  go in the same window-wide handler. Keys: `spec/conventions.md` §2.
 
 ## Data that disappears quietly
 

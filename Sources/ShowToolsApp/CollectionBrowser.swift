@@ -332,11 +332,10 @@ struct CollectionBrowser: View {
             }
             return .handled
         }
-        // Item 20, Aperture's keys, as in the Library grid: U shows and
-        // hides the ratings; 1–5, 0, 9, − and = rate the picked files.
-        .onKeyPress(characters: CharacterSet(charactersIn: "u0123459-=")) { press in
+        // Item 20, Aperture's keys, as in the Library grid: 1–5, 0, 9, −
+        // and = rate the picked files. (U is MainView's, window-wide.)
+        .onKeyPress(characters: CharacterSet(charactersIn: "0123459-=")) { press in
             guard press.modifiers.isEmpty else { return .ignored }
-            if press.characters == "u" { showRatings.toggle(); return .handled }
             guard let key = Rating.Key(press.characters), !picked.isEmpty else { return .ignored }
             model.applyRatingKey(key, to: ordered(picked), undo: undoManager)
             return .handled
