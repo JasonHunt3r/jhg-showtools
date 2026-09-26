@@ -99,6 +99,9 @@ struct SlideInspector: View {
         }
         .font(.callout)
         .padding(.horizontal, 10).padding(.vertical, 8)
+        // The whole bar, not just its text and icons: a right-click on its
+        // empty stretch opened nothing (Jason, 2026-09-26).
+        .contentShape(Rectangle())
         // Settled 2026-09-24 (`spec/conventions.md` §3, item 6).
         .contextMenu {
             Button("Play from Here") { playFromHere() }
