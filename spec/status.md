@@ -70,7 +70,9 @@ Not designed yet. (The first of them, pinch to resize the grid's tiles,
 is built and confirmed — see "Done, confirmed by Jason 2026-09-26".)
 
 - **A drawer at the top of the grids with a viewer of the selected
-  image(s)** — a PaneKit drawer over the grid, so it closes to its
+  image(s)** — **planned 2026-09-26 by Q&A** (`spec/plan.md`, "The viewer
+  drawer"): multi-up, the header bar as its handle, all three grids,
+  video/GIFs muted and looping; awaiting Jason's go-ahead on the plan — a PaneKit drawer over the grid, so it closes to its
   handle, and can switch sides like every other pane.
 
 ### Parked for later (Jason, 2026-09-25)

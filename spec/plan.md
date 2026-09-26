@@ -1240,6 +1240,66 @@ Real dragging (a group onto a group, onto its own collection, onto
 another) still wants Jason's hands — this was built and reasoned about,
 not clicked.
 
+### The viewer drawer (Jason, 2026-09-26) — Planned
+
+A viewer of the selected file(s), in a drawer at the top of the grids:
+see a picture big without leaving the grid, and compare picks side by
+side. Asked 2026-09-25; decided with Jason by Q&A 2026-09-26.
+
+**Where:** the Library grid, the library panel's grid, and Edit Show's
+browser (Jason: all three). Each remembers its own open/closed state and
+height, the way the two grids keep their own tile sizes.
+
+**The header bar is the handle** (Jason). The drawer opens *above* the
+bar each place already has (the grid's search/filter/size bar, the
+browser's Show/rating/search bar): drag the bar down to open the viewer
+and set its height, drag it up to close it, double-click the bar's empty
+space to open or close. Closed, nothing changes from today — no extra
+edge handle. The bar's own controls keep their clicks; only its empty
+space drags. **Y** (Aperture's Viewer key, kept for this) and View ▸ Show
+Viewer do the same as a double-click, in whichever of the three has the
+keyboard. It doesn't switch sides: the bar is its handle, and the bar
+stays on top.
+
+**What it shows** (Jason):
+- **Several selected: all of them, side by side** (Aperture's multi-up,
+  Lightroom's Survey), tiled as large as the drawer allows, the one last
+  clicked outlined. Arrow keys keep moving the grid's selection, and the
+  outline follows. Proposed cap: 12 at once, with a "+N more" note past
+  that — ⌘A on thousands of files shouldn't try to draw them all.
+- **Video and animated GIFs play, muted, looping**, as they'll move in a
+  show without surprising anyone with sound.
+- **Nothing selected: a quiet "No selection" note**, centred, like the
+  empty inspector's.
+- Audio files: their name and a speaker symbol (they aren't pictures).
+
+**The grid keeps the keyboard** while the viewer is open: arrows, rating
+keys, ⌘A, Delete, Return all still work on the grid, and the viewer
+follows. The viewer takes no clicks of its own in v1 (a click could later
+make a tile the outlined one, or double-click to the Slide Editor).
+
+**PaneKit gains "a view as the handle"** — reusable, not ShowTools'. A
+split can say its handle is the app's own view (`handle: .external`):
+closed, it takes no room (no 12 pt edge handle, no divider line), and
+the app marks a view with `.paneHandle(controller, split:)`, which turns
+a drag on it into the same `dragResize` a divider drag makes and a
+double-click into open/close. Switching sides is off for such a split.
+Tests in `PaneControllerTests` (closed size 0; drag opens and sizes;
+double-click toggles); a harness check with a header-bar-shaped view.
+
+**Steps:**
+1. PaneKit: `handle: .external` and `.paneHandle` — tests and harness.
+2. The viewer itself, `SelectionViewer`: multi-up layout (pure, tested in
+   Core: N aspect ratios into a W×H box → tile frames), images decoded at
+   the tile's pixel size off the main thread and cached, GIFs and video
+   playing muted and looping, the "No selection" note, the cap.
+3. The Library grid (main window and panel): the split, the bar as
+   handle, Y and the View menu item.
+4. Edit Show's browser: the same, following its picked files and uses.
+
+**Open:** the cap of 12 (proposed); whether a click in the viewer should
+do anything later.
+
 ### Later
 - **The library grid's right side as an info drawer, not a floating
   panel** (Jason, 2026-09-24, while building the library panel:
