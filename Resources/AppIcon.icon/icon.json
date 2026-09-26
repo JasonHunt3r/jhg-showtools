@@ -1,0 +1,28 @@
+{
+  "fill": {
+    "solid": "srgb:0.00000,0.00000,0.00000,0.00000"
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "line.svg",
+          "name": "line"
+        },
+        {
+          "image-name": "teal.svg",
+          "name": "teal"
+        },
+        {
+          "image-name": "navy.svg",
+          "name": "navy"
+        }
+      ]
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}

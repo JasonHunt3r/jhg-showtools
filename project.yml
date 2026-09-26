@@ -45,9 +45,9 @@ targets:
       - path: Resources/Fonts
         type: folder
         buildPhase: resources
-      # The app icon, rendered from Resources/AppIcon.svg by
-      # tools/make-app-icon.swift.
-      - path: Resources/Assets.xcassets
+      # The app icon: an Icon Composer document (open it in Icon Composer
+      # to edit). Its three layers were cut from Resources/AppIcon.svg.
+      - path: Resources/AppIcon.icon
     dependencies:
       - package: ShowTools
         product: ShowToolsCore
