@@ -182,6 +182,12 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   hands:** PaneKit's divider is a 1 pt line with a 7 pt grab band, where
   the old bar was a 12 pt band (he'd found the system split line too
   fiddly) — if it's fiddly again, that's a PaneKit-wide grab-width change.
+  **Resizing live, fixed the same day:** Jason found the frames didn't
+  follow a resize. Measured with screenshots mid-drag: the height followed,
+  but every frame was blank until the drag stopped (frames are cached at
+  one exact size and rendering waits 120 ms for a drag to settle — true of
+  the old bar too). `FrameCache.nearest(to:)` now stands in the closest
+  cached frame, stretched, until the real one renders.
 - **Items 23–25** — queued as their own BGTools work list, to pick up
   once the ShowTools fixes above are done: `spec/bgtools.md`, "Next up —
   queued 2026-09-25, after the ShowTools fixes."

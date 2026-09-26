@@ -103,7 +103,7 @@ struct FrameStrip: View {
         return ZStack(alignment: .topLeading) {
             ForEach(list, id: \.self) { slot in
                 Group {
-                    if let img = frames.image(at: slot.time, size: pixels) {
+                    if let img = frames.image(at: slot.time, size: pixels) ?? frames.nearest(to: slot.time) {
                         Image(decorative: img, scale: 2).resizable().aspectRatio(contentMode: .fit)
                     } else {
                         Rectangle().fill(Color.white.opacity(0.06))
@@ -211,6 +211,20 @@ final class FrameCache {
     }
 
     func image(at t: Double, size: CGSize) -> CGImage? { images[key(t, size)] }
+
+    /// A stand-in while a frame at the size asked for isn't drawn yet: the
+    /// cached frame closest in time, at any size (the biggest, on a tie),
+    /// stretched to fit. Resizing the strip asks for a new size on every
+    /// step, and rendering waits for the drag to settle, so without this
+    /// every frame went blank for the whole drag (measured 2026-09-25,
+    /// screenshots mid-drag: the height followed, the frames were empty).
+    func nearest(to t: Double) -> CGImage? {
+        let ms = Int((t * 1000).rounded())
+        return images.min { a, b in
+            let da = abs(a.key.time - ms), db = abs(b.key.time - ms)
+            return da != db ? da < db : a.key.h > b.key.h
+        }?.value
+    }
 
     func render(timeline: ShowTimeline, show: Show, times: [Double], size: CGSize, urls: [Int64: URL]) async {
         if forShow != show {
