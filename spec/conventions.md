@@ -50,7 +50,7 @@ itself. Names follow `spec/anatomy.md`.
 | **Click** | Select this, and only this. Takes the keyboard to that area | — | Built (grid, timeline, lists) |
 | **⌘-click** | Add to or remove from the selection | — | Built in the grid, lists and the slides row. **Settled for lane images and audio clips too** (Jason, 2026-09-24; E4): today they select one at a time |
 | **⇧-click** | Select the range from the anchor (the last plain click or ⌘-click) to here, *replacing* the previous ⇧-range | — | **Built 2026-09-24** (batch 4) in the grid and the storyline, through `GridSelection` (unit-tested); Lists already did it right |
-| **Click on empty space** | Deselect all | — | Built in the grid |
+| **Click on empty space** | Deselect all | The browser: deselecting there lets go of the show's slide or lane image too (it was left in the inspector, editable) | Built in the grid; **the timeline** (every row's empty space and past the last slide, clearing every kind of selection) and **the browser**, 2026-09-26 (Jason) |
 | **Drag on empty space** | Rubber-band selection; ⌘ or ⇧ adds | The timeline: a drag on the ruler scrubs instead | **Settled** (Jason, 2026-09-24; B4) |
 | **Double-click** | **Go into it:** open the thing one level deeper | See "Double-click" below | **Settled** as the meaning (Jason, 2026-09-24); some targets are still to be tried |
 | **⌥-click** | Jason's leading idea: **select the thing behind** in an overlap, such as the slide under a transition or a lane image | ⌥-click on a row handle already opens or closes every drawer. ⌥-drag copies (§1 note) | **Open**. See "How ⌥ is used elsewhere" below |
@@ -385,9 +385,10 @@ universals first.
   - **Empty list space:** Add from Collection…, Import…, Paste, Select
     All. **Built for a truly empty show** (the `ContentUnavailableView`
     gained Paste; Select All has nothing to select there, left off). A
-    non-empty list's empty space below the last row isn't its own
-    context-menu target in SwiftUI's `List` without more work — not
-    built, low priority (the spec itself only said "Try it").
+    non-empty list's empty space below the last row: SwiftUI's `List`
+    throws there on a right-click (2026-09-26), so `ListEmptySpace`
+    answers it with a "No menu yet" note listing these items as agreed,
+    not built (the spec itself only said "Try it").
   - **The defaults bar:** built as a small "…" menu: Use Defaults for All
     Slides, Reset to App Defaults. **Save as Preset… left out** — it
     needs somewhere to keep named presets (per-library? global? how are
@@ -455,9 +456,9 @@ universals first.
   - **An audio file** gets **Place at Playhead**. It doesn't need to say
     "audio row"; people know where audio goes — built
     (`MusicRow.place`).
-  - **Empty space:** Import…, Add from Library…. **Not built** this
-    pass — the list already has an empty-collection state elsewhere in
-    the app; this specific menu wasn't reached.
+  - **Empty space:** Import…, Add from Library…. **Not built** — a
+    right-click there shows the "No menu yet" note naming them
+    (`ListEmptySpace`, 2026-09-26).
 - **Replace Image…** (Jason, 2026-09-24, raised here): on a slide and a
   lane image, to swap which picture it uses and keep its settings
   (`spec/plan.md`, Later).

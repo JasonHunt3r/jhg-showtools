@@ -216,7 +216,9 @@ Main window
   - Picking a use selects it in the show, and the show's selection shows
     back here.
   - With the browser focused, E appends, W inserts at the playhead, and
-    Q places a lane image at the playhead.
+    Q places a lane image at the playhead; 1–5, 0, 9, − and = rate the
+    picked files (item 20). U shows or hides ratings from anywhere in
+    the window.
 - **Inspector:** the same as Edit Slides', plus live preview. Sliders
   draw in the viewer as they move and save once, on release.
 - **Transport:** previous slide, play, next slide, the clock, and the
@@ -296,13 +298,18 @@ transitions and audio clips are one at a time.
 **Delete** acts on the first of these it finds selected: markers, then
 the audio clip, then the lane image, then the transition (leaving a cut), then
 slides. **Esc** closes open drawers first. Otherwise it clears lane
-image, audio clip and markers, but not slides or a transition.
+image, audio clip and markers, but not slides or a transition. **A click
+on the timeline's empty space** (any row's, or past the last slide)
+clears every kind (2026-09-26).
 
 ### Other links
 
 - **Browser ↔ timeline:** picking one use selects that slide (or lane
   image), and the timeline's selection picks it back. Each side changes
-  the other only when they differ.
+  the other only when they differ. Deselecting goes both ways too
+  (2026-09-26): a click on the browser's empty space clears the slide or
+  lane image it had picked, and a slide deselected in the timeline drops
+  its highlight in the browser.
 - **Slide selection → viewer:** clicking a block moves the playhead to
   that slide and pauses.
 - **Inspector → viewer:** slider drags draw live, and are saved on
