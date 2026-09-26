@@ -78,7 +78,10 @@ Not pressing; each wants a discussion or a plan before any code.
   with the defaults, and a line in `spec/conventions.md` §6. Jason also
   wanted their text centred; macOS 27's `NSAlert` left-aligns by default
   and has no setting for it (centring would mean restyling after
-  layout, or our own panel) — parked with this.
+  layout, or our own panel) — parked with this. Also Jason, seeing one:
+  macOS 27's alert puts the app icon alone in the top-left with empty
+  space beside it — "maybe room for the App name or something". Another
+  reason to consider our own panel for this type.
 
 **The 2026-09-24 cloud-planning work queue is done** — every item in it
 (the audit batches, Groups inside collections, the range package, the
