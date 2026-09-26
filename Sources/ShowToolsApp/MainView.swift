@@ -651,6 +651,48 @@ struct ImportBanner: View {
 /// slider in the toolbar, a bar at the top to search, filter and sort, and
 /// Finder-style selection. Selected files drag onto a collection or a show
 /// in the sidebar.
+/// The Library grid's one drop handler for drag-to-reorder (`spec/plan.md`,
+/// "Reordering"), over the whole grid rather than one per tile: the tiles
+/// move while dragging, so a tile can't be asked whether the cursor is over
+/// it (that was the back-and-forth loop). The grid works out the slot from
+/// the cursor's position instead (`LibraryGridView.slot(at:)`).
+/// Only this grid's own drags: a file dragged in from elsewhere isn't a
+/// reorder, and falls through to the grid's import drop.
+private struct ReorderDrop: DropDelegate {
+    let isOurs: () -> Bool
+    /// The cursor moved to a point; false when this grid can't reorder.
+    let update: (CGPoint) -> Bool
+    let exit: () -> Void
+    let perform: () -> Void
+
+    func validateDrop(info: DropInfo) -> Bool {
+        info.hasItemsConforming(to: [ItemDrag.type]) && isOurs()
+    }
+
+    func dropEntered(info: DropInfo) { _ = update(info.location) }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: update(info.location) ? .move : .forbidden)
+    }
+
+    func dropExited(info: DropInfo) { exit() }
+
+    func performDrop(info: DropInfo) -> Bool {
+        guard update(info.location) else { exit(); return false }
+        perform()
+        return true
+    }
+}
+
+/// One tile's size, for the reorder drop's geometry. Every tile is the same
+/// size, so the first one reported is enough.
+private struct CellSizeKey: PreferenceKey {
+    static let defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        if value == .zero { value = nextValue() }
+    }
+}
+
 struct LibraryGridView: View {
     /// Nil shows the whole library.
     var collectionID: Int64? = nil
@@ -677,17 +719,24 @@ struct LibraryGridView: View {
     @AppStorage("gridMinRating") private var minRating = 0
     @AppStorage("gridUncollected") private var onlyUncollected = false
     @AppStorage("gridSort") private var sort: SortOrder = .added
-    /// The tile a drag-to-reorder is currently hovering, for its highlight —
-    /// nil the rest of the time. One piece of state for the whole grid,
-    /// since `tile(_:)` is a function, not its own view with state of its own.
-    @State private var dropTargetID: Int64?
-    /// The file(s) a drag-to-reorder picked up — set the moment the drag
-    /// starts (`tile(_:)`'s own `.onDrag`), so `displayed` can shift the
-    /// other tiles live to show where they'd land. Left set after a drag
-    /// ends without a drop (there's no reliable "drag cancelled" callback
-    /// in SwiftUI on macOS); harmless, since `displayed` only reads it
-    /// together with `dropTargetID`, which does always clear.
+    /// The file(s) a drag-to-reorder picked up, set the moment the drag
+    /// starts (`tile(_:)`'s own `.onDrag`). SwiftUI on macOS has no "drag
+    /// ended" callback for a drag dropped nowhere, so the next mouse-down
+    /// anywhere in the app clears it (`dragEndMonitor`).
     @State private var draggingIDs: [Int64] = []
+    /// Where the gap is while a drag-to-reorder is over the grid: the slot
+    /// the dragged file(s) would land in, worked out from the cursor's
+    /// position alone (`Reorder.slot`). Nil when no drag is over the grid.
+    @State private var gapIndex: Int?
+    /// One tile's size and the grid's own width, measured, for `slot(at:)`.
+    @State private var cellSize: CGSize = .zero
+    @State private var gridContentWidth: CGFloat = 0
+    /// The scroll area's height, so the drop area reaches its bottom even
+    /// when there are only a few tiles.
+    @State private var viewportHeight: CGFloat = 0
+    /// Why a drag over this grid can't reorder it, shown while it's there.
+    @State private var reorderBlockedReason: String?
+    @State private var dragEndMonitor: Any?
     /// The grid takes the keyboard on a click, so Delete and ⌘Delete reach
     /// it even before anything's been clicked in this session.
     @FocusState private var focused: Bool
@@ -835,27 +884,65 @@ struct LibraryGridView: View {
         return filtered
     }
 
-    /// `visible`, live-reordered while a drag-to-reorder is hovering a
-    /// tile: the dragged file(s) shown right where they'd land, so the
-    /// tiles between their old and new spots visibly shift out of the way
-    /// (Jason: "shows the tile where it would be if you release the
-    /// click") — a preview only, nothing is written until `reorderDrop`'s
-    /// actual drop. Falls back to `visible` untouched outside a drag, or
-    /// if the drag is hovering nothing, or hovering one of its own tiles.
+    /// `visible`, while a drag-to-reorder is over the grid: the dragged
+    /// file(s) moved to `gapIndex`, where `tile(_:)` draws them as empty
+    /// space. That gap is the "here's where it lands" signal (Jason's
+    /// design, 2026-09-25), and a drop saves exactly this order.
     private var displayed: [MediaItem] {
-        guard !draggingIDs.isEmpty, let target = dropTargetID, !draggingIDs.contains(target) else { return visible }
-        var items = visible
-        let draggedItems = items.filter { draggingIDs.contains($0.id) }
-        guard !draggedItems.isEmpty else { return visible }
-        // Dropping on the very last tile is the only way to reach "the very
-        // end" — inserting before it, like every other tile, would always
-        // leave whatever was already last still last (Jason: "the last
-        // tile ... doesn't flow").
-        let isLastTile = items.last?.id == target
-        items.removeAll { draggingIDs.contains($0.id) }
-        guard let targetIndex = items.firstIndex(where: { $0.id == target }) else { return visible }
-        items.insert(contentsOf: draggedItems, at: isLastTile ? targetIndex + 1 : targetIndex)
-        return items
+        guard let gap = gapIndex, !draggingIDs.isEmpty else { return visible }
+        let byID = Dictionary(visible.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        return Reorder.moving(Set(draggingIDs), in: visible.map(\.id), to: gap).compactMap { byID[$0] }
+    }
+
+    /// Why this grid can't be reordered by dragging right now, or nil if it can.
+    private var reorderBlocked: String? {
+        if collectionID == nil && groupID == nil {
+            return "To reorder, open a collection or group. The Library itself has no order of its own."
+        }
+        if similarActive { return "Reordering is off while Show Similar is on." }
+        return nil
+    }
+
+    /// The slot under a point in the drop area (`scrollingGrid`'s padded
+    /// grid), for a block of `draggingIDs` — geometry only (`Reorder.slot`).
+    private func slot(at p: CGPoint) -> Int? {
+        guard cellSize.width > 0, cellSize.height > 0 else { return nil }
+        let spacing: CGFloat = 10, pad: CGFloat = 12
+        let pitchX = cellSize.width + spacing, pitchY = cellSize.height + spacing
+        let columns = isListMode ? 1 : max(1, Int(((gridContentWidth + spacing) / pitchX).rounded()))
+        let block = visible.filter { draggingIDs.contains($0.id) }.count
+        return Reorder.slot(x: p.x - pad, y: p.y - pad, columns: columns, pitchX: pitchX, pitchY: pitchY,
+                            count: visible.count, blockSize: block)
+    }
+
+    /// A drop: saves what's on screen (`displayed`) as the collection's or
+    /// group's Custom Order. Files a search or filter is hiding keep their
+    /// places (`Reorder.merge`). Switches the sort to Custom Order, so the
+    /// order that was just made is what shows, and says so once
+    /// (`CustomOrderNotice`). Applied a moment later, all in one go, so
+    /// nothing is rebuilt inside the drag's own callback and the gap holds
+    /// until the new order replaces it.
+    private func commitReorder() {
+        let shown = displayed.map(\.id)
+        let order = Reorder.merge(shown, into: all.map(\.id))
+        let gid = groupID, cid = collectionID, undo = undoManager
+        DispatchQueue.main.async {
+            let switched = sort != .custom
+            sort = .custom
+            if let gid {
+                model.setOrder(order, inGroup: gid, undo: undo)
+            } else if let cid {
+                model.setOrder(order, inCollection: cid, undo: undo)
+            }
+            endReorderDrag()
+            if switched { CustomOrderNotice.show() }
+        }
+    }
+
+    private func endReorderDrag() {
+        if !draggingIDs.isEmpty { draggingIDs = [] }
+        if gapIndex != nil { gapIndex = nil }
+        if reorderBlockedReason != nil { reorderBlockedReason = nil }
     }
 
     /// The pictures Find Similar compares: the stills and animations in view.
@@ -971,7 +1058,7 @@ struct LibraryGridView: View {
 
     /// Its own strip, separate from `bar`'s Sort menu (Jason, 2026-09-25):
     /// which sort is active — Custom Order most of all, since dragging to
-    /// reorder switches to it on its own (`reorderDrop`) and it's easy to
+    /// reorder switches to it on its own (`commitReorder`) and it's easy to
     /// lose track of which view you're in without opening the menu to check.
     private var sortStatusBar: some View {
         HStack(spacing: 4) {
@@ -1061,7 +1148,22 @@ struct LibraryGridView: View {
         }
         .navigationTitle(navigationName)
         .navigationSubtitle(selection.isEmpty ? "\(visible.count) items" : "\(selection.count) selected")
-        .onChange(of: navScope) { selection = []; anchor = nil; selectionBase = []; cursor = nil; similarTo = nil }
+        .onChange(of: navScope) {
+            selection = []; anchor = nil; selectionBase = []; cursor = nil; similarTo = nil
+            endReorderDrag()
+        }
+        // A drag dropped nowhere never says it ended; the next click
+        // anywhere in the app means it has (`draggingIDs`).
+        .onAppear {
+            dragEndMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { e in
+                endReorderDrag()
+                return e
+            }
+        }
+        .onDisappear {
+            if let m = dragEndMonitor { NSEvent.removeMonitor(m) }
+            dragEndMonitor = nil
+        }
         // Fingerprints for what's in view, worked out once each.
         .task(id: similarActive ? comparable.map(\.id) : []) {
             guard similarActive else { return }
@@ -1298,16 +1400,50 @@ struct LibraryGridView: View {
                         tile(item)
                     }
                 }
+                .background(GeometryReader { g in
+                    Color.clear.onAppear { gridContentWidth = g.size.width }
+                        .onChange(of: g.size.width) { _, w in gridContentWidth = w }
+                })
+                .onPreferenceChange(CellSizeKey.self) { cellSize = $0 }
                 .animation(.easeInOut(duration: 0.2), value: displayed.map(\.id))
                 .padding(12)
+                // The drop area for reordering: the whole grid, down to the
+                // bottom of the scroll area, so dropping below the last row
+                // means "at the end".
+                .frame(maxWidth: .infinity, minHeight: viewportHeight, alignment: .top)
+                .contentShape(Rectangle())
+                .onDrop(of: [ItemDrag.type], delegate: ReorderDrop(
+                    isOurs: { !draggingIDs.isEmpty },
+                    update: { p in
+                        if let reason = reorderBlocked {
+                            reorderBlockedReason = reason
+                            return false
+                        }
+                        if let s = slot(at: p), s != gapIndex { gapIndex = s }
+                        return true
+                    },
+                    exit: { gapIndex = nil; reorderBlockedReason = nil },
+                    perform: { commitReorder() }
+                ))
                 if similarTo != nil, visible.count <= 1 { similarEmpty }
             }
         }
         .background(Color(nsColor: .textBackgroundColor).opacity(0.001))
         .background(GeometryReader { g in
-            Color.clear.onAppear { gridWidth = g.size.width }
+            Color.clear.onAppear { gridWidth = g.size.width; viewportHeight = g.size.height }
                 .onChange(of: g.size.width) { _, w in gridWidth = w }
+                .onChange(of: g.size.height) { _, h in viewportHeight = h }
         })
+        .overlay(alignment: .bottom) {
+            if let reason = reorderBlockedReason {
+                Text(reason)
+                    .font(.callout)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(16)
+                    .allowsHitTesting(false)
+            }
+        }
         // Item 4, `ShowTools Feedback — Worklist for Next CC Session.md`:
         // no right-click response anywhere in the main window's background
         // areas. The near-invisible background above already makes this
@@ -1367,41 +1503,6 @@ struct LibraryGridView: View {
             .padding(40)
     }
 
-    /// A drag dropped onto `targetID`: Custom Order (`spec/plan.md`,
-    /// "Reordering") — the dragged files (their own relative order kept)
-    /// land right before it, among the collection's or group's *whole*
-    /// membership, not just what search/filters are showing right now (so
-    /// a drag under an active filter never silently drops the files it
-    /// can't currently see out of the collection's order). Switches the
-    /// sort to Custom Order itself, so the reorder that was just made is
-    /// never invisible under whatever sort was active. Refused in the
-    /// plain Library (nothing to carry a `sort_key`) or onto one of the
-    /// dragged files itself.
-    private func reorderDrop(_ providers: [NSItemProvider], onto targetID: Int64) -> Bool {
-        guard collectionID != nil || groupID != nil else { return false }
-        Task {
-            defer { draggingIDs = []; dropTargetID = nil }
-            guard let dragged = await ItemDrag.ids(from: providers), !dragged.isEmpty,
-                  !dragged.contains(targetID) else { return }
-            var order = all.map(\.id)
-            let isLastTile = order.last == targetID
-            let draggedSet = Set(dragged)
-            order.removeAll { draggedSet.contains($0) }
-            guard let targetIndex = order.firstIndex(of: targetID) else { return }
-            order.insert(contentsOf: dragged, at: isLastTile ? targetIndex + 1 : targetIndex)
-            if sort != .custom {
-                CustomOrderNotice.show()
-                sort = .custom
-            }
-            if let gid = groupID {
-                model.setOrder(order, inGroup: gid, undo: undoManager)
-            } else if let cid = collectionID {
-                model.setOrder(order, inCollection: cid, undo: undoManager)
-            }
-        }
-        return true
-    }
-
     private func tile(_ item: MediaItem) -> some View {
         let selected = selection.contains(item.id)
         return Group {
@@ -1435,49 +1536,26 @@ struct LibraryGridView: View {
             }
         }
         .contentShape(Rectangle())
-        // The drag-to-reorder target highlight (Custom Order,
-        // `spec/plan.md` "Reordering") — a plain ring, distinct from the
-        // selection ring above so the two are never confused mid-drag.
-        .overlay(dropTargetID == item.id
-                 ? RoundedRectangle(cornerRadius: 5).strokeBorder(Color.accentColor, lineWidth: 2).padding(-2)
-                 : nil)
+        // A file being dragged to reorder is the gap: plain empty space
+        // where it would land (Jason, 2026-09-25). It stays in the grid,
+        // only invisible, so the drag it started from is never torn down.
+        .opacity(gapIndex != nil && draggingIDs.contains(item.id) ? 0 : 1)
+        .background(GeometryReader { g in
+            Color.clear.preference(key: CellSizeKey.self, value: g.size)
+        })
         // Double-click: "go into it" (conventions.md), settled as Quick
         // Look for a Library tile (B5, B6) now that Space is play/pause.
         .onTapGesture(count: 2) { click(item.id); quickLook(startingAt: item.id) }
         .onTapGesture { click(item.id) }
         // A selected tile drags the whole selection; any other, just itself.
-        // `draggingIDs` records it too, for `displayed`'s live reflow.
+        // `draggingIDs` records it too, for reordering (`ReorderDrop`). Only
+        // plain state here: rebuilding the grid inside `.onDrag` (switching
+        // the sort, tried 2026-09-25) tore down the drag as it started.
         .onDrag {
             let ids = selection.contains(item.id) ? orderedSelection : [item.id]
             draggingIDs = ids
             return ItemDrag.provider(ids)
         }
-        // Dropping onto another tile reorders — Custom Order, only
-        // meaningful inside a collection or group (the plain Library has
-        // no membership to carry a `sort_key`, `spec/plan.md`). The switch
-        // to Custom Order itself, and its one-time notice, happen in
-        // `reorderDrop` on the actual drop — not here on hover, and not in
-        // `.onDrag` on pickup (both tried 2026-09-25: hover-switching mid-
-        // drag reflows the *whole* list under a still-moving cursor, which
-        // can silently retarget the drop onto a different file than the
-        // one that was under it a moment before; switching in `.onDrag`
-        // outright broke the native drag session, snapping every drop back
-        // to its origin). The reflow itself is what was causing the rapid
-        // back-and-forth swap Jason saw before that: once a dragged tile's
-        // own live-reflowed position slid under the cursor, this fired
-        // `true` for *it*, `displayed` rightly refused to make one of the
-        // dragged tiles its own target and fell back to the un-reflowed
-        // order, which moved the real target tile back under the cursor,
-        // re-triggering `true` on it, reflowing again, and so on. A
-        // dragged tile can never become the target now, so the loop has
-        // nothing left to oscillate between.
-        .onDrop(of: [ItemDrag.type], isTargeted: Binding(
-            get: { dropTargetID == item.id },
-            set: { over in
-                guard !draggingIDs.contains(item.id) else { return }
-                dropTargetID = over ? item.id : (dropTargetID == item.id ? nil : dropTargetID)
-            }
-        )) { providers in reorderDrop(providers, onto: item.id) }
         .contextMenu {
             let ids = selection.contains(item.id) ? orderedSelection : [item.id]
             Button("New Show from \(ids.count == 1 ? "Item" : "\(ids.count) Items")") {
