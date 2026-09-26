@@ -112,7 +112,7 @@ before moving code between targets or adding a file to one.
   and `SlideLength` are synthesized enums, so a removed case drops the
   whole setting. Keep old cases decodable, or migrate them.
 - Library schema changes are additive migrations (`Library.migrate`,
-  currently version 12), each tested by opening a library written by the
+  currently version 14), each tested by opening a library written by the
   version before. The master library upgrades itself on first open, after
   copying its database to `Library.sqlite.v<N>.bak`. A new migration must
   also raise `Library.schemaVersion`, or that copy isn't made (the

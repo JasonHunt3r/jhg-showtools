@@ -254,8 +254,7 @@ default flips), =, ⌘Z/Redo Rate, and a screenshot of level rows.
 - **Simple things fast** — Jason confirmed 2026-09-25 all three answers
   (guided first run, Quick Show, the levels) are to be **built**, not
   chosen among. Its doc's own "Still open" list has shrunk to one real
-  question (presets shared or separate between Quick Show and New Show…);
-  status.md's older "Four questions" line was stale.
+  question (presets shared or separate between Quick Show and New Show…).
 - **Windows of their own** — the built pop-outs (Slide Editor, the
   library panel, the Inspector, the Timeline pane) don't cover the whole
   original list: **the Library pane itself** (the sidebar, not the
@@ -500,7 +499,8 @@ and Flush presets from 2a.
   way in"). The editor does a lot, but simple things aren't fast. There
   are three answers: the guided first run, playing a library or
   collection without building a show, and three levels (Basic, Advanced,
-  "Bring it on!"). Four questions for Jason.
+  "Bring it on!"). All three are to be built; one question left for
+  Jason: do Quick Show and New Show… share one set of presets?
 
 ## Right-click, 2026-09-26
 
@@ -604,7 +604,7 @@ resets every app's login items, so they are left alone.
 ## Quick start
 
 ```sh
-swift test                                  # 306 core + 13 BGTools tests
+swift test                                  # 324 core + 13 BGTools tests
 ./make-app.sh                               # → build/ShowTools.app
 tools/make-test-library.sh <scratch>/STTest # scratch library + generated media
 open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools.app
