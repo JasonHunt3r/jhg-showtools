@@ -41,7 +41,9 @@ at `c7d657e`: the rebuilt drag-to-reorder, the pile, edge scrolling and
 the Undo fix. Reinstalled again after `79ca4e0` (Escape put-back, the Library's sort
 strip), and at 23:04 at `71aa2a1` (items 13 and 30). **Reinstalled
 2026-09-26 at `e0ae45a`**: item 20, both deselect fixes (browser and
-timeline), the inspector bar's right-click, and the "No menu yet" notes.
+timeline), the inspector bar's right-click, and the "No menu yet" notes. **Reinstalled
+2026-09-26 02:49 at `e283204`**: grid pinch, timeline ⌘A, the Icon
+Composer app icon.
 Reinstalling stops the real BGTools instance (`install.sh`'s own quit
 sequence); BGTools wasn't restarted after the 20:28 install. BGTools'
 desktop extension (`BGToolsControls.appex`) was also killed before that
