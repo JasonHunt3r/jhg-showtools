@@ -1334,6 +1334,14 @@ double-click toggles); a harness check with a header-bar-shaped view.
    list's focus, now inside the drawer's own hosting view, still works.
    **The viewer drawer is built, all four steps.**
 
+**The bar carries the grid's tools** (Jason, 2026-09-26, after the drawer
+was built): the tile-size slider, then Import, Add to Show and Get Info,
+moved down from the toolbar into the bar under the drawer — the Library
+view has no toolbar items now, so its title bar is the plain one. Where
+the bar doesn't fit on one row (the library panel), it takes two: search
+with Filter, Sort and Similar as icons, then the tools under them
+(`ViewThatFits`).
+
 **Open:** the cap of 12 (proposed); whether a click in the viewer should
 do anything later.
 

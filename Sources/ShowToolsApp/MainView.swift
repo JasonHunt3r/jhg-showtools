@@ -1215,70 +1215,115 @@ struct LibraryGridView: View {
         kind != .all || Rating.Filter.isActive(minRating) || (onlyUncollected && collection == nil)
     }
 
-    /// Search, filters and sort, over the grid.
+    /// Search, filters and sort, and the tools, over the grid (and under
+    /// the viewer drawer, whose handle it is). One row where there's room;
+    /// in a narrow window (the library panel) two, with the filters as
+    /// icons — the first layout that fits (Jason, 2026-09-26, after the
+    /// tools moved down from the toolbar and overflowed the panel).
     private var bar: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 4) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Search", text: $search).textFieldStyle(.plain)
-                if !search.isEmpty {
-                    Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
-                        .buttonStyle(.borderless).foregroundStyle(.secondary)
-                }
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                barFinding(compact: false)
+                Spacer(minLength: 10)
+                barTools
             }
-            .padding(.horizontal, 7).padding(.vertical, 4)
-            .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary.opacity(0.6)))
-            .frame(maxWidth: 260)
-
-            Menu {
-                Picker("Kind", selection: $kind) {
-                    ForEach(KindFilter.allCases, id: \.self) { Text($0.title).tag($0) }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) { barFinding(compact: true) }
+                HStack(spacing: 10) {
+                    Spacer(minLength: 0)
+                    barTools
                 }
-                .pickerStyle(.inline)
-                RatingFilterPicker(selection: $minRating)
-                if collection == nil {
-                    Divider()
-                    Toggle("Not in Any Collection", isOn: $onlyUncollected)
-                }
-            } label: {
-                Label("Filter", systemImage: filtering ? "line.3.horizontal.decrease.circle.fill"
-                                                       : "line.3.horizontal.decrease.circle")
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-            .foregroundStyle(filtering ? Color.accentColor : .primary)
-
-            Menu {
-                // Custom Order is a group's or collection's own drag order
-                // (schema 14) — the plain Library has no such thing to show.
-                Picker("Sort", selection: Binding(get: { effectiveSort }, set: { sort = $0 })) {
-                    ForEach(SortOrder.allCases.filter { $0 != .custom || group != nil || collection != nil },
-                            id: \.self) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.inline)
-            } label: {
-                Label("Sort", systemImage: "arrow.up.arrow.down")
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-
-            Button {
-                grouping.toggle()
-                similarTo = nil
-            } label: {
-                Label("Similar", systemImage: grouping ? "square.stack.3d.up.fill" : "square.stack.3d.up")
-            }
-            .buttonStyle(.borderless)
-            .foregroundStyle(grouping ? Color.accentColor : .primary)
-            .help("Find Similar Images: look-alike pictures together")
-            if similarActive { similarControls }
-
-            Spacer()
-            if visible.count != all.count {
-                Text("\(visible.count) of \(all.count)").foregroundStyle(.secondary).monospacedDigit()
             }
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
+    }
+
+    /// Search, Filter, Sort and Similar; `compact` shows the last three as icons.
+    @ViewBuilder private func barFinding(compact: Bool) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            TextField("Search", text: $search).textFieldStyle(.plain)
+            if !search.isEmpty {
+                Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.borderless).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 7).padding(.vertical, 4)
+        .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary.opacity(0.6)))
+        .frame(minWidth: 120, maxWidth: 260)
+
+        Menu {
+            Picker("Kind", selection: $kind) {
+                ForEach(KindFilter.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.inline)
+            RatingFilterPicker(selection: $minRating)
+            if collection == nil {
+                Divider()
+                Toggle("Not in Any Collection", isOn: $onlyUncollected)
+            }
+        } label: {
+            Label("Filter", systemImage: filtering ? "line.3.horizontal.decrease.circle.fill"
+                                                   : "line.3.horizontal.decrease.circle")
+        }
+        .menuStyle(.borderlessButton)
+        .labelStyle(compact ? AnyLabelStyle(.iconOnly) : AnyLabelStyle(.titleAndIcon))
+        .fixedSize()
+        .foregroundStyle(filtering ? Color.accentColor : .primary)
+
+        Menu {
+            // Custom Order is a group's or collection's own drag order
+            // (schema 14) — the plain Library has no such thing to show.
+            Picker("Sort", selection: Binding(get: { effectiveSort }, set: { sort = $0 })) {
+                ForEach(SortOrder.allCases.filter { $0 != .custom || group != nil || collection != nil },
+                        id: \.self) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            Label("Sort", systemImage: "arrow.up.arrow.down")
+        }
+        .menuStyle(.borderlessButton)
+        .labelStyle(compact ? AnyLabelStyle(.iconOnly) : AnyLabelStyle(.titleAndIcon))
+        .fixedSize()
+
+        Button {
+            grouping.toggle()
+            similarTo = nil
+        } label: {
+            Label("Similar", systemImage: grouping ? "square.stack.3d.up.fill" : "square.stack.3d.up")
+        }
+        .buttonStyle(.borderless)
+        .labelStyle(compact ? AnyLabelStyle(.iconOnly) : AnyLabelStyle(.titleAndIcon))
+        .foregroundStyle(grouping ? Color.accentColor : .primary)
+        .help("Find Similar Images: look-alike pictures together")
+        if similarActive { similarControls }
+    }
+
+    /// The count, the tools once in the toolbar, and the tile size.
+    @ViewBuilder private var barTools: some View {
+        if visible.count != all.count {
+            Text("\(visible.count) of \(all.count)").foregroundStyle(.secondary).monospacedDigit()
+        }
+        // The toolbar's tools and the tile size, here under the viewer
+        // drawer rather than in the toolbar (Jason, 2026-09-26: "move
+        // the whole set of tools down"). Controls keep their own clicks
+        // and drags; only the bar's empty space moves the drawer.
+        Button { runImportPanel(model) } label: { Image(systemName: "square.and.arrow.down") }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Import")
+            .help("Import files or folders")
+        addToShowMenu(ids: orderedSelection)
+            .labelStyle(.iconOnly)
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .disabled(selection.isEmpty)
+        Button { showGetInfo() } label: { Image(systemName: "info.circle") }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Get Info")
+            .help("Show info and tags for the selection (⌘I)")
+            .disabled(selection.isEmpty)
+        Slider(value: $tileSize, in: Self.tileSizeRange).frame(width: 100)
+            .help(isListMode ? "Thumbnail size (list view)" : "Thumbnail size")
     }
 
     /// Its own strip, separate from `bar`'s Sort menu (Jason, 2026-09-25):
@@ -1400,19 +1445,6 @@ struct LibraryGridView: View {
             index = await Task.detached(priority: .userInitiated) { SimilarityIndex(prints, reach: reach) }.value
         }
         .onChange(of: selection) { model.infoPanelSelection = orderedSelection }
-        .toolbar {
-            ToolbarItemGroup {
-                Slider(value: $tileSize, in: Self.tileSizeRange).frame(width: 100)
-                    .help(isListMode ? "Thumbnail size (list view)" : "Thumbnail size")
-                Button { runImportPanel(model) } label: { Label("Import", systemImage: "square.and.arrow.down") }
-                    .help("Import files or folders")
-                addToShowMenu(ids: orderedSelection)
-                    .disabled(selection.isEmpty)
-                Button { showGetInfo() } label: { Label("Get Info", systemImage: "info.circle") }
-                    .help("Show info and tags for the selection (⌘I)")
-                    .disabled(selection.isEmpty)
-            }
-        }
         // Delete by context (plan, Phase 3b; Photos' convention). In the
         // Library: Delete asks, then Trash; ⌘Delete skips the question. In a
         // collection: Delete takes them out of it (undoable); ⌘Delete deletes
@@ -2116,4 +2148,11 @@ func runImportIntoShowPanel(_ model: AppModel, showID: Int64, undo: UndoManager?
         guard !ids.isEmpty else { return }
         model.append(ids, to: showID, undo: undo)
     }
+}
+
+/// A label style chosen at run time (`LibraryGridView.bar`'s compact form).
+struct AnyLabelStyle: LabelStyle {
+    private let make: (Configuration) -> AnyView
+    init<S: LabelStyle>(_ style: S) { make = { AnyView(style.makeBody(configuration: $0)) } }
+    func makeBody(configuration: Configuration) -> some View { make(configuration) }
 }

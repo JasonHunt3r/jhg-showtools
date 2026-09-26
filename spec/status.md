@@ -324,6 +324,14 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
+- **The Library grids' tools in the bar** (2026-09-26, Jason): the
+  slider, Import, Add to Show and Get Info moved from the toolbar into the
+  bar under the viewer drawer; the library panel's bar wraps to two rows.
+  Checked with axtool and screenshots (both windows' layouts, the slider
+  dragging with the drawer open and shut, the bar still the handle in
+  both) — the buttons' own actions weren't clicked. Worth a look: the
+  main window's title bar is now the plain one (no toolbar items in the
+  Library view), so the "N items / N selected" subtitle is in the title.
 - **The viewer drawer** (built 2026-09-26, `spec/plan.md` "The viewer
   drawer"): Y / ⇧Y, dragging and double-clicking the bar, Side by Side
   and Stack, ← / → within the selection, in the Library grid, the library
