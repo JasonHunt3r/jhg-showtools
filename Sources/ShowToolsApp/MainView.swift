@@ -703,6 +703,18 @@ struct LibraryGridView: View {
     /// and whether they've reached it (`startDrag(from:)`).
     @State private var flyers: [Flyer] = []
     @State private var landed = false
+    /// Where a drag came from, to put its files back if it's cancelled or
+    /// refused: the pressed file, each file's card, and the pile's home.
+    @State private var dragHome: DragHome?
+    struct DragHome {
+        /// The files in pile order, the pressed one first.
+        let order: [Int64]
+        let cards: [Int64: NSImage]
+        let card: CGSize
+    }
+    /// Files flying back to their tiles after a cancelled or refused drag:
+    /// their tiles stay hidden until their cards arrive.
+    @State private var returning: Set<Int64> = []
     /// Where the gap is while a drag-to-reorder is over the grid: the slot
     /// the dragged file(s) would land in, worked out from the cursor's
     /// position alone (`Reorder.slot`). Nil when no drag is over the grid.
@@ -944,15 +956,25 @@ struct LibraryGridView: View {
                        forType: NSPasteboard.PasteboardType(ItemDrag.type.identifier))
 
         draggingIDs = ids
+        dragHome = DragHome(order: order, cards: Dictionary(uniqueKeysWithValues: zip(order, images)),
+                            card: card)
         grabOffset = CGSize(width: grab.x - cardOrigin.x, height: grab.y - cardOrigin.y)
-        dragSource.onEnd = { operation, overGrid in
+        dragSource.onEnd = { end in
             dragStarted = false
-            if !commitPending { endReorderDrag() }
+            let home = dragHome, ids = draggingIDs
+            dragHome = nil
+            guard !commitPending else { return }
+            endReorderDrag()
+            // Nothing took the files (cancelled, refused, let go nowhere):
+            // put them back where they were (`putBack`).
+            guard end.operation.isEmpty else { return }
+            if let home { putBack(ids, from: home, at: end.point) }
             // Let go over the plain Library's own grid, where there's no
-            // order to set: say why nothing moved (`LibraryOrderNotice`).
-            // After the drag has fully ended, as the alert is modal.
-            if operation.isEmpty, overGrid, collectionID == nil, groupID == nil {
-                DispatchQueue.main.async { LibraryOrderNotice.show() }
+            // order to set: say why nothing moved (`LibraryOrderNotice`),
+            // once the files are back. Not for Escape — nothing was let go
+            // anywhere, so there's nothing to explain (Jason, 2026-09-25).
+            if end.overView, !end.escaped, collectionID == nil, groupID == nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { LibraryOrderNotice.show() }
             }
         }
         // Edge scrolling moves the grid under a still pointer: the gap
@@ -981,6 +1003,44 @@ struct LibraryGridView: View {
         let image: NSImage
         let from: CGRect
         let to: CGRect
+        /// Fades as it arrives (the fly-in, into a pile that already shows
+        /// it) or stays solid (the put-back, where its tile takes over).
+        var fades = true
+    }
+
+    /// A drag nothing took (cancelled, refused, let go nowhere): the pile
+    /// comes apart where it was let go and each card flies to its own
+    /// file's tile, while the grid closes the gap — the landing in reverse
+    /// ("you realize you didn't mean to drag these", Jason, 2026-09-25).
+    /// Their tiles show again as the cards land. Files scrolled out of view
+    /// just reappear.
+    private func putBack(_ ids: [Int64], from home: DragHome, at point: CGPoint) {
+        guard let g = gridGeometry else { return }
+        let order = visible.map(\.id)
+        let pileOrigin = CGPoint(x: point.x - grabOffset.width, y: point.y - grabOffset.height)
+        let layers = min(home.order.count, StackDragSource.pileDepth)
+        let step = StackDragSource.pileStep(layers: layers)
+        var flying: [Flyer] = []
+        for (n, id) in home.order.enumerated() where ids.contains(id) {
+            guard let k = order.firstIndex(of: id), let image = home.cards[id] else { continue }
+            let depth = CGFloat(min(n, layers - 1)) * step
+            flying.append(Flyer(id: id, image: image,
+                                from: CGRect(origin: CGPoint(x: pileOrigin.x + depth, y: pileOrigin.y + depth),
+                                             size: home.card),
+                                to: CGRect(origin: slotOrigin(k, g), size: home.card),
+                                fades: false))
+        }
+        guard !flying.isEmpty else { return }
+        returning = Set(flying.map(\.id))
+        landed = false
+        flyers = flying
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.28)) { landed = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                flyers = []
+                returning = []
+            }
+        }
     }
 
     /// A dragged file's picture: its thumbnail as the tile shows it, or in
@@ -1563,7 +1623,7 @@ struct LibraryGridView: View {
                     .frame(width: r.width, height: r.height)
                     .shadow(color: .black.opacity(0.3), radius: 3, y: 1)
                     .offset(x: r.minX, y: r.minY)
-                    .opacity(landed ? 0 : 1)
+                    .opacity(landed && f.fades ? 0 : 1)
             }
         }
         .allowsHitTesting(false)
@@ -1703,7 +1763,7 @@ struct LibraryGridView: View {
         // A file being dragged to reorder is the gap: plain empty space
         // where it would land (Jason, 2026-09-25). It stays in the grid,
         // only invisible, so the drag it started from is never torn down.
-        .opacity(gapIndex != nil && draggingIDs.contains(item.id) ? 0 : 1)
+        .opacity((gapIndex != nil && draggingIDs.contains(item.id)) || returning.contains(item.id) ? 0 : 1)
         .background(GeometryReader { g in
             Color.clear.preference(key: TileFramesKey.self, value: [item.id: g.frame(in: .named(Self.gridSpace))])
         })

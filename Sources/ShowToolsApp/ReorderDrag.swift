@@ -59,10 +59,21 @@ struct TileFramesKey: PreferenceKey {
 /// Sits behind the grid as an invisible view, so its coordinates are the
 /// grid's (flipped, like SwiftUI's); never takes a click itself.
 final class StackDragSource: NSView, NSDraggingSource {
-    /// The drag ended: dropped somewhere (an operation) or cancelled or
-    /// refused (`[]`), and whether it ended over this view's visible part —
-    /// so the grid can explain a drag it refused where it was let go.
-    var onEnd: ((_ operation: NSDragOperation, _ endedOverView: Bool) -> Void)?
+    /// How a drag ended.
+    struct Ending {
+        /// What the drop did; `[]` if nothing took it (refused, let go
+        /// nowhere, or cancelled).
+        let operation: NSDragOperation
+        /// It ended over this view's visible part — so the grid can explain
+        /// a drag it refused where it was let go.
+        let overView: Bool
+        /// Escape cancelled it: nothing was let go anywhere, so there's
+        /// nothing to explain — the files just go back.
+        let escaped: Bool
+        /// Where the pointer was, in this view.
+        let point: CGPoint
+    }
+    var onEnd: ((Ending) -> Void)?
 
     override var isFlipped: Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -74,7 +85,10 @@ final class StackDragSource: NSView, NSDraggingSource {
         let item = NSDraggingItem(pasteboardWriter: writer)
         item.setDraggingFrame(frame, contents: image)
         let session = beginDraggingSession(with: [item], event: event, source: self)
-        session.animatesToStartingPositionsOnCancelOrFail = true
+        // A drag nothing takes is put back by the grid itself, each file to
+        // its own tile (`onEnd`); AppKit's slide-back of the one picture
+        // would play over it (measured 2026-09-25: three animations at once).
+        session.animatesToStartingPositionsOnCancelOrFail = false
         self.session = session
         let grab = convert(event.locationInWindow, from: nil)
         pile = image
@@ -267,12 +281,14 @@ final class StackDragSource: NSView, NSDraggingSource {
 
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         stopEdgeScroll()
-        var over = false
+        var over = false, point = CGPoint.zero
         if let window {
-            let p = convert(window.convertPoint(fromScreen: screenPoint), from: nil)
-            over = visibleRect.contains(p)
+            point = convert(window.convertPoint(fromScreen: screenPoint), from: nil)
+            over = visibleRect.contains(point)
         }
-        onEnd?(operation, over)
+        let e = NSApp.currentEvent
+        let escaped = operation.isEmpty && e?.type == .keyDown && e?.keyCode == 53
+        onEnd?(Ending(operation: operation, overView: over, escaped: escaped, point: point))
     }
 }
 
