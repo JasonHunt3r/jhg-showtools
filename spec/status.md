@@ -65,19 +65,16 @@ empty inspector's header sits at the top. No next task is set; the
 feedback worklist's remaining items, the new asks and the parked list
 below are what's open.
 
-### New asks (Jason, 2026-09-25)
+### New asks (Jason, 2026-09-25) — both built 2026-09-26
 
-Not designed yet. (The first of them, pinch to resize the grid's tiles,
-is built and confirmed — see "Done, confirmed by Jason 2026-09-26".)
-
-- **A drawer at the top of the grids with a viewer of the selected
-  image(s)** — **planned 2026-09-26 by Q&A** (`spec/plan.md`, "The viewer
-  drawer"): multi-up or Stack, the header bar as its handle, all three
-  grids, video/GIFs muted and looping. **Built 2026-09-26, all four steps**
-  (PaneKit's external handle; the viewer; the two Library grids; Edit
-  Show's browser), each checked with axtool on a scratch library — see
-  "Still needs Jason's hands" — a PaneKit drawer over the grid, so it closes to its
-  handle, and can switch sides like every other pane.
+- **Pinch to resize the grid's tiles** — built and confirmed (below).
+- **The viewer drawer over the grids** — built, all four steps, in the
+  Library grid, the library panel and Edit Show's browser (`spec/plan.md`,
+  "The viewer drawer"): Side by Side or Stack, the header bar and the sort
+  strip as its handles, video and GIFs muted and looping. Checked with
+  axtool on a scratch library; waiting on Jason's hands (below). The
+  grids' tools moved into its bar the same day. Story:
+  `spec/history/2026-09-26-viewer-drawer-and-icon.md`.
 
 ### Parked for later (Jason, 2026-09-25)
 
@@ -297,7 +294,9 @@ an opaque backing whatever the fill (measured: `none` gives white, fully
 transparent a light glass grey, both alpha 1) — the first drawing, with no
 background of its own, showed that grey. Icon Composer's glass lighting
 lightens the colours a little; his to tune there. A plain icon set, tried
-first, was shrunk onto a grey rounded square by macOS 27.
+first, was shrunk onto a grey rounded square by macOS 27. Story, with how
+the mask and the backing were measured:
+`spec/history/2026-09-26-viewer-drawer-and-icon.md`.
 
 **Done, confirmed by Jason 2026-09-25:** the two listens (an exported
 movie against the same show playing; a video slide's sound in the app),
@@ -342,7 +341,9 @@ and Flush presets from 2a.
   read as a group at a glance; 12 videos side by side at once (not
   tried); and the browser's ← / →, which only work once its list has the
   keyboard — a real click on a row should give it that (a synthetic one
-  doesn't; Tab did).
+  doesn't; Tab did). The sort strip under the bar is a handle too, with a
+  pill (Jason took it for the grip): its drag and double-clicks were
+  checked, text included.
 - **The inspector's stars after a rating key in the browser** (seen
   2026-09-26 while checking the viewer): "4" rated both picked files (the
   library says 4), but the inspector's Rating row for the selected slide's
