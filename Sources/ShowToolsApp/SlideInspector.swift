@@ -55,16 +55,23 @@ struct SlideInspector: View {
         return selected.contains { key($0.settings) != first }
     }
 
+    /// Aligned to the top (item 14): the bar sits at the top of the column
+    /// whatever's under it. With nothing selected there's nothing under it,
+    /// and the message is an overlay centred on the whole pane.
     var body: some View {
-        if let close {
-            VStack(spacing: 0) {
-                bar(close)
-                Divider()
+        ZStack(alignment: .top) {
+            if let close {
+                VStack(spacing: 0) {
+                    bar(close)
+                    Divider()
+                    content
+                }
+            } else {
                 content
             }
-        } else {
-            content
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .overlay { if selected.isEmpty { emptyMessage } }
     }
 
     // MARK: The bar
@@ -197,14 +204,14 @@ struct SlideInspector: View {
                 }
                 .padding(.vertical, 12)
             }
-        } else {
-            // Fills the column, so the bar above stays at the top and the
-            // message centres in what's left (item 14): sized to itself, it
-            // made bar + message one short stack the pane centred.
-            ContentUnavailableView("No slide selected", systemImage: "cursorarrow.click",
-                                   description: Text("Select a slide to set its length, transition and Pan and Zoom."))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    /// Shown centred on the whole pane when nothing's selected (`body`'s
+    /// overlay), not stacked under the bar.
+    private var emptyMessage: some View {
+        ContentUnavailableView("No slide selected", systemImage: "cursorarrow.click",
+                               description: Text("Select a slide to set its length, transition and Pan and Zoom."))
     }
 
     /// A pinned section header: darker than the column, the same "sunken"

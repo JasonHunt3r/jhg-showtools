@@ -170,10 +170,11 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   Library pane, the timeline (it can switch to the top now) and Edit
   Slides' inspector. No menu command or animation yet.
 - **Item 14** (the inspector's header at the top when empty) — **built**:
-  the empty message sized to itself, so bar + message were one short
-  stack the pane centred; it now fills the column (`SlideInspector`), the
-  bar sits at the top and the message centres below it. Screenshotted
-  in both Edit Show and Edit Slides on a test copy.
+  bar + message were one short stack the pane centred. The inspector is
+  now top-aligned (`SlideInspector.body`), and the empty message is an
+  overlay centred on the whole pane (Jason: align the header, don't
+  stretch the message to push it up — a first try did that). Screenshotted
+  empty and with a slide selected on a test copy.
 - **Item 30, done properly** (the frame strip as a drawer; batch 5 had
   read it as the timeline) — **built**: Edit Show's picture and frame
   strip are a PaneKit vertical split (`PreviewLayout`,
