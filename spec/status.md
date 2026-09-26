@@ -150,8 +150,17 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   space the side occupies, the same arithmetic as `setOpen`
   (`dragResize`, `PaneContainerView.swift`; two new `PaneControllerTests`
   that fail on the old code). Checked on a test copy: 236 through open,
-  drag shut, drag open, drag shut. **Next step:** the Browser's own
-  handle. **Jason's idea, not designed yet:** the Browser has a max width
+  drag shut, drag open, drag shut. **Step 2 built:** the Browser is a
+  drawer. Edit Show's columns are two splits nested from the right
+  (`EditColumnsLayout`, new split ids `columns.inspector`/
+  `columns.browser`), so the Browser closes to its own handle, the two
+  handles stack at the right edge when both are closed, and every open,
+  close or drag of either goes to the preview. View ▸ Show Browser (⌥⌘B).
+  Checked on a test copy: double-click the divider and the handle, drag
+  shut and open with the Inspector open (it stayed 320), the menu item and
+  ⌥⌘B, and a screenshot of the two stacked handles. **Left for Jason's
+  hands:** the feel of it. **Next, once it's a drawer (Jason):** the
+  flip-sides idea. **Jason's idea, not designed yet:** the Browser has a max width
   while nested, and dragging past it swaps its anchor to the left side,
   beside whatever is there (the catalog pane).
 - **Items 23–25** — queued as their own BGTools work list, to pick up

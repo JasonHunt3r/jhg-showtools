@@ -233,6 +233,13 @@ struct AppCommands: Commands {
             Toggle("Show Inspector", isOn: $inspectorShown)
                 .keyboardShortcut("i", modifiers: [.command, .option])
                 .disabled(activeShowID == nil)
+            // Item 13: Edit Show's Browser is a drawer now, closing to its
+            // own edge handle beside the inspector's (`EditColumnsLayout`).
+            Toggle("Show Browser", isOn: Binding(
+                get: { model.editShowColumns.isOpen(EditColumnsLayout.browserSplit) },
+                set: { model.editShowColumns.setOpen(EditColumnsLayout.browserSplit, $0) }))
+                .keyboardShortcut("b", modifiers: [.command, .option])
+                .disabled(editShowCommands == nil)
             // Item 30, `ShowTools Feedback — Worklist for Next CC
             // Session.md`: the timeline pane could already collapse to its
             // own edge handle (every PaneKit split is collapsible by

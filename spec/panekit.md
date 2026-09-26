@@ -244,6 +244,16 @@ slack allowed put some of the growth on list after all). This isn't a
 bug: a rigid pane can only stay rigid while there's somewhere else for
 the change to go.
 
+**ShowTools no longer uses `.row` (2026-09-25, item 13).** Edit Show's
+Browser had to become a drawer, and `near` is the inner split's main side,
+so it can't close. `EditColumnsLayout.threeColumns` is now two splits
+nested from the right — the inspector's split outside, the Browser's
+inside, preview as the innermost main — so both close to their own handle
+(stacked at the right edge when both are closed), and `nearIsRigid`'s
+promise comes free: every change on either goes to preview. `.row`,
+`nearIsRigid` and `linkedAncestor` stay in PaneKit, tested and used by the
+harness. The paragraph below is the history of the Edit Show case.
+
 Wired into `EditColumnsLayout.threeColumns` (`nearIsRigid: true`) and
 checked with real drags against a demo show: near|far now moves preview
 and the inspector, list only slides; main|near still resizes list

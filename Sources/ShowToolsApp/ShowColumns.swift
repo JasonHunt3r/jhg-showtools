@@ -2,32 +2,36 @@ import SwiftUI
 import PaneKit
 
 /// What `ColumnsSplitView` measured and enforced by hand, now PaneKit's job
-/// (`spec/panekit.md`, step 3). Edit Show's three columns (preview, list,
-/// inspector) are `PaneNode.row` — preview is `main`, list is `near`,
-/// inspector is `far` — **divider isolation over exactly matching
-/// `ColumnsSplitView`'s old narrow-window squeeze order** (settled, Jason,
-/// 2026-09-24): that order had the inspector give way before the list,
-/// which can't be had without breaking the preview|list divider into also
-/// moving the inspector. `.row`'s own trade instead: list now gives way
-/// before the inspector in too narrow a window (the reverse of before, and
-/// only reachable well below the app's own minimum window size), and list
-/// loses its old upper bound (420) — it's `.row`'s uncapped "near" side.
+/// (`spec/panekit.md`, step 3). Edit Show's three columns: preview, the
+/// Browser (pane id `list`) and the inspector.
 ///
-/// **`nearIsRigid` (Jason, 2026-09-24, watching over a shoulder):** list
-/// only changes size from its own (left) divider. Dragging the
-/// list|inspector divider resizes preview and the inspector; list just
-/// slides over, same width. Built into `.row` itself, not a ShowTools
-/// one-off — `spec/panekit.md`, "Building a row".
+/// **Two drawers, nested from the right (item 13, 2026-09-25).** The
+/// outer split's sized side is the inspector; its main side is a second
+/// split whose sized side is the Browser, with preview as main. So:
+/// - both the Browser and the inspector close to their own edge handle,
+///   and with both closed the two handles stack at the right edge;
+/// - closing, opening or dragging either hands the change to preview, so
+///   the Browser only ever changes width from its own (left) divider —
+///   what `.row`'s `nearIsRigid` was built for (Jason, 2026-09-24), now
+///   just what this nesting does, with no linked split;
+/// - in too narrow a window the inspector gives way before the Browser
+///   (only reachable below the app's own minimum window size).
+///
+/// Until 2026-09-25 this was `PaneNode.row` with `nearIsRigid`, whose
+/// `near` (the Browser) was the inner split's main side and so couldn't
+/// close. Its split ids were `columns`/`columns.near`; the new ids don't
+/// reuse them, so an old saved state can't be misread as the new one.
 enum EditColumnsLayout {
     static let mainMin: CGFloat = 420
     static let listMin: CGFloat = 180
     static let inspectorRange: ClosedRange<CGFloat> = 320...440
     static let inspectorDefault: CGFloat = 320
-    /// List's own starting width and the most a preview|list drag can grow
-    /// it to — `.row`'s `near` has no split of its own to remember these,
-    /// so they only seed the list+inspector region's own size and range.
+    /// The Browser's starting width and the most a drag can make it.
     static let listDefault: CGFloat = 230
     static let listMax: CGFloat = 420
+    /// The two drawers' split ids: the inspector's, and the Browser's.
+    static let inspectorSplit = "columns.inspector"
+    static let browserSplit = "columns.browser"
 
     /// The inspector is the first detachable area (`spec/windows.md`, "A
     /// possible order", step 4): it pops out as a panel, to prove the
@@ -39,11 +43,13 @@ enum EditColumnsLayout {
     /// codable). Edit Slides' own inspector stays inline for now — this is
     /// the first case, not a port of both at once.
     static var threeColumns: PaneNode {
-        .row("columns", .horizontal, mainFirst: true,
-             main: Pane("preview", minSize: mainMin),
-             near: Pane("list", minSize: listMin), nearDefault: listDefault, nearMax: listMax,
-             far: Pane("inspector", title: "Inspector", minSize: inspectorRange.lowerBound, popOut: .panel),
-             farSize: inspectorDefault, farRange: inspectorRange, nearIsRigid: true)
+        .split(inspectorSplit, .horizontal, sized: .second, size: inspectorDefault, range: inspectorRange,
+               title: "Inspector",
+               .split(browserSplit, .horizontal, sized: .second, size: listDefault, range: listMin...listMax,
+                      title: "Browser",
+                      .pane("preview", minSize: mainMin),
+                      .pane("list", title: "Browser", minSize: listMin)),
+               .leaf(Pane("inspector", title: "Inspector", minSize: inspectorRange.lowerBound, popOut: .panel)))
     }
 
     /// Edit Slides' two columns: no list, so it's one split, not `.row`.

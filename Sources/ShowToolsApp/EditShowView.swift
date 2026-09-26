@@ -51,9 +51,9 @@ struct EditShowView: View {
                                                         mutate: mutate, close: { inspectorShown = false },
                                                         engine: engine).environment(model)),
                 ])
-                .onAppear { model.editShowColumns.setOpen("columns.near", inspectorShown) }
-                .onChange(of: inspectorShown) { _, shown in model.editShowColumns.setOpen("columns.near", shown) }
-                .onChange(of: model.editShowColumns.isOpen("columns.near")) { _, shown in
+                .onAppear { model.editShowColumns.setOpen(EditColumnsLayout.inspectorSplit, inspectorShown) }
+                .onChange(of: inspectorShown) { _, shown in model.editShowColumns.setOpen(EditColumnsLayout.inspectorSplit, shown) }
+                .onChange(of: model.editShowColumns.isOpen(EditColumnsLayout.inspectorSplit)) { _, shown in
                     if shown != inspectorShown { inspectorShown = shown }
                 }
                 .onChange(of: session.selection) { _, s in
