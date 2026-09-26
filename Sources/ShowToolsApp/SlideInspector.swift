@@ -198,8 +198,12 @@ struct SlideInspector: View {
                 .padding(.vertical, 12)
             }
         } else {
+            // Fills the column, so the bar above stays at the top and the
+            // message centres in what's left (item 14): sized to itself, it
+            // made bar + message one short stack the pane centred.
             ContentUnavailableView("No slide selected", systemImage: "cursorarrow.click",
                                    description: Text("Select a slide to set its length, transition and Pan and Zoom."))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
