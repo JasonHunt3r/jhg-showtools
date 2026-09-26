@@ -83,6 +83,12 @@ final class UndoMenuState {
                            object: nil, queue: .main, using: onNotify),
             nc.addObserver(forName: Notification.Name("NSUndoManagerDidRedoChangeNotification"),
                            object: nil, queue: .main, using: onNotify),
+            // A group closed with its action already in it. Checkpoint
+            // alone misses a step registered outside an event: its only
+            // checkpoint comes before the action is registered (measured
+            // 2026-09-25, the grid's drag-to-reorder).
+            nc.addObserver(forName: Notification.Name("NSUndoManagerDidCloseUndoGroupNotification"),
+                           object: nil, queue: .main, using: onNotify),
         ]
         manager = NSApp.keyWindow?.undoManager
         refresh()

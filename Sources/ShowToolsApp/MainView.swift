@@ -929,11 +929,18 @@ struct LibraryGridView: View {
         DispatchQueue.main.async {
             let switched = sort != .custom
             sort = .custom
+            // Its own undo group: registered outside any event (this runs
+            // after the drop), the step would sit in an automatic group
+            // that stays open until the next event, so Edit ▸ Undo stayed
+            // disabled and the first ⌘Z only closed the group (measured
+            // 2026-09-25). Closing it here tells `UndoMenuState` now.
+            undo?.beginUndoGrouping()
             if let gid {
                 model.setOrder(order, inGroup: gid, undo: undo)
             } else if let cid {
                 model.setOrder(order, inCollection: cid, undo: undo)
             }
+            undo?.endUndoGrouping()
             endReorderDrag()
             if switched { CustomOrderNotice.show() }
         }
