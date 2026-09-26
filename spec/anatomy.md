@@ -58,7 +58,7 @@ thing.
 | **Lane** | The transitions row and the images row together (Phase 2c's name) | |
 | **Row handle** | The grip at a row's left: drag to reorder rows, click for its drawer | |
 | **Drawer** | A row's settings, along the timeline pane's left side. It slides out over its row. Empty today. Planned: icon buttons at its left edge, and a left handle that sets how much of the drawers shows (`spec/windows.md`) | prefs drawer |
-| **Edge handle** | *Planned.* The thin, visible grip a pane leaves on the window's edge when it's closed: drag to open or resize, double-click to open or close (`spec/windows.md`) | handle bar |
+| **Edge handle** | The thin, visible grip a pane leaves on its edge when it's closed: drag to open or resize, double-click to open or close, drag across to switch sides (PaneKit, `spec/panekit.md`). Closed panes' handles sit side by side (the Browser's and the inspector's at the right edge). In conversation a pane that closes to one gets called a drawer; in this doc **Drawer** stays a timeline row's settings | handle bar |
 
 "Layers" is used only for how the picture is built up (§4), never for
 rows. That keeps "row" for the timeline's bands, and "layer" for what's

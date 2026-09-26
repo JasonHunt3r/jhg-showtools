@@ -57,10 +57,11 @@ itself. Names follow `spec/anatomy.md`.
 | **Right-click** | The commands for what's under the pointer, or for the selection if it's part of it (§3) | — | Built in some places; missing on lane images, transitions, markers (C1–C3) |
 | **Hover** | A tooltip saying what it is, and its shortcut | — | Built for most controls |
 | **Drag an item** | Move it: within an area it reorders; onto another area it adds or places there (§4) | A selected item drags the whole selection | Built |
-| **Pinch** | Zoom the thing under the pointer (the timeline's scale, the viewer's work zoom) | — | Built |
+| **Pinch** | Zoom the thing under the pointer (the timeline's scale, the viewer's work zoom) | The Library grid's tile size: asked for (Jason, 2026-09-25), not built | Built |
 | **Two-finger swipe** | Scroll, even over a window that's behind | The covered Timeline window's padding (`spec/windows.md`) | Built by macOS; the padding is Planned |
-| **Double-click an edge handle** | Open or close its pane (Jason, 2026-09-24) | — | Settled; handles are Planned (`spec/windows.md`) |
-| **Drag an edge handle** | Open the pane to a width, or resize it | — | Settled; Planned |
+| **Double-click an edge handle** | Open or close its pane (Jason, 2026-09-24) | — | Built (PaneKit) |
+| **Drag an edge handle** | Open the pane to a width, or resize it | — | Built (PaneKit) |
+| **Drag a pane across the main area** (its divider or its handle) | **Switch sides**: once less than its starting size is left, it trades places with main and mounts on the opposite edge (Jason, 2026-09-25: "basically we're reordering the columns") | Within its own split only; drag back to return; ⌥⌘0 resets | Built (PaneKit, `spec/panekit.md`) |
 | **⌘⌥-click a timeline row** | Open that row's drawer | ⌥-click on a row *handle* opens or closes every drawer | Settled (Jason, 2026-09-24); not built |
 | **⌥⌘-click the range button** | Set the range to the part of the timeline in view | A locked range refuses it, with a beep | Settled (Jason, 2026-09-24) |
 | **⇧⌥⌘-click the range button** | Set the range to the whole show | A locked range refuses it | Settled (Jason, 2026-09-24) |

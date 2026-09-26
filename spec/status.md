@@ -39,7 +39,9 @@ slide's level line is slide settings, which are JSON.
 `~/Applications/ShowTools.app` was last reinstalled 2026-09-25 20:28,
 at `c7d657e`: the rebuilt drag-to-reorder, the pile, edge scrolling and
 the Undo fix. Reinstalled again after `79ca4e0` (Escape put-back, the Library's sort
-strip) — see the commit log for the latest install.
+strip), and at 23:04 at `71aa2a1` (items 13 and 30). **Not installed yet:**
+`be0d740` (frames stay visible while the strip resizes) and item 14
+(`9bacef8`, `fcb72b9`).
 Reinstalling stops the real BGTools instance (`install.sh`'s own quit
 sequence); BGTools wasn't restarted after the 20:28 install. BGTools'
 desktop extension (`BGToolsControls.appex`) was also killed before that
@@ -54,9 +56,22 @@ default path.
 
 ## What's next
 
-**Drag-to-reorder (item 17) is done**, tried by Jason's hand and
-installed. No next task is set; the feedback worklist's remaining items
-and the parked list below are what's open.
+**Items 13, 14 and 30 are done** (2026-09-25, late): the Browser is a
+drawer, any pane can switch sides, the frame strip is a drawer, and the
+empty inspector's header sits at the top. No next task is set; the
+feedback worklist's remaining items, the new asks and the parked list
+below are what's open.
+
+### New asks (Jason, 2026-09-25)
+
+Not designed yet.
+
+- **Pinch to change the grid's tile size** — in the Library grid (and the
+  library panel's), the same as the size slider. Pinch already zooms the
+  timeline and the viewer's work zoom (`spec/conventions.md` §1).
+- **A drawer at the top of the grids with a viewer of the selected
+  image(s)** — a PaneKit drawer over the grid, so it closes to its
+  handle, and can switch sides like every other pane.
 
 ### Parked for later (Jason, 2026-09-25)
 
@@ -95,7 +110,10 @@ axtool check actually covered:
 
 Jason's own build feedback, `ShowTools Feedback — Worklist for Next CC
 Session.md` (repo root), 37 items, worked through in batches grouped
-by shared code. **27 of 37 done** (batches 1–6 below); each fix checked
+by shared code. **25 done** (batches 1–7 below). Still open: 20 (star
+ratings' hotkey), 23–25 (BGTools), 26/27/29 (the value-changer panel
+idea), item 2's other half, and 33–38, which are questions for Jason
+(item 5 needed no code). Each fix checked
 with axtool against a scratch library, not just compiled. Full dated
 story — root causes, what each check actually covered, the commit for
 each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
@@ -108,6 +126,7 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
 | 4 — BGTools | Items 10, 21, 22 |
 | 5 — P2 polish | Items 30, 31 (31 was already built) |
 | 6 — transport/icon, discussed 2026-09-25 | Item 19; item 12's icon half (its promotion idea is still open, above) |
+| 7 — drawers, 2026-09-25 late | Items 13, 14; item 30 redone (the frame strip itself, not the timeline) |
 
 **Batch 6 — decided/built 2026-09-25** (this discussion):
 - **Item 19** (transport greyed-out state) — **built**: the timeline
