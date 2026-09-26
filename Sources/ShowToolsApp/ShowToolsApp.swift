@@ -136,8 +136,22 @@ struct AppCommands: Commands {
     @AppStorage("editMode") private var mode: EditMode = .slides
     @AppStorage("snapping") private var snapping = true
     @AppStorage("showRatings") private var showRatings = true
+    // Read here so the Viewer submenu's checkmarks follow a change made by
+    // a key (⇧Y) or the drawer's own switch.
+    @AppStorage(ViewerPlace.library.modeKey) private var libraryViewerMode: ViewerMode = .sideBySide
+    @AppStorage(ViewerPlace.libraryPanel.modeKey) private var panelViewerMode: ViewerMode = .sideBySide
+    @AppStorage(ViewerPlace.browser.modeKey) private var browserViewerMode: ViewerMode = .sideBySide
     @AppStorage("storylineZoom") private var pps: Double = 24
     @Environment(\.openWindow) private var openWindow
+
+    /// The Side by Side / Stack choice of the place the Viewer menu acts on.
+    private var viewerModeBinding: Binding<ViewerMode> {
+        switch model.activeViewerPlace {
+        case .library: $libraryViewerMode
+        case .libraryPanel: $panelViewerMode
+        case .browser: $browserViewerMode
+        }
+    }
 
     var body: some Commands {
         // Replaces SwiftUI's automatic Undo/Redo (`UndoMenuState`, above):
@@ -239,6 +253,20 @@ struct AppCommands: Commands {
             // Snapping's N is, not a key equivalent that would fire while
             // typing — the grids' and the browser's own key handlers take it.
             Toggle("Show Ratings  (U)", isOn: $showRatings)
+            // The viewer drawer (`spec/plan.md`, "The viewer drawer"), for
+            // whichever grid is in front (`AppModel.activeViewerPlace`). Y
+            // and ⇧Y are bare, so they're in the titles, like U.
+            Menu("Viewer") {
+                Toggle("Show Viewer  (Y)", isOn: Binding(
+                    get: { model.viewer(model.activeViewerPlace).isOpen(ViewerLayout.split) },
+                    set: { model.viewer(model.activeViewerPlace).setOpen(ViewerLayout.split, $0) }))
+                Divider()
+                Picker("Viewer", selection: viewerModeBinding) {
+                    Text("Side by Side  (⇧Y)").tag(ViewerMode.sideBySide)
+                    Text("Stack  (⇧Y)").tag(ViewerMode.stack)
+                }
+                .pickerStyle(.inline)
+            }
             // Item 13: Edit Show's Browser is a drawer now, closing to its
             // own edge handle beside the inspector's (`EditColumnsLayout`).
             Toggle("Show Browser", isOn: Binding(

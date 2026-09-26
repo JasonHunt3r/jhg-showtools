@@ -1310,6 +1310,19 @@ double-click toggles); a harness check with a header-bar-shaped view.
    `SelectionViewer.swift`) — not on screen until step 3 wires it in.
 3. The Library grid (main window and panel): the split, the bar as
    handle, Y, ⇧Y and the View menu items, ← / → within the selection.
+   **Built 2026-09-26.** `ViewerLayout`/`ViewerPlace` (`ShowColumns.swift`),
+   one controller per place on `AppModel` (closed the first time), View ▸
+   Viewer (Show Viewer, Side by Side / Stack) acting on the active place.
+   Checked with axtool on a scratch library, screenshots each: Y opens it
+   over one file; three side by side with the last clicked outlined, the
+   video playing and looping; → steps the outline and wraps, all three
+   still selected; ⇧Y to Stack (saved); → changes the top card; typing
+   "y" in Search types; a 100-pt bar drag moves the bar 100; double-clicks
+   close and reopen at the last size; both menu items; the library panel's
+   drawer opens on its own, the main one unmoved. Two fixes found on
+   screen: the switch sat over the last picture's corner (it has its own
+   strip now), and plain grey stack cards were invisible on the dark
+   backdrop (they're the next pictures now, dimmed, with a light edge).
 4. Edit Show's browser: the same, following its picked files and uses.
 
 **Open:** the cap of 12 (proposed); whether a click in the viewer should

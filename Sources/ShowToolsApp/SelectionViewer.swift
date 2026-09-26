@@ -37,35 +37,40 @@ struct SelectionViewer: View {
     }
 
     var body: some View {
-        GeometryReader { geo in
-            let box = CGSize(width: max(0, geo.size.width - 2 * Self.inset),
-                             height: max(0, geo.size.height - 2 * Self.inset))
-            ZStack {
-                if items.isEmpty {
-                    Text("No selection")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                } else if mode == .stack || items.count == 1 {
-                    stack(in: box)
-                } else {
-                    sideBySide(in: box)
+        VStack(spacing: 0) {
+            // Its own strip, so no picture ever sits under the switch.
+            HStack {
+                Spacer()
+                Picker("View", selection: $mode) {
+                    ForEach(ViewerMode.allCases, id: \.self) { m in
+                        Image(systemName: m.symbol).help(m.title).tag(m)
+                    }
                 }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                .help("Side by Side or Stack (⇧Y)")
             }
-            .frame(width: geo.size.width, height: geo.size.height)
+            .padding(.horizontal, 8)
+            .padding(.top, 6)
+            GeometryReader { geo in
+                let box = CGSize(width: max(0, geo.size.width - 2 * Self.inset),
+                                 height: max(0, geo.size.height - 2 * Self.inset))
+                ZStack {
+                    if items.isEmpty {
+                        Text("No selection")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                    } else if mode == .stack || items.count == 1 {
+                        stack(in: box)
+                    } else {
+                        sideBySide(in: box)
+                    }
+                }
+                .frame(width: geo.size.width, height: geo.size.height)
+            }
         }
         .background(Color(nsColor: .underPageBackgroundColor))
-        .overlay(alignment: .topTrailing) {
-            Picker("View", selection: $mode) {
-                ForEach(ViewerMode.allCases, id: \.self) { m in
-                    Image(systemName: m.symbol).help(m.title).tag(m)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
-            .padding(8)
-            .help("Side by Side or Stack (⇧Y)")
-        }
         .clipped()
     }
 
@@ -98,7 +103,7 @@ struct SelectionViewer: View {
 
     /// How far each card behind shows past the one in front, and how many
     /// are drawn (the count says how many there really are).
-    static let cardStep: CGFloat = 7
+    static let cardStep: CGFloat = 10
     static let cardsDrawn = 3
 
     private func stack(in box: CGSize) -> some View {
@@ -109,14 +114,26 @@ struct SelectionViewer: View {
                                       in: CGSize(width: max(0, box.width - room), height: max(0, box.height - room)))
             .first ?? .zero
         return ZStack {
+            // The cards are the next files in the selection (after the top
+            // one, wrapping), dimmed, each with a light edge: real pictures
+            // peeking out read as a group; plain grey cards didn't (measured
+            // by screenshot, 2026-09-26: invisible on the dark backdrop).
+            let order = items.map(\.id)
+            let start = order.firstIndex(of: top.id) ?? 0
             ForEach((0..<behind).reversed(), id: \.self) { k in
                 let step = CGFloat(k + 1) * Self.cardStep
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(Color(nsColor: .controlBackgroundColor))
-                    .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(.separator))
-                    .frame(width: frame.width, height: frame.height)
-                    .offset(x: step, y: -step)
-                    .opacity(1 - 0.2 * Double(k))
+                let card = items[(start + k + 1) % items.count]
+                ZStack {
+                    Rectangle().fill(Color.gray.opacity(0.5))
+                    if let thumb = Thumbnails.shared.cached(card.id) {
+                        Image(nsImage: thumb).resizable().scaledToFill()
+                    }
+                }
+                .frame(width: frame.width, height: frame.height)
+                .clipped()
+                .brightness(-0.25 - 0.1 * Double(k))
+                .overlay(Rectangle().strokeBorder(.white.opacity(0.35), lineWidth: 1))
+                .offset(x: step, y: -step)
             }
             ViewerTile(item: top, url: model.url(for: top), size: frame.size)
                 .frame(width: frame.width, height: frame.height)

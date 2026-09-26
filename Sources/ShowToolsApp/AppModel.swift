@@ -76,6 +76,27 @@ final class AppModel {
     /// launch looks the same.
     let previewPanes = PaneController(id: "EditShowPreview",
                                       root: PreviewLayout.tree(defaultStrip: PreviewLayout.savedStripHeight))
+    /// The viewer drawers (`spec/plan.md`, "The viewer drawer"), one per place.
+    let libraryViewer = ViewerLayout.controller(.library)
+    let libraryPanelViewer = ViewerLayout.controller(.libraryPanel)
+    let browserViewer = ViewerLayout.controller(.browser)
+
+    func viewer(_ place: ViewerPlace) -> PaneController {
+        switch place {
+        case .library: libraryViewer
+        case .libraryPanel: libraryPanelViewer
+        case .browser: browserViewer
+        }
+    }
+
+    /// The place the View menu's Viewer items act on: the library panel
+    /// while it's the key window, Edit Show's browser while Edit Show is
+    /// up, the Library grid otherwise.
+    var activeViewerPlace: ViewerPlace {
+        if NSApp.keyWindow is LibraryPanelWindow { return .libraryPanel }
+        return editShowCommands != nil ? .browser : .library
+    }
+
     /// The open show's editing state (`spec/windows.md`, `ShowSession`).
     /// One at a time: this app edits one show in the main window.
     private(set) var showSession: ShowSession?

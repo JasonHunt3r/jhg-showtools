@@ -805,6 +805,10 @@ struct LibraryGridView: View {
     /// The grid's own on-screen width, measured for `columnCount` (B2):
     /// `.adaptive` columns don't expose their count any other way.
     @State private var gridWidth: CGFloat = 0
+    /// Which viewer drawer is this grid's (the main window's, or the
+    /// library panel's), and its Side by Side / Stack choice.
+    private let viewerPlace: ViewerPlace
+    @AppStorage private var viewerMode: ViewerMode
     /// The tile size when a pinch began (`spec/conventions.md` §1).
     @State private var pinchStart: Double?
     @State private var dropTargeted = false
@@ -843,6 +847,9 @@ struct LibraryGridView: View {
     /// (2026-09-24), e.g. list in the panel, medium in the main window.
     init(collectionID: Int64? = nil, groupID: Int64? = nil, undoManagerOverride: UndoManager? = nil,
          tileSizeKey: String = "gridTileSize", respondsToLibraryFocus: Bool = false) {
+        let place: ViewerPlace = tileSizeKey == "gridTileSize.panel" ? .libraryPanel : .library
+        self.viewerPlace = place
+        _viewerMode = AppStorage(wrappedValue: .sideBySide, place.modeKey)
         self.collectionID = collectionID
         self.groupID = groupID
         self.undoManagerOverride = undoManagerOverride
@@ -1341,13 +1348,23 @@ struct LibraryGridView: View {
                     Button("Import…") { runImportPanel(model) }
                 }
             } else {
-                VStack(spacing: 0) {
-                    bar
-                    Divider()
-                    sortStatusBar
-                    Divider()
-                    grid
-                }
+                // The viewer drawer above the grid, its handle the bar
+                // (`spec/plan.md`, "The viewer drawer"): closed, the bar
+                // sits at the top as it always has.
+                let viewer = model.viewer(viewerPlace)
+                PaneLayoutView(controller: viewer, content: [
+                    "viewer": AnyView(SelectionViewer(
+                        items: orderedSelection.compactMap { model.itemsByID[$0] },
+                        primary: cursor, mode: $viewerMode, model: model)),
+                    "grid": AnyView(VStack(spacing: 0) {
+                        bar.paneHandle(viewer, split: ViewerLayout.split)
+                        Divider()
+                        sortStatusBar
+                        Divider()
+                        grid
+                    }
+                    .environment(model)),
+                ])
             }
         }
         .onDrop(of: droppableTypes, isTargeted: $dropTargeted) { providers in
@@ -1418,6 +1435,23 @@ struct LibraryGridView: View {
             if event.plainModifiers == [], let c = event.charactersIgnoringModifiers,
                let key = Rating.Key(c), !orderedSelection.isEmpty {
                 model.applyRatingKey(key, to: orderedSelection, undo: undoManager)
+                return true
+            }
+            // The viewer drawer: Y opens and closes it, ⇧Y switches Side by
+            // Side / Stack — ahead of the sidebar check, like the rating
+            // keys, so the sidebar's type-select never takes them. With it
+            // open and several selected, ← / → move the outline within the
+            // selection instead of changing it (Jason, Aperture's multi-up).
+            if event.charactersIgnoringModifiers?.lowercased() == "y" {
+                switch event.plainModifiers {
+                case []: model.viewer(viewerPlace).toggle(ViewerLayout.split); return true
+                case [.shift]: viewerMode = viewerMode.other; return true
+                default: break
+                }
+            }
+            if model.viewer(viewerPlace).isOpen(ViewerLayout.split), selection.count > 1,
+               event.plainModifiers == [], event.keyCode == 123 || event.keyCode == 124 {
+                cursor = Viewer.step(orderedSelection, from: cursor, by: event.keyCode == 123 ? -1 : 1)
                 return true
             }
             guard !(NSApp.keyWindow?.firstResponder is NSTableView) else { return false }

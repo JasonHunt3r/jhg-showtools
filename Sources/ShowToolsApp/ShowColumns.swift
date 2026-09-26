@@ -84,6 +84,39 @@ enum PreviewLayout {
     }
 }
 
+/// The viewer drawer (`spec/plan.md`, "The viewer drawer"): the selected
+/// files, big, above a grid. Its handle is the grid's own header bar
+/// (`PaneHandleStyle.external`, Jason): closed, the bar sits at the top
+/// exactly as before, with no edge handle. One controller per place
+/// (`ViewerPlace`), each remembering its own height and open state, like
+/// the grids' own tile sizes.
+enum ViewerLayout {
+    static let split = "viewer"
+
+    static let tree: PaneNode =
+        .split(split, .vertical, sized: .first, size: 280, range: 120...1200, title: "Viewer",
+               handle: .external,
+               .pane("viewer", title: "Viewer", minSize: 120),
+               .pane("grid", title: "Grid", minSize: 160))
+
+    /// Closed the first time: nothing changes until it's asked for.
+    @MainActor static func controller(_ place: ViewerPlace) -> PaneController {
+        let id = "Viewer.\(place.rawValue)"
+        let fresh = UserDefaults.standard.data(forKey: "PaneKit.\(id)") == nil
+        let c = PaneController(id: id, root: tree)
+        if fresh { c.setOpen(split, false) }
+        return c
+    }
+}
+
+/// The three places with a viewer drawer (Jason: all three).
+enum ViewerPlace: String {
+    case library, libraryPanel, browser
+
+    /// Where its Side by Side / Stack choice is kept.
+    var modeKey: String { "viewerMode.\(rawValue)" }
+}
+
 /// Edit Slides' two columns — the slide list and its inspector — on
 /// PaneKit. Bridges the inspector's open/closed state both ways with
 /// `inspectorShown`, which the toolbar button and the View menu's own
