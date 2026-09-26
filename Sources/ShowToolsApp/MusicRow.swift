@@ -25,6 +25,8 @@ struct MusicRow: View {
     let detectBeats: (AudioClip) -> Void
     /// Called when a song is selected, so the rest of the selection clears.
     let didSelect: () -> Void
+    /// A click on the row's empty space: the timeline deselects everything.
+    let didClickEmpty: () -> Void
     @Environment(AppModel.self) private var model
     @State private var dropTargeted = false
 
@@ -76,6 +78,8 @@ struct MusicRow: View {
         }
         .frame(width: width, height: height, alignment: .topLeading)
         .contentShape(Rectangle())
+        // A clip's own tap wins over this one.
+        .onTapGesture { didClickEmpty() }
         .onDrop(of: ItemDrag.accepted, isTargeted: $dropTargeted) { providers, location in
             let t = max(0, Double(location.x - inset) / pps)
             Task {

@@ -282,12 +282,18 @@ struct StorylineView: View {
                         .overlay(alignment: .topLeading) { rangeOnRuler }
                         .overlay(alignment: .topLeading) { markersOnRuler }
                     ZStack(alignment: .topLeading) {
+                        // The rows' empty space (past the last slide, the
+                        // transitions row between joins): a click there
+                        // deselects everything (Jason, 2026-09-26).
                         Color.clear.frame(width: contentWidth, height: rowsHeight)
+                            .contentShape(Rectangle())
+                            .onTapGesture { deselectAll() }
                         ImagesRow(show: show, timeline: timeline, engine: engine, pps: pps, inset: Self.inset,
                                   width: contentWidth, height: Self.imagesRowHeight, snap: snap,
                                   dropTargeted: $imagesDropTargeted, selectedOverlay: $selectedOverlay,
                                   mutate: mutate,
-                                  didSelect: { selection = []; selectedTransition = nil; selectedSong = nil; focused = true })
+                                  didSelect: { selection = []; selectedTransition = nil; selectedSong = nil; focused = true },
+                                  didClickEmpty: deselectAll)
                             .offset(y: rowTop(.images))
                         MusicRow(show: show, timeline: timeline, pps: pps, inset: Self.inset,
                                  width: contentWidth, height: Self.musicRowHeight,
@@ -302,7 +308,8 @@ struct StorylineView: View {
                                      }
                                  },
                                  detectBeats: { clip in openBeatSheet(for: clip) },
-                                 didSelect: { selection = []; selectedTransition = nil; selectedOverlay = nil; focused = true })
+                                 didSelect: { selection = []; selectedTransition = nil; selectedOverlay = nil; focused = true },
+                                 didClickEmpty: deselectAll)
                             .offset(y: rowTop(.music))
                         ForEach(placed) { p in
                             let isMoving = moving?.ids.contains(p.id) == true
@@ -1282,6 +1289,18 @@ struct StorylineView: View {
         }
         .help("Cut. Click + to add a transition here.")
         .offset(x: joinX - 11, y: laneTop + 1)
+    }
+
+    /// A click on the timeline's empty space: nothing stays selected, so
+    /// the inspector and the viewer's bars let go too. The timeline keeps
+    /// the keyboard.
+    private func deselectAll() {
+        selection = []
+        selectedTransition = nil
+        selectedOverlay = nil
+        selectedSong = nil
+        selectedMarkers = []
+        focused = true
     }
 
     /// Selecting a transition shows it: the preview goes to its join.

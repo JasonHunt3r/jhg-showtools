@@ -496,9 +496,11 @@ empty space**, where SwiftUI throws. Every such place now shows a greyed
 gaps are visible and listable (search `noMenuYet`, `ListEmptySpace`).
 **Not covered yet:** the timeline, the transport, the filter bar and sort
 strip, the defaults bar. Also found: deselecting in the browser left the
-inspector on the old slide (fixed, both directions); in the timeline,
-neither Escape nor a click on empty row space deselects a slide (only
-⌘-click does) — `spec/conventions.md` §2 says Escape should, not built.
+inspector on the old slide (fixed, both directions); a click on the
+timeline's empty space now deselects everything there (fixed the same
+day: the images, transitions and audio rows and past the last slide,
+checked on a scratch copy). Escape still doesn't clear a timeline
+selection — `spec/conventions.md` §2 says it should, not built.
 
 ## Known issues
 

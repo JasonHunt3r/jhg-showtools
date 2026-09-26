@@ -26,6 +26,8 @@ struct ImagesRow: View {
     let mutate: ShowMutator
     /// Called when an image is selected, so the rest of the selection clears.
     let didSelect: () -> Void
+    /// A click on the row's empty space: the timeline deselects everything.
+    let didClickEmpty: () -> Void
     @Environment(AppModel.self) private var model
 
     /// A new image's length.
@@ -74,6 +76,8 @@ struct ImagesRow: View {
         }
         .frame(width: width, height: height, alignment: .topLeading)
         .contentShape(Rectangle())
+        // An image's own tap wins over this one.
+        .onTapGesture { didClickEmpty() }
         .onContinuousHover { if case .active(let p) = $0 { hoverX = p.x } }
         .contextMenu {
             let t = time(at: hoverX)
