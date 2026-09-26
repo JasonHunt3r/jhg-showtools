@@ -138,6 +138,7 @@ afterward (Esc closes the window; built no further than that).
 | **← → ↑ ↓** | Move the selection; with ⇧, extend it | **The timeline (settled, Jason, 2026-09-24):** ← → move through the items in the current row (slides, or audio clips); ↑ ↓ move between rows; **in the ruler**, ← → nudge the playhead. The player: previous and next slide. The viewer with an image selected: nudge it | Built in lists, the player and the viewer; missing in the grid and the timeline (B2, E2) |
 | **Home / End** | The first or last item, or the show's start or end | — | Built in the player |
 | **Tab** | Move the keyboard to the next area | — | Built by SwiftUI where areas are focusable |
+| **0–5, 9, − / =, U** | **Rate a file, Aperture's keys** (item 20, Jason, 2026-09-26): 1–5 stars, 0 clears, 9 rejects, − / = one star down/up; U shows/hides ratings. Y is kept for the planned drawer viewer over the grids | Only where files are: the Library grid, the library panel, Edit Show's browser. Never on slides, the timeline, the viewer or the player. − / = may need to become contextual if they clash | Built |
 | **Single letters** | Final Cut's keys, where there's a timeline: J K L shuttle, I O range, M marker, N snapping; E W Q add from the browser | Never while typing in a text field (`SingleKeys`) | Built; shown in no menu (F1) |
 
 ## 3. Right-click menus

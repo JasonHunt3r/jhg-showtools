@@ -748,8 +748,9 @@ struct SlideInspector: View {
     }
 }
 
-/// Five stars: click one to rate, click the current rating's star again to
-/// clear it. Hovering shows what a click would set.
+/// Reject, then five stars: click one to rate, click the current rating's
+/// star (or the reject mark) again to clear it. Hovering shows what a
+/// click would set.
 struct StarRating: View {
     let rating: Int
     let set: (Int) -> Void
@@ -758,6 +759,13 @@ struct StarRating: View {
     var body: some View {
         let shown = hover ?? rating
         HStack(spacing: 2) {
+            Image(systemName: shown == Rating.rejected ? "xmark.circle.fill" : "xmark.circle")
+                .foregroundStyle(shown == Rating.rejected ? Color.red : Color.secondary)
+                .frame(width: 16, height: 16)
+                .contentShape(Rectangle())
+                .onHover { inside in hover = inside ? Rating.rejected : (hover == Rating.rejected ? nil : hover) }
+                .onTapGesture { set(rating == Rating.rejected ? 0 : Rating.rejected) }
+                .padding(.trailing, 4)
             ForEach(1...5, id: \.self) { n in
                 Image(systemName: n <= shown ? "star.fill" : "star")
                     .foregroundStyle(n <= shown ? Color.yellow : Color.secondary)
@@ -767,8 +775,43 @@ struct StarRating: View {
                     .onTapGesture { set(n == rating ? 0 : n) }
             }
         }
-        .help(rating == 0 ? "Not rated. Click a star to rate."
-                          : "\(rating) star\(rating == 1 ? "" : "s"). Click the last star again to clear.")
+        .help(rating == 0 ? "Not rated. Click a star to rate. Keys, in the grids: 1–5, 0 clears, 9 rejects, − and = step."
+              : rating == Rating.rejected ? "Rejected. Click the mark again to clear."
+              : "\(rating) star\(rating == 1 ? "" : "s"). Click the last star again to clear.")
+    }
+}
+
+/// A file's rating as a grid tile or browser row shows it: stars, or a
+/// red ✕ for a reject. Nothing when unrated.
+struct RatingBadge: View {
+    let rating: Int
+    var font: Font = .caption2
+
+    var body: some View {
+        if rating == Rating.rejected {
+            Image(systemName: "xmark").font(font.weight(.bold)).foregroundStyle(.red)
+                .help("Rejected")
+        } else if rating > 0 {
+            Text(String(repeating: "★", count: rating)).font(font).foregroundStyle(.yellow)
+        }
+    }
+}
+
+/// The grids' and the browser's rating filter (`Rating.Filter`): rejects
+/// are hidden unless one of the first or last choices asks for them.
+struct RatingFilterPicker: View {
+    @Binding var selection: Int
+
+    var body: some View {
+        Picker("Rating", selection: $selection) {
+            Text("Show All").tag(Rating.Filter.showAll)
+            Text("Unrated or Better").tag(Rating.Filter.unratedOrBetter)
+            ForEach(1...5, id: \.self) { n in
+                Text(String(repeating: "★", count: n) + (n < 5 ? " or more" : "")).tag(n)
+            }
+            Text("Rejected Only").tag(Rating.Filter.rejectedOnly)
+        }
+        .pickerStyle(.inline)
     }
 }
 

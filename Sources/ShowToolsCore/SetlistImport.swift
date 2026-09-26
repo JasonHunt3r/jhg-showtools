@@ -458,7 +458,7 @@ public enum SetlistImport {
         for ref in r.files.values {
             guard let id = ids[ref.path], imported.contains(id),
                   let info = ref.libraryHash.flatMap({ r.fileInfo[$0] }) else { continue }
-            if info.rating > 0 { try lib.setRating(info.rating, for: [id]) }
+            if info.rating != 0 { try lib.setRating(info.rating, for: [id]) }
             if !info.tags.isEmpty { try lib.setTags(info.tags, for: id) }
         }
         let used = Set(ids.values)

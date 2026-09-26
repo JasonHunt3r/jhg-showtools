@@ -1123,8 +1123,17 @@ final class AppModel {
     /// Star ratings belong to files, so this isn't a show edit; it has its
     /// own undo, which puts each file's previous rating back.
     func setRating(_ rating: Int, for itemIDs: Set<Int64>, undo: UndoManager?) {
-        let r = min(max(rating, 0), 5)
+        let r = Rating.clamped(rating)
         applyRatings(itemIDs.map { ($0, r) }, undo: undo)
+    }
+
+    /// A rating key (`Rating.Key`) on several files: each file steps from
+    /// its own rating, as one undo step.
+    func applyRatingKey(_ key: Rating.Key, to itemIDs: [Int64], undo: UndoManager?) {
+        let changes = itemIDs.map { ($0, key.applied(to: itemsByID[$0]?.rating ?? 0)) }
+            .filter { itemsByID[$0.0]?.rating != $0.1 }
+        guard !changes.isEmpty else { return }
+        applyRatings(changes, undo: undo)
     }
 
     private func applyRatings(_ changes: [(Int64, Int)], undo: UndoManager?) {

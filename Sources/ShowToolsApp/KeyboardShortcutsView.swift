@@ -30,6 +30,13 @@ struct KeyboardShortcutsView: View {
             ("W", "Insert at the playhead"),
             ("Q", "Place in the images row at the playhead"),
         ]),
+        Section(title: "Rating (the Library grids and the browser)", rows: [
+            ("1–5", "Rate the selected files"),
+            ("0", "Clear the rating"),
+            ("9", "Reject"),
+            ("− / =", "One star down / up"),
+            ("U", "Show or hide ratings"),
+        ]),
         Section(title: "Selecting", rows: [
             ("Click", "Select just this"),
             ("⌘-click", "Add to or remove from the selection"),

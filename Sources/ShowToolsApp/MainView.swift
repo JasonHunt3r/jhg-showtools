@@ -675,6 +675,9 @@ struct LibraryGridView: View {
     @State private var search = ""
     @AppStorage("gridKind") private var kind: KindFilter = .all
     @AppStorage("gridMinRating") private var minRating = 0
+    /// View ▸ Show Ratings (U, Aperture's Browser key): every grid and the
+    /// browser share it.
+    @AppStorage("showRatings") private var showRatings = true
     @AppStorage("gridUncollected") private var onlyUncollected = false
     @AppStorage("gridSort") private var sort: SortOrder = .added
     /// The file(s) a drag picked up, set the moment the drag starts
@@ -1154,7 +1157,7 @@ struct LibraryGridView: View {
             (needle.isEmpty || item.fileName.lowercased().contains(needle)
                 || item.tags.contains { $0.lowercased().contains(needle) })
                 && kind.matches(item.kind)
-                && item.rating >= minRating
+                && Rating.Filter.matches(item.rating, filter: minRating)
                 && !(onlyUncollected && collection == nil && collected.contains(item.id))
         }
         switch effectiveSort {
@@ -1188,7 +1191,7 @@ struct LibraryGridView: View {
     }
 
     private var filtering: Bool {
-        kind != .all || minRating > 0 || (onlyUncollected && collection == nil)
+        kind != .all || Rating.Filter.isActive(minRating) || (onlyUncollected && collection == nil)
     }
 
     /// Search, filters and sort, over the grid.
@@ -1211,13 +1214,7 @@ struct LibraryGridView: View {
                     ForEach(KindFilter.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.inline)
-                Picker("Rating", selection: $minRating) {
-                    Text("Any Rating").tag(0)
-                    ForEach(1...5, id: \.self) { n in
-                        Text(String(repeating: "★", count: n) + (n < 5 ? " or more" : "")).tag(n)
-                    }
-                }
-                .pickerStyle(.inline)
+                RatingFilterPicker(selection: $minRating)
                 if collection == nil {
                     Divider()
                     Toggle("Not in Any Collection", isOn: $onlyUncollected)
@@ -1428,6 +1425,13 @@ struct LibraryGridView: View {
             case (36, _, []):
                 guard !orderedSelection.isEmpty else { return false }
                 renameIDs = orderedSelection
+            // Item 20, Aperture's keys: U shows and hides the ratings;
+            // 1–5, 0, 9, − and = rate the selected files (`Rating.Key`).
+            case (_, "u"?, []):
+                showRatings.toggle()
+            case (_, let c?, []) where Rating.Key(c) != nil:
+                guard !orderedSelection.isEmpty, let key = Rating.Key(c) else { return false }
+                model.applyRatingKey(key, to: orderedSelection, undo: undoManager)
             default:
                 return false
             }
@@ -1741,6 +1745,7 @@ struct LibraryGridView: View {
                         .lineLimit(1).truncationMode(.middle)
                         .foregroundStyle(selected ? .primary : .secondary)
                     Spacer(minLength: 0)
+                    if showRatings { RatingBadge(rating: item.rating, font: .caption) }
                 }
                 .padding(.vertical, 3).padding(.horizontal, 6)
                 .background(selected ? Color.accentColor.opacity(0.18) : .clear,
@@ -1756,6 +1761,13 @@ struct LibraryGridView: View {
                         .font(.caption)
                         .lineLimit(1).truncationMode(.middle)
                         .foregroundStyle(selected ? .primary : .secondary)
+                    // Its own line, a fixed height whether rated or not,
+                    // so a row of tiles stays level.
+                    // (A frame on the badge alone collapses when it draws
+                    // nothing, so the line is a clear spacer it sits on.)
+                    if showRatings {
+                        Color.clear.frame(height: 11).overlay { RatingBadge(rating: item.rating) }
+                    }
                 }
             }
         }

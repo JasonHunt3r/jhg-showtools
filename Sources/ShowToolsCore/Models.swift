@@ -33,8 +33,8 @@ public struct MediaItem: Identifiable, Hashable, Sendable {
     /// Where the file was copied from. Informational only; may no longer exist.
     public var sourcePath: String
 
-    /// Stars, 0 (unrated) to 5. Belongs to the file, the same in every show
-    /// that uses it — as do tags, below.
+    /// Stars, 0 (unrated) to 5, or −1, rejected (`Rating`). Belongs to the
+    /// file, the same in every show that uses it — as do tags, below.
     public var rating: Int
     /// Added by hand, in the Info panel. Feeds the library's search and
     /// filters (plan, 2b). Case kept as typed; matching is case-insensitive.

@@ -135,6 +135,7 @@ struct AppCommands: Commands {
     @AppStorage("inspectorShown") private var inspectorShown = true
     @AppStorage("editMode") private var mode: EditMode = .slides
     @AppStorage("snapping") private var snapping = true
+    @AppStorage("showRatings") private var showRatings = true
     @AppStorage("storylineZoom") private var pps: Double = 24
     @Environment(\.openWindow) private var openWindow
 
@@ -233,6 +234,11 @@ struct AppCommands: Commands {
             Toggle("Show Inspector", isOn: $inspectorShown)
                 .keyboardShortcut("i", modifiers: [.command, .option])
                 .disabled(activeShowID == nil)
+            // Item 20: the stars in the Library grids and the browser.
+            // U (Aperture's Browser key) is bare, so it's in the title, as
+            // Snapping's N is, not a key equivalent that would fire while
+            // typing — the grids' and the browser's own key handlers take it.
+            Toggle("Show Ratings  (U)", isOn: $showRatings)
             // Item 13: Edit Show's Browser is a drawer now, closing to its
             // own edge handle beside the inspector's (`EditColumnsLayout`).
             Toggle("Show Browser", isOn: Binding(

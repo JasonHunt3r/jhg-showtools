@@ -855,9 +855,10 @@ public final class Library {
         return out
     }
 
-    /// Sets the star rating (0…5) on several files at once.
+    /// Sets the rating (−1 rejected, 0 unrated, 1…5 stars) on several
+    /// files at once.
     public func setRating(_ rating: Int, for itemIDs: [Int64]) throws {
-        let r = Int64(min(max(rating, 0), 5))
+        let r = Int64(Rating.clamped(rating))
         try db.transaction {
             for id in itemIDs {
                 try db.prepare("UPDATE items SET rating = ? WHERE id = ?").bind(.int(r), .int(id)).run()

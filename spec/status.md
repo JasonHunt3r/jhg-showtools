@@ -13,7 +13,7 @@ Repo: `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 **Everything planned is built**, including Groups inside collections and
 the range package (below). Phases 1–5, Phase 3b, Phase 4 and video
-export. **330 tests** (317 core + 13 BGTools). **Library schema 14.**
+export. **337 tests** (324 core + 13 BGTools). **Library schema 14.**
 
 | Phase | State |
 |---|---|
@@ -110,8 +110,7 @@ axtool check actually covered:
 
 Jason's own build feedback, `ShowTools Feedback — Worklist for Next CC
 Session.md` (repo root), 37 items, worked through in batches grouped
-by shared code. **25 done** (batches 1–7 below). Still open: 20 (star
-ratings' hotkey), 23–25 (BGTools), 26/27/29 (the value-changer panel
+by shared code. **26 done** (batches 1–8 below). Still open: 23–25 (BGTools), 26/27/29 (the value-changer panel
 idea), item 2's other half, and 33–38, which are questions for Jason
 (item 5 needed no code). Each fix checked
 with axtool against a scratch library, not just compiled. Full dated
@@ -127,6 +126,26 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
 | 5 — P2 polish | Items 30, 31 (31 was already built) |
 | 6 — transport/icon, discussed 2026-09-25 | Item 19; item 12's icon half (its promotion idea is still open, above) |
 | 7 — drawers, 2026-09-25 late | Items 13, 14; item 30 redone (the frame strip itself, not the timeline) |
+| 8 — ratings, 2026-09-26 | Item 20 |
+
+**Item 20 — built 2026-09-26** (Aperture's conventions, decided with
+Jason by Q&A). A rating belongs to the **file**, so it lives where files
+do — the Library grid, the library panel, Edit Show's browser, and the
+inspector/Info panel's stars — never the timeline, the viewer, the frame
+strip or the player. Keys (`Rating.Key`, `ShowToolsCore/Rating.swift`):
+1–5 rate, 0 clears, **9 rejects**, − / = step (− stops at unrated and
+leaves a reject alone; = lifts a reject to unrated; Jason: "−= might have
+to be contextual, we'll get to that if it arises"). **U** shows/hides the
+ratings (View ▸ Show Ratings (U), the `showRatings` default); the Library
+grid's tiles now show stars at all, on a fixed-height line so rows stay
+level. **Y** (Aperture's Viewer key) is Jason's for the **planned drawer
+viewer over the grids** (new asks, below) — build it with that. A reject
+is **−1 in the existing `rating` column** (no schema change); the rating
+filter is Show All / Unrated or Better (the default, hides rejects, and
+what every saved filter's 0 already meant) / ★…★★★★★ / Rejected Only.
+Checked with axtool on a scratch library: 3, 5 on two files at once, −,
+9 (the file leaves the grid), Show All (its red ✕), U both ways (the
+default flips), =, ⌘Z/Redo Rate, and a screenshot of level rows.
 
 **Batch 6 — decided/built 2026-09-25** (this discussion):
 - **Item 19** (transport greyed-out state) — **built**: the timeline
@@ -312,6 +331,13 @@ and Flush presets from 2a.
   the same day), with ⌘Z putting it back. All confirmed with axtool
   against a scratch library. Never confirmed by a real click, drag or
   keypress from Jason's own hands.
+- **Rating keys in Edit Show's browser** (item 20, 2026-09-26): its
+  rows show stars and ✕, but a synthetic click on a row left the keyboard
+  on the sidebar, so neither the new rating keys nor the browser's
+  **older E/W/Q** fired — both need the browser's list to have focus
+  (`listFocused`). Pre-existing, not changed. Worth one real click and a
+  keypress: if they fail by hand too, the browser needs the grid's
+  window-level `SingleKeys` approach.
 - **The grid's keyboard** (built 2026-09-25, audit batch 7): arrow keys,
   Return-renames, and Quick Look on ⌘Y or a double-click — all confirmed
   by their actual effect with axtool (selection counts, the rename sheet,
@@ -453,6 +479,14 @@ and Flush presets from 2a.
   "Bring it on!"). Four questions for Jason.
 
 ## Known issues
+
+- **Edit ▸ Undo was disabled once after a rating key**, on one test copy
+  (2026-09-26), though ⌘Z had nothing to undo either; four later tries,
+  including the same order of actions on a fresh launch, all showed
+  "Undo Rate" enabled and undid correctly, with a probe confirming the
+  step was on the key window's own undo manager. Not reproduced, not
+  explained — suspect `UndoMenuState`'s tracking of the key window
+  rather than the rating code, but that's unproven.
 
 - **`LibraryLocation.isInICloud` loops forever on a path containing
   `..`** (`ShowToolsCore/Library.swift:50`): `deleteLastPathComponent` on

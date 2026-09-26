@@ -211,6 +211,10 @@ extension LibraryTests {
         XCTAssertEqual(try Library(root: root).allItems()[0].rating, 4)
         try lib.setRating(9, for: [items[0].id])                  // clamped
         XCTAssertEqual(try Library(root: root).allItems()[0].rating, 5)
+        try lib.setRating(Rating.rejected, for: [items[0].id])    // item 20
+        XCTAssertEqual(try Library(root: root).allItems()[0].rating, -1)
+        try lib.setRating(-7, for: [items[0].id])                 // clamped to rejected
+        XCTAssertEqual(try Library(root: root).allItems()[0].rating, -1)
     }
 }
 

@@ -50,6 +50,8 @@ struct CollectionBrowser: View {
     @State private var search = ""
     @AppStorage("browserUse") private var use: UseFilter = .all
     @AppStorage("browserMinRating") private var minRating = 0
+    /// View ▸ Show Ratings (U), shared with the Library grids.
+    @AppStorage("showRatings") private var showRatings = true
 
     enum UseFilter: String, CaseIterable {
         case all, used, unused
@@ -110,7 +112,8 @@ struct CollectionBrowser: View {
 
     private func passes(_ item: MediaItem) -> Bool {
         let needle = search.trimmingCharacters(in: .whitespaces).lowercased()
-        return (needle.isEmpty || item.fileName.lowercased().contains(needle)) && item.rating >= minRating
+        return (needle.isEmpty || item.fileName.lowercased().contains(needle))
+            && Rating.Filter.matches(item.rating, filter: minRating)
     }
 
     /// The show's uses of this collection's files, in order of appearance.
@@ -213,19 +216,13 @@ struct CollectionBrowser: View {
     }
 
     private var filterMenu: some View {
-        let active = use != .all || minRating > 0
+        let active = use != .all || Rating.Filter.isActive(minRating)
         return Menu {
             Picker("Show", selection: $use) {
                 ForEach(UseFilter.allCases, id: \.self) { Text($0.title).tag($0) }
             }
             .pickerStyle(.inline)
-            Picker("Rating", selection: $minRating) {
-                Text("Any Rating").tag(0)
-                ForEach(1...5, id: \.self) { n in
-                    Text(String(repeating: "★", count: n) + (n < 5 ? " or more" : "")).tag(n)
-                }
-            }
-            .pickerStyle(.inline)
+            RatingFilterPicker(selection: $minRating)
         } label: {
             Image(systemName: active ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
         }
@@ -335,6 +332,15 @@ struct CollectionBrowser: View {
             }
             return .handled
         }
+        // Item 20, Aperture's keys, as in the Library grid: U shows and
+        // hides the ratings; 1–5, 0, 9, − and = rate the picked files.
+        .onKeyPress(characters: CharacterSet(charactersIn: "u0123459-=")) { press in
+            guard press.modifiers.isEmpty else { return .ignored }
+            if press.characters == "u" { showRatings.toggle(); return .handled }
+            guard let key = Rating.Key(press.characters), !picked.isEmpty else { return .ignored }
+            model.applyRatingKey(key, to: ordered(picked), undo: undoManager)
+            return .handled
+        }
         // Picking one use selects it in the show; the show's selection comes
         // back here. Each side only changes the other when they differ.
         // A plain click only selects (item 6, `ShowTools Feedback —
@@ -384,11 +390,7 @@ struct CollectionBrowser: View {
                 }
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.fileName).lineLimit(1).truncationMode(.middle)
-                if item.rating > 0 {
-                    Text(String(repeating: "★", count: item.rating))
-                        .font(.caption2)
-                        .foregroundStyle(.yellow)
-                }
+                if showRatings { RatingBadge(rating: item.rating) }
             }
             if let use {
                 Spacer(minLength: 4)
