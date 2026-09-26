@@ -75,12 +75,19 @@ public struct Split: Sendable, Identifiable, Equatable {
     /// size, only position. `.row`'s `nearIsRigid` is what sets this
     /// (`spec/panekit.md`, "Building a row").
     public var linkedAncestor: String?
+    /// Whether the sized child can **switch sides**: dragged across the
+    /// main side, it trades places with it and mounts on the opposite
+    /// edge (leading ⇄ trailing, top ⇄ bottom). Which side it's on now is
+    /// state (`SplitState.onOtherSide`), remembered like its size. Jason,
+    /// 2026-09-25: "basically we're reordering the columns."
+    public var canSwitchSides: Bool
     public var first: PaneNode
     public var second: PaneNode
 
     public init(_ id: String, _ axis: PaneAxis, sized: PaneSide, size: CGFloat,
                 range: ClosedRange<CGFloat>, collapsible: Bool = true, title: String? = nil,
-                linkedAncestor: String? = nil, first: PaneNode, second: PaneNode) {
+                linkedAncestor: String? = nil, canSwitchSides: Bool = true,
+                first: PaneNode, second: PaneNode) {
         self.id = id
         self.axis = axis
         self.sized = sized
@@ -89,17 +96,33 @@ public struct Split: Sendable, Identifiable, Equatable {
         self.collapsible = collapsible
         self.title = title
         self.linkedAncestor = linkedAncestor
+        self.canSwitchSides = canSwitchSides
         self.first = first
         self.second = second
     }
 
-    /// The window edge the sized child closes against.
+    /// The edge the sized child is built on, before any switch of sides.
     public var edge: PaneEdge {
         switch (axis, sized) {
         case (.horizontal, .first): .leading
         case (.horizontal, .second): .trailing
         case (.vertical, .first): .top
         case (.vertical, .second): .bottom
+        }
+    }
+
+    /// Whether the sized child sits first (leading/top) now, in `state`.
+    public func sizedFirst(in state: PaneKitState) -> Bool {
+        (sized == .first) != (canSwitchSides && state.isOnOtherSide(id))
+    }
+
+    /// The edge the sized child sits on and closes against now, in `state`.
+    public func edge(in state: PaneKitState) -> PaneEdge {
+        switch (axis, sizedFirst(in: state)) {
+        case (.horizontal, true): .leading
+        case (.horizontal, false): .trailing
+        case (.vertical, true): .top
+        case (.vertical, false): .bottom
         }
     }
 
@@ -124,9 +147,11 @@ public indirect enum PaneNode: Sendable, Equatable {
     /// A split (see `Split.init`).
     public static func split(_ id: String, _ axis: PaneAxis, sized: PaneSide, size: CGFloat,
                              range: ClosedRange<CGFloat>, collapsible: Bool = true, title: String? = nil,
-                             linkedAncestor: String? = nil, _ first: PaneNode, _ second: PaneNode) -> PaneNode {
+                             linkedAncestor: String? = nil, canSwitchSides: Bool = true,
+                             _ first: PaneNode, _ second: PaneNode) -> PaneNode {
         .branch(Split(id, axis, sized: sized, size: size, range: range, collapsible: collapsible,
-                      title: title, linkedAncestor: linkedAncestor, first: first, second: second))
+                      title: title, linkedAncestor: linkedAncestor, canSwitchSides: canSwitchSides,
+                      first: first, second: second))
     }
 
     /// A row of three: `main`, which absorbs a window resize, and two more
@@ -194,17 +219,17 @@ public indirect enum PaneNode: Sendable, Equatable {
         let linkedAncestor = nearIsRigid ? id : nil
         let inner: PaneNode = mainFirst
             ? .split("\(id).near", axis, sized: .second, size: farSize, range: farRange,
-                     collapsible: farCollapsible, linkedAncestor: linkedAncestor, .leaf(near), .leaf(far))
+                     collapsible: farCollapsible, linkedAncestor: linkedAncestor, canSwitchSides: false, .leaf(near), .leaf(far))
             : .split("\(id).near", axis, sized: .first, size: farSize, range: farRange,
-                     collapsible: farCollapsible, linkedAncestor: linkedAncestor, .leaf(far), .leaf(near))
+                     collapsible: farCollapsible, linkedAncestor: linkedAncestor, canSwitchSides: false, .leaf(far), .leaf(near))
         return mainFirst
-            ? .split(id, axis, sized: .second, size: comboDefault, range: comboRange, collapsible: false,
+            ? .split(id, axis, sized: .second, size: comboDefault, range: comboRange, collapsible: false, canSwitchSides: false,
                      .leaf(main), inner)
-            : .split(id, axis, sized: .first, size: comboDefault, range: comboRange, collapsible: false,
+            : .split(id, axis, sized: .first, size: comboDefault, range: comboRange, collapsible: false, canSwitchSides: false,
                      inner, .leaf(main))
     }
 
-    /// Every pane's id, in order.
+    /// Every pane's id, in order (as built, before any switch of sides).
     public var paneIDs: [String] {
         switch self {
         case .leaf(let p): [p.id]
@@ -238,10 +263,13 @@ public struct SplitState: Sendable, Equatable, Codable {
     /// Nil: the split's default size.
     public var size: CGFloat?
     public var collapsed: Bool
+    /// The sized child has switched sides (`Split.canSwitchSides`).
+    public var onOtherSide: Bool
 
-    public init(size: CGFloat? = nil, collapsed: Bool = false) {
+    public init(size: CGFloat? = nil, collapsed: Bool = false, onOtherSide: Bool = false) {
         self.size = size
         self.collapsed = collapsed
+        self.onOtherSide = onOtherSide
     }
 
     /// Field by field (CLAUDE.md): one unreadable field doesn't lose the other.
@@ -249,6 +277,7 @@ public struct SplitState: Sendable, Equatable, Codable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         size = (try? c.decodeIfPresent(CGFloat.self, forKey: .size)) ?? nil
         collapsed = (try? c.decodeIfPresent(Bool.self, forKey: .collapsed)) ?? false
+        onOtherSide = (try? c.decodeIfPresent(Bool.self, forKey: .onOtherSide)) ?? false
     }
 }
 
@@ -288,5 +317,6 @@ public struct PaneKitState: Sendable, Equatable, Codable {
     }
 
     public func isCollapsed(_ splitID: String) -> Bool { splits[splitID]?.collapsed ?? false }
+    public func isOnOtherSide(_ splitID: String) -> Bool { splits[splitID]?.onOtherSide ?? false }
     public func isPoppedOut(_ paneID: String) -> Bool { panes[paneID]?.poppedOut ?? false }
 }

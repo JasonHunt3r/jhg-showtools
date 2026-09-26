@@ -53,7 +53,7 @@ public enum PaneLayout {
                 extentSized = sizedExtent(for: split, available: total, state: state)
                 gap = dividerThickness
             }
-            let (sizedRect, gapRect, mainRect) = carve(rect, axis: split.axis, sizedFirst: split.sized == .first,
+            let (sizedRect, gapRect, mainRect) = carve(rect, axis: split.axis, sizedFirst: split.sizedFirst(in: state),
                                                        sized: extentSized, gap: gap)
             if extentSized > 0 {
                 place(split.sizedNode, in: sizedRect, state: state, into: &result)

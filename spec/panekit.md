@@ -175,6 +175,23 @@ Assistant). Not needed for our fix.
   closed pane is skipped.
 - **Pops out, and back in** (Jason, 2026-09-24: built in, not added
   later). See the next section.
+- **Switches sides — built 2026-09-25** (Jason: "basically we're
+  reordering the columns"). Drag a pane's divider, or its closed handle,
+  across the main side: it grows into main's space, and once what's left
+  between the pointer and the far edge is less than the pane's own size
+  at the start of the drag, the two trade places — the pane mounts on the
+  **opposite** edge of its split (leading ⇄ trailing, top ⇄ bottom), open,
+  at that starting size. Dragging back the same way switches it back,
+  within the same drag or a later one. `Split.canSwitchSides` (default
+  **true**, like `collapsible`); which side it's on is state,
+  `SplitState.onOtherSide`, saved with its size, and Restore Default
+  Layout puts it back. Pure arithmetic in `dragResize`
+  (`PaneContainerView.swift`), pinned by `PaneControllerTests`'s
+  "Switching sides". **Limits:** a pane switches within its own split,
+  so the nesting decides where it can go (Edit Show's Browser can reach
+  the preview's far side, not past the inspector); `.row`'s two splits
+  don't switch (their linked arithmetic assumes fixed sides); no menu
+  command yet, and no animation — it jumps.
 
 ## Building a row (added 2026-09-24)
 

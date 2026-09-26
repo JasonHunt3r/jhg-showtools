@@ -158,11 +158,17 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   close or drag of either goes to the preview. View ▸ Show Browser (⌥⌘B).
   Checked on a test copy: double-click the divider and the handle, drag
   shut and open with the Inspector open (it stayed 320), the menu item and
-  ⌥⌘B, and a screenshot of the two stacked handles. **Left for Jason's
-  hands:** the feel of it. **Next, once it's a drawer (Jason):** the
-  flip-sides idea. **Jason's idea, not designed yet:** the Browser has a max width
-  while nested, and dragging past it swaps its anchor to the left side,
-  beside whatever is there (the catalog pane).
+  ⌥⌘B, and a screenshot of the two stacked handles. **Step 3 built —
+  switching sides, for every pane** (a PaneKit feature, `spec/panekit.md`
+  "What every pane can do"): drag a pane across main and, once less than
+  its starting size is left, it trades places and mounts on the opposite
+  edge. Checked on a test copy: the Browser to the left beside the
+  Library pane (screenshot), closed there (handle on the left edge),
+  dragged back by its handle; the Inspector across to the left
+  (Inspector | preview | Browser, screenshot). **Left for Jason's hands:**
+  the feel of all three steps, and the panes not tried at all — the
+  Library pane, the timeline (it can switch to the top now) and Edit
+  Slides' inspector. No menu command or animation yet.
 - **Items 23–25** — queued as their own BGTools work list, to pick up
   once the ShowTools fixes above are done: `spec/bgtools.md`, "Next up —
   queued 2026-09-25, after the ShowTools fixes."

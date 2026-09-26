@@ -227,7 +227,7 @@ final class PaneEdgeHandleView: NSView {
         NSColor.separatorColor.setFill()
         let horizontal = split.axis == .horizontal
         let edgeLine: NSRect
-        switch split.edge {
+        switch split.edge(in: container?.controller.displayState ?? PaneKitState()) {
         case .leading: edgeLine = NSRect(x: bounds.maxX - 1, y: 0, width: 1, height: bounds.height)
         case .trailing: edgeLine = NSRect(x: 0, y: 0, width: 1, height: bounds.height)
         case .top: edgeLine = NSRect(x: 0, y: bounds.maxY - 1, width: bounds.width, height: 1)
@@ -270,29 +270,39 @@ private func trackResize(_ split: Split, in container: PaneContainerView, from e
     let start = container.convert(event.locationInWindow, from: nil)
     var moved = false
     let dragStart = container.controller.state
+    let edge = split.edge(in: dragStart)
+    let total = split.axis == .horizontal ? rect.width : rect.height
     while let e = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
         if e.type == .leftMouseUp { break }
         let p = container.convert(e.locationInWindow, from: nil)
         if !moved, hypot(p.x - start.x, p.y - start.y) < 3 { continue }
         moved = true
         let fromEdge: CGFloat
-        switch split.edge {
+        switch edge {
         case .leading: fromEdge = p.x - rect.minX
         case .trailing: fromEdge = rect.maxX - p.x
         case .top: fromEdge = p.y - rect.minY
         case .bottom: fromEdge = rect.maxY - p.y
         }
         container.controller.liveChange { s in
-            dragResize(split, root: container.controller.root, fromEdge: fromEdge, start: dragStart, into: &s)
+            dragResize(split, root: container.controller.root, fromEdge: fromEdge, total: total,
+                       start: dragStart, into: &s)
         }
     }
     if moved { container.controller.endLive() }
 }
 
 /// One step of a drag: the sized side follows the pointer (`fromEdge`,
-/// its distance from the side's own edge), closing past half its minimum
-/// if it can. Worked out from the state the drag **started** with, never
-/// the previous step, so it stays right however many steps there are.
+/// its distance from the edge the side was on when the drag began, in a
+/// split `total` long), closing past half its minimum if it can. Worked
+/// out from the state the drag **started** with, never the previous step,
+/// so it stays right however many steps there are — including dragging
+/// back over a switch of sides, which undoes it.
+///
+/// **Switching sides** (`Split.canSwitchSides`, Jason, 2026-09-25): dragged
+/// across the main side until what's left between the pointer and the far
+/// edge is less than the side's own size at the start, it trades places
+/// with main — mounted on the opposite edge, open, at that starting size.
 ///
 /// `linkedAncestor` (`PaneNode.row`'s `nearIsRigid`): the ancestor's stored
 /// size moves by the same amount. The amount is the change in the space
@@ -303,15 +313,20 @@ private func trackResize(_ split: Split, in container: PaneContainerView, from e
 /// the whole closed width (Edit Show's Browser, measured on Jason's own
 /// copy, 2026-09-25: 236 → 545 pt), and a drag open from the handle shrank
 /// it by the same.
-func dragResize(_ split: Split, root: PaneNode, fromEdge: CGFloat, start: PaneKitState,
-                into s: inout PaneKitState) {
+func dragResize(_ split: Split, root: PaneNode, fromEdge: CGFloat, total: CGFloat,
+                start: PaneKitState, into s: inout PaneKitState) {
     func occupied(_ st: SplitState?) -> CGFloat {
         (st?.collapsed ?? false) && split.collapsible
             ? PaneLayout.handleThickness
             : (st?.size ?? split.defaultSize) + PaneLayout.dividerThickness
     }
     var st = start.splits[split.id] ?? SplitState()
-    if split.collapsible && fromEdge < split.range.lowerBound / 2 {
+    let startSize = min(max(st.size ?? split.defaultSize, split.range.lowerBound), split.range.upperBound)
+    if split.canSwitchSides && fromEdge > startSize && total - fromEdge < startSize {
+        st.onOtherSide.toggle()
+        st.collapsed = false
+        st.size = startSize
+    } else if split.collapsible && fromEdge < split.range.lowerBound / 2 {
         st.collapsed = true
     } else {
         st.collapsed = false
