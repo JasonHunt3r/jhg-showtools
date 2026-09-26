@@ -1216,7 +1216,7 @@ struct LibraryGridView: View {
     }
 
     /// Search, filters and sort, and the tools, over the grid (and under
-    /// the viewer drawer, whose handle it is). One row where there's room;
+    /// the viewer drawer). One row where there's room;
     /// in a narrow window (the library panel) two, with the filters as
     /// icons — the first layout that fits (Jason, 2026-09-26, after the
     /// tools moved down from the toolbar and overflowed the panel).
@@ -1306,8 +1306,7 @@ struct LibraryGridView: View {
         }
         // The toolbar's tools and the tile size, here under the viewer
         // drawer rather than in the toolbar (Jason, 2026-09-26: "move
-        // the whole set of tools down"). Controls keep their own clicks
-        // and drags; only the bar's empty space moves the drawer.
+        // the whole set of tools down").
         Button { runImportPanel(model) } label: { Image(systemName: "square.and.arrow.down") }
             .buttonStyle(.borderless)
             .accessibilityLabel("Import")
@@ -1331,11 +1330,11 @@ struct LibraryGridView: View {
     /// reorder switches to it on its own (`commitReorder`) and it's easy to
     /// lose track of which view you're in without opening the menu to check.
     ///
-    /// Also the viewer drawer's second handle, with the edge handles' pill
-    /// drawn in its middle (Jason, 2026-09-26: the darker strip read as
-    /// the grip). It moves with the bar above it, as the drawer's edge.
-    /// The handle sits above the strip's colour, which would otherwise
-    /// take the clicks.
+    /// Also the viewer drawer's handle — its only one — with the edge
+    /// handles' pill in its middle (Jason, 2026-09-26: the darker strip
+    /// read as the grip, and the bar above has controls to click). It moves
+    /// with the bar above it. The handle sits above the strip's colour,
+    /// which would otherwise take the clicks.
     private var sortStatusBar: some View {
         HStack(spacing: 4) {
             Image(systemName: "arrow.up.arrow.down").imageScale(.small)
@@ -1349,12 +1348,7 @@ struct LibraryGridView: View {
         // (measured: a double-click on "Date Added…" did nothing), so the
         // whole strip is the handle.
         .allowsHitTesting(false)
-        .overlay {
-            Capsule()
-                .fill(Color(nsColor: .secondaryLabelColor).opacity(0.7))
-                .frame(width: 40, height: 3)
-                .allowsHitTesting(false)
-        }
+        .overlay { GripPill() }
         .paneHandle(model.viewer(viewerPlace), split: ViewerLayout.split)
         .background(Color(nsColor: .controlBackgroundColor))
     }
@@ -1410,16 +1404,16 @@ struct LibraryGridView: View {
                     Button("Import…") { runImportPanel(model) }
                 }
             } else {
-                // The viewer drawer above the grid, its handle the bar
-                // (`spec/plan.md`, "The viewer drawer"): closed, the bar
-                // sits at the top as it always has.
+                // The viewer drawer above the grid, its handle the sort
+                // strip under the bar (`spec/plan.md`, "The viewer drawer"):
+                // closed, the bar sits at the top as it always has.
                 let viewer = model.viewer(viewerPlace)
                 PaneLayoutView(controller: viewer, content: [
                     "viewer": AnyView(SelectionViewer(
                         items: orderedSelection.compactMap { model.itemsByID[$0] },
                         primary: cursor, mode: $viewerMode, model: model)),
                     "grid": AnyView(VStack(spacing: 0) {
-                        bar.paneHandle(viewer, split: ViewerLayout.split)
+                        bar
                         Divider()
                         sortStatusBar
                         Divider()

@@ -45,7 +45,8 @@ timeline), the inspector bar's right-click, and the "No menu yet" notes. **Reins
 2026-09-26 02:49 at `e283204`**: grid pinch, timeline ⌘A, the Icon
 Composer app icon. **Reinstalled at `f22a58f`**: the viewer drawer (all three
 places), the second app icon, and the grids' tools in the bar. **Reinstalled at
-`f2175dd`**: the sort strip as the drawer's second handle, with its pill.
+`f2175dd`**: the sort strip as the drawer's second handle, with its pill
+(since changed: the strip is the only handle — see the viewer drawer below).
 Reinstalling stops the real BGTools instance (`install.sh`'s own quit
 sequence); BGTools wasn't restarted after the 20:28 install. BGTools'
 desktop extension (`BGToolsControls.appex`) was also killed before that
@@ -71,8 +72,8 @@ below are what's open.
 - **Pinch to resize the grid's tiles** — built and confirmed (below).
 - **The viewer drawer over the grids** — built, all four steps, in the
   Library grid, the library panel and Edit Show's browser (`spec/plan.md`,
-  "The viewer drawer"): Side by Side or Stack, the header bar and the sort
-  strip as its handles, video and GIFs muted and looping. Checked with
+  "The viewer drawer"): Side by Side or Stack, the dark strip under the
+  bar as its handle, video and GIFs muted and looping. Checked with
   axtool on a scratch library; waiting on Jason's hands (below). The
   grids' tools moved into its bar the same day. Story:
   `spec/history/2026-09-26-viewer-drawer-and-icon.md`.
@@ -329,12 +330,13 @@ and Flush presets from 2a.
   slider, Import, Add to Show and Get Info moved from the toolbar into the
   bar under the viewer drawer; the library panel's bar wraps to two rows.
   Checked with axtool and screenshots (both windows' layouts, the slider
-  dragging with the drawer open and shut, the bar still the handle in
-  both) — the buttons' own actions weren't clicked. Worth a look: the
+  dragging with the drawer open and shut) — the buttons' own actions weren't clicked. Worth a look: the
   main window's title bar is now the plain one (no toolbar items in the
   Library view), so the "N items / N selected" subtitle is in the title.
 - **The viewer drawer** (built 2026-09-26, `spec/plan.md` "The viewer
-  drawer"): Y / ⇧Y, dragging and double-clicking the bar, Side by Side
+  drawer"): Y / ⇧Y, dragging and double-clicking the dark strip under the
+  bar (its only handle: the sort strip in the grids, a 12-pt grip strip in
+  the browser; the bar itself takes no drags), Side by Side
   and Stack, ← / → within the selection, in the Library grid, the library
   panel and Edit Show's browser — all checked with axtool and
   screenshots, never by a real hand in the app (the harness's handle was).
@@ -342,9 +344,9 @@ and Flush presets from 2a.
   read as a group at a glance; 12 videos side by side at once (not
   tried); and the browser's ← / →, which only work once its list has the
   keyboard — a real click on a row should give it that (a synthetic one
-  doesn't; Tab did). The sort strip under the bar is a handle too, with a
-  pill (Jason took it for the grip): its drag and double-clicks were
-  checked, text included.
+  doesn't; Tab did). The strip was checked in the grid (double-clicks,
+  text included, and drags) and in the browser (double-click, drag), and
+  the bar in both was checked to do nothing on a double-click or drag.
 - **The inspector's stars after a rating key in the browser** (seen
   2026-09-26 while checking the viewer): "4" rated both picked files (the
   library says 4), but the inspector's Rating row for the selected slide's

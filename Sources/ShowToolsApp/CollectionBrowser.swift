@@ -145,15 +145,19 @@ struct CollectionBrowser: View {
     private var files: [MediaItem] { usedFiles + unusedFiles }
 
     var body: some View {
-        // The viewer drawer above the list, its handle the bar (`spec/plan.md`,
-        // "The viewer drawer", step 4).
+        // The viewer drawer above the list, its handle the grip strip under
+        // the bar (`spec/plan.md`, "The viewer drawer", step 4).
         let viewer = model.browserViewer
         PaneLayoutView(controller: viewer, content: [
             "viewer": AnyView(SelectionViewer(
                 items: ordered(picked).compactMap { model.itemsByID[$0] },
                 primary: lastPicked.flatMap(itemID), mode: $viewerMode, model: model)),
             "grid": AnyView(VStack(spacing: 0) {
-                bar.paneHandle(viewer, split: ViewerLayout.split)
+                bar
+                Divider()
+                // The drawer's handle: a slim strip with the pill, not the
+                // bar, whose controls take clicks (Jason, 2026-09-26).
+                DrawerGripStrip(controller: viewer, split: ViewerLayout.split)
                 Divider()
                 if collection == nil {
                     ContentUnavailableView("Not in a collection", systemImage: "rectangle.stack",

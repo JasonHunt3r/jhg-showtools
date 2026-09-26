@@ -85,6 +85,12 @@ Then two changes from Jason's first look:
   handles' pill (`b2cf222`). Its text swallowed clicks at first
   (measured: a double-click on "Date Added…" did nothing, the empty
   middle worked), so the strip's contents ignore the mouse.
+- **Then the bar stopped being a handle** — "there are elements above it
+  that require mouse clicks". The strip is the only grab area; the
+  browser, which has no sort strip, got a slim grip strip of its own
+  (`DrawerGripStrip`), 12 pt like PaneKit's edge handles after a 10-pt
+  one proved easy to miss (the first synthetic double-click landed on
+  the divider line above it).
 
 ## Method notes
 

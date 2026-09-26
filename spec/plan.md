@@ -1250,16 +1250,22 @@ side. Asked 2026-09-25; decided with Jason by Q&A 2026-09-26.
 browser (Jason: all three). Each remembers its own open/closed state and
 height, the way the two grids keep their own tile sizes.
 
-**The header bar is the handle** (Jason). The drawer opens *above* the
-bar each place already has (the grid's search/filter/size bar, the
-browser's Show/rating/search bar): drag the bar down to open the viewer
-and set its height, drag it up to close it, double-click the bar's empty
-space to open or close. Closed, nothing changes from today — no extra
-edge handle. The bar's own controls keep their clicks; only its empty
-space drags. **Y** (Aperture's Viewer key, kept for this) and View ▸ Show
-Viewer do the same as a double-click, in whichever of the three has the
-keyboard. It doesn't switch sides: the bar is its handle, and the bar
-stays on top.
+**The dark strip under the bar is the handle** (Jason). The drawer opens
+*above* the bar each place already has (the grid's search/filter/tools
+bar, the browser's search/filter bar). Under that bar is a dark strip
+with the edge handles' pill in its middle — the grids' sort strip, or in
+the browser a slim 12-pt grip strip of its own — and it is the drawer's
+**only** handle: drag it down to open the viewer and set its height (the
+bar moves with it), drag it up to close it, double-click it to open or
+close. The bar itself takes no drags: it's full of controls. **Y**
+(Aperture's Viewer key, kept for this) and View ▸ Show Viewer do the same
+as a double-click, in whichever of the three has the keyboard. It doesn't
+switch sides: the bar and the strip stay on top of the grid.
+
+*How it got here, the same day:* first the bar's empty space was the
+handle (Jason's first call), then the sort strip was added as a second
+one when he took it for the grip, then the bar was dropped as a handle
+("there are elements above it that require mouse clicks").
 
 **What it shows** (Jason):
 - **Several selected: all of them, side by side** (Aperture's multi-up,
@@ -1342,11 +1348,9 @@ the bar doesn't fit on one row (the library panel), it takes two: search
 with Filter, Sort and Similar as icons, then the tools under them
 (`ViewThatFits`).
 
-**The sort strip is a second handle** (Jason, 2026-09-26: the darker strip
-under the bar read as the grip): the edge handles' pill drawn in its
-middle, and the whole strip drags or double-clicks the drawer, moving the
-bar with it. Its text ignores the mouse, since SwiftUI's text took the
-clicks (measured).
+**The strip's text ignores the mouse** ("Date Added, Oldest First"):
+SwiftUI's text took the clicks, so a double-click on it did nothing
+(measured) while the empty middle worked.
 
 **Open:** the cap of 12 (proposed); whether a click in the viewer should
 do anything later.

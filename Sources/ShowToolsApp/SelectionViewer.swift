@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 import AVFoundation
 import ShowToolsCore
+import PaneKit
 
 /// The viewer drawer's two views (`spec/plan.md`, "The viewer drawer").
 enum ViewerMode: String, CaseIterable {
@@ -156,6 +157,34 @@ struct SelectionViewer: View {
     /// Width ÷ height; audio (no picture) is 0, which the layout treats as square.
     static func aspect(_ item: MediaItem) -> CGFloat {
         item.pixelHeight > 0 ? CGFloat(item.pixelWidth) / CGFloat(item.pixelHeight) : 0
+    }
+}
+
+/// The viewer drawer's grip: the edge handles' pill. Drawn in the middle
+/// of the dark strip under a grid's bar, which is the drawer's only handle
+/// (Jason, 2026-09-26: the bar above has controls to click).
+struct GripPill: View {
+    var body: some View {
+        Capsule()
+            .fill(Color(nsColor: .secondaryLabelColor).opacity(0.7))
+            .frame(width: 40, height: 3)
+            .allowsHitTesting(false)
+    }
+}
+
+/// A slim dark strip with the pill, as the drawer's handle where there's
+/// no sort strip to be it (Edit Show's browser).
+struct DrawerGripStrip: View {
+    let controller: PaneController
+    let split: String
+
+    var body: some View {
+        Color.clear
+            .frame(maxWidth: .infinity)
+            .frame(height: 12)   // PaneKit's edge handles' thickness
+            .overlay { GripPill() }
+            .paneHandle(controller, split: split)
+            .background(Color(nsColor: .controlBackgroundColor))
     }
 }
 
