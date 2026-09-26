@@ -1342,6 +1342,12 @@ the bar doesn't fit on one row (the library panel), it takes two: search
 with Filter, Sort and Similar as icons, then the tools under them
 (`ViewThatFits`).
 
+**The sort strip is a second handle** (Jason, 2026-09-26: the darker strip
+under the bar read as the grip): the edge handles' pill drawn in its
+middle, and the whole strip drags or double-clicks the drawer, moving the
+bar with it. Its text ignores the mouse, since SwiftUI's text took the
+clicks (measured).
+
 **Open:** the cap of 12 (proposed); whether a click in the viewer should
 do anything later.
 

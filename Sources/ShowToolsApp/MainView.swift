@@ -1330,6 +1330,12 @@ struct LibraryGridView: View {
     /// which sort is active — Custom Order most of all, since dragging to
     /// reorder switches to it on its own (`commitReorder`) and it's easy to
     /// lose track of which view you're in without opening the menu to check.
+    ///
+    /// Also the viewer drawer's second handle, with the edge handles' pill
+    /// drawn in its middle (Jason, 2026-09-26: the darker strip read as
+    /// the grip). It moves with the bar above it, as the drawer's edge.
+    /// The handle sits above the strip's colour, which would otherwise
+    /// take the clicks.
     private var sortStatusBar: some View {
         HStack(spacing: 4) {
             Image(systemName: "arrow.up.arrow.down").imageScale(.small)
@@ -1339,6 +1345,17 @@ struct LibraryGridView: View {
         .font(.caption)
         .foregroundStyle(.secondary)
         .padding(.horizontal, 12).padding(.vertical, 4)
+        // Nothing here is clickable, and SwiftUI's text takes the mouse
+        // (measured: a double-click on "Date Added…" did nothing), so the
+        // whole strip is the handle.
+        .allowsHitTesting(false)
+        .overlay {
+            Capsule()
+                .fill(Color(nsColor: .secondaryLabelColor).opacity(0.7))
+                .frame(width: 40, height: 3)
+                .allowsHitTesting(false)
+        }
+        .paneHandle(model.viewer(viewerPlace), split: ViewerLayout.split)
         .background(Color(nsColor: .controlBackgroundColor))
     }
 
