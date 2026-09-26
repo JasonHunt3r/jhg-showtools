@@ -805,6 +805,8 @@ struct LibraryGridView: View {
     /// The grid's own on-screen width, measured for `columnCount` (B2):
     /// `.adaptive` columns don't expose their count any other way.
     @State private var gridWidth: CGFloat = 0
+    /// The tile size when a pinch began (`spec/conventions.md` §1).
+    @State private var pinchStart: Double?
     @State private var dropTargeted = false
     // Find Similar (plan, Phase 3b).
     /// Find Similar Images (was "Group Similar"; renamed 2026-09-24 so
@@ -1611,6 +1613,17 @@ struct LibraryGridView: View {
             withAnimation { proxy.scrollTo(id, anchor: nil) }
         }
         .onTapGesture { selection = []; focused = true }
+        // Pinch changes the tile size, the same as the size slider, down
+        // to its list view (Jason, 2026-09-25). Simultaneous, so the
+        // scroll view still scrolls.
+        .simultaneousGesture(MagnifyGesture()
+            .onChanged { v in
+                let start = pinchStart ?? tileSize
+                pinchStart = start
+                tileSize = min(max(start * v.magnification, Self.tileSizeRange.lowerBound),
+                               Self.tileSizeRange.upperBound)
+            }
+            .onEnded { _ in pinchStart = nil })
         // The grid, not the bar above it with Search, is what takes the
         // keyboard (by Tab; Delete itself is caught by SingleKeys, above).
         .focusable()

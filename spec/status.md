@@ -64,11 +64,10 @@ below are what's open.
 
 ### New asks (Jason, 2026-09-25)
 
-Not designed yet.
+Not designed yet. (Pinch to resize the grid's tiles: built 2026-09-26,
+both grids, `MainView.swift`; needs Jason's real pinch — axtool can't
+send one.)
 
-- **Pinch to change the grid's tile size** — in the Library grid (and the
-  library panel's), the same as the size slider. Pinch already zooms the
-  timeline and the viewer's work zoom (`spec/conventions.md` §1).
 - **A drawer at the top of the grids with a viewer of the selected
   image(s)** — a PaneKit drawer over the grid, so it closes to its
   handle, and can switch sides like every other pane.
