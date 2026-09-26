@@ -1303,11 +1303,13 @@ double-click toggles); a harness check with a header-bar-shaped view.
    (`spec/panekit.md`, "The app's own view as the handle").
 2. The viewer itself, `SelectionViewer`: Side by Side (the multi-up
    layout, pure, tested in Core: N aspect ratios into a W×H box → tile
-   frames) and Stack, the switch, ⇧Y and the View menu, images decoded at
+   frames) and Stack, the corner switch, images decoded at
    the tile's pixel size off the main thread and cached, GIFs and video
    playing muted and looping, the "No selection" note, the cap.
+   **Built 2026-09-26** (`Viewer.swift` in Core, 11 `ViewerTests`;
+   `SelectionViewer.swift`) — not on screen until step 3 wires it in.
 3. The Library grid (main window and panel): the split, the bar as
-   handle, Y and the View menu item, ← / → within the selection.
+   handle, Y, ⇧Y and the View menu items, ← / → within the selection.
 4. Edit Show's browser: the same, following its picked files and uses.
 
 **Open:** the cap of 12 (proposed); whether a click in the viewer should
