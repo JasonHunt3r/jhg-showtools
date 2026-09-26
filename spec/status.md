@@ -13,7 +13,7 @@ Repo: `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 **Everything planned is built**, including Groups inside collections and
 the range package (below). Phases 1–5, Phase 3b, Phase 4 and video
-export. **337 tests** (324 core + 13 BGTools). **Library schema 14.**
+export. **348 tests** (335 core + 13 BGTools; PaneKit has its own 39). **Library schema 14.**
 
 | Phase | State |
 |---|---|
@@ -624,7 +624,7 @@ resets every app's login items, so they are left alone.
 ## Quick start
 
 ```sh
-swift test                                  # 324 core + 13 BGTools tests
+swift test                                  # 335 core + 13 BGTools tests
 ./make-app.sh                               # → build/ShowTools.app
 tools/make-test-library.sh <scratch>/STTest # scratch library + generated media
 open -n --env SHOWTOOLS_LIBRARY=<scratch>/STTest/TestLib.noindex build/ShowTools.app
