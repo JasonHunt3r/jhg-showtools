@@ -93,6 +93,15 @@ never have guessed it. `VideoSlideTiming` now holds it for both — asked by
   its frame — or content wider than its column steals the next column's
   clicks and scrolling.
 - **Harnesses first for AppKit questions.**
+- **A right-click on a SwiftUI `List`'s empty space throws** on macOS 27
+  ("Row index -1 out of row range", from `OutlineListCoordinator`'s
+  `contextMenuForRow`) and shows nothing — whatever menu the list
+  declares: per-row `.contextMenu` *or* `contextMenu(forSelectionType:)`,
+  which is documented to handle empty space and doesn't (measured
+  2026-09-26, the Library pane and the browser). `ListEmptySpace`
+  (`NoMenuYet.swift`) takes those clicks first, app-wide, and shows the
+  menu itself. Don't "fix" an empty-space menu by adding one to the List:
+  give `ListEmptySpace` real items instead.
 - **U is taken window-wide, on purpose, and never reaches anything
   else** (item 20, Jason, 2026-09-26). `MainView`'s own `SingleKeys`
   swallows a plain U in every mode to toggle Show Ratings, ahead of the

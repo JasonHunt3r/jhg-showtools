@@ -484,6 +484,22 @@ and Flush presets from 2a.
   collection without building a show, and three levels (Basic, Advanced,
   "Bring it on!"). Four questions for Jason.
 
+## Right-click, 2026-09-26
+
+Jason found right-click "not working" in the Library pane, the inspector
+and the browser. Measured with a click logger on a scratch copy (his two-
+finger taps arrive as right-clicks): the rows' menus work; what failed
+was **places with no menu designed** (the browser's header, where his
+taps landed; the inspector bar's empty stretch, now fixed) and **list
+empty space**, where SwiftUI throws. Every such place now shows a greyed
+**"No menu yet — place › area"** note (`spec/conventions.md` §3), so the
+gaps are visible and listable (search `noMenuYet`, `ListEmptySpace`).
+**Not covered yet:** the timeline, the transport, the filter bar and sort
+strip, the defaults bar. Also found: deselecting in the browser left the
+inspector on the old slide (fixed, both directions); in the timeline,
+neither Escape nor a click on empty row space deselects a slide (only
+⌘-click does) — `spec/conventions.md` §2 says Escape should, not built.
+
 ## Known issues
 
 - **Edit ▸ Undo was disabled once after a rating key**, on one test copy
@@ -503,17 +519,13 @@ and Flush presets from 2a.
   until the next event** (AppKit's automatic group stays open). Fixed for
   drag-to-reorder by an explicit undo group; other paths that register
   undo from a `Task` or after an `await` haven't been checked.
-- **A caught, non-fatal exception on the Library sidebar's right-click**
-  (`~/Library/Logs/ShowTools-exception.log`, 2026-09-25 08:42:35 and
-  08:42:36 UTC): `NSTableViewException`, "Row index -1 out of row range,"
-  from `-[NSTableView menuForEvent:]` on `SwiftUIOutlineListView` — a
-  stale/negative row index when a context menu is asked for. Logged
-  twice, a second apart, with no crash dialog and not witnessed by
-  Jason — `ExceptionProbe` catches exceptions AppKit's own event loop may
-  already be recovering from, so a log entry isn't proof of a visible
-  crash. Not investigated: found while looking at the log for an
-  unrelated reason, no repro yet, no PaneKit/pop-out frames in the stack
-  so unrelated to that work.
+- **Right-click on a list's empty space — fixed 2026-09-26.** The
+  logged "Row index -1" exception (2026-09-25, and again 09-26) was a
+  right-click below a SwiftUI list's last row: SwiftUI throws there and
+  shows nothing, in the Library pane and the browser alike.
+  `ListEmptySpace` now answers those clicks with a "No menu yet" note
+  (`showtools-gotchas`). Reproduced, fixed and re-checked on a scratch
+  copy: no exception, the note shows, rows keep their own menus.
 - **The layout-loop crash — fixed 2026-09-23, and its 2026-09-24
   recurrence also fixed.** `NSGenericException` from AppKit's layout-loop
   guard; root cause was SwiftUI's `.inspector()` modifier, fixed by

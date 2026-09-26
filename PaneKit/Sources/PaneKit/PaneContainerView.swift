@@ -22,6 +22,8 @@ public final class PaneContainerView: NSView {
         super.init(frame: .zero)
         for pane in controller.root.panes {
             let host = PaneHostView(content: content[pane.id] ?? NSView())
+            // So an app can tell, from any view inside, which pane it's in.
+            host.identifier = NSUserInterfaceItemIdentifier(pane.id)
             hosts[pane.id] = host
             addSubview(host)
         }
