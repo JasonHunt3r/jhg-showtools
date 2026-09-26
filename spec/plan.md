@@ -1132,7 +1132,11 @@ didn't work by hand: `spec/history/2026-09-25-drag-reorder-session.md`
 drag order (`sort_key`, migration 14, kept apart from `added_at` so Date
 Added never changes). The plain Library has no order of its own, and Show
 Similar is its own arrangement, so a drag over either shows a note saying
-why and changes nothing.
+why and changes nothing. Letting go over the plain Library's grid also
+shows `LibraryOrderNotice` (Jason's wording: "You cannot set a custom
+order in the Library." / "Collections and Groups support custom
+ordering.", OK, "Don't show this again"). The wording is ShowTools'; a
+package would only report that a drag was refused where it was let go.
 
 **What a drop saves.** Exactly what's on screen. Dragging under another
 sort makes Custom Order that sort with the move in it; files a search or

@@ -945,9 +945,15 @@ struct LibraryGridView: View {
 
         draggingIDs = ids
         grabOffset = CGSize(width: grab.x - cardOrigin.x, height: grab.y - cardOrigin.y)
-        dragSource.onEnd = { _ in
+        dragSource.onEnd = { operation, overGrid in
             dragStarted = false
             if !commitPending { endReorderDrag() }
+            // Let go over the plain Library's own grid, where there's no
+            // order to set: say why nothing moved (`LibraryOrderNotice`).
+            // After the drag has fully ended, as the alert is modal.
+            if operation.isEmpty, overGrid, collectionID == nil, groupID == nil {
+                DispatchQueue.main.async { LibraryOrderNotice.show() }
+            }
         }
         // Edge scrolling moves the grid under a still pointer: the gap
         // follows, while the drag is over the grid at all.

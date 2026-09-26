@@ -119,6 +119,30 @@ enum CustomOrderNotice {
     }
 }
 
+/// A drag let go over the plain Library's grid: the Library has no order of
+/// its own to set, so nothing moved — this says why, and where ordering
+/// does work (Jason's wording, 2026-09-25). Same one-button, "Don't show
+/// this again" convention as `CustomOrderNotice`. The strip at the grid's
+/// foot says the same thing while dragging.
+@MainActor
+enum LibraryOrderNotice {
+    static let dismissedKey = "libraryOrderNoticeDismissed"
+
+    static func show() {
+        guard !UserDefaults.standard.bool(forKey: dismissedKey) else { return }
+        let alert = NSAlert()
+        alert.messageText = "You cannot set a custom order in the Library."
+        alert.informativeText = "Collections and Groups support custom ordering."
+        alert.addButton(withTitle: "OK")
+        alert.showsSuppressionButton = true
+        alert.suppressionButton?.title = "Don't show this again"
+        alert.runModal()
+        if alert.suppressionButton?.state == .on {
+            UserDefaults.standard.set(true, forKey: dismissedKey)
+        }
+    }
+}
+
 /// A file arriving in a show whose collection doesn't have it (plan, 2b).
 /// The question, with the standard suppression checkbox labelled "Always
 /// add without asking" (only meaningful with Add, so Cancel can't turn into

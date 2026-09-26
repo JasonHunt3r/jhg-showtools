@@ -59,8 +59,10 @@ struct TileFramesKey: PreferenceKey {
 /// Sits behind the grid as an invisible view, so its coordinates are the
 /// grid's (flipped, like SwiftUI's); never takes a click itself.
 final class StackDragSource: NSView, NSDraggingSource {
-    /// The drag ended: dropped somewhere (an operation) or cancelled (`[]`).
-    var onEnd: ((NSDragOperation) -> Void)?
+    /// The drag ended: dropped somewhere (an operation) or cancelled or
+    /// refused (`[]`), and whether it ended over this view's visible part —
+    /// so the grid can explain a drag it refused where it was let go.
+    var onEnd: ((_ operation: NSDragOperation, _ endedOverView: Bool) -> Void)?
 
     override var isFlipped: Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -265,7 +267,12 @@ final class StackDragSource: NSView, NSDraggingSource {
 
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         stopEdgeScroll()
-        onEnd?(operation)
+        var over = false
+        if let window {
+            let p = convert(window.convertPoint(fromScreen: screenPoint), from: nil)
+            over = visibleRect.contains(p)
+        }
+        onEnd?(operation, over)
     }
 }
 
