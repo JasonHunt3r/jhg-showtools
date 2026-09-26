@@ -46,7 +46,8 @@ timeline), the inspector bar's right-click, and the "No menu yet" notes. **Reins
 Composer app icon. **Reinstalled at `f22a58f`**: the viewer drawer (all three
 places), the second app icon, and the grids' tools in the bar. **Reinstalled at
 `f2175dd`**: the sort strip as the drawer's second handle, with its pill
-(since changed: the strip is the only handle — see the viewer drawer below).
+(since changed: the strip is the only handle — see the viewer drawer below). **Reinstalled at `56f7c63`**: the dark strip as the drawer's only
+handle (a grip strip in the browser), and the v3 app icon.
 Reinstalling stops the real BGTools instance (`install.sh`'s own quit
 sequence); BGTools wasn't restarted after the 20:28 install. BGTools'
 desktop extension (`BGToolsControls.appex`) was also killed before that
