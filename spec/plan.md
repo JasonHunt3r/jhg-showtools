@@ -1248,6 +1248,25 @@ yet. Worth confirming first whether a real hand's drag (slower, more
 continuous, than any synthetic approximation this session could produce)
 hits this at all before taking that on.
 
+**A real regression, found by Jason immediately after, fixed the same
+session:** switching `sort` to `.custom` inside `.onDrag` (item 3, just
+above) broke *every* drag, in every view — nothing reordered at all, a
+drag just snapped back to its start every time. `sort` is `@AppStorage`,
+driving `filtered`/`visible`/`displayed`, so writing it synchronously
+inside `.onDrag`'s own closure rebuilt the whole grid — including the
+tile the drag was starting from — before AppKit had finished latching
+onto the drag session, and the native drag reset every time. Reverted:
+`reorderDrop` alone switches to Custom Order now, same as originally
+built, which is a safe point to rebuild the grid from since the drag has
+already concluded. **Confirmed fixed** with fresh drags in both grid and
+list mode (a real, non-adjacent reorder each time, to rule out a no-op
+from picking a pair already next to each other) and the last-tile
+append case again — all landed correctly. The preview/commit order
+mismatch this was meant to solve is still real but stays unsolved for
+now; not worth the risk of touching `@AppStorage` mid-drag again without
+a safer mechanism (a local, non-persisted override for the preview's
+reference order, perhaps, rather than the persisted sort itself).
+
 **Built 2026-09-24 (nesting by drag, and dragging into another
 collection):** `Library.moveGroup(id:toParent:)` — nests a group inside
 another, or (nil) back to the top; both stay in the same collection (a

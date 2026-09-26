@@ -106,25 +106,27 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   the grid's **Custom Order** sort option, the drag itself, and live
   reflow while dragging in both grid and list mode. Jason found three
   bugs by hand the same session: a general rapid back-and-forth swap on
-  any drag (**root cause found and fixed** — a dragged tile's own
-  reflowed position could end up targeting itself, whipsawing the
-  preview), the last tile not flowing (**partly fixed** — dropping on the
-  true last tile now inserts after it, the only way to reach "the very
-  end"), and list view not working (the swap fix covers it too, since
-  it's the same code as the grid). Also switched Custom Order on the
-  moment a drag starts, not just on drop (Jason's own suggestion), so the
-  preview and the eventual commit always read the same order. **Still
-  open:** a long-distance drag (dropping the first tile onto the last,
-  several rows away) still doesn't land correctly even slowed down —
-  `spec/plan.md`, "Reordering," has the diagnosis (per-tile `isTargeted`
-  hit-testing is tied to where tiles are currently drawn, which the very
-  reflow it's driving keeps moving) and what the real fix looks like
-  (geometry-based hit-testing, not built). 310 core tests. Confirmed with
-  axtool: short drags commit and reflow correctly in both modes, undo
-  works, the sort switches on its own; a long drag was where the
-  remaining bug showed up. **Never tried by a real drag from Jason's own
-  hand** — worth trying before investing in the geometry rewrite, since a
-  real hand's drag may not hit this the way synthetic testing did.
+  any drag (**fixed** — a dragged tile's own reflowed position could end
+  up targeting itself, whipsawing the preview), the last tile not
+  flowing (**partly fixed** — dropping on the true last tile now inserts
+  after it, the only way to reach "the very end"), and list view not
+  working (the swap fix covers it too, since it's the same code as the
+  grid). One fix attempt — switching Custom Order the moment a drag
+  starts, not just on drop — **turned out to be a real regression**:
+  writing `@AppStorage` synchronously inside `.onDrag` rebuilt the whole
+  grid mid-gesture, and every drag, in every view, just snapped back to
+  its start. Reverted; Custom Order switches on drop only again, as
+  originally built. **Confirmed working again** with fresh non-adjacent
+  drags in both grid and list mode, plus the last-tile append case, all
+  landing correctly. **Still open:** a long-distance drag (dropping the
+  first tile onto the last, several rows away) still doesn't land
+  correctly even slowed down — `spec/plan.md`, "Reordering," has the
+  diagnosis (per-tile `isTargeted` hit-testing is tied to where tiles are
+  currently drawn, which the very reflow it's driving keeps moving) and
+  what the real fix looks like (geometry-based hit-testing, not built).
+  310 core tests. **Never tried by a real drag from Jason's own hand** —
+  worth trying the everyday case (a normal-distance drag, not
+  end-to-end) before investing in the geometry rewrite.
 - **Items 23–25** — queued as their own BGTools work list, to pick up
   once the ShowTools fixes above are done: `spec/bgtools.md`, "Next up —
   queued 2026-09-25, after the ShowTools fixes."

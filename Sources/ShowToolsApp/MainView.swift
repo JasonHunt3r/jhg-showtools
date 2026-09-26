@@ -1429,16 +1429,14 @@ struct LibraryGridView: View {
         .onDrag {
             let ids = selection.contains(item.id) ? orderedSelection : [item.id]
             draggingIDs = ids
-            // Switched here, not just on drop (Jason: "when a file is
-            // reordered it auto switches to custom order"): the live
-            // preview reflows `visible`, which is whatever sort is active,
-            // but a drop always writes the collection's/group's *whole*
-            // membership order (`all`) — so previewing under any other
-            // sort was showing one order while about to commit a
-            // different one. Switching the moment the drag starts keeps
-            // them the same order throughout, in a collection or group;
-            // the plain Library has no custom order to switch to.
-            if (collectionID != nil || groupID != nil) && sort != .custom { sort = .custom }
+            // NOT switching `sort` here (tried 2026-09-25, reverted): it's
+            // `@AppStorage`, driving `filtered`/`visible`/`displayed`, so
+            // writing it synchronously inside `.onDrag` rebuilt the whole
+            // grid — including this very tile — before AppKit had finished
+            // latching onto the drag it was mid-way through starting, and
+            // every drag, in any view, just snapped back to its origin.
+            // `reorderDrop` still switches to Custom Order on the actual
+            // drop, which is a safe point to rebuild the grid from.
             return ItemDrag.provider(ids)
         }
         // Dropping onto another tile reorders — Custom Order, only
