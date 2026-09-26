@@ -53,21 +53,23 @@ default path.
 
 ## What's next
 
-**NEXT TASK: the drag-to-reorder geometry rewrite** (item 17,
-`spec/plan.md` "Reordering," last entry; full session story
-`spec/history/2026-09-25-drag-reorder-session.md`). Short reorder drags
-work and are confirmed correct; a long-distance drag (first tile onto
-the last, several rows away) still doesn't land right, even slowed down.
-The cause: hit-testing is done per-tile via `isTargeted`, which is tied
-to *where tiles are currently drawn* — and the drag's own live reflow
-keeps moving that, so the target drifts the further the cursor travels.
-The fix is computing the drop target from the cursor's raw position
-against fixed grid/list geometry (tile size, spacing, column count) via
-a `DropDelegate`, never from which reflowed tile happens to sit under
-the pointer. Not built yet. **Try an everyday-distance real drag by hand
-first** (not end-to-end) — several of the previous session's apparent
-failures turned out to be synthetic-test mistakes, not real bugs, so
-confirm this one still reproduces before starting the rewrite.
+**NEXT TASK: drag-to-reorder doesn't actually work.** Per Jason's own
+hands-on use, 2026-09-25 (after the previous session ended believing it
+did): **dragging to reorder does not reorder the list, in any view,
+including Custom Order.** The previous session's "confirmed with
+axtool" claims and its "long-distance drag" diagnosis were built on
+synthetic testing that didn't match real use and are **retracted** —
+don't carry that theory forward. The schema (migration 14) and
+`Library.setOrder` are unaffected (Core-layer, unit-tested, not in
+question); what's broken is the SwiftUI drag/drop/reflow machinery in
+`LibraryGridView`. **Jason's own proposed redesign**, to build instead
+of debugging the current approach further: on drag, the destination slot
+becomes an **empty tile (or row, in list mode)** — a gap — displacing
+the others around it, so the empty spot itself signals where the file
+will land, rather than the current approach of reordering the *other*
+tiles' identities into a preview arrangement. Full story:
+`spec/history/2026-09-25-drag-reorder-session.md`;
+`spec/plan.md` "Reordering" for the section this replaces.
 
 **The 2026-09-24 cloud-planning work queue is done** — every item in it
 (the audit batches, Groups inside collections, the range package, the
@@ -117,36 +119,23 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   collection** — is still a design question (`spec/plan.md`, "Groups
   inside collections," "Promotion"): what happens to the original group,
   and whether nested sub-groups come along.
-- **Item 17 / 38** (drag-to-reorder) — **built, with one known gap**,
-  2026-09-25: migration 14's `sort_key` (`spec/plan.md`, "Reordering"),
-  the grid's **Custom Order** sort option, the drag itself, live reflow
-  while dragging in both grid and list mode, a `CustomOrderNotice`
-  explaining the switch to Custom Order the first time a drag causes it
-  (one button, no gate — Jason: it "shouldn't scold me to go do something
-  else before returning to do what I'm already instinctively doing"), and
-  a separate header strip always showing the active sort. Jason found
-  three bugs by hand the same session: a general rapid back-and-forth
-  swap on any drag (**fixed** — a dragged tile's own reflowed position
-  could end up targeting itself, whipsawing the preview), the last tile
-  not flowing (**partly fixed** — dropping on the true last tile now
-  inserts after it, the only way to reach "the very end"), and list view
-  not working (the swap fix covers it too). One fix attempt along the way
-  — switching Custom Order inside `.onDrag`, at pickup — was a real
-  regression (every drag, in every view, just snapped back to its start);
-  reverted to switching in `reorderDrop`, on the actual drop, which is
-  where it's stayed since. **Confirmed working** with fresh non-adjacent
-  drags in both grid and list mode, the last-tile append case, the notice
-  appearing/persisting/suppressing correctly, and the header strip
-  tracking the sort live — all via axtool. **Still open:** a long-
-  distance drag (dropping the first tile onto the last, several rows
-  away) still doesn't land correctly even slowed down — `spec/plan.md`,
-  "Reordering," has the diagnosis (per-tile `isTargeted` hit-testing is
-  tied to where tiles are currently drawn, which the very reflow it's
-  driving keeps moving) and what the real fix looks like (geometry-based
-  hit-testing, not built). 310 core tests. **Never tried by a real drag
-  from Jason's own hand** — worth trying the everyday case (a normal-
-  distance drag, not end-to-end) before investing in the geometry
-  rewrite.
+- **Item 17 / 38** (drag-to-reorder) — schema **built** (migration 14,
+  `sort_key`/`addedAt` kept separate, `Library.setOrder`, all Core-layer
+  and unit-tested, not in question), the grid's **Custom Order** sort
+  option, a `CustomOrderNotice` explaining the switch the first time a
+  drag causes it, and a header strip showing the active sort — all
+  working. **The drag itself does not work**: per Jason's own hands-on
+  use, 2026-09-25, dragging does not reorder the list at all, in any
+  view, including Custom Order. Everything the previous pass called
+  "confirmed with axtool" — the oscillation fix, the last-tile insert-
+  after, list mode, a "long-distance drag" diagnosis pointing at
+  geometry-based hit-testing — was synthetic testing that didn't match
+  real use, and is **retracted**. Don't carry any of that forward.
+  **Jason's own proposed redesign**: on drag, the destination slot
+  becomes an empty tile (or row, in list mode) — a gap — displacing the
+  others around it, rather than reordering the other tiles' identities
+  into a preview arrangement. Full story, including exactly what was
+  retracted and why: `spec/history/2026-09-25-drag-reorder-session.md`.
 - **Items 23–25** — queued as their own BGTools work list, to pick up
   once the ShowTools fixes above are done: `spec/bgtools.md`, "Next up —
   queued 2026-09-25, after the ShowTools fixes."
@@ -222,24 +211,6 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
-- **The grid's drag-to-reorder, including live reflow** (built 2026-09-25,
-  item 17, `spec/plan.md` "Reordering"): dropping a tile onto another
-  reorders a collection's or group's whole membership, switches the sort
-  to Custom Order the moment the drag starts, and undoes as one step; the
-  other tiles slide out of the way live, mid-drag, to preview where it
-  would land. Two bugs Jason found by hand are fixed (the general rapid
-  swap on any drag; short list-mode drags), confirmed with axtool. **One
-  isn't:** a long-distance drag (dropping the first tile onto the last,
-  several rows away) still doesn't land correctly, even slowed down — the
-  diagnosis is in `spec/plan.md`, "Reordering," but the real fix
-  (geometry-based hit-testing) isn't built. **Worth trying by a real hand
-  before anything else**: synthetic dragging can't fully stand in for how
-  a real drag actually moves, and it's possible this doesn't reproduce
-  the same way outside axtool. If it does: whether it's specifically
-  long-distance drags, or something else; whether the drop target's ring
-  reads clearly enough alongside the reflow; and whether landing a
-  multi-file drag (a selection, not just one tile) feels right — only a
-  single-tile drag was tried either way.
 - **BGTools: naming screens, the map view, the window opening on your
   screen** (built 2026-09-25, `spec/bgtools.md` items 3–5): renaming a
   monitor or a Space, the Map | List switch, and the window landing on the

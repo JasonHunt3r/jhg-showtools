@@ -1121,7 +1121,22 @@ alongside New Group in…/Rename…/Delete Group…, which today is
 deliberately minimal — "the fuller one is still 'to settle with
 groups'"). Worth settling together with that fuller group context menu.
 
-**Reordering — items 17/38 (feedback worklist).** The schema is
+**Reordering — items 17/38 (feedback worklist).**
+
+**Read this first: the drag itself does not work, per Jason's own
+hands-on use, 2026-09-25 — it does not reorder the list at all, in any
+view, including Custom Order.** Everything below marked "confirmed with
+axtool" was synthetic testing that did not agree with real use; none of
+those confirmations should be trusted as evidence the drag works. The
+schema (migration 14), the model changes (`sort_key`/`addedAt` kept
+separate), and `Library.setOrder` are unaffected by this — those are
+plain Core-layer functions with their own passing unit tests, not part
+of what's broken. What's broken is the SwiftUI drag/drop/reflow
+machinery in `LibraryGridView`. Jason's own proposed redesign is at the
+end of this section — read that before touching the existing
+`displayed`/`dropTargetID` code again.
+
+The schema is
 **built**, migration 14, 2026-09-25: `collection_items` and `group_items`
 each gain a `sort_key REAL` column, backfilled from `added_at` on upgrade
 (tested: a version-13 library opens with its files in exactly the order
@@ -1209,44 +1224,35 @@ order as before. Never watched by eye from a real drag.
    again — every drag near any tile. Fixed by never letting a dragged
    tile's own `isTargeted` update `dropTargetID` at all. Confirmed fixed
    on ordinary short drags, both grid and list mode (below).
-2. **The last tile not flowing** — **partly fixed, partly still open.**
-   `displayed` and `reorderDrop` both special-case dropping on the actual
-   last tile to insert *after* it instead of before, the only way to
-   reach "the very end" (before this, nothing could ever become last
-   unless it was already adjacent). Confirmed on a short drag onto an
-   adjacent last tile. **Still reproduces on a long drag** (first tile
-   dropped onto the last, several rows away) — see 3.
+2. **The last tile not flowing** — `displayed` and `reorderDrop` both
+   special-case dropping on the actual last tile to insert *after* it
+   instead of before, the only way to reach "the very end" (before this,
+   nothing could ever become last unless it was already adjacent). Held
+   up under axtool testing at the time; see the correction below for
+   where this actually stands.
 3. **Not working in list view** — the fix for 1 applies in list mode too
-   (it's the same code, `ForEach(displayed)` at one column); a short
-   list-mode drag was confirmed committing and reflowing correctly after
-   the fix. **A long list-mode drag (row 1 onto the last row) still
-   didn't reorder at all**, even slowed down (40 steps over ~2.5s, well
-   past the reflow's own 0.2s animation) — a held-drag screenshot right
-   before release showed the drop-target ring sitting on the
-   *second-to-last* tile, not the last one the cursor was actually
-   resting over, with the dragged tile's own row seemingly absent from
-   its expected reflowed position. **Also switched sort to Custom Order
-   the moment a drag starts, not just on drop** (Jason's own suggestion):
-   the live preview reflows whatever's currently `visible`, but a drop
-   always writes the collection's/group's whole membership order
-   (`all`) — previewing under a different sort was showing one order
-   while about to commit a different one. This didn't turn out to
-   explain the long-drag failure (custom order was already active in
-   that test), but it's a real fix in its own right and worth having
-   regardless.
+   (it's the same code, `ForEach(displayed)` at one column). Held up
+   under axtool testing at the time; see the correction below.
 
-**Diagnosis, not yet a fix:** the per-tile `isTargeted` approach ties
-"which tile is the target" to *where tiles are currently drawn*, which
-the drag itself keeps changing (that's the whole point of the reflow) —
-a moving target for hit-testing, fine for a short move, increasingly
-unreliable the further the cursor has to travel while everything between
-its start and end point is reflowing underneath it. The robust fix is
-computing the target from the cursor's raw position against fixed grid
-geometry (tile size, spacing, column count) via a `DropDelegate`, never
-from which reflowed view happens to be under the pointer — not built
-yet. Worth confirming first whether a real hand's drag (slower, more
-continuous, than any synthetic approximation this session could produce)
-hits this at all before taking that on.
+**Corrected, 2026-09-25 (Jason, after real hands-on use): the
+"long-distance drag" diagnosis above was wrong — retracted, not just
+superseded.** The actual report: **drag-and-drop does not reorder the
+list at all, in any view, including Custom Order** — not a
+distance-dependent failure, not something that only shows up several
+rows away. Every axtool-based "confirmed working" claim earlier in this
+section reflected synthetic testing, not real use, and the two didn't
+agree. Do not carry the geometry/`DropDelegate`/`isTargeted`-tied-to-
+draw-position theory forward — it was a hypothesis built on a synthetic
+repro that doesn't hold, per Jason directly.
+
+**Jason's own proposed redesign**, to try instead of patching the
+current reflow-based preview further: on drag, the destination slot
+becomes an **empty tile (or row, in list mode)** — a gap — displacing
+the others around it, so the empty spot itself is the "here's where it
+lands" signal, rather than the current approach of visually reordering
+the *other* tiles' identities into a preview arrangement. Worth
+designing this fresh rather than debugging the existing `displayed`/
+`dropTargetID` mechanism further.
 
 **A real regression, found by Jason immediately after, fixed the same
 session:** switching `sort` to `.custom` inside `.onDrag` (item 3, just

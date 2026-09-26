@@ -6,6 +6,12 @@ drag's own animation and feel. Superseded by `spec/status.md`'s Item 17
 entry and `spec/plan.md`'s "Reordering" section for current state — this
 is the story of how it got there, including the parts that didn't work.
 
+**Read "What's actually broken" at the end first.** Everything in
+between reads as a string of confirmed fixes — it wasn't. The drag
+itself never actually worked, per Jason's real hands-on testing at the
+very end of this session; every "confirmed with axtool" claim along the
+way was synthetic testing that didn't agree with real use.
+
 ## The schema and the sort option (commits `1b66687`, `1cc440b`)
 
 Migration 14: `sort_key REAL` on `collection_items` and `group_items`,
@@ -97,35 +103,40 @@ play" at a glance. Commit `9bccebe`. Confirmed with axtool: the alert's
 wording, its persistence, its suppression, and the header strip tracking
 live sort changes (including right after a drag switches it).
 
-## What's still actually broken
+## What's actually broken (corrected after real hands-on use)
 
-**A long-distance drag** (dropping the first tile onto the last, several
-rows away) still doesn't land correctly, confirmed even slowed down (a
-custom probe holding the drag with 40 steps over ~2.5 seconds, well past
-the reflow's own 0.2s animation). A held-drag screenshot right before
-release showed the drop-target ring sitting on the wrong tile relative
-to where the cursor actually was.
+Everything above this point — the oscillation fix, the last-tile
+insert-after, list mode, the Custom Order notice, the header strip — was
+verified with synthetic axtool drags across this whole session and each
+looked solid at the time. **Jason then tried it by hand: drag-and-drop
+does not reorder the list at all, in any view, including Custom
+Order.** Not a distance-dependent failure, not something that only
+shows up several rows away — it just doesn't work, full stop.
 
-**Diagnosis, not a fix:** the per-tile `isTargeted` approach ties "which
-tile is the target" to *where tiles are currently drawn* — which the
-drag's own reflow keeps changing. Fine for a short move; increasingly
-unreliable the further the cursor travels while everything between its
-start and end point reflows underneath it. The real fix is computing the
-target from the cursor's raw position against fixed grid geometry (tile
-size, spacing, column count) via a `DropDelegate`, entirely independent
-of which reflowed view happens to be under the pointer right now — not
-built. This is the "next stab" this session is handing off to the next
-one.
+This session's own diagnosis at the time — that a long-distance drag
+specifically fails because per-tile `isTargeted` hit-testing is tied to
+*where tiles are currently drawn*, and the reflow keeps moving that out
+from under a traveling cursor — **is retracted, by Jason directly: "You
+assumed a connection about drag length that doesn't exist… It's just a
+bad hypothesis which isn't correct."** It was built entirely on
+synthetic repro (a held-drag probe, screenshots mid-gesture) that
+apparently doesn't represent what actually happens with a real hand on
+the trackpad. Do not carry the geometry/`DropDelegate` idea forward as
+if it were a confirmed diagnosis — it wasn't one.
 
-**Worth knowing before diving back in:** synthetic axtool drags are not
-a stand-in for a real hand's drag speed and feel — several of tonight's
-apparent failures turned out to be test-methodology mistakes (screenshot
-pixels used as click coordinates instead of `axtool dump`'s point space;
-an "adjacent no-op" mistaken for a broken drop). The long-distance
-failure held up across multiple careful retries with correct coordinates
-and slowed-down timing, so it's very likely real — but confirm with an
-actual trackpad drag before spending time on the geometry rewrite, in
-case it turns out to feel different by hand.
+**Jason's own proposed redesign**, to build fresh rather than debug the
+existing `displayed`/`dropTargetID` mechanism further: on drag, the
+destination slot becomes an **empty tile (or row, in list mode)** — a
+gap — displacing the others around it. The empty spot itself is the
+"here's where it lands" signal, rather than the current approach of
+reordering the *other* tiles' identities into a preview arrangement.
+
+**The lesson for next time:** synthetic axtool drags produced a long,
+detailed, internally-consistent story across this whole session — held-
+drag screenshots, precise coordinate math, repeated retries — and none
+of it caught that the feature doesn't work at all for a real hand. A
+"confirmed with axtool" claim about drag-and-drop specifically is not
+evidence the feature works; only a real trackpad drag is.
 
 ## A testing-skill lesson, same session
 
