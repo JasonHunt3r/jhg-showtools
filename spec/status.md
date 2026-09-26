@@ -286,16 +286,17 @@ beeping (audit A1's storyline half, the timeline's `SingleKeys`); and the
 app icon, "a good start."
 
 **The app icon** is an Icon Composer document, `Resources/AppIcon.icon`
-(open it in Icon Composer to edit). Its three layers — line, teal, navy —
-were cut from Jason's drawing, `Resources/AppIcon.svg`, and scaled so the
-line's points touch the mask's edges. Behind his shape is macOS's own
-backing: in the default appearance it's opaque whatever the fill
-(measured: a `none` fill gives white, a fully transparent one a light
-glass grey, both alpha 1), so the fill is left transparent, for the glass
-grey — Jason's choice of three. Icon Composer's glass lighting lightens
-his colours a little; the backing colour and the lighting are his to
-tune there. A plain icon set, tried first, was shrunk onto a grey
-rounded square by macOS 27.
+(open it in Icon Composer to edit), made from Jason's second drawing
+(2026-09-26, `Resources/AppIcon.svg`: a rust square, three teal cards, the
+navy shape, the cream line and its shadow). The rust is the icon's **fill**
+(#a93c24), so the whole mask is rust; the other six shapes are layers
+(line, line-shadow, card-front/middle/back, navy), scaled so the line's
+points touch the mask's edges. Why a fill: behind the layers macOS 27 puts
+an opaque backing whatever the fill (measured: `none` gives white, fully
+transparent a light glass grey, both alpha 1) — the first drawing, with no
+background of its own, showed that grey. Icon Composer's glass lighting
+lightens the colours a little; his to tune there. A plain icon set, tried
+first, was shrunk onto a grey rounded square by macOS 27.
 
 **Done, confirmed by Jason 2026-09-25:** the two listens (an exported
 movie against the same show playing; a video slide's sound in the app),

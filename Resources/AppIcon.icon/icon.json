@@ -1,6 +1,6 @@
 {
   "fill": {
-    "solid": "srgb:0.00000,0.00000,0.00000,0.00000"
+    "solid": "srgb:0.66275,0.23529,0.14118,1.00000"
   },
   "groups": [
     {
@@ -10,8 +10,20 @@
           "name": "line"
         },
         {
-          "image-name": "teal.svg",
-          "name": "teal"
+          "image-name": "line-shadow.svg",
+          "name": "line-shadow"
+        },
+        {
+          "image-name": "card-front.svg",
+          "name": "card-front"
+        },
+        {
+          "image-name": "card-middle.svg",
+          "name": "card-middle"
+        },
+        {
+          "image-name": "card-back.svg",
+          "name": "card-back"
         },
         {
           "image-name": "navy.svg",

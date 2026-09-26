@@ -65,8 +65,9 @@ what, and the few structural rules that go with each. Rules live in
   undo manager and ruler preview), `RhythmNotationView` (a pattern as notation:
   Bravura's glyph outlines in a `Canvas`, placed by `RhythmNotation.layout`), `RhythmGridView`
   (the drum-machine view, through `RhythmGrid`).
-- `Resources/AppIcon.icon`: the app icon, an Icon Composer document (three
-  SVG layers cut from `Resources/AppIcon.svg`, Jason's drawing). Xcode
+- `Resources/AppIcon.icon`: the app icon, an Icon Composer document (six
+  SVG layers cut from `Resources/AppIcon.svg`, Jason's drawing, whose rust
+  background is the icon's fill). Xcode
   compiles it into `Assets.car` and `AppIcon.icns`; `project.yml` names it
   as the app's icon.
 - `Resources/Fonts/`: Bravura, the SMuFL music font (SIL OFL 1.1, licence
