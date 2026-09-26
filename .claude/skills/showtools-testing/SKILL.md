@@ -81,6 +81,16 @@ with real events (`click`, `drag`, `type`, `key`, `menu`).
 - **Synthetic clicks and key events aren't proof** of a bug or of a fix.
   Settle a disagreement in a standalone harness, or with one real
   click/keypress from Jason.
+- **Drags: watch the screen during the drag, not just the result**, and
+  drag at hand speed. `axtool drag` posts its moves back to back, too fast
+  to show what a hand sees; a small CGEvent tool stepping every ~25 ms (and
+  one that holds perfectly still, posting nothing) reproduced what Jason
+  saw. Run it in the background and `screencapture -R` in a loop meanwhile
+  — 45 frames of one slow drag found the drag-to-reorder loop that
+  result-only checks missed (2026-09-25). Any tool that posts raw events
+  must itself refuse unless the target app is frontmost.
+- **Launch paths: never pass one containing `..`** —
+  `LibraryLocation.isInICloud` loops forever on it (Known issues).
 - **Accessibility menu titles can be stale.** AX reported "Undo" while the
   open Edit menu said "Undo Add Marker". Check wording with a screenshot
   of the menu open (AXPress the menu bar item, `screencapture -R`,

@@ -1121,186 +1121,84 @@ alongside New Group in…/Rename…/Delete Group…, which today is
 deliberately minimal — "the fuller one is still 'to settle with
 groups'"). Worth settling together with that fuller group context menu.
 
-**Reordering — items 17/38 (feedback worklist).**
+**Reordering — items 17/38 (feedback worklist). Built 2026-09-25**, and
+tried by Jason's own hand. How it got here, including a first design that
+didn't work by hand: `spec/history/2026-09-25-drag-reorder-session.md`
+(the first attempt) and `spec/history/2026-09-25-drag-reorder-rebuild.md`
+(the rebuild). Next: lift it into its own package, like PaneKit
+(ReorderKit), for use in other apps.
 
-**Read this first: the drag itself does not work, per Jason's own
-hands-on use, 2026-09-25 — it does not reorder the list at all, in any
-view, including Custom Order.** Everything below marked "confirmed with
-axtool" was synthetic testing that did not agree with real use; none of
-those confirmations should be trusted as evidence the drag works. The
-schema (migration 14), the model changes (`sort_key`/`addedAt` kept
-separate), and `Library.setOrder` are unaffected by this — those are
-plain Core-layer functions with their own passing unit tests, not part
-of what's broken. What's broken is the SwiftUI drag/drop/reflow
-machinery in `LibraryGridView`. Jason's own proposed redesign is at the
-end of this section — read that before touching the existing
-`displayed`/`dropTargetID` code again.
+**Where it works.** Inside a collection or a group only: they carry a
+drag order (`sort_key`, migration 14, kept apart from `added_at` so Date
+Added never changes). The plain Library has no order of its own, and Show
+Similar is its own arrangement, so a drag over either shows a note saying
+why and changes nothing.
 
-The schema is
-**built**, migration 14, 2026-09-25: `collection_items` and `group_items`
-each gain a `sort_key REAL` column, backfilled from `added_at` on upgrade
-(tested: a version-13 library opens with its files in exactly the order
-they read today). `sort_key` and `added_at` are now two separate things —
-dragging to reorder must not also change what Date Added shows.
-`MediaCollection`/`MediaGroup.itemIDs` reads in `sort_key` order (the drag
-order); a new `addedAt: [Int64: Double]` on each carries the original
-timestamps for Date Added/Date Added, Newest First to sort by
-independently. `Library.setOrder(_:inCollection:)` /
-`setOrder(_:inGroup:)` take the dropped-into array and renumber `sort_key`
-as plain integers (0, 1, 2, …) in one transaction — a personal media
-library's collections aren't big enough for a full rewrite to cost
-anything real, so the fractional/gap-based alternative wasn't needed.
-Every add/remove/restore/undo path (`addItems`, `removeItems`,
-`restoreItems`, `CollectionSnapshot`, `GroupSnapshot`,
-`restoreItems(_ deleted:)` for a Trash undo) carries `sort_key` alongside
-`added_at` now. Tested: `setOrder` changes `itemIDs` without touching
-`addedAt`; an id not actually in the collection is silently ignored;
-group-side reorder is independent of its collection's. 310 tests
-(306 → 310). **Confirmed with axtool** against the scratch library: a
-collection's grid shows a new **Custom Order** sort option (only when a
-collection or group is selected — the plain Library has no drag order to
-show), selecting it doesn't crash and shows the files normally.
+**What a drop saves.** Exactly what's on screen. Dragging under another
+sort makes Custom Order that sort with the move in it; files a search or
+filter hides keep their places (`Reorder.merge`). The drop switches the
+sort to Custom Order, explained once by `CustomOrderNotice` (one button,
+"Don't show this again"); the strip under the toolbar names the sort in
+use. One "Reorder" undo step per drop, in its own undo group
+(`commitReorder`) — without it Edit ▸ Undo stayed disabled until the next
+event.
 
-**The drag gesture itself is built, 2026-09-25.** `LibraryGridView.tile(_:)`
-gets a `.onDrop(of: [ItemDrag.type], isTargeted:)` (the grid isn't a
-`List`, so plain `.onDrag`/`.onDrop` is fine — the codebase's rule against
-`.onDrag` on a `List` doesn't apply here). Dropping onto a tile
-(`reorderDrop`) takes the dragged ids (the whole selection, if the drag
-started on a selected tile — same as the existing `.onDrag`) out of the
-collection's or group's **whole** membership (`all`, not the
-filtered/searched `visible` list — a drag under an active filter never
-silently drops an unseen file out of the true order) and reinserts them
-right before the drop target, then calls `AppModel.setOrder(_:inCollection
-:undo:)` / `setOrder(_:inGroup:undo:)` (new wrappers next to `addToCollection`/
-`addToGroup`, same shape as `moveGroup`'s undo registration) — one "Reorder"
-undo step per drop. **Settled the open question above: yes, automatic.**
-Dropping switches `sort` to `.custom` itself, so a reorder is never
-invisible under whatever sort was showing. A small `dropTargetID` state
-on the grid draws a ring on the tile under the drag, separate from the
-selection ring so the two are never confused mid-drag. Refused (returns
-`false`) in the plain Library, where there's no membership to carry a
-`sort_key`, and a no-op onto one of the dragged tiles itself.
-**Confirmed with axtool** against the scratch library: a real synthetic
-drag moved a tile to the front of the grid, the Sort menu's checkmark
-jumped to Custom Order on its own, `Edit ▸ Undo Reorder` was enabled and
-reading correctly, and firing it put the exact original order back —
-screenshotted at each step. Never tried by a real drag from Jason's own
-hand.
+**How it's built.** Core: `Reorder` (`ShowToolsCore/Reorder.swift`,
+tested) — the slot under a point, the order shown while dragging, the
+merge. View side, kept free of ShowTools' own types for the package:
+`ReorderDrag.swift` (`ReorderDrop`, `TileFramesKey`, `StackDragSource`,
+`StackDragAnchor`). The grid (`LibraryGridView`) wires them together.
+Three rules found the hard way:
+- **One drop handler for the whole grid, slot from geometry.** Never ask
+  a tile whether the pointer is over it: the tiles move while dragging,
+  and asking them was a feedback loop (tiles sliding back and forth, the
+  wrong order saved).
+- **Nothing that rebuilds the grid inside a drag's own callbacks.** The
+  sort switch, the new order and the cleanup apply together just after
+  the drop.
+- **One drag picture, drawn by us.** AppKit tilts every picture of a
+  multi-item drag, whatever the formation (measured in a harness), so
+  the pile is one composed image and the fly-in is drawn by the grid.
 
-**Live reflow while dragging, built 2026-09-25** (Jason: "shows the tile
-where it would be if you release the click"). A new `displayed` computed
-property — `visible` with the dragged file(s) pulled out and reinserted
-right before whichever tile `dropTargetID` currently names — feeds the
-grid's `ForEach` instead of `visible` directly, and a new `draggingIDs`
-state (set the moment `.onDrag` fires) is what tells it a drag, not a
-drop, is under way. This is a preview only: nothing is written until an
-actual drop calls `reorderDrop`/`setOrder`, at which point `draggingIDs`
-and `dropTargetID` both reset. `.animation(.easeInOut(duration: 0.2))` on
-the `LazyVGrid` is what makes the other tiles visibly slide out of the
-way rather than jump. Applies to both the tile grid and the single-column
-list mode, since list mode is the same `LazyVGrid`/`ForEach` at one
-column, not a separate view (Jason's own "tiles or list items" covered by
-one change). **No reset for a drag cancelled outside any drop target** —
-SwiftUI/AppKit has no reliable "drag session ended" callback short of the
-per-tile `isTargeted` binding going false, which it does on its own the
-moment the drag leaves a tile, so the risk is only cosmetic and only in
-the gap between tiles, never a wrong persisted order. **Confirmed with a
-held synthetic drag** (a one-off probe, `leftMouseDown` → dragged →
-holds 2s before `leftMouseUp`, so a screenshot mid-hold catches the
-preview): mid-drag, the tile between the dragged file's old and new spots
-visibly vacated its slot with the target ring showing and the OS's own
-drag ghost following the cursor; releasing landed the same correct final
-order as before. Never watched by eye from a real drag.
+**Terms for the effect** (use these names):
 
-**Three bugs Jason found by hand, 2026-09-25, and where that stands:**
+| Term | What it is |
+|---|---|
+| **Pile** | The drag picture: the dragged files as a tidy stack under the pointer, no tilt, the pressed file on top |
+| **Card** | One file in the pile. A grid tile's thumbnail, or in list mode a short solid row (thumbnail and name) |
+| **Badge** | The red count on the pile's top card, when more than one file is dragged; the real count, however many cards show |
+| **Fly-in** | On pickup, the other selected files' cards glide from their own tiles into the pile |
+| **Gap** | Empty space at the slot the pile would land in, the size of the selection; follows the pointer |
+| **Landing** | On drop, the files spring out from where the pile was into the gap, and stay selected |
+| **Edge zone** | A band inside the grid's top and bottom edges where holding the drag scrolls the grid |
+| **Ramp** | How far into the edge zone the pointer is: 0 where the zone starts, 1 at the edge. Drives the scroll speed and the shrink together |
+| **Handful** | The small size the pile shrinks to at the edge — what macOS itself shrinks a drag picture to over the header bar or a closed pane |
+| **Overshoot** | How far past the edge the pointer can go and still scroll; beyond it, scrolling stops so drops beyond (the timeline) stay reachable |
 
-1. **The general rapid back-and-forth swap** ("in general when a tile is
-   moved," not just the last one) — **root cause found and fixed.** The
-   reflow itself caused it: once a dragged tile's own live-reflowed
-   position slid under the cursor, its `isTargeted` fired `true` *for
-   itself*; `displayed` rightly refuses to make a dragged tile its own
-   target and fell back to the un-reflowed order, which put the real
-   target back under the cursor, re-triggering `true` on it, reflowing
-   again — every drag near any tile. Fixed by never letting a dragged
-   tile's own `isTargeted` update `dropTargetID` at all. Confirmed fixed
-   on ordinary short drags, both grid and list mode (below).
-2. **The last tile not flowing** — `displayed` and `reorderDrop` both
-   special-case dropping on the actual last tile to insert *after* it
-   instead of before, the only way to reach "the very end" (before this,
-   nothing could ever become last unless it was already adjacent). Held
-   up under axtool testing at the time; see the correction below for
-   where this actually stands.
-3. **Not working in list view** — the fix for 1 applies in list mode too
-   (it's the same code, `ForEach(displayed)` at one column). Held up
-   under axtool testing at the time; see the correction below.
+**The dials** (all in `ReorderDrag.swift` unless noted; the values Jason
+approved 2026-09-25):
 
-**Corrected, 2026-09-25 (Jason, after real hands-on use): the
-"long-distance drag" diagnosis above was wrong — retracted, not just
-superseded.** The actual report: **drag-and-drop does not reorder the
-list at all, in any view, including Custom Order** — not a
-distance-dependent failure, not something that only shows up several
-rows away. Every axtool-based "confirmed working" claim earlier in this
-section reflected synthetic testing, not real use, and the two didn't
-agree. Do not carry the geometry/`DropDelegate`/`isTargeted`-tied-to-
-draw-position theory forward — it was a hypothesis built on a synthetic
-repro that doesn't hold, per Jason directly.
+| Dial | Value | What it changes |
+|---|---|---|
+| `StackDragSource.pileDepth` | 5 | Most cards the pile shows ("if more than X, just use a stack of 5") |
+| `StackDragSource.pileSpread` / `pileStep(layers:)` | 18pt; step at most 6pt | How far each card sits from the one above; shrinks as the pile grows, so every pile is about the same size |
+| `StackDragSource.badgeRoom(count:)` | 11pt | Room above the top card for the badge |
+| `StackDragSource.handful` | 200 × 130pt | The box the pile shrinks to fit at the edge (never enlarged). Measured: macOS made a 363pt grid pile ~121pt wide and a 320×34 list card ~199×20 over the header |
+| Edge zone depth (`edgeScrollTick`, `zone`) | the pile's overhang past the pointer + 16pt, at least 48pt, at most 30% of the grid's visible height | Where scrolling and shrinking start |
+| `StackDragSource.edgeMinSpeed` / `edgeMaxSpeed` | 30 / 2800 pt/s | Scroll speed at the zone's start and at the edge |
+| Speed curve (`edgeScrollTick`) | ramp³ | Steepness: a crawl through most of the zone, fast only near the edge ("the speed needs to ramp as you near the edge") |
+| Shrink curve (`edgeScrollTick`) | linear in the ramp | Full size at the zone's start to handful at the edge |
+| `StackDragSource.edgeOvershoot` | 30pt | See Overshoot |
+| Fly-in (`startDrag(from:)`, `MainView.swift`) | 0.2s ease-out | How long cards take to reach the pile |
+| Landing (`commitReorder(at:)`, `MainView.swift`) | spring, response 0.35, damping 0.82 | How the files spring into the gap |
+| Gap reflow (`gridContent`, `MainView.swift`) | 0.2s ease-in-out | How fast tiles slide aside for the gap |
+| List card (`startDrag(from:)`) | at most 320pt wide, kept 40pt inside the pointer | The list-mode card's size and where it rides |
+| Drag start (`tile(_:)`) | 4pt | How far the pointer moves before a press becomes a drag |
 
-**Jason's own proposed redesign**, to try instead of patching the
-current reflow-based preview further: on drag, the destination slot
-becomes an **empty tile (or row, in list mode)** — a gap — displacing
-the others around it, so the empty spot itself is the "here's where it
-lands" signal, rather than the current approach of visually reordering
-the *other* tiles' identities into a preview arrangement. Worth
-designing this fresh rather than debugging the existing `displayed`/
-`dropTargetID` mechanism further.
-
-**A real regression, found by Jason immediately after, fixed the same
-session:** switching `sort` to `.custom` inside `.onDrag` (item 3, just
-above) broke *every* drag, in every view — nothing reordered at all, a
-drag just snapped back to its start every time. `sort` is `@AppStorage`,
-driving `filtered`/`visible`/`displayed`, so writing it synchronously
-inside `.onDrag`'s own closure rebuilt the whole grid — including the
-tile the drag was starting from — before AppKit had finished latching
-onto the drag session, and the native drag reset every time. Reverted:
-`reorderDrop` alone switches to Custom Order now, same as originally
-built, which is a safe point to rebuild the grid from since the drag has
-already concluded. **Confirmed fixed** with fresh drags in both grid and
-list mode (a real, non-adjacent reorder each time, to rule out a no-op
-from picking a pair already next to each other) and the last-tile
-append case again — all landed correctly.
-
-**Settled, 2026-09-25 (Jason):** reverting to "switch on drop only" put
-back the very thing he'd already asked changed — this was never
-supposed to go back to how it worked *before* live reflow existed.
-Corrected: `reorderDrop` still does the actual switch (a safe point,
-since the drag has already concluded — no more touching `@AppStorage`
-mid-gesture), but it's no longer silent. **`CustomOrderNotice`**
-(`CollectionAdd.swift`, the same `NSAlert` + `showsSuppressionButton`
-convention as `GroupToCollectionNotice`) explains what just happened —
-"Dragging a file to reorder it switches this list to Custom Order…" —
-the first time it happens, with a "Don't show this again" checkbox.
-**Not a yes/no gate**: one button, no Cancel — Jason's own words, "it
-shouldn't scold me to go do something else before returning to do what
-I'm already instinctively doing." The reorder always completes; the
-alert only explains why the list now looks different. Confirmed with
-axtool: the alert reads correctly and blocks on its own modal loop (the
-async `Task` the reorder runs in just waits for it, same as
-`GroupToCollectionNotice`'s already-established pattern), the checked
-box persists `customOrderNoticeDismissed` and the notice doesn't return,
-and the reorder itself lands correctly whether or not the alert showed.
-
-**Also settled, same request: a separate header strip**, below the
-existing search/filter/sort toolbar (`bar`) and above the grid, always
-showing the active sort by name (`sortStatusBar`, reusing
-`SortOrder.title`) — answers "which view is in play" at a glance,
-without opening the Sort menu to check its checkmark. Confirmed with
-axtool: reads "Custom Order" and "Name" correctly as the sort changes,
-including right after a drag switches it.
-
-**Testing note:** a test session's own `defaults import` "restore"
-doesn't delete a preference key the session itself newly created
-(`customOrderNoticeDismissed` stayed set after importing a backup taken
-before that key existed) — `showtools-testing` now says so.
+**Open:** in the plain Library the sort strip still reads "Custom Order"
+(the sort is shared with collections, and the plain Library shows its
+files in the order they were added). It should name the sort actually in
+use. Deferred by Jason to another pass.
 
 **Built 2026-09-24 (nesting by drag, and dragging into another
 collection):** `Library.moveGroup(id:toParent:)` — nests a group inside

@@ -13,7 +13,7 @@ Repo: `~/Projects/ShowTools`, pushed to **github.com/JasonHunt3r/jhg-showtools**
 
 **Everything planned is built**, including Groups inside collections and
 the range package (below). Phases 1–5, Phase 3b, Phase 4 and video
-export. **323 tests** (310 core + 13 BGTools). **Library schema 14.**
+export. **330 tests** (317 core + 13 BGTools). **Library schema 14.**
 
 | Phase | State |
 |---|---|
@@ -36,11 +36,12 @@ collection's/group's files). Before an upgrade the database is copied
 to `Library.sqlite.v<N>.bak`. Video export needed no schema change: a video
 slide's level line is slide settings, which are JSON.
 
-`~/Applications/ShowTools.app` was last reinstalled 2026-09-25 morning,
-**before** the feedback-worklist batches below — it's now 26 fixes
-behind `main`. Not reinstalled since, on purpose: none of this session's
-fixes needed a look at the real library, and reinstalling stops the real
-BGTools instance mid-session (`install.sh`'s own quit sequence). BGTools'
+`~/Applications/ShowTools.app` was last reinstalled 2026-09-25 17:30,
+at `9bccebe` (Item 17's first attempt, the one that didn't work by hand).
+It doesn't have the rebuilt drag-to-reorder, the pile or the Undo fix
+from the evening (`d3b25a2` onwards) — reinstall with `install.sh` to
+get them. Reinstalling stops the real BGTools instance
+(`install.sh`'s own quit sequence). BGTools'
 desktop extension (`BGToolsControls.appex`) was also killed before that
 morning's swap, on Jason's own call, rather than relaunched — it still
 needs re-enabling by hand before BGTools' desktop features work again.
@@ -53,23 +54,14 @@ default path.
 
 ## What's next
 
-**NEXT TASK: drag-to-reorder doesn't actually work.** Per Jason's own
-hands-on use, 2026-09-25 (after the previous session ended believing it
-did): **dragging to reorder does not reorder the list, in any view,
-including Custom Order.** The previous session's "confirmed with
-axtool" claims and its "long-distance drag" diagnosis were built on
-synthetic testing that didn't match real use and are **retracted** —
-don't carry that theory forward. The schema (migration 14) and
-`Library.setOrder` are unaffected (Core-layer, unit-tested, not in
-question); what's broken is the SwiftUI drag/drop/reflow machinery in
-`LibraryGridView`. **Jason's own proposed redesign**, to build instead
-of debugging the current approach further: on drag, the destination slot
-becomes an **empty tile (or row, in list mode)** — a gap — displacing
-the others around it, so the empty spot itself signals where the file
-will land, rather than the current approach of reordering the *other*
-tiles' identities into a preview arrangement. Full story:
-`spec/history/2026-09-25-drag-reorder-session.md`;
-`spec/plan.md` "Reordering" for the section this replaces.
+**NEXT TASK: lift drag-to-reorder into its own package** (ReorderKit,
+like PaneKit: a local package in the repo, its own tests and harness), so
+other apps can use it — agreed with Jason 2026-09-25, once the behaviour
+was settled. What moves: `ShowToolsCore/Reorder.swift` (and
+`ReorderTests`) and `ShowToolsApp/ReorderDrag.swift`; the grid's wiring in
+`LibraryGridView` (`startDrag`, `commitReorder`, `slot(at:)`, the fly-in and
+landing) is the part to turn into the package's API. The design, its
+terms and every dial: `spec/plan.md`, "Reordering".
 
 **The 2026-09-24 cloud-planning work queue is done** — every item in it
 (the audit batches, Groups inside collections, the range package, the
@@ -119,23 +111,14 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   collection** — is still a design question (`spec/plan.md`, "Groups
   inside collections," "Promotion"): what happens to the original group,
   and whether nested sub-groups come along.
-- **Item 17 / 38** (drag-to-reorder) — schema **built** (migration 14,
-  `sort_key`/`addedAt` kept separate, `Library.setOrder`, all Core-layer
-  and unit-tested, not in question), the grid's **Custom Order** sort
-  option, a `CustomOrderNotice` explaining the switch the first time a
-  drag causes it, and a header strip showing the active sort — all
-  working. **The drag itself does not work**: per Jason's own hands-on
-  use, 2026-09-25, dragging does not reorder the list at all, in any
-  view, including Custom Order. Everything the previous pass called
-  "confirmed with axtool" — the oscillation fix, the last-tile insert-
-  after, list mode, a "long-distance drag" diagnosis pointing at
-  geometry-based hit-testing — was synthetic testing that didn't match
-  real use, and is **retracted**. Don't carry any of that forward.
-  **Jason's own proposed redesign**: on drag, the destination slot
-  becomes an empty tile (or row, in list mode) — a gap — displacing the
-  others around it, rather than reordering the other tiles' identities
-  into a preview arrangement. Full story, including exactly what was
-  retracted and why: `spec/history/2026-09-25-drag-reorder-session.md`.
+- **Item 17 / 38** (drag-to-reorder) — **built and tried by Jason's
+  hand, 2026-09-25**: an empty gap follows the pointer, one drop handler
+  for the whole grid, a drop saves what's on screen, Undo Reorder works;
+  several files drag as a tidy pile with a count badge, fly in on pickup
+  and spring into place on drop; the grid scrolls near its edges, faster
+  and with the pile shrinking as it nears them. Design, terms and dials:
+  `spec/plan.md`, "Reordering". Story: `spec/history/2026-09-25-drag-reorder-rebuild.md`.
+  Left: the plain Library's sort strip (Known issues).
 - **Items 23–25** — queued as their own BGTools work list, to pick up
   once the ShowTools fixes above are done: `spec/bgtools.md`, "Next up —
   queued 2026-09-25, after the ShowTools fixes."
@@ -389,6 +372,19 @@ and Flush presets from 2a.
 
 ## Known issues
 
+- **The sort strip reads "Custom Order" in the plain Library.** The sort
+  is shared with collections; the plain Library shows its files in the
+  order they were added. The strip should name the sort actually in use.
+  Deferred by Jason to another pass (2026-09-25).
+- **`LibraryLocation.isInICloud` loops forever on a path containing
+  `..`** (`ShowToolsCore/Library.swift:50`): `deleteLastPathComponent` on
+  `..` never shortens the path. Hit with a test launch path
+  `…/Library.sqlite/..`: the app hung at 100% CPU before opening a window,
+  and needed `kill -9` (and its launch note cleared). Not fixed.
+- **Undo registered outside an event stays invisible to Edit ▸ Undo
+  until the next event** (AppKit's automatic group stays open). Fixed for
+  drag-to-reorder by an explicit undo group; other paths that register
+  undo from a `Task` or after an `await` haven't been checked.
 - **A caught, non-fatal exception on the Library sidebar's right-click**
   (`~/Library/Logs/ShowTools-exception.log`, 2026-09-25 08:42:35 and
   08:42:36 UTC): `NSTableViewException`, "Row index -1 out of row range,"
