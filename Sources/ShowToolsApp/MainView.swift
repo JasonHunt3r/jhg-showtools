@@ -651,48 +651,6 @@ struct ImportBanner: View {
 /// slider in the toolbar, a bar at the top to search, filter and sort, and
 /// Finder-style selection. Selected files drag onto a collection or a show
 /// in the sidebar.
-/// The Library grid's one drop handler for drag-to-reorder (`spec/plan.md`,
-/// "Reordering"), over the whole grid rather than one per tile: the tiles
-/// move while dragging, so a tile can't be asked whether the cursor is over
-/// it (that was the back-and-forth loop). The grid works out the slot from
-/// the cursor's position instead (`LibraryGridView.slot(at:)`).
-/// Only this grid's own drags: a file dragged in from elsewhere isn't a
-/// reorder, and falls through to the grid's import drop.
-private struct ReorderDrop: DropDelegate {
-    let isOurs: () -> Bool
-    /// The cursor moved to a point; false when this grid can't reorder.
-    let update: (CGPoint) -> Bool
-    let exit: () -> Void
-    let perform: () -> Void
-
-    func validateDrop(info: DropInfo) -> Bool {
-        info.hasItemsConforming(to: [ItemDrag.type]) && isOurs()
-    }
-
-    func dropEntered(info: DropInfo) { _ = update(info.location) }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: update(info.location) ? .move : .forbidden)
-    }
-
-    func dropExited(info: DropInfo) { exit() }
-
-    func performDrop(info: DropInfo) -> Bool {
-        guard update(info.location) else { exit(); return false }
-        perform()
-        return true
-    }
-}
-
-/// One tile's size, for the reorder drop's geometry. Every tile is the same
-/// size, so the first one reported is enough.
-private struct CellSizeKey: PreferenceKey {
-    static let defaultValue: CGSize = .zero
-    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
-        if value == .zero { value = nextValue() }
-    }
-}
-
 struct LibraryGridView: View {
     /// Nil shows the whole library.
     var collectionID: Int64? = nil
@@ -719,24 +677,43 @@ struct LibraryGridView: View {
     @AppStorage("gridMinRating") private var minRating = 0
     @AppStorage("gridUncollected") private var onlyUncollected = false
     @AppStorage("gridSort") private var sort: SortOrder = .added
-    /// The file(s) a drag-to-reorder picked up, set the moment the drag
-    /// starts (`tile(_:)`'s own `.onDrag`). SwiftUI on macOS has no "drag
-    /// ended" callback for a drag dropped nowhere, so the next mouse-down
-    /// anywhere in the app clears it (`dragEndMonitor`).
+    /// The file(s) a drag picked up, set the moment the drag starts
+    /// (`startDrag(from:)`) and cleared when `dragSource` says it ended.
     @State private var draggingIDs: [Int64] = []
+    /// Starts drags as a flocking stack, and says when one ended
+    /// (`StackDragSource`). One per grid, behind it.
+    @State private var dragSource = StackDragSource()
+    /// A drag has begun from this tile press; the gesture keeps reporting
+    /// changes until the button comes up, so this stops a second start.
+    @State private var dragStarted = false
+    /// A drop was accepted and its reorder is about to be applied
+    /// (`commitReorder`): the drag's end mustn't clear the gap first.
+    @State private var commitPending = false
+    /// Each visible tile's frame in the grid (`TileFramesKey`): where each
+    /// dragged file's picture flies from, and the cell size for `slot(at:)`.
+    @State private var tileFrames: [Int64: CGRect] = [:]
+    /// Just-dropped files, drawn this far from their new slots — at the
+    /// drop point — then sprung home: the stack spreading back out into
+    /// the grid (Jason, 2026-09-25).
+    @State private var landingOffsets: [Int64: CGSize] = [:]
+    /// Where in the pile's top card the drag was grabbed: the pile is drawn
+    /// that far from the pointer, so the landing starts from there too.
+    @State private var grabOffset: CGSize = .zero
+    /// The other files' pictures flying into the pile as a drag starts,
+    /// and whether they've reached it (`startDrag(from:)`).
+    @State private var flyers: [Flyer] = []
+    @State private var landed = false
     /// Where the gap is while a drag-to-reorder is over the grid: the slot
     /// the dragged file(s) would land in, worked out from the cursor's
     /// position alone (`Reorder.slot`). Nil when no drag is over the grid.
     @State private var gapIndex: Int?
-    /// One tile's size and the grid's own width, measured, for `slot(at:)`.
-    @State private var cellSize: CGSize = .zero
+    /// The grid's own width, measured, for `slot(at:)`.
     @State private var gridContentWidth: CGFloat = 0
     /// The scroll area's height, so the drop area reaches its bottom even
     /// when there are only a few tiles.
     @State private var viewportHeight: CGFloat = 0
     /// Why a drag over this grid can't reorder it, shown while it's there.
     @State private var reorderBlockedReason: String?
-    @State private var dragEndMonitor: Any?
     /// The grid takes the keyboard on a click, so Delete and ⌘Delete reach
     /// it even before anything's been clicked in this session.
     @FocusState private var focused: Bool
@@ -826,6 +803,8 @@ struct LibraryGridView: View {
     /// 2026-09-24) rather than a row of tiny tiles.
     static let tileSizeRange: ClosedRange<Double> = 90...320
     private var isListMode: Bool { tileSize <= Self.tileSizeRange.lowerBound }
+    /// The grid's coordinate space for drag-to-reorder.
+    static let gridSpace = "reorderGrid"
 
     /// A custom init only to give `tileSize` its own storage key per
     /// caller — every other property keeps the default it's declared
@@ -906,13 +885,138 @@ struct LibraryGridView: View {
     /// The slot under a point in the drop area (`scrollingGrid`'s padded
     /// grid), for a block of `draggingIDs` — geometry only (`Reorder.slot`).
     private func slot(at p: CGPoint) -> Int? {
-        guard cellSize.width > 0, cellSize.height > 0 else { return nil }
-        let spacing: CGFloat = 10, pad: CGFloat = 12
-        let pitchX = cellSize.width + spacing, pitchY = cellSize.height + spacing
-        let columns = isListMode ? 1 : max(1, Int(((gridContentWidth + spacing) / pitchX).rounded()))
+        guard let g = gridGeometry else { return nil }
         let block = visible.filter { draggingIDs.contains($0.id) }.count
-        return Reorder.slot(x: p.x - pad, y: p.y - pad, columns: columns, pitchX: pitchX, pitchY: pitchY,
-                            count: visible.count, blockSize: block)
+        return Reorder.slot(x: p.x - g.pad, y: p.y - g.pad, columns: g.columns, pitchX: g.pitch.width,
+                            pitchY: g.pitch.height, count: visible.count, blockSize: block)
+    }
+
+    /// The grid's layout, from a measured tile: its columns, the distance
+    /// from one cell to the next, a cell's size, and the padding round it.
+    private var gridGeometry: (columns: Int, pitch: CGSize, cell: CGSize, pad: CGFloat)? {
+        guard let cell = tileFrames.values.first?.size, cell.width > 0, cell.height > 0 else { return nil }
+        let spacing: CGFloat = 10
+        let pitch = CGSize(width: cell.width + spacing, height: cell.height + spacing)
+        let columns = isListMode ? 1 : max(1, Int(((gridContentWidth + spacing) / pitch.width).rounded()))
+        return (columns, pitch, cell, 12)
+    }
+
+    /// The top-left corner of slot `k`, in the grid's space.
+    private func slotOrigin(_ k: Int, _ g: (columns: Int, pitch: CGSize, cell: CGSize, pad: CGFloat)) -> CGPoint {
+        CGPoint(x: g.pad + CGFloat(k % g.columns) * g.pitch.width,
+                y: g.pad + CGFloat(k / g.columns) * g.pitch.height)
+    }
+
+    /// A tile press became a drag: the file, or the whole selection if it's
+    /// selected, as a tidy pile under the pointer (`StackDragSource`), the
+    /// pressed file on top. The other files' pictures fly from their own
+    /// tiles into the pile (`flyers`); one scrolled out of view just joins
+    /// it. In list mode each card is a short row, not the full width, kept
+    /// under the pointer. Only plain state changes here — rebuilding the
+    /// grid as a drag starts (switching the sort, tried 2026-09-25) tore it down.
+    private func startDrag(from id: Int64) {
+        guard !dragStarted, let event = NSApp.currentEvent,
+              let pressed = tileFrames[id] else { return }
+        dragStarted = true
+        let ids = selection.contains(id) ? orderedSelection : [id]
+        let order = [id] + ids.filter { $0 != id }
+        let grab = dragSource.convert(event.locationInWindow, from: nil)
+        let card = CGSize(width: isListMode ? min(pressed.width, 320) : pressed.width, height: pressed.height)
+        let cardOrigin = CGPoint(x: isListMode ? max(pressed.minX, grab.x - (card.width - 40)) : pressed.minX,
+                                 y: pressed.minY)
+        let images = order.map { i in model.itemsByID[i].map { dragImage($0, size: card) } ?? NSImage(size: card) }
+
+        let layers = min(order.count, StackDragSource.pileDepth)
+        let step = StackDragSource.pileStep(layers: layers)
+        var flying: [Flyer] = []
+        for (k, i) in order.enumerated() where k > 0 {
+            guard let from = tileFrames[i] else { continue }
+            let depth = CGFloat(min(k, layers - 1)) * step
+            flying.append(Flyer(id: i, image: images[k],
+                                from: CGRect(origin: CGPoint(x: isListMode ? cardOrigin.x : from.minX, y: from.minY), size: card),
+                                to: CGRect(origin: CGPoint(x: cardOrigin.x + depth, y: cardOrigin.y + depth), size: card)))
+        }
+
+        let pile = StackDragSource.pileImage(images, size: card, count: order.count)
+        let badge = StackDragSource.badgeRoom(count: order.count)
+        let writer = NSPasteboardItem()
+        writer.setData((try? JSONEncoder().encode(ids)) ?? Data(),
+                       forType: NSPasteboard.PasteboardType(ItemDrag.type.identifier))
+
+        draggingIDs = ids
+        grabOffset = CGSize(width: grab.x - cardOrigin.x, height: grab.y - cardOrigin.y)
+        dragSource.onEnd = { _ in
+            dragStarted = false
+            if !commitPending { endReorderDrag() }
+        }
+        // Edge scrolling moves the grid under a still pointer: the gap
+        // follows, while the drag is over the grid at all.
+        dragSource.onAutoscroll = { p in
+            guard gapIndex != nil, reorderBlocked == nil, let s = slot(at: p), s != gapIndex else { return }
+            gapIndex = s
+        }
+        dragSource.begin(image: pile, frame: CGRect(x: cardOrigin.x, y: cardOrigin.y - badge,
+                                                    width: pile.size.width, height: pile.size.height),
+                         writer: writer, event: event)
+        // The fly-in: each picture glides from its tile to its place in
+        // the pile, and is gone as it arrives — the pile the pointer is
+        // carrying already shows it.
+        landed = false
+        flyers = flying
+        DispatchQueue.main.async {
+            withAnimation(.easeOut(duration: 0.2)) { landed = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { flyers = [] }
+        }
+    }
+
+    /// One picture flying into the drag's pile as the drag starts.
+    struct Flyer: Identifiable {
+        let id: Int64
+        let image: NSImage
+        let from: CGRect
+        let to: CGRect
+    }
+
+    /// A dragged file's picture: its thumbnail as the tile shows it, or in
+    /// list mode a row with the name.
+    private func dragImage(_ item: MediaItem, size: CGSize) -> NSImage {
+        let thumb = Thumbnails.shared.cached(item.id)
+        let list = isListMode
+        return NSImage(size: size, flipped: true) { r in
+            func fit(_ img: NSImage, in box: CGRect) -> CGRect {
+                let s = min(box.width / max(img.size.width, 1), box.height / max(img.size.height, 1))
+                let w = img.size.width * s, h = img.size.height * s
+                return CGRect(x: box.midX - w / 2, y: box.midY - h / 2, width: w, height: h)
+            }
+            // Solid cards: in a pile, a see-through card shows the name on
+            // the one beneath it through its own.
+            let card = NSBezierPath(roundedRect: list ? r : CGRect(x: 0, y: 0, width: r.width, height: min(r.width, r.height)),
+                                    xRadius: 4, yRadius: 4)
+            NSColor.windowBackgroundColor.setFill()
+            card.fill()
+            if list {
+                NSColor.controlAccentColor.withAlphaComponent(0.18).setFill()
+                card.fill()
+                let box = CGRect(x: 6, y: (r.height - 28) / 2, width: 28, height: 28)
+                if let thumb {
+                    thumb.draw(in: fit(thumb, in: box), from: .zero, operation: .sourceOver, fraction: 1,
+                               respectFlipped: true, hints: nil)
+                }
+                (item.fileName as NSString).draw(
+                    at: CGPoint(x: box.maxX + 8, y: (r.height - 15) / 2),
+                    withAttributes: [.font: NSFont.preferredFont(forTextStyle: .callout),
+                                     .foregroundColor: NSColor.labelColor])
+            } else {
+                let box = CGRect(x: 0, y: 0, width: r.width, height: min(r.width, r.height))
+                NSColor.quaternaryLabelColor.setFill()
+                NSBezierPath(roundedRect: box, xRadius: 4, yRadius: 4).fill()
+                if let thumb {
+                    thumb.draw(in: fit(thumb, in: box), from: .zero, operation: .sourceOver, fraction: 1,
+                               respectFlipped: true, hints: nil)
+                }
+            }
+            return true
+        }
     }
 
     /// A drop: saves what's on screen (`displayed`) as the collection's or
@@ -921,13 +1025,29 @@ struct LibraryGridView: View {
     /// order that was just made is what shows, and says so once
     /// (`CustomOrderNotice`). Applied a moment later, all in one go, so
     /// nothing is rebuilt inside the drag's own callback and the gap holds
-    /// until the new order replaces it.
-    private func commitReorder() {
+    /// until the new order replaces it. The dropped files then spring from
+    /// the drop point into their slots — the stack spreading back out.
+    private func commitReorder(at point: CGPoint) {
         let shown = displayed.map(\.id)
         let order = Reorder.merge(shown, into: all.map(\.id))
         let gid = groupID, cid = collectionID, undo = undoManager
+        // Each dropped file starts where the stack was drawn — the pointer,
+        // less where the tile was grabbed — and springs to its slot.
+        var offsets: [Int64: CGSize] = [:]
+        if let g = gridGeometry {
+            let stackOrigin = CGPoint(x: point.x - grabOffset.width, y: point.y - grabOffset.height)
+            for (k, id) in shown.enumerated() where draggingIDs.contains(id) {
+                let slot = slotOrigin(k, g)
+                offsets[id] = CGSize(width: stackOrigin.x - slot.x, height: stackOrigin.y - slot.y)
+            }
+        }
+        commitPending = true
+        dragSource.hideImages()
         DispatchQueue.main.async {
             let switched = sort != .custom
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) { landingOffsets = offsets }
             sort = .custom
             // Its own undo group: registered outside any event (this runs
             // after the drop), the step would sit in an automatic group
@@ -941,8 +1061,12 @@ struct LibraryGridView: View {
                 model.setOrder(order, inCollection: cid, undo: undo)
             }
             undo?.endUndoGrouping()
+            commitPending = false
             endReorderDrag()
-            if switched { CustomOrderNotice.show() }
+            DispatchQueue.main.async {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) { landingOffsets = [:] }
+                if switched { CustomOrderNotice.show() }
+            }
         }
     }
 
@@ -1159,18 +1283,6 @@ struct LibraryGridView: View {
             selection = []; anchor = nil; selectionBase = []; cursor = nil; similarTo = nil
             endReorderDrag()
         }
-        // A drag dropped nowhere never says it ended; the next click
-        // anywhere in the app means it has (`draggingIDs`).
-        .onAppear {
-            dragEndMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { e in
-                endReorderDrag()
-                return e
-            }
-        }
-        .onDisappear {
-            if let m = dragEndMonitor { NSEvent.removeMonitor(m) }
-            dragEndMonitor = nil
-        }
         // Fingerprints for what's in view, worked out once each.
         .task(id: similarActive ? comparable.map(\.id) : []) {
             guard similarActive else { return }
@@ -1357,83 +1469,15 @@ struct LibraryGridView: View {
 
     private func scrollingGrid(columns: [GridItem], proxy: ScrollViewProxy) -> some View {
         ScrollView {
-            if grouping && similarTo == nil {
-                let groups = similarGroups
-                if groups.isEmpty {
-                    similarEmpty
-                } else {
-                    LazyVStack(alignment: .leading, spacing: 16) {
-                        ForEach(Array(groups.enumerated()), id: \.element.first?.id) { n, group in
-                            Section {
-                                LazyVGrid(columns: columns, spacing: 10) {
-                                    ForEach(group) { item in tile(item) }
-                                }
-                            } header: {
-                                HStack {
-                                    Text("\(group.count) alike").font(.headline).foregroundStyle(.secondary)
-                                        .accessibilityLabel("Group \(n + 1), \(group.count) alike")
-                                    Button("Keep One…") { keepGroup = KeepGroup(items: group) }
-                                        .controlSize(.small)
-                                        .help("Choose one of these to keep; the others "
-                                              + (collectionID == nil ? "go to the Trash" : "leave this collection"))
-                                        .accessibilityLabel("Keep One of group \(n + 1)")
-                                }
-                                // The Find Similar Images set header's menu
-                                // (settled, spec/conventions.md §3): Select
-                                // Group · Keep One…, Keep as Group · New Show
-                                // from Group…, Add Group to Collection.
-                                .contextMenu {
-                                    Button("Select Group") { selection = Set(group.map(\.id)) }
-                                    Divider()
-                                    Button("Keep One…") { keepGroup = KeepGroup(items: group) }
-                                    Button("Keep as Group") { keepAsGroup(group) }
-                                    Divider()
-                                    Button("New Show from Group…") { model.newShow(itemIDs: group.map(\.id), in: collectionID) }
-                                    Menu("Add Group to Collection") {
-                                        ForEach(model.collections) { c in
-                                            Button(c.name) { model.addToCollection(group.map(\.id), c.id) }
-                                                .disabled(c.id == collectionID)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .padding(12)
-                }
-            } else {
-                LazyVGrid(columns: columns, spacing: 10) {
-                    ForEach(displayed) { item in
-                        tile(item)
-                    }
-                }
-                .background(GeometryReader { g in
-                    Color.clear.onAppear { gridContentWidth = g.size.width }
-                        .onChange(of: g.size.width) { _, w in gridContentWidth = w }
-                })
-                .onPreferenceChange(CellSizeKey.self) { cellSize = $0 }
-                .animation(.easeInOut(duration: 0.2), value: displayed.map(\.id))
-                .padding(12)
-                // The drop area for reordering: the whole grid, down to the
-                // bottom of the scroll area, so dropping below the last row
-                // means "at the end".
-                .frame(maxWidth: .infinity, minHeight: viewportHeight, alignment: .top)
-                .contentShape(Rectangle())
-                .onDrop(of: [ItemDrag.type], delegate: ReorderDrop(
-                    isOurs: { !draggingIDs.isEmpty },
-                    update: { p in
-                        if let reason = reorderBlocked {
-                            reorderBlockedReason = reason
-                            return false
-                        }
-                        if let s = slot(at: p), s != gapIndex { gapIndex = s }
-                        return true
-                    },
-                    exit: { gapIndex = nil; reorderBlockedReason = nil },
-                    perform: { commitReorder() }
-                ))
-                if similarTo != nil, visible.count <= 1 { similarEmpty }
-            }
+            // One space for the tiles' frames, the drag source and the
+            // reorder drop's location, so all three agree. Around both
+            // layouts: a Find Similar tile still drags onto a collection
+            // or a show.
+            VStack(spacing: 0) { gridContent(columns: columns) }
+                .coordinateSpace(name: Self.gridSpace)
+                .background(StackDragAnchor(source: dragSource))
+                .overlay(alignment: .topLeading) { flyerLayer }
+                .onPreferenceChange(TileFramesKey.self) { tileFrames = $0 }
         }
         .background(Color(nsColor: .textBackgroundColor).opacity(0.001))
         .background(GeometryReader { g in
@@ -1494,6 +1538,103 @@ struct LibraryGridView: View {
         .onChange(of: model.libraryFocusRequest) { _, request in respondToLibraryFocus(request, proxy: proxy) }
     }
 
+    /// The pictures flying into a drag's pile (`flyers`), over the grid.
+    private var flyerLayer: some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(flyers) { f in
+                let r = landed ? f.to : f.from
+                Image(nsImage: f.image)
+                    .frame(width: r.width, height: r.height)
+                    .shadow(color: .black.opacity(0.3), radius: 3, y: 1)
+                    .offset(x: r.minX, y: r.minY)
+                    .opacity(landed ? 0 : 1)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    /// The grid's two layouts: Find Similar's clusters, or the plain grid
+    /// with drag-to-reorder.
+    @ViewBuilder private func gridContent(columns: [GridItem]) -> some View {
+        if grouping && similarTo == nil {
+            let groups = similarGroups
+            if groups.isEmpty {
+                similarEmpty
+            } else {
+                LazyVStack(alignment: .leading, spacing: 16) {
+                    ForEach(Array(groups.enumerated()), id: \.element.first?.id) { n, group in
+                        Section {
+                            LazyVGrid(columns: columns, spacing: 10) {
+                                ForEach(group) { item in tile(item) }
+                            }
+                        } header: {
+                            HStack {
+                                Text("\(group.count) alike").font(.headline).foregroundStyle(.secondary)
+                                    .accessibilityLabel("Group \(n + 1), \(group.count) alike")
+                                Button("Keep One…") { keepGroup = KeepGroup(items: group) }
+                                    .controlSize(.small)
+                                    .help("Choose one of these to keep; the others "
+                                          + (collectionID == nil ? "go to the Trash" : "leave this collection"))
+                                    .accessibilityLabel("Keep One of group \(n + 1)")
+                            }
+                            // The Find Similar Images set header's menu
+                            // (settled, spec/conventions.md §3): Select
+                            // Group · Keep One…, Keep as Group · New Show
+                            // from Group…, Add Group to Collection.
+                            .contextMenu {
+                                Button("Select Group") { selection = Set(group.map(\.id)) }
+                                Divider()
+                                Button("Keep One…") { keepGroup = KeepGroup(items: group) }
+                                Button("Keep as Group") { keepAsGroup(group) }
+                                Divider()
+                                Button("New Show from Group…") { model.newShow(itemIDs: group.map(\.id), in: collectionID) }
+                                Menu("Add Group to Collection") {
+                                    ForEach(model.collections) { c in
+                                        Button(c.name) { model.addToCollection(group.map(\.id), c.id) }
+                                            .disabled(c.id == collectionID)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(12)
+            }
+        } else {
+            LazyVGrid(columns: columns, spacing: 10) {
+                ForEach(displayed) { item in
+                    tile(item)
+                }
+            }
+            .background(GeometryReader { g in
+                Color.clear.onAppear { gridContentWidth = g.size.width }
+                    .onChange(of: g.size.width) { _, w in gridContentWidth = w }
+            })
+            .animation(.easeInOut(duration: 0.2), value: displayed.map(\.id))
+            .padding(12)
+            // The drop area for reordering: the whole grid, down to the
+            // bottom of the scroll area, so dropping below the last row
+            // means "at the end".
+            .frame(maxWidth: .infinity, minHeight: viewportHeight, alignment: .top)
+            .contentShape(Rectangle())
+            .onDrop(of: [ItemDrag.type], delegate: ReorderDrop(
+                type: ItemDrag.type,
+                isOurs: { !draggingIDs.isEmpty },
+                update: { p in
+                    if let reason = reorderBlocked {
+                        reorderBlockedReason = reason
+                        return false
+                    }
+                    if let s = slot(at: p), s != gapIndex { gapIndex = s }
+                    return true
+                },
+                exit: { gapIndex = nil; reorderBlockedReason = nil },
+                perform: { p in commitReorder(at: p) }
+            ))
+            if similarTo != nil, visible.count <= 1 { similarEmpty }
+        }
+    }
+
     private func respondToLibraryFocus(_ request: LibraryFocusRequest?, proxy: ScrollViewProxy) {
         guard respondsToLibraryFocus, let id = request?.itemID else { return }
         selection = [id]
@@ -1548,21 +1689,20 @@ struct LibraryGridView: View {
         // only invisible, so the drag it started from is never torn down.
         .opacity(gapIndex != nil && draggingIDs.contains(item.id) ? 0 : 1)
         .background(GeometryReader { g in
-            Color.clear.preference(key: CellSizeKey.self, value: g.size)
+            Color.clear.preference(key: TileFramesKey.self, value: [item.id: g.frame(in: .named(Self.gridSpace))])
         })
+        // Just dropped: starts where the pile was, springs into its slot.
+        .offset(landingOffsets[item.id] ?? .zero)
         // Double-click: "go into it" (conventions.md), settled as Quick
         // Look for a Library tile (B5, B6) now that Space is play/pause.
         .onTapGesture(count: 2) { click(item.id); quickLook(startingAt: item.id) }
         .onTapGesture { click(item.id) }
-        // A selected tile drags the whole selection; any other, just itself.
-        // `draggingIDs` records it too, for reordering (`ReorderDrop`). Only
-        // plain state here: rebuilding the grid inside `.onDrag` (switching
-        // the sort, tried 2026-09-25) tore down the drag as it started.
-        .onDrag {
-            let ids = selection.contains(item.id) ? orderedSelection : [item.id]
-            draggingIDs = ids
-            return ItemDrag.provider(ids)
-        }
+        // A selected tile drags the whole selection, as a stack; any other,
+        // just itself (`startDrag(from:)`). Not `.onDrag`: it carries one
+        // picture, so several files couldn't gather into a stack.
+        .gesture(DragGesture(minimumDistance: 4)
+            .onChanged { _ in startDrag(from: item.id) }
+            .onEnded { _ in dragStarted = false })
         .contextMenu {
             let ids = selection.contains(item.id) ? orderedSelection : [item.id]
             Button("New Show from \(ids.count == 1 ? "Item" : "\(ids.count) Items")") {
