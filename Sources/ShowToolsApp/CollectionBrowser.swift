@@ -41,6 +41,8 @@ struct CollectionBrowser: View {
 
         /// A use of a file in the show, versus a file not (yet) in it.
         var isUse: Bool { if case .file = self { false } else { true } }
+        var isSlide: Bool { if case .slide = self { true } else { false } }
+        var isOverlay: Bool { if case .overlay = self { true } else { false } }
     }
     @State private var picked: Set<Pick> = []
     @Environment(\.undoManager) private var undoManager
@@ -349,7 +351,16 @@ struct CollectionBrowser: View {
         // click that changed `picked` set them — the same trick
         // `StorylineView` and `EditShowView` already use for their own
         // ⌥-click checks.
-        .onChange(of: picked) { _, p in
+        .onChange(of: picked) { old, p in
+            // Deselecting here (a click on the list's empty space) lets go
+            // of the show's side too, or the inspector kept showing — and
+            // editing — a slide nothing looked selected any more (Jason,
+            // 2026-09-26).
+            if p.isEmpty {
+                if old.contains(where: \.isSlide), !selection.isEmpty { selection = [] }
+                if old.contains(where: \.isOverlay), selectedOverlay != nil { selectedOverlay = nil }
+                return
+            }
             guard p.count == 1, let only = p.first else { return }
             switch only {
             case .slide(let id):
@@ -362,12 +373,18 @@ struct CollectionBrowser: View {
             }
         }
         .onChange(of: selection, initial: true) { _, s in
-            guard !s.isEmpty else { return }
+            // And the other way: slides deselected in the timeline drop
+            // their uses' highlight here.
+            guard !s.isEmpty else {
+                if picked.contains(where: \.isSlide) { picked = [] }
+                return
+            }
             let want = Set(s.map { Pick.slide($0) })
             if picked != want { picked = want }
         }
         .onChange(of: selectedOverlay) { _, o in
             if let o, picked != [.overlay(o)] { picked = [.overlay(o)] }
+            if o == nil, picked.contains(where: \.isOverlay) { picked = [] }
         }
     }
 
