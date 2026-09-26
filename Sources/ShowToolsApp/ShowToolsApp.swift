@@ -311,6 +311,7 @@ struct AppCommands: Commands {
                 model.mainPanes.restoreDefaults()
                 model.editShowColumns.restoreDefaults()
                 model.editSlidesColumns.restoreDefaults()
+                model.previewPanes.restoreDefaults()
                 DefaultLayout.restore()
             }
             .keyboardShortcut("0", modifiers: [.command, .option])

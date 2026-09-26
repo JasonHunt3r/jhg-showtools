@@ -169,6 +169,19 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   the feel of all three steps, and the panes not tried at all — the
   Library pane, the timeline (it can switch to the top now) and Edit
   Slides' inspector. No menu command or animation yet.
+- **Item 30, done properly** (the frame strip as a drawer; batch 5 had
+  read it as the timeline) — **built**: Edit Show's picture and frame
+  strip are a PaneKit vertical split (`PreviewLayout`,
+  `model.previewPanes`), replacing the hand-made 12 pt bar. Dragged below
+  10 pt the strip closes to its edge handle; View ▸ Show Frame Strip
+  (⌥⌘F) and the strip's Hide item now close it to the handle rather than
+  removing it; it can switch to the top; it starts at the old bar's saved
+  height (`frameStripHeight`, now unused after that first read). Checked
+  on a test copy: drag closed, double-click the handle, drag to 214, the
+  menu item and ⌥⌘F, to the top and back (screenshot). **For Jason's
+  hands:** PaneKit's divider is a 1 pt line with a 7 pt grab band, where
+  the old bar was a 12 pt band (he'd found the system split line too
+  fiddly) — if it's fiddly again, that's a PaneKit-wide grab-width change.
 - **Items 23–25** — queued as their own BGTools work list, to pick up
   once the ShowTools fixes above are done: `spec/bgtools.md`, "Next up —
   queued 2026-09-25, after the ShowTools fixes."

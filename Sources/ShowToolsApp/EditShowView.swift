@@ -146,14 +146,9 @@ struct PreviewStage: View {
     @Binding var inspectorShown: Bool
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
+    /// View ▸ Show Frame Strip and the strip's own Hide menu item: bridged
+    /// both ways with the strip drawer's open state (`model.previewPanes`).
     @AppStorage("frameStripShown") private var frameStripShown = true
-    @AppStorage("frameStripHeight") private var stripHeight: Double = 90
-    @State private var stripDragStart: Double?
-    /// The drag's own live value, drawn but not saved until release —
-    /// matches PaneKit's own dividers, which only draw live and commit
-    /// once, on release, rather than writing `stripHeight` (`@AppStorage`,
-    /// straight to UserDefaults) on every pixel of the drag.
-    @State private var liveStripHeight: Double?
     @State private var hovering = false
     /// The slide whose image is selected in the picture, for its handles.
     @State private var imageSlideID: Int64?
@@ -181,72 +176,21 @@ struct PreviewStage: View {
     }
 
     /// The picture, with the frame strip below it in this column only (not
-    /// under the browser and inspector), split by one bar that sizes it.
+    /// under the browser and inspector): a PaneKit drawer since item 30
+    /// (`PreviewLayout`), replacing a hand-made bar with a fixed floor.
+    /// Closed, it leaves its edge handle rather than vanishing.
     var body: some View {
-        if frameStripShown {
-            GeometryReader { g in
-                // The picture keeps at least 120 points; the strip at least 20.
-                let most = max(Double(g.size.height) - 120 - Double(Self.barHeight), Double(FrameStrip.minHeight))
-                let h = CGFloat(min(max(liveStripHeight ?? stripHeight, Double(FrameStrip.minHeight)), most))
-                VStack(spacing: 0) {
-                    picture
-                    stripBar(most: most)
-                    FrameStrip(show: show, timeline: timeline, engine: engine, pps: pps,
-                               scrollOffset: storylineOffset, inset: StorylineView.inset)
-                        .frame(height: h)
-                }
-                // Item 8's real cause: the bar sits between two views whose
-                // sizes the drag itself changes, so the bar's own on-screen
-                // position moves mid-drag. A plain (`.local`) DragGesture's
-                // translation is measured against the bar's own frame, so
-                // each `onChanged` partly "catches up" to the cursor before
-                // the next one reads its delta — a feedback loop, measured
-                // to converge on roughly half the real distance (a probe
-                // showed the gesture's own final translation topping out at
-                // half the actual mouse travel, confirmed at two different
-                // drag lengths). Anchoring to this column, which doesn't
-                // move, fixes it — the same reason `StorylineView`'s own
-                // drags (range ends, markers, row handles) are all named
-                // coordinate spaces, never `.local`.
-                .coordinateSpace(name: "previewColumn")
-            }
-        } else {
-            picture
+        PaneLayoutView(controller: model.previewPanes, content: [
+            "picture": AnyView(picture.environment(model)),
+            "frameStrip": AnyView(FrameStrip(show: show, timeline: timeline, engine: engine, pps: pps,
+                                             scrollOffset: storylineOffset, inset: StorylineView.inset)
+                .environment(model)),
+        ])
+        .onAppear { model.previewPanes.setOpen(PreviewLayout.stripSplit, frameStripShown) }
+        .onChange(of: frameStripShown) { _, shown in model.previewPanes.setOpen(PreviewLayout.stripSplit, shown) }
+        .onChange(of: model.previewPanes.isOpen(PreviewLayout.stripSplit)) { _, shown in
+            if shown != frameStripShown { frameStripShown = shown }
         }
-    }
-
-    /// The bar between picture and strip: a slim line to look at, in a
-    /// taller band to grab (the system split line was too fiddly, Jason).
-    static let barHeight: CGFloat = 12
-
-    private func stripBar(most: Double) -> some View {
-        ZStack {
-            Color.black
-            Rectangle()
-                .fill(Color(nsColor: .separatorColor))
-                .frame(height: 5)
-            Capsule()
-                .fill(Color.secondary.opacity(0.7))
-                .frame(width: 40, height: 3)
-        }
-        .frame(height: Self.barHeight)
-        .contentShape(Rectangle())
-        .onHover { inside in
-            // Set, not pushed: a push without its pop leaves the cursor stuck.
-            if inside { NSCursor.resizeUpDown.set() } else { NSCursor.arrow.set() }
-        }
-        .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .named("previewColumn"))
-            .onChanged { g in
-                let start = stripDragStart ?? stripHeight
-                stripDragStart = start
-                liveStripHeight = min(max(start - Double(g.translation.height), Double(FrameStrip.minHeight)), most)
-            }
-            .onEnded { g in
-                stripDragStart = nil
-                if let live = liveStripHeight { stripHeight = live }
-                liveStripHeight = nil
-            })
-        .help("Drag to size the frame strip")
     }
 
     private var picture: some View {

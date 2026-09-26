@@ -36,8 +36,9 @@ struct FrameStrip: View {
     @AppStorage("frameStripShown") private var shown = true
     @State private var frames = FrameCache()
 
-    /// The smallest it gets: the divider can't squeeze it below this. Small:
-    /// a thumbnail-sized frame (Jason wanted it to shrink further).
+    /// The smallest it opens: a thumbnail-sized frame (Jason wanted it to
+    /// shrink further). Dragged below half this, the drawer closes to its
+    /// edge handle (`PreviewLayout`, item 30).
     static let minHeight: CGFloat = 20
 
     var body: some View {

@@ -60,6 +60,30 @@ enum EditColumnsLayout {
     }
 }
 
+/// Edit Show's picture over the frame strip (item 30): the strip is the
+/// split's sized side, a drawer at the bottom that closes to its own edge
+/// handle and can switch to the top. The picture keeps at least 120 points
+/// (as the old hand-made bar's arithmetic did); the strip opens no smaller
+/// than `FrameStrip.minHeight`, and a drag past half that closes it.
+@MainActor
+enum PreviewLayout {
+    static let stripSplit = "strip"
+    static let pictureMin: CGFloat = 120
+
+    static func tree(defaultStrip: CGFloat) -> PaneNode {
+        .split(stripSplit, .vertical, sized: .second, size: defaultStrip,
+               range: FrameStrip.minHeight...600, title: "Frame Strip",
+               .pane("picture", minSize: pictureMin),
+               .pane("frameStrip", title: "Frame Strip", minSize: FrameStrip.minHeight))
+    }
+
+    /// The old bar's saved height (`@AppStorage("frameStripHeight")`, 90 by default).
+    static var savedStripHeight: CGFloat {
+        let h = UserDefaults.standard.object(forKey: "frameStripHeight") as? Double ?? 90
+        return CGFloat(min(max(h, Double(FrameStrip.minHeight)), 600))
+    }
+}
+
 /// Edit Slides' two columns — the slide list and its inspector — on
 /// PaneKit. Bridges the inspector's open/closed state both ways with
 /// `inspectorShown`, which the toolbar button and the View menu's own

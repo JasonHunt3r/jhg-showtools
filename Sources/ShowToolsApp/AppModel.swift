@@ -69,6 +69,13 @@ final class AppModel {
     /// columns now.
     let editShowColumns = PaneController(id: "EditShowColumns", root: EditColumnsLayout.threeColumns)
     let editSlidesColumns = PaneController(id: "EditSlidesColumns", root: EditColumnsLayout.twoColumns)
+    /// Edit Show's picture and the frame strip under it: a drawer since
+    /// 2026-09-25 (item 30, Jason), replacing a hand-made bar whose strip
+    /// had a fixed floor and vanished entirely when hidden. Its starting
+    /// height is the old bar's saved one (`frameStripHeight`), so the first
+    /// launch looks the same.
+    let previewPanes = PaneController(id: "EditShowPreview",
+                                      root: PreviewLayout.tree(defaultStrip: PreviewLayout.savedStripHeight))
     /// The open show's editing state (`spec/windows.md`, `ShowSession`).
     /// One at a time: this app edits one show in the main window.
     private(set) var showSession: ShowSession?
