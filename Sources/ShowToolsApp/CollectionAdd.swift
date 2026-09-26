@@ -95,6 +95,30 @@ enum GroupToCollectionNotice {
     }
 }
 
+/// Dragging a file to reorder it switches the grid's sort to Custom Order
+/// (`spec/plan.md`, "Reordering") — a one-time, purely explanatory notice
+/// for the first time that happens, not a yes/no gate: Jason's own call
+/// (2026-09-25) is that the switch always happens regardless, this just
+/// says why the list is about to look different. One button, no Cancel.
+@MainActor
+enum CustomOrderNotice {
+    static let dismissedKey = "customOrderNoticeDismissed"
+
+    static func show() {
+        guard !UserDefaults.standard.bool(forKey: dismissedKey) else { return }
+        let alert = NSAlert()
+        alert.messageText = "Switched to Custom Order"
+        alert.informativeText = "Dragging a file to reorder it switches this list to Custom Order. Your other sort choices are still there when you want them, and this order is kept for whenever you switch back to it."
+        alert.addButton(withTitle: "OK")
+        alert.showsSuppressionButton = true
+        alert.suppressionButton?.title = "Don't show this again"
+        alert.runModal()
+        if alert.suppressionButton?.state == .on {
+            UserDefaults.standard.set(true, forKey: dismissedKey)
+        }
+    }
+}
+
 /// A file arriving in a show whose collection doesn't have it (plan, 2b).
 /// The question, with the standard suppression checkbox labelled "Always
 /// add without asking" (only meaningful with Add, so Cancel can't turn into

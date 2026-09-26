@@ -969,6 +969,22 @@ struct LibraryGridView: View {
         .padding(.horizontal, 12).padding(.vertical, 8)
     }
 
+    /// Its own strip, separate from `bar`'s Sort menu (Jason, 2026-09-25):
+    /// which sort is active — Custom Order most of all, since dragging to
+    /// reorder switches to it on its own (`reorderDrop`) and it's easy to
+    /// lose track of which view you're in without opening the menu to check.
+    private var sortStatusBar: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "arrow.up.arrow.down").imageScale(.small)
+            Text(sort.title)
+            Spacer()
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 12).padding(.vertical, 4)
+        .background(Color(nsColor: .controlBackgroundColor))
+    }
+
     /// The slider, what Show Similar is showing, and the fingerprints' progress.
     @ViewBuilder private var similarControls: some View {
         if let id = similarTo, let item = model.itemsByID[id] {
@@ -1022,6 +1038,8 @@ struct LibraryGridView: View {
             } else {
                 VStack(spacing: 0) {
                     bar
+                    Divider()
+                    sortStatusBar
                     Divider()
                     grid
                 }
@@ -1371,7 +1389,10 @@ struct LibraryGridView: View {
             order.removeAll { draggedSet.contains($0) }
             guard let targetIndex = order.firstIndex(of: targetID) else { return }
             order.insert(contentsOf: dragged, at: isLastTile ? targetIndex + 1 : targetIndex)
-            if sort != .custom { sort = .custom }
+            if sort != .custom {
+                CustomOrderNotice.show()
+                sort = .custom
+            }
             if let gid = groupID {
                 model.setOrder(order, inGroup: gid, undo: undoManager)
             } else if let cid = collectionID {
@@ -1429,28 +1450,27 @@ struct LibraryGridView: View {
         .onDrag {
             let ids = selection.contains(item.id) ? orderedSelection : [item.id]
             draggingIDs = ids
-            // NOT switching `sort` here (tried 2026-09-25, reverted): it's
-            // `@AppStorage`, driving `filtered`/`visible`/`displayed`, so
-            // writing it synchronously inside `.onDrag` rebuilt the whole
-            // grid — including this very tile — before AppKit had finished
-            // latching onto the drag it was mid-way through starting, and
-            // every drag, in any view, just snapped back to its origin.
-            // `reorderDrop` still switches to Custom Order on the actual
-            // drop, which is a safe point to rebuild the grid from.
             return ItemDrag.provider(ids)
         }
         // Dropping onto another tile reorders — Custom Order, only
         // meaningful inside a collection or group (the plain Library has
-        // no membership to carry a `sort_key`, `spec/plan.md`).
-        // The reflow itself is what was causing the rapid back-and-forth
-        // swap Jason saw: once a dragged tile's own live-reflowed position
-        // slid under the cursor, this fired `true` for *it*, `displayed`
-        // rightly refused to make one of the dragged tiles its own target
-        // and fell back to the un-reflowed order, which moved the real
-        // target tile back under the cursor, re-triggering `true` on it,
-        // reflowing again, and so on — every drag near any tile, not just
-        // the last one. A dragged tile can never become the target now, so
-        // the loop has nothing left to oscillate between.
+        // no membership to carry a `sort_key`, `spec/plan.md`). The switch
+        // to Custom Order itself, and its one-time notice, happen in
+        // `reorderDrop` on the actual drop — not here on hover, and not in
+        // `.onDrag` on pickup (both tried 2026-09-25: hover-switching mid-
+        // drag reflows the *whole* list under a still-moving cursor, which
+        // can silently retarget the drop onto a different file than the
+        // one that was under it a moment before; switching in `.onDrag`
+        // outright broke the native drag session, snapping every drop back
+        // to its origin). The reflow itself is what was causing the rapid
+        // back-and-forth swap Jason saw before that: once a dragged tile's
+        // own live-reflowed position slid under the cursor, this fired
+        // `true` for *it*, `displayed` rightly refused to make one of the
+        // dragged tiles its own target and fell back to the un-reflowed
+        // order, which moved the real target tile back under the cursor,
+        // re-triggering `true` on it, reflowing again, and so on. A
+        // dragged tile can never become the target now, so the loop has
+        // nothing left to oscillate between.
         .onDrop(of: [ItemDrag.type], isTargeted: Binding(
             get: { dropTargetID == item.id },
             set: { over in

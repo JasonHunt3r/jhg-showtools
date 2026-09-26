@@ -103,30 +103,34 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   and whether nested sub-groups come along.
 - **Item 17 / 38** (drag-to-reorder) — **built, with one known gap**,
   2026-09-25: migration 14's `sort_key` (`spec/plan.md`, "Reordering"),
-  the grid's **Custom Order** sort option, the drag itself, and live
-  reflow while dragging in both grid and list mode. Jason found three
-  bugs by hand the same session: a general rapid back-and-forth swap on
-  any drag (**fixed** — a dragged tile's own reflowed position could end
-  up targeting itself, whipsawing the preview), the last tile not
-  flowing (**partly fixed** — dropping on the true last tile now inserts
-  after it, the only way to reach "the very end"), and list view not
-  working (the swap fix covers it too, since it's the same code as the
-  grid). One fix attempt — switching Custom Order the moment a drag
-  starts, not just on drop — **turned out to be a real regression**:
-  writing `@AppStorage` synchronously inside `.onDrag` rebuilt the whole
-  grid mid-gesture, and every drag, in every view, just snapped back to
-  its start. Reverted; Custom Order switches on drop only again, as
-  originally built. **Confirmed working again** with fresh non-adjacent
-  drags in both grid and list mode, plus the last-tile append case, all
-  landing correctly. **Still open:** a long-distance drag (dropping the
-  first tile onto the last, several rows away) still doesn't land
-  correctly even slowed down — `spec/plan.md`, "Reordering," has the
-  diagnosis (per-tile `isTargeted` hit-testing is tied to where tiles are
-  currently drawn, which the very reflow it's driving keeps moving) and
-  what the real fix looks like (geometry-based hit-testing, not built).
-  310 core tests. **Never tried by a real drag from Jason's own hand** —
-  worth trying the everyday case (a normal-distance drag, not
-  end-to-end) before investing in the geometry rewrite.
+  the grid's **Custom Order** sort option, the drag itself, live reflow
+  while dragging in both grid and list mode, a `CustomOrderNotice`
+  explaining the switch to Custom Order the first time a drag causes it
+  (one button, no gate — Jason: it "shouldn't scold me to go do something
+  else before returning to do what I'm already instinctively doing"), and
+  a separate header strip always showing the active sort. Jason found
+  three bugs by hand the same session: a general rapid back-and-forth
+  swap on any drag (**fixed** — a dragged tile's own reflowed position
+  could end up targeting itself, whipsawing the preview), the last tile
+  not flowing (**partly fixed** — dropping on the true last tile now
+  inserts after it, the only way to reach "the very end"), and list view
+  not working (the swap fix covers it too). One fix attempt along the way
+  — switching Custom Order inside `.onDrag`, at pickup — was a real
+  regression (every drag, in every view, just snapped back to its start);
+  reverted to switching in `reorderDrop`, on the actual drop, which is
+  where it's stayed since. **Confirmed working** with fresh non-adjacent
+  drags in both grid and list mode, the last-tile append case, the notice
+  appearing/persisting/suppressing correctly, and the header strip
+  tracking the sort live — all via axtool. **Still open:** a long-
+  distance drag (dropping the first tile onto the last, several rows
+  away) still doesn't land correctly even slowed down — `spec/plan.md`,
+  "Reordering," has the diagnosis (per-tile `isTargeted` hit-testing is
+  tied to where tiles are currently drawn, which the very reflow it's
+  driving keeps moving) and what the real fix looks like (geometry-based
+  hit-testing, not built). 310 core tests. **Never tried by a real drag
+  from Jason's own hand** — worth trying the everyday case (a normal-
+  distance drag, not end-to-end) before investing in the geometry
+  rewrite.
 - **Items 23–25** — queued as their own BGTools work list, to pick up
   once the ShowTools fixes above are done: `spec/bgtools.md`, "Next up —
   queued 2026-09-25, after the ShowTools fixes."

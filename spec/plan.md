@@ -1261,11 +1261,40 @@ built, which is a safe point to rebuild the grid from since the drag has
 already concluded. **Confirmed fixed** with fresh drags in both grid and
 list mode (a real, non-adjacent reorder each time, to rule out a no-op
 from picking a pair already next to each other) and the last-tile
-append case again — all landed correctly. The preview/commit order
-mismatch this was meant to solve is still real but stays unsolved for
-now; not worth the risk of touching `@AppStorage` mid-drag again without
-a safer mechanism (a local, non-persisted override for the preview's
-reference order, perhaps, rather than the persisted sort itself).
+append case again — all landed correctly.
+
+**Settled, 2026-09-25 (Jason):** reverting to "switch on drop only" put
+back the very thing he'd already asked changed — this was never
+supposed to go back to how it worked *before* live reflow existed.
+Corrected: `reorderDrop` still does the actual switch (a safe point,
+since the drag has already concluded — no more touching `@AppStorage`
+mid-gesture), but it's no longer silent. **`CustomOrderNotice`**
+(`CollectionAdd.swift`, the same `NSAlert` + `showsSuppressionButton`
+convention as `GroupToCollectionNotice`) explains what just happened —
+"Dragging a file to reorder it switches this list to Custom Order…" —
+the first time it happens, with a "Don't show this again" checkbox.
+**Not a yes/no gate**: one button, no Cancel — Jason's own words, "it
+shouldn't scold me to go do something else before returning to do what
+I'm already instinctively doing." The reorder always completes; the
+alert only explains why the list now looks different. Confirmed with
+axtool: the alert reads correctly and blocks on its own modal loop (the
+async `Task` the reorder runs in just waits for it, same as
+`GroupToCollectionNotice`'s already-established pattern), the checked
+box persists `customOrderNoticeDismissed` and the notice doesn't return,
+and the reorder itself lands correctly whether or not the alert showed.
+
+**Also settled, same request: a separate header strip**, below the
+existing search/filter/sort toolbar (`bar`) and above the grid, always
+showing the active sort by name (`sortStatusBar`, reusing
+`SortOrder.title`) — answers "which view is in play" at a glance,
+without opening the Sort menu to check its checkmark. Confirmed with
+axtool: reads "Custom Order" and "Name" correctly as the sort changes,
+including right after a drag switches it.
+
+**Testing note:** a test session's own `defaults import` "restore"
+doesn't delete a preference key the session itself newly created
+(`customOrderNoticeDismissed` stayed set after importing a backup taken
+before that key existed) — `showtools-testing` now says so.
 
 **Built 2026-09-24 (nesting by drag, and dragging into another
 collection):** `Library.moveGroup(id:toParent:)` — nests a group inside

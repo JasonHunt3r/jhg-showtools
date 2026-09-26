@@ -32,7 +32,13 @@ domain** (`com.jhg.showtools`). That is the trap, and it has two halves:
    (`EditShowColumns.list` / `.inspector`), window frames and split
    positions all land in his preferences. `defaults export
    com.jhg.showtools <file>` before a test session and put the layout
-   keys back after.
+   keys back after. **`defaults import` only overwrites keys the backup
+   already had — it doesn't delete a key a test session created that
+   wasn't there before** (found 2026-09-25, testing a new suppression
+   checkbox's `UserDefaults` flag: the import "restored" the domain but
+   the new key stayed set). Diff the export against a fresh one after
+   import, or explicitly `defaults delete` anything the session newly
+   wrote, when the feature under test adds its own preference key.
 
 `defaults write com.jhg.showtools editMode show` and the `snapping` switch
 are his **real** preferences too (a scratch library doesn't change the
