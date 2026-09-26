@@ -38,8 +38,8 @@ slide's level line is slide settings, which are JSON.
 
 `~/Applications/ShowTools.app` was last reinstalled 2026-09-25 20:28,
 at `c7d657e`: the rebuilt drag-to-reorder, the pile, edge scrolling and
-the Undo fix. It doesn't have `f54d961` (the plain Library's
-`LibraryOrderNotice`) — reinstall with `install.sh` to get it.
+the Undo fix. Reinstalled again after `79ca4e0` (Escape put-back, the Library's sort
+strip) — see the commit log for the latest install.
 Reinstalling stops the real BGTools instance (`install.sh`'s own quit
 sequence); BGTools wasn't restarted after the 20:28 install. BGTools'
 desktop extension (`BGToolsControls.appex`) was also killed before that
@@ -72,16 +72,6 @@ Not pressing; each wants a discussion or a plan before any code.
   wording (`LibraryOrderNotice`) stays in ShowTools; the package only
   reports that a drag was refused where it was let go. Design, terms and
   dials: `spec/plan.md`, "Reordering".
-- **Escape during a drag should put the files back, with no message.**
-  Today a cancelled drag slides the pile back to the pressed tile only,
-  and in the plain Library, Escape over the grid shows
-  `LibraryOrderNotice` as if the drag had been let go there — "an unclear
-  message". Wanted: Escape lets go of the files *and* puts each one back
-  where it was ("you realize you didn't mean to drag these"), no notice.
-  A sketch, untested: tell Escape apart in `StackDragSource`'s
-  `draggingSession(_:endedAt:operation:)` (probably `NSApp.currentEvent`
-  is the Escape key-down — measure first), and draw the return ourselves
-  (each card from the pile to its own tile) instead of AppKit's slide-back.
 - **A shared type for "explainer" notices.** Two now: `CustomOrderNotice`
   and `LibraryOrderNotice` (`CollectionAdd.swift`) — after-the-fact
   explanations, one OK button, "Don't show this again". Worth one type
@@ -89,7 +79,6 @@ Not pressing; each wants a discussion or a plan before any code.
   wanted their text centred; macOS 27's `NSAlert` left-aligns by default
   and has no setting for it (centring would mean restyling after
   layout, or our own panel) — parked with this.
-- **The plain Library's sort strip** reads "Custom Order" (Known issues).
 
 **The 2026-09-24 cloud-planning work queue is done** — every item in it
 (the audit batches, Groups inside collections, the range package, the
@@ -146,7 +135,9 @@ each: `spec/history/2026-09-25-feedback-worklist-batches.md`.
   and spring into place on drop; the grid scrolls near its edges, faster
   and with the pile shrinking as it nears them. Design, terms and dials:
   `spec/plan.md`, "Reordering". Story: `spec/history/2026-09-25-drag-reorder-rebuild.md`.
-  A drag let go over the plain Library says why (`LibraryOrderNotice`).
+  A drag let go over the plain Library says why (`LibraryOrderNotice`);
+  a drag nothing takes, or Escape, puts the files back (no message for
+  Escape); the plain Library's sort strip names the sort in use.
   Left: the parked list under "What's next".
 - **Items 23–25** — queued as their own BGTools work list, to pick up
   once the ShowTools fixes above are done: `spec/bgtools.md`, "Next up —
@@ -401,10 +392,6 @@ and Flush presets from 2a.
 
 ## Known issues
 
-- **The sort strip reads "Custom Order" in the plain Library.** The sort
-  is shared with collections; the plain Library shows its files in the
-  order they were added. The strip should name the sort actually in use.
-  Deferred by Jason to another pass (2026-09-25).
 - **`LibraryLocation.isInICloud` loops forever on a path containing
   `..`** (`ShowToolsCore/Library.swift:50`): `deleteLastPathComponent` on
   `..` never shortens the path. Hit with a test launch path

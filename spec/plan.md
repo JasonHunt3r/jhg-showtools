@@ -1135,7 +1135,8 @@ Similar is its own arrangement, so a drag over either shows a note saying
 why and changes nothing. Letting go over the plain Library's grid also
 shows `LibraryOrderNotice` (Jason's wording: "You cannot set a custom
 order in the Library." / "Collections and Groups support custom
-ordering.", OK, "Don't show this again"). The wording is ShowTools'; a
+ordering.", OK, "Don't show this again"), once the files are put back —
+never for Escape, which lets go of nothing. The wording is ShowTools'; a
 package would only report that a drag was refused where it was let go.
 
 **What a drop saves.** Exactly what's on screen. Dragging under another
@@ -1174,6 +1175,7 @@ Three rules found the hard way:
 | **Fly-in** | On pickup, the other selected files' cards glide from their own tiles into the pile |
 | **Gap** | Empty space at the slot the pile would land in, the size of the selection; follows the pointer |
 | **Landing** | On drop, the files spring out from where the pile was into the gap, and stay selected |
+| **Put-back** | A drag nothing takes (Escape, a refused drop, let go nowhere): the pile comes apart where it was let go and each card flies to its own file's tile while the gap closes — the landing in reverse. No message for Escape |
 | **Edge zone** | A band inside the grid's top and bottom edges where holding the drag scrolls the grid |
 | **Ramp** | How far into the edge zone the pointer is: 0 where the zone starts, 1 at the edge. Drives the scroll speed and the shrink together |
 | **Handful** | The small size the pile shrinks to at the edge — what macOS itself shrinks a drag picture to over the header bar or a closed pane |
@@ -1195,14 +1197,15 @@ approved 2026-09-25):
 | `StackDragSource.edgeOvershoot` | 30pt | See Overshoot |
 | Fly-in (`startDrag(from:)`, `MainView.swift`) | 0.2s ease-out | How long cards take to reach the pile |
 | Landing (`commitReorder(at:)`, `MainView.swift`) | spring, response 0.35, damping 0.82 | How the files spring into the gap |
+| Put-back (`putBack`, `MainView.swift`) | 0.28s ease-in-out | How fast cards fly home after a drag nothing took |
 | Gap reflow (`gridContent`, `MainView.swift`) | 0.2s ease-in-out | How fast tiles slide aside for the gap |
 | List card (`startDrag(from:)`) | at most 320pt wide, kept 40pt inside the pointer | The list-mode card's size and where it rides |
 | Drag start (`tile(_:)`) | 4pt | How far the pointer moves before a press becomes a drag |
 
-**Open:** in the plain Library the sort strip still reads "Custom Order"
-(the sort is shared with collections, and the plain Library shows its
-files in the order they were added). It should name the sort actually in
-use. Deferred by Jason to another pass.
+**The sort strip names the sort in use** (`effectiveSort`): the sort is
+shared by every grid, and in the plain Library, which has no order of its
+own, Custom Order reads as Date Added, Oldest First — strip and Sort menu
+alike.
 
 **Built 2026-09-24 (nesting by drag, and dragging into another
 collection):** `Library.moveGroup(id:toParent:)` — nests a group inside
