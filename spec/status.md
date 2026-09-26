@@ -300,6 +300,13 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
+- **The app icon** (2026-09-26): Jason's prototype, `Resources/AppIcon.svg`,
+  rendered into `Resources/Assets.xcassets` by `tools/make-app-icon.swift`
+  (rerun after editing the SVG). macOS 27 treats a plain icon set as a
+  legacy icon: it shrinks it onto a grey rounded square (seen in the
+  system's own rendering of the built app). Avoiding that means an Icon
+  Composer `.icon` file, whose shape mask would clip the line that breaks
+  out of the frame — Jason's call.
 - **⌘A in the timeline** (2026-09-26): selects every slide instead of
   beeping. Checked with a synthetic ⌘A after a slide click; one real
   press is worth it. If the sidebar still has the keyboard (no timeline
