@@ -72,9 +72,10 @@ is built and confirmed — see "Done, confirmed by Jason 2026-09-26".)
 - **A drawer at the top of the grids with a viewer of the selected
   image(s)** — **planned 2026-09-26 by Q&A** (`spec/plan.md`, "The viewer
   drawer"): multi-up or Stack, the header bar as its handle, all three
-  grids, video/GIFs muted and looping. **Steps 1–3 built 2026-09-26** (PaneKit's
-  external handle; the viewer; the two Library grids); step 4, Edit Show's
-  browser, next — a PaneKit drawer over the grid, so it closes to its
+  grids, video/GIFs muted and looping. **Built 2026-09-26, all four steps**
+  (PaneKit's external handle; the viewer; the two Library grids; Edit
+  Show's browser), each checked with axtool on a scratch library — see
+  "Still needs Jason's hands" — a PaneKit drawer over the grid, so it closes to its
   handle, and can switch sides like every other pane.
 
 ### Parked for later (Jason, 2026-09-25)
@@ -322,6 +323,21 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
+- **The viewer drawer** (built 2026-09-26, `spec/plan.md` "The viewer
+  drawer"): Y / ⇧Y, dragging and double-clicking the bar, Side by Side
+  and Stack, ← / → within the selection, in the Library grid, the library
+  panel and Edit Show's browser — all checked with axtool and
+  screenshots, never by a real hand in the app (the harness's handle was).
+  Worth a look: whether the stack's cards (the next pictures, dimmed)
+  read as a group at a glance; 12 videos side by side at once (not
+  tried); and the browser's ← / →, which only work once its list has the
+  keyboard — a real click on a row should give it that (a synthetic one
+  doesn't; Tab did).
+- **The inspector's stars after a rating key in the browser** (seen
+  2026-09-26 while checking the viewer): "4" rated both picked files (the
+  library says 4), but the inspector's Rating row for the selected slide's
+  file still showed empty stars. Not investigated; may be the inspector
+  not refreshing from the item.
 - **BGTools: naming screens, the map view, the window opening on your
   screen** (built 2026-09-25, `spec/bgtools.md` items 3–5): renaming a
   monitor or a Space, the Map | List switch, and the window landing on the

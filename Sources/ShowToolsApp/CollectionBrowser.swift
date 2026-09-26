@@ -1,6 +1,7 @@
 import SwiftUI
 import ShowToolsCore
 import ShowToolsPlayback
+import PaneKit
 
 /// Edit Show's right-hand column: the show's collection, its files to build
 /// the show from (plan, 2b; Final Cut's browser). The show's own order lives
@@ -45,6 +46,9 @@ struct CollectionBrowser: View {
         var isOverlay: Bool { if case .overlay = self { true } else { false } }
     }
     @State private var picked: Set<Pick> = []
+    /// The pick added last: the viewer drawer's outlined file.
+    @State private var lastPicked: Pick?
+    @AppStorage(ViewerPlace.browser.modeKey) private var viewerMode: ViewerMode = .sideBySide
     @Environment(\.undoManager) private var undoManager
     /// ⌘Delete's question: files to delete from the library.
     @State private var confirmDelete: [Int64]?
@@ -141,17 +145,49 @@ struct CollectionBrowser: View {
     private var files: [MediaItem] { usedFiles + unusedFiles }
 
     var body: some View {
-        VStack(spacing: 0) {
-            bar
-            Divider()
-            if collection == nil {
-                ContentUnavailableView("Not in a collection", systemImage: "rectangle.stack",
-                                       description: Text("This show doesn't belong to a collection."))
-                    .noMenuYet("Edit Show › Browser › empty (no collection)")
-            } else {
-                list
+        // The viewer drawer above the list, its handle the bar (`spec/plan.md`,
+        // "The viewer drawer", step 4).
+        let viewer = model.browserViewer
+        PaneLayoutView(controller: viewer, content: [
+            "viewer": AnyView(SelectionViewer(
+                items: ordered(picked).compactMap { model.itemsByID[$0] },
+                primary: lastPicked.flatMap(itemID), mode: $viewerMode, model: model)),
+            "grid": AnyView(VStack(spacing: 0) {
+                bar.paneHandle(viewer, split: ViewerLayout.split)
+                Divider()
+                if collection == nil {
+                    ContentUnavailableView("Not in a collection", systemImage: "rectangle.stack",
+                                           description: Text("This show doesn't belong to a collection."))
+                        .noMenuYet("Edit Show › Browser › empty (no collection)")
+                } else {
+                    list
+                }
             }
-        }
+            .environment(model)),
+        ])
+        // Y and ⇧Y anywhere in Edit Show but a text field: nothing else there
+        // uses them, and this is its only viewer. ← / → step the outline
+        // only while the list has the keyboard — elsewhere they're the
+        // timeline's.
+        .background(SingleKeys { event in
+            if event.charactersIgnoringModifiers?.lowercased() == "y" {
+                switch event.plainModifiers {
+                case []: viewer.toggle(ViewerLayout.split); return true
+                case [.shift]: viewerMode = viewerMode.other; return true
+                default: return false
+                }
+            }
+            guard listFocused, viewer.isOpen(ViewerLayout.split), picked.count > 1,
+                  event.plainModifiers == [], event.keyCode == 123 || event.keyCode == 124 else { return false }
+            let picks = orderedPicks
+            lastPicked = Viewer.step(picks, from: lastPicked, by: event.keyCode == 123 ? -1 : 1)
+            return true
+        }.opacity(0).allowsHitTesting(false))
+    }
+
+    /// The picks in the list's own order (uses first, then files).
+    private var orderedPicks: [Pick] {
+        (usedEntries.map(\.pick) + unusedFiles.map { Pick.file($0.id) }).filter(picked.contains)
     }
 
     // MARK: The bar
@@ -362,6 +398,10 @@ struct CollectionBrowser: View {
         // `StorylineView` and `EditShowView` already use for their own
         // ⌥-click checks.
         .onChange(of: picked) { old, p in
+            // The viewer's outline: the pick just added, or none once it's gone.
+            let added = p.subtracting(old)
+            if added.count == 1 { lastPicked = added.first }
+            else if let last = lastPicked, !p.contains(last) { lastPicked = nil }
             // Deselecting here (a click on the list's empty space) lets go
             // of the show's side too, or the inspector kept showing — and
             // editing — a slide nothing looked selected any more (Jason,

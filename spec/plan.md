@@ -1324,6 +1324,15 @@ double-click toggles); a harness check with a header-bar-shaped view.
    strip now), and plain grey stack cards were invisible on the dark
    backdrop (they're the next pictures now, dimmed, with a light edge).
 4. Edit Show's browser: the same, following its picked files and uses.
+   **Built 2026-09-26.** The outlined file is the pick added last. Y and
+   ⇧Y work anywhere in Edit Show but a text field (nothing else there
+   uses them); ← / → step the outline only while the list has the
+   keyboard, since elsewhere they're the timeline's. Checked with axtool:
+   Y opens it over one pick; ⌘-click adds a second, side by side, the
+   last outlined; with the list given the keyboard (Tab), → steps the
+   outline with both still picked, and "4" still rates both — so the
+   list's focus, now inside the drawer's own hosting view, still works.
+   **The viewer drawer is built, all four steps.**
 
 **Open:** the cap of 12 (proposed); whether a click in the viewer should
 do anything later.
