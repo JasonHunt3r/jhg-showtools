@@ -57,6 +57,12 @@ text fields and `List`s, and nowhere else.
   fix direction (a focused scene value + Edit-menu item) turned out to be
   the more invasive path; `SingleKeys` alone was cheaper and matches how
   Delete already handles this exact grid-focus problem.
+  **Fixed in the storyline, 2026-09-26** (`EditShowTimelinePane.swift`),
+  the same way: ⌘A joins the timeline's `SingleKeys`, selecting every
+  slide and clearing the other rows' selections (Jason: it beeped). A
+  list with the keyboard (the browser, the sidebar) keeps its own ⌘A.
+  Checked with axtool on a scratch library: a slide click, then ⌘A, gave
+  "11 slides selected" — synthetic, not yet a real keypress.
 - **A2 (Med) — No Duplicate (⌘D).** **Fixed 2026-09-24 (batch 5), for
   slides.** Edit ▸ Duplicate (⌘D) calls `SlideActions.duplicate` through
   a new focused value (`requestDuplicateSlides`, `activeSlideSelection`)

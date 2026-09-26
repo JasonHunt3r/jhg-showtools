@@ -248,7 +248,7 @@ collection, unless the setting says always. (Built.)
 | Paste Settings ⇧⌘V | — | Proposed: paste the copied slide's settings and effects onto the selected slides, like Final Cut's Paste Attributes | — |
 | Duplicate ⌘D | — | slides; a selected lane image (A2) | — |
 | Delete | as the Delete key | as the Delete key | text |
-| Select All ⌘A | every tile in view (A1). **Top priority** (Jason: hand-clicking 4,000 test images) | every slide (A1) | text |
+| Select All ⌘A | every tile in view (A1). **Top priority** (Jason: hand-clicking 4,000 test images) | every slide (A1; built 2026-09-26) | text |
 
 Undo, Redo and Delete are Built. Copy and Paste of slides and ⌘A are
 wanted (settled 2026-09-24); the rest is Proposed.

@@ -300,6 +300,10 @@ and Flush presets from 2a.
 
 ## Still needs Jason's hands
 
+- **⌘A in the timeline** (2026-09-26): selects every slide instead of
+  beeping. Checked with a synthetic ⌘A after a slide click; one real
+  press is worth it. If the sidebar still has the keyboard (no timeline
+  click yet), ⌘A goes to the sidebar, as in the grid.
 - **BGTools: naming screens, the map view, the window opening on your
   screen** (built 2026-09-25, `spec/bgtools.md` items 3–5): renaming a
   monitor or a Space, the Map | List switch, and the window landing on the

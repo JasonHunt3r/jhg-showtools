@@ -211,6 +211,19 @@ struct EditShowTimelinePane: View {
         }
     }
 
+    /// ⌘A: every slide, and nothing of any other kind — the rows are
+    /// selected one kind at a time (`currentRow`). A later ⇧-click or
+    /// ⇧-arrow extends from the first slide, like the grid's ⌘A.
+    private func selectAllSlides() {
+        let ids = timeline.slides.map(\.slide.id)
+        guard !ids.isEmpty else { return }
+        session.selectedTransition = nil; session.selectedOverlay = nil
+        session.selectedSong = nil; session.selectedMarkers = []
+        session.selection = Set(ids)
+        session.slideAnchor = ids.first
+        session.slideAnchorBase = Set(ids)
+    }
+
     /// ↑ ↓ between rows, in the show's own row order (a live drag of a
     /// row's handle isn't in play while a key is being pressed, so
     /// `show.rows` — not the storyline's own `displayRows` — is enough).
@@ -345,6 +358,12 @@ struct EditShowTimelinePane: View {
                 // handler, so there's no race between two `SingleKeys`
                 // instances on the same window over the same keypress
                 // (found 2026-09-25, `spec/panekit.md` step 5's follow-up).
+                // ⌘A, Select All (audit A1): every slide. Nothing else in
+                // the window answers `selectAll:`, so it beeped. A list
+                // with the keyboard (the browser) keeps its own ⌘A.
+                case (0, _, [.command]):
+                    guard !(NSApp.keyWindow?.firstResponder is NSTableView) else { return false }
+                    selectAllSlides()
                 case (123, _, []): moveSelection(-1, extend: false, engine: engine)     // ←
                 case (123, _, [.shift]): moveSelection(-1, extend: true, engine: engine)
                 case (124, _, []): moveSelection(1, extend: false, engine: engine)      // →
